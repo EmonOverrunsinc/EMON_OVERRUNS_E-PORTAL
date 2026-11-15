@@ -20,7 +20,7 @@
   const notSet = (e) => ["PGRST205", "PGRST202", "42P01"].includes(e?.code) || /customer_order|schema cache/i.test(e?.message || "");
   const needUpdate = `<div class="empty">Customer Order needs the database update <b>RUN_041_TO_046.sql</b>. Run it in the Supabase SQL Editor.</div>`;
   const rand = () => Math.random().toString(36).slice(2, 8);
-  const MAX_LINES = 60, MAX_COLS = 4, MAX_PHOTOS = 5;
+  const MAX_LINES = 200, MAX_COLS = 4, MAX_PHOTOS = 5; // 3.99.32: one line per box: up to 200
   // the status of an order in 3 steps (3.39): 1 CREATE ORDER (made, waiting for the Director) → 2 PREPARED (approved: ready to
   // deliver) → 3 COMPLETE (delivered); or CANCELLED
   const STATUS = { pending: ["pending", "CREATE ORDER"], approved: ["approved", "CONFIRMED"], completed: ["applied", "COMPLETED"], cancelled: ["rejected", "CANCELLED"] };
@@ -132,7 +132,8 @@
         ${o?.status === "completed" ? `<div class="banner warn">This order is COMPLETED. Saving it changes its invoice too (boxes, pcs, amount, terms, date). The customer stays the same.</div>` : ""}
         <fieldset class="opt of-step"><legend><i>1</i> Customer</legend><div id="coCust"></div></fieldset>
         <fieldset class="opt of-step"><legend><i>2</i> Boxes</legend>
-          <p class="of-say">Scan each box sticker. The order lines below fill in by themselves. No sticker? Skip this step and type the lines.</p>
+          <p class="of-say">Scan each box sticker: each box becomes <b>its own line with its price</b> (the sheet's price, else the last price of the same code, else the price below). No sticker? Skip this step and type the lines.</p>
+          <div class="fields wide of-price"><label for="cfAllPrice">Price per pc for all boxes (optional)</label><input type="number" id="cfAllPrice" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 40.00"></div>
           <div class="btnrow cf-scan"><button type="button" class="btn primary" id="cfScan">${ic("scan")} Scan Boxes</button>
             <label class="btn" for="cfPhoto">${ic("image")} Box Label Photo</label><input type="file" id="cfPhoto" accept="image/*" multiple hidden>
             <span class="cf-type"><input type="text" id="cfSer" maxlength="60" placeholder="or type a serial no, e.g. U20261238" aria-label="Box serial no"><button type="button" class="btn" id="cfAdd">${ic("plus")} Add</button></span></div>
@@ -159,6 +160,14 @@
     E.customerPicker($("#coCust"), { statuses: ["active"], onPick: (c) => { cust = c; }, preset: cust || undefined });
     if (preset && !cust) toast(`${fullName(preset)}'s account is ${String(preset.status).toUpperCase()}: an order is made only for an ACTIVE account.`, true);
     const ed = linesEditor($("#coLines"), o?.lines || [], o?.extra_columns || []);
+    // 3.99.32: the last price used for each code (the newest orders first), and the price for all boxes
+    const LAST_PRICE = new Map();
+    sb.from("customer_orders").select("lines").neq("status", "cancelled").order("created_at", { ascending: false }).limit(300).then(({ data }) => {
+      for (const r of data || []) for (const l of r.lines || []) { const k = String(l.code || "").toUpperCase(); if (k && num(l.price) > 0 && !LAST_PRICE.has(k)) LAST_PRICE.set(k, num(l.price)); }
+    }, () => {});
+    $("#cfAllPrice").onchange = () => ed.fillPrice(num($("#cfAllPrice").value));
+    // a box line removed by its × also comes off the scanned list
+    $("#coLines").addEventListener("lineoff", (e) => { const i = picked.findIndex((b) => b.serial_no === e.detail); if (i >= 0) { picked.splice(i, 1); listBoxes(); } });
     // 3.40: boxes scanned (or typed) on the form: each fills the lines from the box database and goes on the order when saved
     const picked = [];
     const listBoxes = () => {
@@ -180,9 +189,10 @@
       const other = (on.data || []).find((x) => x.customer_orders && x.customer_orders.status !== "cancelled" && x.order_id !== o?.id);
       if (other) return `✖ Box ${ser} is on order ${other.customer_orders.order_no} already.`;
       const b = st.data;
-      if (!ed.addBox(b, 1)) return `✖ The order has up to ${MAX_LINES} lines.`;
-      picked.push(b); listBoxes();
-      if (!$("#coRef").value.trim()) $("#coRef").value = [...new Set(picked.map((x) => x.batch).filter(Boolean))].join(", ").slice(0, 60);
+      // 3.99.32: the box's price: the sheet's (column H), else the last price of the same code, else the price for all boxes
+      const price = num(b.price) || LAST_PRICE.get(String(b.style || "").toUpperCase()) || num($("#cfAllPrice").value);
+      if (!ed.addBox(b, 1, price)) return `✖ The order has up to ${MAX_LINES} lines.`;
+      picked.push(b); listBoxes(); // (3.99.32: the batch no is not filled in by itself)
       return `✔ Box ${ser}: ${[b.product, b.brand && b.brand !== "-" ? b.brand : "", b.qty ? `${qtyText(b.qty)} pcs` : "", b.batch].filter(Boolean).join(" · ")} · ${boxesText(picked.length)}`;
     };
     $("#cfScan").onclick = () => E.scanDialog((text) => scanBox(readLabel(text).serial_no), {
@@ -236,14 +246,14 @@
   function linesEditor(box, lines, cols0) {
     let cols = [...cols0];
     const val = (v) => (v == null || v === "" || v === 0 ? "" : esc(v));
-    const lineRow = (l = {}) => `<tr class="co-line">
+    const lineRow = (l = {}) => `<tr class="co-line" data-serial="${esc(l.serial || "")}">
       <td class="co-n"></td>
       <td><input type="number" class="cQ" min="0" step="1" inputmode="numeric" aria-label="Quantity" value="${val(l.qty)}"></td>
       <td><input type="number" class="cB" min="0" step="1" inputmode="numeric" aria-label="Boxes" value="${val(l.boxes)}"></td>
       <td><input type="text" class="cC" maxlength="30" aria-label="Code" value="${val(l.code)}"></td>
       <td><input type="number" class="cP" min="0" step="1" inputmode="numeric" aria-label="Pcs per box" value="${val(l.pcs)}"></td>
       <td><input type="text" class="cL" maxlength="40" aria-label="Lot No" value="${val(l.lot)}"></td>
-      <td><input type="text" class="cN" maxlength="120" aria-label="Product" value="${val(l.product)}"></td>
+      <td><input type="text" class="cN" maxlength="120" aria-label="Product" value="${val(l.product)}"><small class="co-ser">${l.serial ? "BOX " + esc(l.serial) : ""}</small></td>
       ${cols.map((c) => `<td><input type="text" class="cX" data-c="${esc(c)}" maxlength="60" aria-label="${esc(c)}" value="${val(l.extra?.[c])}"></td>`).join("")}
       <td><input type="number" class="cR" min="0" step="0.01" inputmode="decimal" aria-label="Price" value="${val(l.price)}"></td>
       <td class="num cA">0.00</td>
@@ -262,7 +272,7 @@
       const b = num($(".cB", tr).value), p = num($(".cP", tr).value);
       const q = b > 0 && p > 0 ? b * p : num($(".cQ", tr).value);
       return { qty: q, boxes: b, code: $(".cC", tr).value.trim(), pcs: p, lot: $(".cL", tr).value.trim(), product: $(".cN", tr).value.trim(), price: num($(".cR", tr).value),
-        extra: Object.fromEntries($$(".cX", tr).map((x) => [x.dataset.c, x.value.trim()])) };
+        extra: Object.fromEntries($$(".cX", tr).map((x) => [x.dataset.c, x.value.trim()])), ...(tr.dataset.serial ? { serial: tr.dataset.serial } : {}) };
     };
     const blank = (l) => !l.product && !l.code && !l.qty && !l.boxes && !l.pcs;
     const all = () => $$(".co-line", box).map(read1);
@@ -284,33 +294,36 @@
     const bind = () => {
       $$(".co-line", box).forEach((tr) => {
         $$("input", tr).forEach((x) => (x.oninput = sum));
-        $(".cDel", tr).onclick = () => { if ($$(".co-line", box).length > 1) tr.remove(); else $$("input", tr).forEach((x) => (x.value = "")); sum(); };
+        $(".cDel", tr).onclick = () => { const s0 = tr.dataset.serial; if ($$(".co-line", box).length > 1) tr.remove(); else { $$("input", tr).forEach((x) => (x.value = "")); tr.dataset.serial = ""; $(".co-ser", tr).textContent = ""; } if (s0) box.dispatchEvent(new CustomEvent("lineoff", { detail: s0 })); sum(); };
       });
       $$(".co-xcol", box).forEach((b) => (b.onclick = () => { const ls = all(); cols.splice(Number(b.dataset.xc), 1); draw(ls); }));
       $(".co-add", box).onclick = () => { if ($$(".co-line", box).length >= MAX_LINES) return; $("tbody", box).insertAdjacentHTML("beforeend", lineRow({})); bind(); sum(); $(".co-line:last-child .cB", box).focus(); };
       $(".co-addc", box).onclick = () => addColumn((name) => { const ls = all(); cols.push(name); draw(ls); });
     };
     draw(lines);
-    const keyOf = (l) => [l.code, l.lot, l.product, l.pcs || ""].map((v) => String(v ?? "").trim().toUpperCase()).join("|");
     // d = 1: the box goes on its line; d = -1: it comes off (an empty line goes); false when there is no room for a new line
-    const addBox = (b, d = 1) => {
-      const f = { code: String(b.style || "").toUpperCase(), lot: String(b.batch || "").toUpperCase(), product: [b.product, b.brand && b.brand !== "-" ? b.brand : ""].filter(Boolean).join(" · ").toUpperCase(), pcs: num(b.qty) };
-      const k = keyOf(f), tr = $$(".co-line", box).find((r) => keyOf(read1(r)) === k);
-      if (tr) {
-        const n = Math.max(0, num($(".cB", tr).value) + d);
-        if (n) $(".cB", tr).value = n; else if ($$(".co-line", box).length > 1) tr.remove(); else $$("input", tr).forEach((x) => (x.value = ""));
+    // 3.99.32: each box is its own line (with its serial no and its price); d = -1 takes its line off; false when there is no room
+    const addBox = (b, d = 1, price = 0) => {
+      const ser = String(b.serial_no || "").toUpperCase();
+      if (d < 0) {
+        const tr = $$(".co-line", box).find((r) => r.dataset.serial === ser);
+        if (tr) { if ($$(".co-line", box).length > 1) tr.remove(); else { $$("input", tr).forEach((x) => (x.value = "")); tr.dataset.serial = ""; $(".co-ser", tr).textContent = ""; } }
         sum(); return true;
       }
-      if (d < 0) return true;
-      let row = $$(".co-line", box).find((r) => blank(read1(r)));
+      let row = $$(".co-line", box).find((r) => !r.dataset.serial && blank(read1(r)));
       if (!row) {
         if ($$(".co-line", box).length >= MAX_LINES) return false;
         $("tbody", box).insertAdjacentHTML("beforeend", lineRow({})); bind(); row = $(".co-line:last-child", box);
       }
-      $(".cB", row).value = 1; $(".cC", row).value = f.code; $(".cP", row).value = f.pcs || ""; $(".cL", row).value = f.lot; $(".cN", row).value = f.product;
+      row.dataset.serial = ser; $(".co-ser", row).textContent = "BOX " + ser;
+      $(".cB", row).value = 1; $(".cC", row).value = String(b.style || "").toUpperCase(); $(".cP", row).value = num(b.qty) || ""; $(".cL", row).value = String(b.batch || "").toUpperCase();
+      $(".cN", row).value = [b.product, b.brand && b.brand !== "-" ? b.brand : ""].filter(Boolean).join(" · ").toUpperCase();
+      $(".cR", row).value = price > 0 ? price : "";
       sum(); return true;
     };
-    return { read: () => ({ lines: all().filter((l) => !blank(l)), cols }), addBox };
+    // the price for every box line that has none yet
+    const fillPrice = (price) => { if (!(price > 0)) return; $$(".co-line", box).forEach((r) => { if (r.dataset.serial && !num($(".cR", r).value)) $(".cR", r).value = price; }); sum(); };
+    return { read: () => ({ lines: all().filter((l) => !blank(l)), cols }), addBox, fillPrice };
   }
   // the name of a new column (in capitals, once, not a column the order has already)
   function addColumn(done) {
