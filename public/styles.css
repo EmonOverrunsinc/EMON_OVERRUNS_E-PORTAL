@@ -3629,3 +3629,35 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .doc-qr img { width: 22mm; height: 22mm; image-rendering: pixelated; display: block; }
 .doc-qr small { font: 600 7pt/1.25 Arial, sans-serif; color: #3c4a66; max-width: 60mm; }
 .doc-qr-row { display: flex; gap: 4mm; align-items: flex-end; } .doc-qr-row > .cs-foot { flex: 1; min-width: 0; }
+/* 3.99.30: THE GUIDE of an order: numbered steps and one "what to do now" box with one big button */
+.og { background: #fff; border: 1px solid #dfe5f0; border-radius: 18px; box-shadow: 0 6px 22px rgba(15,58,140,.08); padding: 16px 18px; margin: 12px 0; }
+.og-steps { list-style: none; margin: 0 0 14px; padding: 0; display: flex; }
+.og-steps li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #8a94a8; text-align: center; position: relative; min-width: 0; }
+.og-steps li span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; font-weight: 800; background: #eef1f6; color: #8a94a8; border: 2px solid #d9dee7; position: relative; z-index: 1; }
+.og-steps li:not(:last-child)::after { content: ""; position: absolute; top: 17px; left: calc(50% + 19px); right: calc(-50% + 19px); height: 3px; border-radius: 2px; background: #d9dee7; }
+.og-steps li.done { color: #1b6b33; } .og-steps li.done span { background: #1b6b33; border-color: #1b6b33; color: #fff; } .og-steps li.done::after { background: #1b6b33; }
+.og-steps li.on { color: #0f3a8c; } .og-steps li.on span { background: #0f3a8c; border-color: #0f3a8c; color: #fff; box-shadow: 0 0 0 5px rgba(15,58,140,.15); }
+.og-now { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 14px; background: #f1f5fd; border: 1px solid #cfdcf5; border-left: 6px solid #0f3a8c; }
+.og-done .og-now { background: #eef9f0; border-color: #bfe3c8; border-left-color: #1b6b33; } .og-bad .og-now { background: #fdecea; border-color: #f3c1bc; border-left-color: #b3261e; }
+.og-n { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: #0f3a8c; color: #fff; font-size: 24px; font-weight: 800; }
+.og-done .og-n { background: #1b6b33; } .og-bad .og-n { background: #b3261e; }
+.og-txt small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .12em; color: #5b6577; }
+.og-txt b { display: block; font-size: 21px; line-height: 1.2; color: #10203f; margin: 2px 0; }
+.og-txt p { margin: 0; font-size: 14.5px; line-height: 1.4; color: #3c4a66; } .og-txt p b { display: inline; font-size: inherit; color: #10203f; }
+.og-btns { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.og-go { min-height: 54px; padding: 0 26px; font-size: 17px; font-weight: 700; border-radius: 14px; justify-content: center; white-space: nowrap; }
+.og-more { justify-content: center; }
+.og-old { display: none; } /* the old approval boxes: their buttons are pressed by the guide */
+@media (max-width: 700px) {
+  .og { padding: 12px; } .og-steps li { font-size: 10.5px; } .og-steps li span { width: 28px; height: 28px; font-size: 13px; } .og-steps li:not(:last-child)::after { top: 14px; left: calc(50% + 16px); right: calc(-50% + 16px); }
+  .og-now { grid-template-columns: auto minmax(0, 1fr); padding: 12px; } .og-n { width: 42px; height: 42px; font-size: 20px; } .og-txt b { font-size: 18px; }
+  .og-btns { grid-column: 1 / -1; } .og-go { width: 100%; }
+}
+.og .og-go.ok { background: #1b6b33; color: #fff; border-color: #1b6b33; } .og .og-go.ok:hover { background: #155628; }
+/* 3.99.30: the New Order form in numbered steps */
+.of-step > legend { display: flex; align-items: center; gap: 10px; font-size: 18px; }
+.of-step > legend i { font-style: normal; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #0f3a8c; color: #fff; font-size: 16px; font-weight: 800; flex: none; }
+.of-say { margin: 0 0 10px; font-size: 14.5px; line-height: 1.4; color: #3c4a66; }
+.of-more { margin-top: 12px; border-top: 1px dashed #d9dee7; padding-top: 10px; }
+.of-more > summary { cursor: pointer; font-weight: 700; color: #0f3a8c; padding: 6px 0; }
+.of-more[open] > summary { margin-bottom: 8px; }

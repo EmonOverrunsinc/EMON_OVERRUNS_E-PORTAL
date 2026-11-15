@@ -130,26 +130,28 @@
     E.shell(o ? "editcustorder" : "newcustorder", o ? `Edit ${o.order_no}` : "New Customer Order", `
       <form class="window" id="coForm" novalidate><div class="wtitle">${o ? `Customer Order ${esc(o.order_no)}` : "Customer Order"}</div><div class="wbody">
         ${o?.status === "completed" ? `<div class="banner warn">This order is COMPLETED. Saving it changes its invoice too (boxes, pcs, amount, terms, date). The customer stays the same.</div>` : ""}
-        <fieldset class="opt"><legend>Customer (ACTIVE accounts only)</legend><div id="coCust"></div></fieldset>
-        <fieldset class="opt"><legend>Order</legend><div class="formgrid">
-          <div class="fields wide">
-            <label for="coDate">Date</label><input type="date" id="coDate" value="${esc(o?.order_date || isoToday())}">
-            <label for="coRef">Batch No</label><input type="text" id="coRef" maxlength="60" value="${esc(o?.reference || "")}" placeholder="e.g. SS-13">
-            <label for="coTerms">Terms of Payment</label><select id="coTerms"><option value="">— Choose the terms —</option>${E.TERMS.map((x) => `<option ${x === terms0 ? "selected" : ""}>${x}</option>`).join("")}<option value="OTHER" ${known ? "" : "selected"}>OTHER (type the terms)</option></select>
-            <label for="coTermsX" class="cotx" ${known ? "hidden" : ""}>Other Terms</label><input type="text" id="coTermsX" class="cotx" maxlength="60" value="${known ? "" : esc(terms0)}" ${known ? "hidden" : ""}>
-            <label for="coDue">Due Date</label><input type="date" id="coDue" value="${esc(o?.due_date || "")}">
-          </div>
-          <div class="fields wide">
-            <label for="coNote">Note</label><input type="text" id="coNote" maxlength="500" value="${esc(o?.note || "")}">
-            <span>Order No</span><small>${o ? `<b class="mono">${esc(o.order_no)}</b>` : "Given by the system when you save (OR-YYYYMM-####)."}</small>
-          </div></div></fieldset>
-        <fieldset class="opt"><legend>Scan Boxes</legend>
+        <fieldset class="opt of-step"><legend><i>1</i> Customer</legend><div id="coCust"></div></fieldset>
+        <fieldset class="opt of-step"><legend><i>2</i> Boxes</legend>
+          <p class="of-say">Scan each box sticker. The order lines below fill in by themselves. No sticker? Skip this step and type the lines.</p>
           <div class="btnrow cf-scan"><button type="button" class="btn primary" id="cfScan">${ic("scan")} Scan Boxes</button>
             <label class="btn" for="cfPhoto">${ic("image")} Box Label Photo</label><input type="file" id="cfPhoto" accept="image/*" multiple hidden>
             <span class="cf-type"><input type="text" id="cfSer" maxlength="60" placeholder="or type a serial no, e.g. U20261238" aria-label="Box serial no"><button type="button" class="btn" id="cfAdd">${ic("plus")} Add</button></span></div>
-          <p class="muted" style="margin:6px 0">Each box scanned fills the order lines from the box database (your Google Sheet): product and brand, code (style), pcs and lot no (batch). Then write the price. The boxes go on the order when you save it.</p>
           <div id="cfList"></div></fieldset>
-        <fieldset class="opt"><legend>Order Lines</legend><div id="coLines"></div></fieldset>
+        <fieldset class="opt of-step"><legend><i>3</i> Order lines and price</legend>
+          <p class="of-say">Check the boxes, pcs and product. Type the <b>price</b> of each line.</p><div id="coLines"></div></fieldset>
+        <fieldset class="opt of-step"><legend><i>4</i> Terms of payment</legend>
+          <div class="fields wide">
+            <label for="coTerms">Terms of Payment</label><select id="coTerms"><option value="">— Choose the terms —</option>${E.TERMS.map((x) => `<option ${x === terms0 ? "selected" : ""}>${x}</option>`).join("")}<option value="OTHER" ${known ? "" : "selected"}>OTHER (type the terms)</option></select>
+            <label for="coTermsX" class="cotx" ${known ? "hidden" : ""}>Other Terms</label><input type="text" id="coTermsX" class="cotx" maxlength="60" value="${known ? "" : esc(terms0)}" ${known ? "hidden" : ""}>
+          </div>
+          <details class="of-more" ${o?.reference || o?.due_date || o?.note ? "open" : ""}><summary>More details (date, batch no, due date, note)</summary>
+            <div class="fields wide">
+              <label for="coDate">Date</label><input type="date" id="coDate" value="${esc(o?.order_date || isoToday())}">
+              <label for="coRef">Batch No</label><input type="text" id="coRef" maxlength="60" value="${esc(o?.reference || "")}" placeholder="e.g. SS-13">
+              <label for="coDue">Due Date</label><input type="date" id="coDue" value="${esc(o?.due_date || "")}">
+              <label for="coNote">Note</label><input type="text" id="coNote" maxlength="500" value="${esc(o?.note || "")}">
+              ${o ? `<span>Order No</span><small><b class="mono">${esc(o.order_no)}</b></small>` : ""}
+            </div></details></fieldset>
         ${o ? "" : `<div id="coInsOffer"></div>`}
       </div><div class="wfoot"><button type="button" class="btn" id="coCancel">Cancel</button><button type="submit" class="btn primary">${o ? "Save" : isAdmin() ? "Save Order" : "Save and Send to EMON HASAN"}</button></div></form>`,
       isAdmin() ? "" : "CREATE ORDER: the order goes to EMON HASAN to approve. Approved, it is CONFIRMED: EMON HASAN's signature is on the printed order and the delivery can start.");
@@ -433,6 +435,36 @@
 
   // 3.39: the page of an order in the style of a profile: the head (order no, status, customer, its numbers, the QR code of the
   // order paper), the 3 steps, the amount, the buttons, and tabs: the lines, the boxes, the delivery, the invoice
+  // 3.99.30: THE GUIDE of an order: the steps (1 Order made, 2 Approved, 3 Boxes added, 4 Sorting, 5 Delivered) with the one
+  // that is done ticked, and under them what to do NOW with one big button. go: the Complete Delivery button of the paper.
+  function guideHtml(o, boxes, inv, w, go = "") {
+    const ser = boxes.filter((b) => b.serial_no).length, total = num(o.total_boxes), sorted = (o._trk || []).some((t) => t.step === "sorting");
+    const done = o.status === "completed", cancelled = o.status === "cancelled", ok = o.status === "approved" || done, waiting = o.status === "approved" && !!o.delivery_request_at;
+    const steps = [["Order made", true], ["Approved", ok], ["Boxes added", done || ser > 0], ...(o._trkOn ? [["Sorting", done || sorted]] : []), ["Delivered", done]];
+    steps.forEach((x, i) => { if (i && !steps[i - 1][1]) x[1] = false; }); // one after the other: a step is done only after the ones before it
+    const at = cancelled ? -1 : steps.findIndex((x) => !x[1]);
+    const bar = `<ol class="og-steps">${steps.map(([t, d], i) => `<li class="${d ? "done" : i === at ? "on" : ""}"><span>${d ? "✔" : i + 1}</span>${esc(t)}</li>`).join("")}</ol>`;
+    const big = (attrs, label, cls = "primary", icon = "check") => `<button type="button" class="btn ${cls} big og-go" ${attrs}>${ic(icon)} ${esc(label)}</button>`;
+    const more = ser && ser < total && !waiting && w ? `<button type="button" class="btn og-more" data-trk-go="1">${ic("box")} Add More Boxes (${ser} of ${qtyText(total)})</button>` : "";
+    let n = at + 1, title, say, btn = "";
+    if (cancelled) { n = "✖"; title = "This order is cancelled"; say = o.cancel_note ? esc(o.cancel_note) : "Nothing more to do."; }
+    else if (done) { n = "✔"; title = "Order finished"; say = `Delivered${o.delivered_at ? " on " + esc(mdy(o.delivered_at)) : ""}.${inv ? ` Invoice <b class="nw">${esc(inv.invoice_no)}</b> was made for the customer.` : ""}`;
+      btn = inv && E.canOpen("invoice") ? `<a class="btn primary big og-go" href="#invoice/${inv.id}">${ic("doc")} Open Invoice</a>` : ""; }
+    else if (o.status === "pending") {
+      if (isAdmin()) { title = "Approve this order"; say = "Check the order lines below. If they are correct, press Approve."; btn = big('data-og="#coApprove"', "Approve Order", "ok") + `<button type="button" class="btn og-more" data-og="#coCancelO">Cancel Order</button>`; }
+      else { title = "Waiting for EMON HASAN"; say = "EMON HASAN must approve this order first. You have nothing to do now."; }
+    } else if (waiting) {
+      if (isAdmin()) { title = "Approve the delivery"; say = `The delivery was submitted by ${esc(o.delivery_request_by || "the order paper")}. Check the boxes and photos, then approve. The invoice is made by itself.`; btn = big('data-og="#coDvOk"', "Approve Delivery", "ok") + `<button type="button" class="btn og-more" data-og="#coDvNo">Send Back</button>`; }
+      else { title = "Waiting for EMON HASAN"; say = "The delivery is submitted. EMON HASAN approves it, then the invoice is made."; }
+    } else if (!w) { title = steps[at][0]; say = "This step is done by the office."; }
+    else if (!ser) { title = "Add the boxes"; say = `Scan the sticker of each box, or type its serial number. <b>0 of ${qtyText(total)}</b> added.`; btn = big('data-trk-go="1"', "Add Boxes", "primary", "box"); }
+    else if (o._trkOn && !sorted) { title = "Mark as Sorting"; say = `<b>${ser} of ${qtyText(total)}</b> box(es) added. Press when the boxes are being packed for the delivery.`; btn = big('data-trk="sorting"', "Mark as Sorting", "primary", "next") + more; }
+    else { title = "Complete the delivery"; say = "Press when the customer has received the boxes. The car plate no and the photo are optional. The invoice is made by itself.";
+      btn = (go || big('data-trk-go="2"', "Complete Delivery", "ok")) + more; }
+    return `<section class="og${done ? " og-done" : cancelled ? " og-bad" : ""}">${bar}
+      <div class="og-now"><div class="og-n">${n}</div><div class="og-txt"><small>${done || cancelled ? "STATUS" : "WHAT TO DO NOW"}</small><b>${esc(title)}</b><p>${say}</p></div><div class="og-btns">${btn}</div></div></section>`;
+  }
+
   function draw(o, boxes, inv, urls) {
     const c = o.customers || {}, cols = o.extra_columns || [], w = canW();
     const sumPcs = boxes.reduce((s, b) => s + num(b.pcs), 0);
@@ -452,7 +484,8 @@
       ${deliverNow ? `<div class="ch-qr"><canvas id="coQr" aria-label="QR code: Complete Delivery"></canvas><small>Verification</small></div>` : ""}
     </section>`;
     const deliverBtn = (cls = "") => `<a class="btn ok ${cls}" href="#${deliveryHash(o.order_no, o.delivery_code)}">${ic("check")} Complete Delivery</a>`;
-    const stepper = trackingHtml(o, inv, w, boxes, deliverNow && !o.delivery_request_at ? deliverBtn("small") : "");
+    const stepper = trackingHtml(o, inv, false, boxes); // 3.99.30: the history only (the buttons are in the guide)
+    const guide = guideHtml(o, boxes, inv, w, deliverNow && !o.delivery_request_at ? deliverBtn("big og-go") : "");
     const linesHtml = `<div class="grid-wrap co-wrap"><table class="grid co-lines"><thead><tr><th>#</th><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price (₱)</th><th class="num">Amount (₱)</th></tr></thead>
         <tbody>${(o.lines || []).map((l, i) => `<tr><td>${i + 1}</td><td class="num">${l.boxes ? qtyText(l.boxes) : ""}</td><td class="num">${qtyText(l.qty)}</td><td>${esc(l.code || "")}</td><td>${esc(l.lot || "")}</td><td>${esc(l.product)}</td>
           ${cols.map((x) => `<td>${esc(l.extra?.[x] || "")}</td>`).join("")}<td class="num">${peso(l.price)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody>
@@ -468,11 +501,12 @@
           <div class="pcell co-invstat"><div class="pl">Status</div><div class="pv">${payPill(inv)}</div></div></div>
           <div id="coInvIns"></div>
           ${o._dl?.has_pcs && nBoxes(boxes) ? `<div class="banner ok co-verified">✅ VERIFIED WITH SERIAL NO — the invoice charges the delivery list: ${esc(boxesText(nBoxes(boxes)))} · ${qtyText(o._dl.pcs)} pcs</div>` : ""}` : `<div class="empty small">The invoice is on the customer's account.</div>`;
-    const tabs = ["Order Lines", `Boxes (${nBoxes(boxes)})`, "Delivery", ...(o.status === "completed" ? ["Invoice"] : [])];
-    $("#main").innerHTML = `${head}${stepper}${banner}<div id="coIns"></div>
+    const tabs = ["Order Lines", `Boxes (${nBoxes(boxes)})`, "Delivery", ...(o.status === "completed" ? ["Invoice"] : []), "History"];
+    void banner; // 3.99.30: the guide says it
+    $("#main").innerHTML = `${guide}${head}<div id="coIns"></div><div class="og-old">
       ${isAdmin() && o.status === "approved" && o.delivery_request_at ? `<fieldset class="opt review"><legend>Delivery Approval</legend><p class="muted" style="margin:0 0 8px">${vsText(o.total_boxes, nBoxes(boxes), false)} · ${(o.delivery_photos || []).length} photo(s): see the Boxes and Delivery tabs.</p><div class="btnrow"><button type="button" class="btn ok" id="coDvOk">${ic("check")} Approve Delivery · COMPLETE</button><button type="button" class="btn danger" id="coDvNo">Reject</button></div></fieldset>` : ""}
       ${isAdmin() && o.status === "pending" ? `<fieldset class="opt review"><legend>EMON HASAN's Decision</legend><div class="btnrow"><button type="button" class="btn ok" id="coApprove">${ic("check")} Approve · CONFIRM</button><button type="button" class="btn danger" id="coCancelO">Cancel Order</button></div></fieldset>` : ""}
-      <div class="due-card co-amt"><div><div class="k">Order Amount</div><div class="v">₱ ${peso(o.total_amount)}</div></div><small>${esc(E.words(o.total_amount))}${o.note ? ` · Note: ${esc(o.note)}` : ""}</small></div>
+      </div><div class="due-card co-amt"><div><div class="k">Order Amount</div><div class="v">₱ ${peso(o.total_amount)}</div></div><small>${esc(E.words(o.total_amount))}${o.note ? ` · Note: ${esc(o.note)}` : ""}</small></div>
       <div class="actionbar">
         <button type="button" class="btn primary" id="coAll">${ic("download")} Download All Details (PDF)</button>
         ${deliverNow ? deliverBtn() : ""}
@@ -488,6 +522,7 @@
         <div data-p="1" hidden id="coBoxes">${boxesHtml(o, boxes, sumPcs, w)}</div>
         <div data-p="2" hidden id="coDel">${delHtml}</div>
         ${o.status === "completed" ? `<div data-p="3" hidden>${invHtml}</div>` : ""}
+        <div data-p="${tabs.length - 1}" hidden>${stepper}</div>
       </div>`;
     $$("#coPfTabs button").forEach((b) => (b.onclick = () => {
       $$("#coPfTabs button").forEach((x) => x.classList.toggle("on", x === b));
@@ -536,6 +571,7 @@
     // 3.98: the next step opens its tab (the boxes, the delivery); View Proof of Delivery shows the photos and the plate no
     $$("[data-trk-go]").forEach((b) => (b.onclick = () => { const t = $(`#coPfTabs [data-t="${b.dataset.trkGo}"]`); if (t) { t.click(); t.scrollIntoView({ block: "center", behavior: "smooth" }); } }));
     $$("[data-pod]").forEach((b) => (b.onclick = () => showPod(o, urls)));
+    $$("[data-og]").forEach((b) => (b.onclick = () => $(b.dataset.og)?.click())); // 3.99.30: the guide presses the old button
     $("#coPdf").onclick = async () => { await E.loadSignatures().catch(() => {}); E.openPreview(`Customer Order ${o.order_no}`, orderPages(o, inv)); };
     $("#coSheet").onclick = () => E.openPreview(`Delivery Sheet ${o.order_no}`, sheetPages(o, boxes));
     // 3.38.1: everything in one PDF: the order (with its invoice and delivery), the Delivery Sheet with the boxes, the check photos
