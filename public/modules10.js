@@ -503,6 +503,8 @@
           ${o._dl?.has_pcs && nBoxes(boxes) ? `<div class="banner ok co-verified">✅ VERIFIED WITH SERIAL NO — the invoice charges the delivery list: ${esc(boxesText(nBoxes(boxes)))} · ${qtyText(o._dl.pcs)} pcs</div>` : ""}` : `<div class="empty small">The invoice is on the customer's account.</div>`;
     const tabs = ["Order Lines", `Boxes (${nBoxes(boxes)})`, "Delivery", ...(o.status === "completed" ? ["Invoice"] : []), "History"];
     void banner; // 3.99.30: the guide says it
+    // 3.99.31: no Delivery tab while it would only repeat the guide's Complete Delivery button (or has nothing to show)
+    const noDelTab = o.status === "pending" || o.status === "cancelled" || (deliverNow && !o.delivery_request_at && !(o.delivery_photos || []).length);
     $("#main").innerHTML = `${guide}${head}<div id="coIns"></div><div class="og-old">
       ${isAdmin() && o.status === "approved" && o.delivery_request_at ? `<fieldset class="opt review"><legend>Delivery Approval</legend><p class="muted" style="margin:0 0 8px">${vsText(o.total_boxes, nBoxes(boxes), false)} · ${(o.delivery_photos || []).length} photo(s): see the Boxes and Delivery tabs.</p><div class="btnrow"><button type="button" class="btn ok" id="coDvOk">${ic("check")} Approve Delivery · COMPLETE</button><button type="button" class="btn danger" id="coDvNo">Reject</button></div></fieldset>` : ""}
       ${isAdmin() && o.status === "pending" ? `<fieldset class="opt review"><legend>EMON HASAN's Decision</legend><div class="btnrow"><button type="button" class="btn ok" id="coApprove">${ic("check")} Approve · CONFIRM</button><button type="button" class="btn danger" id="coCancelO">Cancel Order</button></div></fieldset>` : ""}
@@ -516,7 +518,7 @@
         ${(isAdmin() ? o.status === "approved" : o.status === "pending" && o.created_by === meId()) ? `<button type="button" class="btn danger" id="coCancelO">Cancel Order</button>` : ""}
         ${isAdmin() ? `<button type="button" class="btn danger" id="coDelO">${ic("trash")} Delete</button>` : ""}
       </div>
-      <div class="tabs" id="coPfTabs">${tabs.map((x, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}">${esc(x)}</button>`).join("")}</div>
+      <div class="tabs" id="coPfTabs">${tabs.map((x, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}"${i === 2 && noDelTab ? " hidden" : ""}>${esc(x)}</button>`).join("")}</div>
       <div class="tabpanes">
         <div data-p="0">${linesHtml}</div>
         <div data-p="1" hidden id="coBoxes">${boxesHtml(o, boxes, sumPcs, w)}</div>

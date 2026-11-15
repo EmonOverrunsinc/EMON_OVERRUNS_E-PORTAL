@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.30"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.31"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.30"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.31"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1885,7 +1885,7 @@
     if (OPEN_TAB.key !== key) { OPEN_TAB.key = key; OPEN_TAB.i = 0; }
     btns.forEach((b, i) => b.addEventListener("click", () => { if (OPEN_TAB.key === key) OPEN_TAB.i = i; }));
     const b = btns[OPEN_TAB.i];
-    if (OPEN_TAB.i && b && !b.classList.contains("on")) b.click();
+    if (OPEN_TAB.i && b && !b.hidden && !b.classList.contains("on")) b.click();
   }
   addEventListener("hashchange", () => { OPEN_TAB.key = ""; });
   // For work that ends later (an upload, a page that loads): true while the person is still on the same page, so the
