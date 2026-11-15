@@ -130,26 +130,28 @@
     E.shell(o ? "editcustorder" : "newcustorder", o ? `Edit ${o.order_no}` : "New Customer Order", `
       <form class="window" id="coForm" novalidate><div class="wtitle">${o ? `Customer Order ${esc(o.order_no)}` : "Customer Order"}</div><div class="wbody">
         ${o?.status === "completed" ? `<div class="banner warn">This order is COMPLETED. Saving it changes its invoice too (boxes, pcs, amount, terms, date). The customer stays the same.</div>` : ""}
-        <fieldset class="opt"><legend>Customer (ACTIVE accounts only)</legend><div id="coCust"></div></fieldset>
-        <fieldset class="opt"><legend>Order</legend><div class="formgrid">
-          <div class="fields wide">
-            <label for="coDate">Date</label><input type="date" id="coDate" value="${esc(o?.order_date || isoToday())}">
-            <label for="coRef">Batch No</label><input type="text" id="coRef" maxlength="60" value="${esc(o?.reference || "")}" placeholder="e.g. SS-13">
-            <label for="coTerms">Terms of Payment</label><select id="coTerms"><option value="">— Choose the terms —</option>${E.TERMS.map((x) => `<option ${x === terms0 ? "selected" : ""}>${x}</option>`).join("")}<option value="OTHER" ${known ? "" : "selected"}>OTHER (type the terms)</option></select>
-            <label for="coTermsX" class="cotx" ${known ? "hidden" : ""}>Other Terms</label><input type="text" id="coTermsX" class="cotx" maxlength="60" value="${known ? "" : esc(terms0)}" ${known ? "hidden" : ""}>
-            <label for="coDue">Due Date</label><input type="date" id="coDue" value="${esc(o?.due_date || "")}">
-          </div>
-          <div class="fields wide">
-            <label for="coNote">Note</label><input type="text" id="coNote" maxlength="500" value="${esc(o?.note || "")}">
-            <span>Order No</span><small>${o ? `<b class="mono">${esc(o.order_no)}</b>` : "Given by the system when you save (OR-YYYYMM-####)."}</small>
-          </div></div></fieldset>
-        <fieldset class="opt"><legend>Scan Boxes</legend>
+        <fieldset class="opt of-step"><legend><i>1</i> Customer</legend><div id="coCust"></div></fieldset>
+        <fieldset class="opt of-step"><legend><i>2</i> Boxes</legend>
+          <p class="of-say">Scan each box sticker. The order lines below fill in by themselves. No sticker? Skip this step and type the lines.</p>
           <div class="btnrow cf-scan"><button type="button" class="btn primary" id="cfScan">${ic("scan")} Scan Boxes</button>
             <label class="btn" for="cfPhoto">${ic("image")} Box Label Photo</label><input type="file" id="cfPhoto" accept="image/*" multiple hidden>
             <span class="cf-type"><input type="text" id="cfSer" maxlength="60" placeholder="or type a serial no, e.g. U20261238" aria-label="Box serial no"><button type="button" class="btn" id="cfAdd">${ic("plus")} Add</button></span></div>
-          <p class="muted" style="margin:6px 0">Each box scanned fills the order lines from the box database (your Google Sheet): product and brand, code (style), pcs and lot no (batch). Then write the price. The boxes go on the order when you save it.</p>
           <div id="cfList"></div></fieldset>
-        <fieldset class="opt"><legend>Order Lines</legend><div id="coLines"></div></fieldset>
+        <fieldset class="opt of-step"><legend><i>3</i> Order lines and price</legend>
+          <p class="of-say">Check the boxes, pcs and product. Type the <b>price</b> of each line.</p><div id="coLines"></div></fieldset>
+        <fieldset class="opt of-step"><legend><i>4</i> Terms of payment</legend>
+          <div class="fields wide">
+            <label for="coTerms">Terms of Payment</label><select id="coTerms"><option value="">— Choose the terms —</option>${E.TERMS.map((x) => `<option ${x === terms0 ? "selected" : ""}>${x}</option>`).join("")}<option value="OTHER" ${known ? "" : "selected"}>OTHER (type the terms)</option></select>
+            <label for="coTermsX" class="cotx" ${known ? "hidden" : ""}>Other Terms</label><input type="text" id="coTermsX" class="cotx" maxlength="60" value="${known ? "" : esc(terms0)}" ${known ? "hidden" : ""}>
+          </div>
+          <details class="of-more" ${o?.reference || o?.due_date || o?.note ? "open" : ""}><summary>More details (date, batch no, due date, note)</summary>
+            <div class="fields wide">
+              <label for="coDate">Date</label><input type="date" id="coDate" value="${esc(o?.order_date || isoToday())}">
+              <label for="coRef">Batch No</label><input type="text" id="coRef" maxlength="60" value="${esc(o?.reference || "")}" placeholder="e.g. SS-13">
+              <label for="coDue">Due Date</label><input type="date" id="coDue" value="${esc(o?.due_date || "")}">
+              <label for="coNote">Note</label><input type="text" id="coNote" maxlength="500" value="${esc(o?.note || "")}">
+              ${o ? `<span>Order No</span><small><b class="mono">${esc(o.order_no)}</b></small>` : ""}
+            </div></details></fieldset>
         ${o ? "" : `<div id="coInsOffer"></div>`}
       </div><div class="wfoot"><button type="button" class="btn" id="coCancel">Cancel</button><button type="submit" class="btn primary">${o ? "Save" : isAdmin() ? "Save Order" : "Save and Send to EMON HASAN"}</button></div></form>`,
       isAdmin() ? "" : "CREATE ORDER: the order goes to EMON HASAN to approve. Approved, it is CONFIRMED: EMON HASAN's signature is on the printed order and the delivery can start.");

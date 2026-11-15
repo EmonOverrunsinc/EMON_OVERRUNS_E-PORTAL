@@ -3654,3 +3654,10 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
   .og-btns { grid-column: 1 / -1; } .og-go { width: 100%; }
 }
 .og .og-go.ok { background: #1b6b33; color: #fff; border-color: #1b6b33; } .og .og-go.ok:hover { background: #155628; }
+/* 3.99.30: the New Order form in numbered steps */
+.of-step > legend { display: flex; align-items: center; gap: 10px; font-size: 18px; }
+.of-step > legend i { font-style: normal; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #0f3a8c; color: #fff; font-size: 16px; font-weight: 800; flex: none; }
+.of-say { margin: 0 0 10px; font-size: 14.5px; line-height: 1.4; color: #3c4a66; }
+.of-more { margin-top: 12px; border-top: 1px dashed #d9dee7; padding-top: 10px; }
+.of-more > summary { cursor: pointer; font-weight: 700; color: #0f3a8c; padding: 6px 0; }
+.of-more[open] > summary { margin-bottom: 8px; }
