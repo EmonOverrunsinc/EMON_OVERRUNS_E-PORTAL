@@ -31,12 +31,14 @@
   };
   const tr2 = (k, html) => `<tr><th>${esc(k)}</th><td>${html}</td></tr>`;
   // The person issuing: the Director's own signature is printed; anyone else signs the paper.
-  const issuerBlock = () => {
+  // 3.99.27: the customer's verification QR code is at the bottom left, beside the signature (not in the header)
+  const issuerBlock = (c) => {
     const sign = isAdmin() ? E.approvedBy(S.session?.user?.id, S.profile?.full_name, new Date().toISOString()) : null;
-    return `<div class="ol-sign one"><div class="ol-auth${sign?.pic ? " has-sig" : ""}">${sign?.pic ? `<img class="esig" src="${esc(sign.pic)}" alt="Signature">` : ""}<div class="ol-auth-name">${esc(S.profile?.full_name || "")}</div><div class="line"></div>${isAdmin() ? "Managing Director · Authorized Representative" : "Issued by · Authorized Representative"}</div></div>`;
+    const qr = c?.public_id ? `<div class="ol-qr"><img src="${E.qrDataUrl(verifyUrl(c.public_id))}" alt="Verification QR code"><small>Scan to check this account</small></div>` : "";
+    return `<div class="ol-sign ${qr ? "" : "one"}">${qr}<div class="ol-auth${sign?.pic ? " has-sig" : ""}">${sign?.pic ? `<img class="esig" src="${esc(sign.pic)}" alt="Signature">` : ""}<div class="ol-auth-name">${esc(S.profile?.full_name || "")}</div><div class="line"></div>${isAdmin() ? "Managing Director · Authorized Representative" : "Issued by · Authorized Representative"}</div></div>`;
   };
-  const codes = (c, no) => `<div class="ph-codes"><div><img src="${E.pdf417DataUrl("EMONCUST|" + (c.account_no || c.application_no))}" alt="" class="ph-bar"><div class="mono">${esc(no)}</div></div>
-    ${c.public_id ? `<img src="${E.qrDataUrl(verifyUrl(c.public_id))}" alt="Verification QR code" class="ph-qr">` : ""}</div>`;
+  const codes = (c, no, qr = false) => `<div class="ph-codes"><div><img src="${E.pdf417DataUrl("EMONCUST|" + (c.account_no || c.application_no))}" alt="" class="ph-bar"><div class="mono">${esc(no)}</div></div>
+    ${qr && c.public_id ? `<img src="${E.qrDataUrl(verifyUrl(c.public_id))}" alt="Verification QR code" class="ph-qr">` : ""}</div>`;
 
   // ----------------------------------------------------------------------
   // 3.15: the Gate Pass looks at the customer's whole record first (invoices, payments, overdue, credit memos, returns,
@@ -162,7 +164,7 @@
         ${tr2("Last Payment", a.lastPay ? esc(mdy(a.lastPay)) : "—")}${tr2("Business With Us Since", `${esc(mdy(a.since))} (${a.months} months)`)}
         ${a.byTrust ? tr2("Cleared As", "<b>TRUSTED CUSTOMER</b>") : ""}</tbody></table>
       <p class="pdecl">A new gate pass is issued for each delivery day. The warehouse releases the goods only against a gate pass of the day of delivery.</p>
-      ${issuerBlock()}
+      ${issuerBlock(c)}
       <div class="rp-foot"><span>Scan the QR code to check this account online.</span><span>${esc(no)}</span></div>`;
   }
   async function issueGate(c, a, approved = null) {
@@ -298,7 +300,7 @@
         ${open.map((i) => `<tr><td class="nw">${esc(i.invoice_no)}</td><td>${esc(mdy(i.invoice_date))}</td><td>${esc(mdy(i.due_date) || "—")}</td><td class="num">${days(i.due_date) || "—"}</td><td class="num">${peso(i.balance)}</td></tr>`).join("")}</tbody></table>` : ""}
       <p class="cert-body">This certificate is issued upon the request of the account holder.
         Payments received after the date above are not included.</p>
-      ${issuerBlock()}
+      ${issuerBlock(c)}
       <div class="rp-foot"><span>Scan the QR code to check this account online.</span><span>${esc(no)}</span></div>`;
   }
   function closurePage(c, ctx, no, ord) {
@@ -317,7 +319,7 @@
       <table class="ol-grid"><tbody>${tr2("Date Closed", esc(when || "—"))}${tr2("Reason for Closure", `<b>${esc(ord?.closure_reason || c.status_note || "—")}</b>`)}${ord ? tr2("Request No", esc(ord.order_no)) : ""}
         ${tr2("Balance at Issue", `<b>${php2(bal)}</b>`)}</tbody></table>
       <p class="cert-body">This certificate is issued upon request. The account can be reopened only with the approval of EMON HASAN of ${esc(C.company.name)}.</p>
-      ${issuerBlock()}
+      ${issuerBlock(c)}
       <div class="rp-foot"><span>Scan the QR code to check this account online.</span><span>${esc(no)}</span></div>`;
   }
   // The Customer Information Update Form: the old and the new details, the customer's signature and the Director's approval
@@ -325,7 +327,7 @@
     const keys = Object.keys(r.changes || {}), ok = r.atOnce || r.req?.status === "approved";
     const sign = ok ? E.approvedBy(S.session?.user?.id, S.profile?.full_name, new Date().toISOString()) : null;
     const val = (k, v) => esc(E.showVal(k === "credit_limit" && v != null ? `₱ ${peso(v)}` : v));
-    return `${E.printHead("CUSTOMER INFORMATION UPDATE FORM", codes(c, no))}
+    return `${E.printHead("CUSTOMER INFORMATION UPDATE FORM", codes(c, no, true))}
       <div class="cert-no"><span>Request No: <b>${esc(no)}</b></span><span>Date: <b>${esc(mdy(isoToday()))}</b></span></div>
       <div class="uf-state ${ok ? "ok" : "wait"}">${ok ? "APPROVED — THE PROFILE SHOWS THE NEW INFORMATION" : "WAITING FOR THE DIRECTOR'S APPROVAL"}</div>
       <div class="ol-sec">ACCOUNT</div>

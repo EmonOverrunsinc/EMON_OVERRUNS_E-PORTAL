@@ -3619,3 +3619,7 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .page .ph2 .ph-codes > div { min-width: 0; }
 .page .ph2 .ph-codes .ph-bar { max-width: 42mm; height: 30px; }
 .page .ph2 .ph-codes .ph-qr { width: 17mm; height: 17mm; flex: none; }
+/* 3.99.27: the verification QR code of a letter / certificate sits at the bottom left, beside the signature */
+.ol-qr { display: flex; flex-direction: column; align-items: center; gap: 1mm; }
+.ol-qr img { width: 24mm; height: 24mm; image-rendering: pixelated; display: block; }
+.ol-qr small { font: 600 7pt/1.2 Arial, sans-serif; color: #3c4a66; text-align: center; max-width: 30mm; }
