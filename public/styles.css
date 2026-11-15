@@ -3623,3 +3623,9 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .ol-qr { display: flex; flex-direction: column; align-items: center; gap: 1mm; }
 .ol-qr img { width: 24mm; height: 24mm; image-rendering: pixelated; display: block; }
 .ol-qr small { font: 600 7pt/1.2 Arial, sans-serif; color: #3c4a66; text-align: center; max-width: 30mm; }
+/* 3.99.28: a document's QR code at the bottom left (the PDF417 stays at the top) */
+.doc-qr { display: flex; flex-direction: column; align-items: flex-start; gap: 1mm; margin-top: 3mm; text-align: left; }
+.psig .doc-qr { align-self: end; margin-top: 0; }
+.doc-qr img { width: 22mm; height: 22mm; image-rendering: pixelated; display: block; }
+.doc-qr small { font: 600 7pt/1.25 Arial, sans-serif; color: #3c4a66; max-width: 60mm; }
+.doc-qr-row { display: flex; gap: 4mm; align-items: flex-end; } .doc-qr-row > .cs-foot { flex: 1; min-width: 0; }
