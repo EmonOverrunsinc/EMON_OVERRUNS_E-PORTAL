@@ -864,14 +864,16 @@
     return BOX;
   }
   const STOCK_STOP = new Set(["how", "what", "which", "the", "of", "in", "for", "this", "brand", "product", "by", "have", "has", "are", "there", "show", "much", "pcs", "piece", "pieces", "now"]);
-  const boxState = (o) => (!o ? "IN STOCK" : o.status === "completed" ? "DELIVERED" : "ON ORDER");
+  const boxState = (o) => (!o ? "IN STOCK" : o.status === "completed" ? "SOLD" : "ON ORDER"); // 3.99.32: an invoiced box is SOLD
   async function aBox(serial) {
-    const [b, on] = await Promise.all([one(sb.from("box_stock").select("*").eq("serial_no", serial).maybeSingle()),
-      one(sb.from("customer_order_boxes").select("serial_no, items, pcs, customer_orders(id, order_no, status, customers(id, first_name, last_name, account_no))").eq("serial_no", serial))]);
+    const [b, on, sale] = await Promise.all([one(sb.from("box_stock").select("*").eq("serial_no", serial).maybeSingle()),
+      one(sb.from("customer_order_boxes").select("serial_no, items, pcs, customer_orders(id, order_no, status, customers(id, first_name, last_name, account_no))").eq("serial_no", serial)),
+      sb.from("box_sales").select("*").eq("serial_no", serial).order("sold_at", { ascending: false }).limit(1).then((r) => (r.error ? null : r.data?.[0] || null), () => null)]);
     const o = (on || []).map((x) => x.customer_orders).find((x) => x && x.status !== "cancelled");
     if (!b && !o) return { html: `Box <b class="mono">${esc(serial)}</b> is not in the box database. If it is in your Google Sheet, press <b>Read Sheet</b> on the <a href="#gateai">EVA AI</a> page.` };
     const st = boxState(o);
-    return { cust: o?.customers, html: `Box <b class="mono">${esc(serial)}</b>: <b>${esc(st)}</b>${o ? ` · order <a href="#custorder/${esc(o.id)}">${esc(o.order_no)}</a>${o.customers ? ` for ${custLink(o.customers)}` : ""}` : ""}
+    const soldTxt = sale ? ` · invoice <a href="#invoice/${esc(sale.invoice_id)}">${esc(sale.invoice_no || "")}</a> · ${qtyText(sale.pcs)} pcs × ₱ ${peso(sale.price)} = <b>₱ ${peso(sale.total)}</b>` : "";
+    return { cust: o?.customers, html: `Box <b class="mono">${esc(serial)}</b>: <b>${esc(st)}</b>${o ? ` · order <a href="#custorder/${esc(o.id)}">${esc(o.order_no)}</a>${o.customers ? ` for ${custLink(o.customers)}` : ""}` : ""}${soldTxt}
       ${b ? table(["Product", "Brand", "CTN", "Style", "Pcs", "Batch"], [[esc(b.product || ""), esc(b.brand || ""), esc(b.ctn || ""), esc(b.style || ""), qtyText(b.qty), esc(b.batch || "")]]) : "<br>(not in the box database: the order's details are shown on the order)"}` };
   }
   async function aStock(q) {
@@ -895,7 +897,7 @@
     const sum = (list) => ({ n: list.length, pcs: list.reduce((s, b) => s + num(b.qty), 0) });
     const inS = pick.filter((b) => !d.where.has(b.serial_no)), onO = pick.filter((b) => d.where.get(b.serial_no)?.status && d.where.get(b.serial_no).status !== "completed"), done = pick.filter((b) => d.where.get(b.serial_no)?.status === "completed");
     const a = sum(inS), o = sum(onO), dn = sum(done);
-    let html = `Stock of <b>${esc(label)}</b>: <b class="eva-amt">${qtyText(a.n)} box${a.n === 1 ? "" : "es"}</b> in stock (${qtyText(a.pcs)} pcs)${o.n ? ` · ${qtyText(o.n)} on open orders` : ""}${dn.n ? ` · ${qtyText(dn.n)} delivered` : ""} · ${qtyText(pick.length)} in the sheet.`;
+    let html = `Stock of <b>${esc(label)}</b>: <b class="eva-amt">${qtyText(a.n)} box${a.n === 1 ? "" : "es"}</b> in stock (${qtyText(a.pcs)} pcs)${o.n ? ` · ${qtyText(o.n)} on open orders` : ""}${dn.n ? ` · ${qtyText(dn.n)} sold` : ""} · ${qtyText(pick.length)} in the sheet.`;
     if (!batch) {
       const g = new Map();
       for (const b of inS) { const k = b.batch || "—"; const x = g.get(k) || { n: 0, pcs: 0 }; x.n++; x.pcs += num(b.qty); g.set(k, x); }
@@ -1238,12 +1240,12 @@
       else cell += ch;
     }
     if (cell || row.length) { row.push(cell); out.push(row); }
-    return out.map((r) => r.slice(0, 7).map((x) => x.trim()));
+    return out.map((r) => r.slice(0, 8).map((x) => x.trim())); // 3.99.32: A to H (H = price)
   }
   // rows of A to G → boxes (a first row of titles, rows with no serial no and the same serial no twice are left out)
   function boxesOf(table_) {
     const list = table_.filter((r) => r[0] && /\d/.test(r[0]) && !/^serial/i.test(r[0]));
-    return list.map((r) => ({ serial_no: r[0], product: r[1] || "", brand: r[2] || "", ctn: r[3] || "", style: r[4] || "", qty: (String(r[5] || "").match(/\d+(\.\d+)?/) || [""])[0], batch: r[6] || "" }));
+    return list.map((r) => ({ serial_no: r[0], product: r[1] || "", brand: r[2] || "", ctn: r[3] || "", style: r[4] || "", qty: (String(r[5] || "").match(/\d+(\.\d+)?/) || [""])[0], batch: r[6] || "", price: (String(r[7] || "").replace(/,/g, "").match(/\d+(\.\d+)?/) || [""])[0] }));
   }
   async function saveBoxes(boxes, source) {
     if (!boxes.length) throw new Error("No boxes found: column A must have the serial no (for example U20261240).");

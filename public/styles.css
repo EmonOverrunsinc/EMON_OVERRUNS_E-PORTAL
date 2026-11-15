@@ -3661,3 +3661,7 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .of-more { margin-top: 12px; border-top: 1px dashed #d9dee7; padding-top: 10px; }
 .of-more > summary { cursor: pointer; font-weight: 700; color: #0f3a8c; padding: 6px 0; }
 .of-more[open] > summary { margin-bottom: 8px; }
+/* 3.99.32: a box line shows its serial no under the product */
+.co-ser { display: block; margin-top: 2px; font: 600 10.5px/1.2 var(--font-mono, monospace); color: #5b6577; letter-spacing: .02em; }
+.co-ser:empty { display: none; }
+.of-price { margin: 8px 0 4px; }
