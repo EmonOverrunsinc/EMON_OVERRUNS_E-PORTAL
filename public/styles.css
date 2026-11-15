@@ -3613,3 +3613,9 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .page .ph2 .ph-gl { min-width: 0; width: 100%; }
 /* 3.99.25: one "Date Printed · Printed by" per page (the box at the bottom): a report's own date stamp and footer are not shown */
 .page .rp-stamp, .page .rp-foot { display: none !important; }
+/* 3.99.26: a header with a barcode AND a QR code (balance certificate, letters): both fit inside the box */
+.page .ph2 .ph-right:has(.ph-codes) { max-width: 72mm; flex: none; }
+.page .ph2 .ph-codes { gap: 2mm; align-items: center; }
+.page .ph2 .ph-codes > div { min-width: 0; }
+.page .ph2 .ph-codes .ph-bar { max-width: 42mm; height: 30px; }
+.page .ph2 .ph-codes .ph-qr { width: 17mm; height: 17mm; flex: none; }

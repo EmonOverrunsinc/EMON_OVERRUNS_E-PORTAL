@@ -153,7 +153,7 @@
         on <span class="nw">${esc(mdy(a.today))}</span>${approved ? " and the delivery was approved by EMON HASAN" : a.byTrust ? ". The account is <b>ACTIVE</b> and is cleared as a <b>TRUSTED CUSTOMER</b> (an old account that buys regularly and keeps paying)" : `. The account is <b>ACTIVE</b>, ${a.limit != null ? "within its credit limit, " : ""}and every invoice is paid on or before its due date`}.
         This gate pass clears the delivery of goods to this account on <span class="nw">${esc(mdy(a.today))}</span> only.</p>
       <div class="ol-sec">ACCOUNT</div>
-      <table class="ol-grid"><tbody>${tr2("Name of Customer", esc(fullName(c)))}${tr2("Account No", esc(c.account_no || "—"))}${c.business_name ? tr2("Business Name", esc(c.business_name)) : ""}
+      <table class="ol-grid"><tbody>${tr2("Name of Customer", esc(fullName(c)))}${tr2("Account No", esc(c.account_no || "—"))}
         ${tr2("Account Status", esc(String(c.status || "").toUpperCase()))}${tr2("Credit Limit", a.limit != null ? `PHP ${peso(a.limit)}` : "No limit set")}
         ${tr2("Balance Due Today", `PHP ${peso(Math.max(a.bal, 0))}`)}${tr2("Overdue Invoices", a.overdueNow.length ? `${a.overdueNow.length} · PHP ${peso(a.owed)}` : "None")}</tbody></table>
       <div class="ol-sec">PAYMENT RECORD</div>
@@ -286,7 +286,7 @@
           : bal < -0.004 ? `has <b>no outstanding balance</b> as of <span class="nw">${esc(asOf)}</span>: the account has paid PHP ${peso(-bal)} more than the amount owed (balance <b>PHP ${peso(bal)}</b>).`
           : `has <b>no outstanding balance</b> as of <span class="nw">${esc(asOf)}</span>. The account is fully paid.`}</p>
       <div class="ol-sec">ACCOUNT DETAILS</div>
-      <table class="ol-grid"><tbody>${tr2("Name of Customer", esc(fullName(c)))}${tr2("Account No", esc(c.account_no || "—"))}${c.business_name ? tr2("Business Name", esc(c.business_name)) : ""}
+      <table class="ol-grid"><tbody>${tr2("Name of Customer", esc(fullName(c)))}${tr2("Account No", esc(c.account_no || "—"))}
         ${tr2("Account Status", esc(String(c.status || "").toUpperCase()))}${tr2("Account Opened", esc(mdy(c.application_date) || "—"))}</tbody></table>
       <div class="ol-sec">ACCOUNT SUMMARY</div>
       <table class="ol-grid"><tbody>${num(c.opening_balance) ? tr2("Opening Balance", php2(c.opening_balance)) : ""}${tr2("Total Invoiced", php2(b.total_invoiced))}
@@ -311,7 +311,7 @@
         is <b>CLOSED</b>${when ? ` effective <span class="nw">${esc(when)}</span>` : ""}. No new purchases, invoices or deliveries are made on this account.
         ${bal > 0.004 ? `The remaining balance of <b>PHP ${peso(bal)}</b> (${esc(E.words(bal))}) must still be settled.` : bal < -0.004 ? `The account has a credit of PHP ${peso(-bal)} (balance PHP ${peso(bal)}).` : "The account has no remaining balance."}</p>
       <div class="ol-sec">ACCOUNT DETAILS</div>
-      <table class="ol-grid"><tbody>${tr2("Name of Customer", esc(fullName(c)))}${tr2("Account No", esc(c.account_no || "—"))}${c.business_name ? tr2("Business Name", esc(c.business_name)) : ""}
+      <table class="ol-grid"><tbody>${tr2("Name of Customer", esc(fullName(c)))}${tr2("Account No", esc(c.account_no || "—"))}
         ${tr2("Account Opened", esc(mdy(c.application_date) || "—"))}${tr2("Account Status", "<b>CLOSED</b>")}</tbody></table>
       <div class="ol-sec">CLOSURE</div>
       <table class="ol-grid"><tbody>${tr2("Date Closed", esc(when || "—"))}${tr2("Reason for Closure", `<b>${esc(ord?.closure_reason || c.status_note || "—")}</b>`)}${ord ? tr2("Request No", esc(ord.order_no)) : ""}
