@@ -642,9 +642,7 @@
       : f.owner_type === "pay_voucher" ? (d.vouchers.find((v) => v.id === f.owner_id)?.voucher_no || "Payment") : "";
     const KINDS = { bill: "E-Bill Copy", shipping_bill: "Shipping Fee Receipt", sales_report: "Sales Report", receipt: "Receipt", signed_form: "Signed Copy", other: "Other" };
     // the top right: the batch no; after PAID the QR code of the secret code
-    const right = isPaid
-      ? `<img src="${E.qrDataUrl(verifyUrl(d.secret))}" alt="" class="sb-qr"><div class="sb-code"><small>SECRET CODE</small>${esc(d.secret).replace(/-/g, "-<wbr>")}</div>`
-      : `<div class="sb-no"><small>Batch No</small><b>${esc(b.batch_no || "—")}</b><small>E-Bill No: ${esc(b.bill_no)}</small>${b.supplier_bill_no ? `<small>Bill No: ${esc(b.supplier_bill_no)}</small>` : ""}</div>`;
+    const right = `<div class="sb-no"><small>Batch No</small><b>${esc(b.batch_no || "—")}</b><small>E-Bill No: ${esc(b.bill_no)}</small>${b.supplier_bill_no ? `<small>Bill No: ${esc(b.supplier_bill_no)}</small>` : ""}</div>`;
     const words2 = (n) => (n < 0 ? `OVERPAID — ${words(-n, "TAKA")}` : words(n, "TAKA"));
     const first = `${E.printHead(`E-BILL${b.batch_no ? " " + b.batch_no : ""}`, right)}
       <div class="vno-row"><span>E-Bill No: <b>${esc(b.bill_no)}</b></span><span>Bill Date: <b>${esc(mdy(b.bill_date))}</b></span><span>Status: <b>${esc(ebillStep(b.status))}</b></span><span>Prepared By: <b>${esc(b.created_by_name || "")}</b></span></div>
@@ -710,7 +708,7 @@
     // steps 3 and the account summary 10; after PAID also the profit or loss 9 and the secret code 4.
     const { pages, left } = flowPages(sections, 46, 48 - 30 - (isPaid ? 13 : 0));
     pages[0] = first + pages[0];
-    const sys = `<div class="soa-sys">This is a system-generated e-bill. No signature is required.</div>`;
+    const sys = `${isPaid ? `<div class="doc-qr"><img src="${E.qrDataUrl(verifyUrl(d.secret))}" alt="Secret code QR"><small>SECRET CODE ${esc(d.secret)}</small></div>` : ""}<div class="soa-sys">This is a system-generated e-bill. No signature is required.</div>`;
     if (left < 3) pages.push(sys); else pages[pages.length - 1] += sys;
     // the photos, four on a page
     for (let i = 0; i < d.photos.length; i += 4) {

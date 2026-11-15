@@ -327,7 +327,7 @@
     const keys = Object.keys(r.changes || {}), ok = r.atOnce || r.req?.status === "approved";
     const sign = ok ? E.approvedBy(S.session?.user?.id, S.profile?.full_name, new Date().toISOString()) : null;
     const val = (k, v) => esc(E.showVal(k === "credit_limit" && v != null ? `₱ ${peso(v)}` : v));
-    return `${E.printHead("CUSTOMER INFORMATION UPDATE FORM", codes(c, no, true))}
+    return `${E.printHead("CUSTOMER INFORMATION UPDATE FORM", codes(c, no))}
       <div class="cert-no"><span>Request No: <b>${esc(no)}</b></span><span>Date: <b>${esc(mdy(isoToday()))}</b></span></div>
       <div class="uf-state ${ok ? "ok" : "wait"}">${ok ? "APPROVED — THE PROFILE SHOWS THE NEW INFORMATION" : "WAITING FOR THE DIRECTOR'S APPROVAL"}</div>
       <div class="ol-sec">ACCOUNT</div>
@@ -338,6 +338,7 @@
       <p class="cert-body">I confirm that the new information above is true and correct, and I ask ${esc(C.company.name)} to update my account with it.</p>
       <div class="ol-sign"><div class="ol-auth"><div class="ol-auth-name">${esc(fullName(r.previous).toUpperCase())}</div><div class="line"></div>Customer · Signature over Printed Name / Date</div>
         <div class="ol-auth${sign?.pic ? " has-sig" : ""}">${sign?.pic ? `<img class="esig" src="${esc(sign.pic)}" alt="Signature">` : ""}<div class="ol-auth-name">${sign ? esc(S.profile?.full_name || "") : ""}</div><div class="line"></div>Approved by · Managing Director${sign ? ` · ${esc(mdy(isoToday()))}` : " / Date"}</div></div>
+      ${c.public_id ? `<div class="doc-qr"><img src="${E.qrDataUrl(verifyUrl(c.public_id))}" alt="Verification QR code"><small>Scan to check this account</small></div>` : ""}
       <div class="rp-foot"><span>Scan the QR code to check this account online.</span><span>${esc(no)}</span></div>`;
   }
   async function printUpdate(c, r) {

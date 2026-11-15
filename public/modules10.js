@@ -929,8 +929,10 @@
   // 3.39: the barcode carries the paper's secret code, and the QR code opens its Complete Delivery page (any phone camera)
   const codesHtml = (o, extra = "") => {
     const bar = `<img src="${E.pdf417DataUrl("EMONCO|" + o.order_no + (o.delivery_code ? "|" + o.delivery_code : ""))}" alt="" class="ph-bar"><div class="mono">${esc(o.order_no)}</div>${extra}`;
-    return o.delivery_code ? `<div class="ph-codes co-codes"><div>${bar}</div><div class="co-qr"><img src="${E.qrDataUrl(deliveryUrl(o.order_no, o.delivery_code))}" alt="QR code: verification" class="ph-qr"><small class="co-verify">VERIFICATION</small></div></div>` : bar;
+    return bar;
   };
+  // 3.99.28: the QR code (it opens the paper's Complete Delivery page) is at the bottom left, not in the header
+  const qrFoot = (o) => (o.delivery_code ? `<div class="doc-qr"><img src="${E.qrDataUrl(deliveryUrl(o.order_no, o.delivery_code))}" alt="QR code: verification"><small>VERIFICATION · scan to complete the delivery</small></div>` : "<div></div>");
   function orderPages(o, inv) {
     const c = o.customers || {}, cols = o.extra_columns || [];
     const sign = o.approved_by ? E.approvedBy(o.approved_by, o.approved_by_name, o.approved_at) : null;
@@ -939,7 +941,7 @@
       ${done && inv ? E.box("Invoice", `<div class="pgrid2">${E.cell("Invoice No", inv.invoice_no)}${E.cell("Invoice Date", mdy(inv.invoice_date))}${E.cell("Terms of Payment", inv.payment_terms || "")}${E.cell("Due Date", mdy(inv.due_date))}
         ${E.cell("Amount (₱)", peso(inv.total_amount), "hl")}${E.cell("Status", inv.pay_status === "paid" ? "PAID" : inv.pay_status === "partial" ? "PARTIAL PAYMENT" : "UNPAID")}</div>`) : ""}
       ${o.status === "cancelled" ? `<p class="po-warn"><b>CANCELLED</b>${o.cancel_note ? ` — ${esc(o.cancel_note)}` : ""}</p>` : ""}
-      <div class="psig one"><div></div>${E.sigCol("Authorized Signature", sign)}</div>`; // 3.39: only EMON HASAN's approval signature
+      <div class="psig one">${qrFoot(o)}${E.sigCol("Authorized Signature", sign)}</div>`; // 3.39: only EMON HASAN's approval signature
     const extraBoxes = done && inv ? 1 : 0;
     return E.pagedDoc({
       head: E.printHead("CUSTOMER ORDER", codesHtml(o, `<div class="co-bigbox">${esc(boxesText(o.total_boxes))}</div>`)), contHead: E.printHead(`CUSTOMER ORDER ${o.order_no} (CONTINUED)`, ""),
@@ -966,8 +968,8 @@
         : `<tr class="cs-empty"><td>${i + 1}</td>${"<td></td>".repeat(8)}</tr>`,
       // 3.39: no boxes scanned yet: the total is written by hand with the lines; one TOTAL BOXES below (the order's)
       totalRow: boxes.length ? `<tr class="ptl-tot"><td colspan="7">TOTAL · ${esc(boxesText(nBoxes(boxes)))}</td><td class="num">${qtyText(pcs)}</td><td></td></tr>` : `<tr class="ptl-tot"><td colspan="7">TOTAL</td><td></td><td></td></tr>`,
-      bottom: `<div class="cs-foot">${line("Assign By", o.created_by_name || "")}${line("Total Boxes", qtyText(o.total_boxes))}${line("Notes", o.delivery_note || o.note || "")}${line("Date", o.delivered_at ? mdy(o.delivered_at) : "")}${line("Time", o.delivered_at ? new Date(o.delivered_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "")}
-        ${line("Order No", o.order_no)}<div class="cs-f cs-w2"><small>Verified By</small><b>&nbsp;</b></div></div>`,
+      bottom: `<div class="doc-qr-row">${qrFoot(o)}<div class="cs-foot">${line("Assign By", o.created_by_name || "")}${line("Total Boxes", qtyText(o.total_boxes))}${line("Notes", o.delivery_note || o.note || "")}${line("Date", o.delivered_at ? mdy(o.delivered_at) : "")}${line("Time", o.delivered_at ? new Date(o.delivered_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "")}
+        ${line("Order No", o.order_no)}<div class="cs-f cs-w2"><small>Verified By</small><b>&nbsp;</b></div></div></div>`,
       caps: { single: 24, first: 28, next: 34, last: 22 } });
   }
 
@@ -991,7 +993,7 @@
       ${o.delivered_at ? E.box(done ? "Done Delivery" : "Delivery", `<div class="prow3">${E.cell("Date and Time", E.dateTime(o.delivered_at))}${E.cell(done ? "Completed By" : "Submitted By", o.completed_by_name || o.delivery_request_by || "")}${E.cell("License Plate Number", [o.plate_no, o.vehicle_type].filter(Boolean).join(" · "))}</div>${o.delivery_note ? E.cell("Note", o.delivery_note) : ""}`) : ""}
       ${pics.length ? E.box("Delivery Photos", `<div class="ad-pics">${pics.map((u) => `<img src="${esc(u)}" alt="Delivery photo">`).join("")}</div>`) : ""}
       ${o.status === "cancelled" ? `<p class="po-warn"><b>CANCELLED</b>${o.cancel_note ? ` — ${esc(o.cancel_note)}` : ""}</p>` : ""}
-      <div class="psig one"><div></div>${E.sigCol("Authorized Signature", sign)}</div>`;
+      <div class="psig one">${qrFoot(o)}${E.sigCol("Authorized Signature", sign)}</div>`;
     // how many box lines go on a page: what the order, its lines and the end take is left out
     const used = 9 + lines.length + (done && inv ? 4 : 0) + (o.delivered_at ? 3 : 0) + (pics.length ? 7 : 0);
     const rows = boxes.length ? boxes : [null];

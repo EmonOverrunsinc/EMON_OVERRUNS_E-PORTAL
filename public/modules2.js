@@ -872,7 +872,7 @@
           <div class="ja-ids"><div><span>${a.blank ? "Employee No" : "Application No"}</span><b>${esc(a.application_no || "")}</b></div><div><span>Name</span><b>${esc(a.full_name)}</b></div>
             <div><span>Phone</span><b>${esc(a.phone || "")}</b></div><div><span>Email</span><b>${esc(a.email || "")}</b></div>
             ${a.status === "approved" ? `<div class="ja-appr">( APPROVED ) ${esc(a.approval_no || "")} ${esc(E.mdy(a.approved_at))}</div>` : ""}</div></div>
-        ${a.blank ? "" : `<div class="ja-qr"><img src="${E.qrDataUrl("EMONJA|" + a.application_no)}" alt="QR code"><img class="ja-bar" src="${E.pdf417DataUrl("EMONJA|" + a.application_no)}" alt=""></div>`}
+        ${a.blank ? "" : `<div class="ja-qr"><img class="ja-bar" src="${E.pdf417DataUrl("EMONJA|" + a.application_no)}" alt=""></div>`}
         <div class="ja-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="">` : "PHOTO"}</div></div>
       <div class="ph-title">${a.blank ? "EMPLOYEE JOB APPLICATION FORM" : "JOB APPLICATION FORM"}</div>
       ${E.box("Address Details", `<div class="pgrid2">${E.cell("Present Address", a.present_address)}${E.cell("Permanent Address", a.permanent_address)}
@@ -885,7 +885,8 @@
       ${E.box("Position Applied For", `<div class="pgrid2">${E.cell("Position", a.position_title, "hl")}${E.cell("Company", a.company_name, "hl")}${E.cell("Monthly Salary (PHP)", a.apply_salary != null ? peso(a.apply_salary) : "")}${E.cell("Duty Hours", a.apply_duty_hours)}
         ${E.cell("Joining Date", E.mdy(a.apply_joining_date), "span2")}</div>`)}
       ${E.box("Declaration", `<p class="pdecl" style="padding:4px 6px;margin:0">I hereby declare that all the information given above is true and correct to the best of my knowledge. If any information is found to be false, my application or employment may be cancelled.</p>`)}
-      ${E.sigs("Applicant's Signature / Date", sign ? "Authorized Signature" : `Authorized Signature (${esc(C.company.name)}) / Date`, sign)}`;
+      ${E.sigs("Applicant's Signature / Date", sign ? "Authorized Signature" : `Authorized Signature (${esc(C.company.name)}) / Date`, sign)}
+      ${a.blank ? "" : `<div class="doc-qr"><img src="${E.qrDataUrl("EMONJA|" + a.application_no)}" alt="QR code"><small>${esc(a.application_no)}</small></div>`}`;
   }
   // 3.24: the empty Employee Job Application Form (Download Forms)
   const printBlankJobApp = () => E.openPreview("Employee Job Application Form", [jobAppPage({ blank: true, company_name: C.company.name }, "")]);
