@@ -932,7 +932,7 @@
     return bar;
   };
   // 3.99.28: the QR code (it opens the paper's Complete Delivery page) is at the bottom left, not in the header
-  const qrFoot = (o) => (o.delivery_code ? `<div class="doc-qr"><img src="${E.qrDataUrl(deliveryUrl(o.order_no, o.delivery_code))}" alt="QR code: verification"><small>VERIFICATION · scan to complete the delivery</small></div>` : "<div></div>");
+  const qrFoot = (o) => (o.delivery_code ? `<div class="doc-qr"><img src="${E.qrDataUrl(deliveryUrl(o.order_no, o.delivery_code))}" alt="QR code: verification"></div>` : "<div></div>");
   function orderPages(o, inv) {
     const c = o.customers || {}, cols = o.extra_columns || [];
     const sign = o.approved_by ? E.approvedBy(o.approved_by, o.approved_by_name, o.approved_at) : null;
