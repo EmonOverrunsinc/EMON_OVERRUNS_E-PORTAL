@@ -2251,7 +2251,7 @@
       const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="${/^[A-Z]{3} \d{2} \d{4}$/.test(x) ? "dt" : "nw"}">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
       const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
         ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Cost per Box (₱)", peso(boxCost)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
-        ["Suggested Price (₱)", !r.price && suggest ? peso(suggest) : ""], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
+        ["Suggested Price", !r.price && suggest ? peso(suggest) : ""], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
         ...exTable.map((k) => [k, r.extra?.[k] || ""])].filter(([, v]) => v);
       const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>`
         : k === "Return" && ret ? `<a class="nw" href="#creditmemo/${esc(ret.id)}">${esc(v)}</a>` : esc(v));
@@ -2270,7 +2270,7 @@
       $("#fbPrint").onclick = () => {
         const money = r.price ? [["Price per Pc (₱)", peso(r.price)], [sold1 ? "Amount Sold (₱)" : "Amount (₱)", peso(r.amount || r.price * num(r.qty))]]
           : []; // 3.99.62: the suggested price is only a card (a guide, no amount counted)
-        const cards = det.filter(([k]) => !["Pcs", "Price per Pc (₱)", "Amount (₱)"].includes(k) && !(k === "Suggested Price (₱)" && money.length));
+        const cards = det.filter(([k]) => !["Pcs", "Price per Pc (₱)", "Amount (₱)"].includes(k) && !(k === "Suggested Price" && money.length));
         const stamp = new Date().toISOString();
         let h = 2166136261; for (const ch of `${r.serial_no}|${r.st}|${r.price}|${stamp}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
         const docNo = `BX-${h.toString(36).toUpperCase().padStart(7, "0").slice(0, 7)}`;
