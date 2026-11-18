@@ -19,7 +19,7 @@ const ICON = path.join(__dirname, "icon.png");
 // 1.8: the E-Portal's own light background (no white flash while a page loads) and its frosted top bar in place of the
 // Windows title bar: the minimize / maximize / close buttons sit in the E-Portal top bar, like an iPad or Mac app.
 const BG = "#f5f5f7";
-const TITLE_BAR = { color: "#fbfbfd", symbolColor: "#1d1d1f", height: 54 };
+const TITLE_BAR = { color: "#113e93", symbolColor: "#ffffff", height: 54 }; // 1.8.5: the same blue as the top bar, white buttons
 app.commandLine.appendSwitch("enable-smooth-scrolling");
 app.commandLine.appendSwitch("enable-gpu-rasterization");
 
