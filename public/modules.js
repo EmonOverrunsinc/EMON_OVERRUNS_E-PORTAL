@@ -2250,7 +2250,7 @@
       let lastDone = -1; steps.forEach(([, v], i) => { if (v.length) lastDone = i; });
       if (lastDone < 0 && r.st === "stock") lastDone = 2; // in stock: it has arrived
       const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="${/^[A-Z]{3} \d{2} \d{4}$/.test(x) ? "dt" : "nw"}">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
-      const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
+      const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
         ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Cost per Box (₱)", peso(boxCost)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
         ["Suggested Price per Pc (₱)", !r.price && suggest ? peso(suggest) : "", sugNote], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
         ...exTable.map((k) => [k, r.extra?.[k] || ""])].filter(([, v]) => v);
