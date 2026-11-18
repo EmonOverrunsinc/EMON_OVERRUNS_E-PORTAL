@@ -2198,7 +2198,7 @@
     $("#fbGrid").innerHTML = E.grid({ cols, rows, empty: "No box." });
     $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
     $("#fbPrint").onclick = () => E.openPreview(title, E.pagedDoc({
-      head: printHead("BOX SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), contHead: printHead(`BOX SEARCH RESULT ${key} (CONTINUED)`, ""),
+      head: printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), contHead: printHead(`SEARCH RESULT ${key} (CONTINUED)`, ""),
       top: E.box(kind === "serial" ? "Box" : "Batch", `<div class="pgrid2">${E.cell(kind === "serial" ? "Serial No" : "Batch No", key, "hl")}${E.cell("Boxes", qtyText(rows.length))}${E.cell("Pcs", qtyText(pcs))}
         ${E.cell("In Stock / On Order / Sold", `${qtyText(cnt("stock"))} / ${qtyText(cnt("order"))} / ${qtyText(cnt("sold"))}`)}</div>`),
       boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>Brand</th><th>CTN</th><th>Style</th><th>Batch</th><th class="num">Pcs</th><th class="num">Price</th><th>Status</th></tr>`,
