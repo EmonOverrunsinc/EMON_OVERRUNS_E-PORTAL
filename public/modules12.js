@@ -1246,10 +1246,11 @@
       document.addEventListener("keydown", panelKey);
     }
     requestAnimationFrame(() => p.classList.add("open"));
+    document.body.classList.add("eva-open"); // 3.99.61: the floating Back button hides (it covered Send)
     showContext();
     setTimeout(() => $(".eva-q", p)?.focus(), 250);
   }
-  function closePanel() { const p = $(".eva-panel"); if (p) p.classList.remove("open"); }
+  function closePanel() { const p = $(".eva-panel"); if (p) p.classList.remove("open"); document.body.classList.remove("eva-open"); }
   function panelKey(e) { if (e.key === "Escape" && !$(".modal") && $(".eva-panel.open")) closePanel(); }
   // the account of the page open, shown under the panel's title ("this …" in a question is that account)
   async function showContext() {
