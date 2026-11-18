@@ -524,7 +524,7 @@
   async function aGate(c) {
     const ai = E.gateAI;
     const cur = ai ? await ai.current().catch(() => ({ model: null })) : { model: null };
-    if (!cur.model) return { cust: c, html: `EVA has not learned yet${cur.old ? " with the records it reads now" : ""}. Open <a href="#gateai">EVA AI</a> and press <b>Learn Now</b>, then ask again.` };
+    if (!cur.model) return { cust: c, html: `EVA has not learned yet${cur.old ? " with the records it reads now" : ""}. EVA learns by itself: open <a href="#evadata">EVA Records</a> once, then ask again.` };
     const [full, invs, pays, memos, letters, corders] = await Promise.all([
       one(sb.from("customers").select("*").eq("id", c.id).maybeSingle()),
       rows(() => sb.from("customer_invoices").select("id, customer_id, invoice_no, invoice_date, total_amount, payment_terms").eq("customer_id", c.id).order("id")),
@@ -888,7 +888,7 @@
       one(sb.from("customer_order_boxes").select("serial_no, items, pcs, customer_orders(id, order_no, status, customers(id, first_name, last_name, account_no))").eq("serial_no", serial)),
       sb.from("box_sales").select("*").eq("serial_no", serial).order("sold_at", { ascending: false }).limit(1).then((r) => (r.error ? null : r.data?.[0] || null), () => null), hasArrival()]);
     const o = (on || []).map((x) => x.customer_orders).find((x) => x && x.status !== "cancelled");
-    if (!b && !o) return { html: `Box <b class="mono">${esc(serial)}</b> is not in the box database. If it is in your Google Sheet, press <b>Read Sheet</b> on the <a href="#gateai">EVA AI</a> page.` };
+    if (!b && !o) return { html: `Box <b class="mono">${esc(serial)}</b> is not in the box database. If it is in your Google Sheet, press <b>Read Sheet</b> on the <a href="#evadata">EVA Records</a> page.` };
     const st = boxState(o, b, sale, arr);
     const soldTxt = sale ? ` · invoice <a href="#invoice/${esc(sale.invoice_id)}">${esc(sale.invoice_no || "")}</a> · ${qtyText(sale.pcs)} pcs × ₱ ${peso(sale.price)} = <b>₱ ${peso(sale.total)}</b>` : "";
     return { cust: o?.customers, html: `Box <b class="mono">${esc(serial)}</b>: <b>${esc(st)}</b>${o ? ` · order <a href="#custorder/${esc(o.id)}">${esc(o.order_no)}</a>${o.customers ? ` for ${custLink(o.customers)}` : ""}` : ""}${soldTxt}
@@ -897,7 +897,7 @@
   }
   async function aStock(q) {
     const d = await boxData();
-    if (!d.stock.length) return { html: `The box database is empty. Open <a href="#gateai">EVA AI</a> and press <b>Read Sheet</b> (your Google Sheet DATABASE, columns A to G).` };
+    if (!d.stock.length) return { html: `The box database is empty. Open <a href="#evadata">EVA Records</a> and press <b>Read Sheet</b> (your Google Sheets).` };
     let batch = q.codes.batch[0] || "";
     if (!batch) { const w = q.rest.find((x) => d.batches.some((b) => b.replace("-", "").toLowerCase() === x)); if (w) batch = d.batches.find((b) => b.replace("-", "").toLowerCase() === w); }
     let pick = d.stock, label = "all batches";
@@ -1190,15 +1190,15 @@
   // the EVA panel (top bar button: the Director and the staff given EVA AI): "this customer" is the customer of the page open
   function openPanel() {
     if (!E.canAI()) return;
+    E.gateAI?.autoLearn?.(); // 3.99.57: EVA learns by itself (once a day, the Director only)
     let p = $(".eva-panel");
     if (!p) {
       p = document.createElement("aside");
       p.className = "eva-panel"; p.setAttribute("aria-label", "EVA AI chat");
-      p.innerHTML = `<div class="ep-head"><span class="ep-title">${ic("ai")} EVA AI <small>ask me</small></span>${isAdmin() ? `<a href="#evadata" class="ep-page" title="EVA Records (only EMON HASAN)">${ic("crown")}</a><a href="#gateai" class="ep-page" title="EVA AI page">${ic("doc")}</a>` : ""}
+      p.innerHTML = `<div class="ep-head"><span class="ep-title">${ic("ai")} EVA AI <small>ask me</small></span>
         <button type="button" class="ep-x" aria-label="Close">${ic("x")}</button></div><div class="ep-ctx" hidden></div><div class="ep-body"></div>`;
       document.body.appendChild(p);
       $(".ep-x", p).onclick = closePanel;
-      p.querySelectorAll(".ep-page").forEach((a) => (a.onclick = () => closePanel())); // 3.99.55: EVA Records too
       mount($(".ep-body", p));
       document.addEventListener("keydown", panelKey);
     }

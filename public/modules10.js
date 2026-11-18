@@ -238,7 +238,7 @@
       const [st, on] = await Promise.all([sb.from("box_stock").select("*").eq("serial_no", ser).maybeSingle(),
         sb.from("customer_order_boxes").select("order_id, customer_orders(order_no, status)").eq("serial_no", ser)]);
       if (st.error) return `✖ ${/box_stock|schema cache/i.test(st.error.message || "") ? "The box database needs the database update RUN_048_TO_051.sql." : st.error.message}`;
-      if (!st.data) return `✖ Box ${ser} is not in the box database (the Google Sheet). ${isAdmin() ? "Press Read Sheet on the EVA AI page." : "EMON HASAN reads the sheet on the EVA AI page."}`;
+      if (!st.data) return `✖ Box ${ser} is not in the box database (the Google Sheet). ${isAdmin() ? "Press Read Sheet on the EVA Records page." : "EMON HASAN reads the sheet on the EVA AI page."}`;
       const other = (on.data || []).find((x) => x.customer_orders && x.customer_orders.status !== "cancelled" && x.order_id !== o?.id);
       if (other) return `✖ Box ${ser} is on order ${other.customer_orders.order_no} already.`;
       const b = st.data;
