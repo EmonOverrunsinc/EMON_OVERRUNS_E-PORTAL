@@ -3837,12 +3837,14 @@ body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !
 /* 3.99.83: the Windows app draws its – ▢ ✕ buttons on one flat blue (#113e93), so everything under them is that same
    blue: the top bar, the print preview's title bar, a bar at the top of the sign-in page; a window (and the notices that
    cover the page) dims the page below the top bar only, so the bar never turns darker than the buttons */
-html.eo-overlay .topbar { background: #113e93; }
-html.eo-overlay .preview .pv-title { background: #113e93; color: #fff; border-bottom: 3px solid #f2b705; min-height: calc(env(titlebar-area-height, 54px) + 3px); display: flex; align-items: center; }
-html.eo-overlay :is(.login, .boot)::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(titlebar-area-height, 54px); background: #113e93; border-bottom: 3px solid #f2b705; z-index: 5; pointer-events: none; }
-html.eo-overlay .login { padding-top: calc(env(titlebar-area-height, 54px) + 27px); }
-html.eo-overlay :is(.modal, .legal-ov, .dev-ov) { top: calc(env(titlebar-area-height, 54px) + 3px); }
+/* 3.99.87: the gold line starts 2px below the window buttons' blue: with Windows display scaling (125%, 150%) their
+   area can end a fraction of a pixel lower and covered the top of the gold line under the buttons (thinner there) */
+html.eo-overlay .topbar { background: #113e93; min-height: calc(env(titlebar-area-height, 54px) + 5px); }
+html.eo-overlay .preview .pv-title { background: #113e93; color: #fff; border-bottom: 3px solid #f2b705; min-height: calc(env(titlebar-area-height, 54px) + 5px); display: flex; align-items: center; }
+html.eo-overlay :is(.login, .boot)::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: calc(env(titlebar-area-height, 54px) + 2px); background: #113e93; border-bottom: 3px solid #f2b705; z-index: 5; pointer-events: none; }
+html.eo-overlay .login { padding-top: calc(env(titlebar-area-height, 54px) + 29px); }
+html.eo-overlay :is(.modal, .legal-ov, .dev-ov) { top: calc(env(titlebar-area-height, 54px) + 5px); }
 html.eo-overlay .modal { padding-top: 12px; }
-html.eo-overlay .modal .window { max-height: calc(100vh - env(titlebar-area-height, 54px) - 30px); }
+html.eo-overlay .modal .window { max-height: calc(100vh - env(titlebar-area-height, 54px) - 32px); }
 html.eo-overlay body:has(:is(.modal, .legal-ov, .dev-ov)) .topbar > * { pointer-events: none; }
-html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-height, 54px) + 3px); }
+html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-height, 54px) + 5px); }
