@@ -57,6 +57,8 @@ function wire(win) {
   const wc = win.webContents;
   // Pages of the E-Portal and uploaded files open in a new app window; anything else in the browser.
   wc.setWindowOpenHandler(({ url }) => {
+    // 1.8.4: an E-Portal page opens in the same window (no extra window); only uploaded files open in their own window
+    if (originOf(url) === SITE) { wc.loadURL(url).catch(() => {}); return { action: "deny" }; }
     if (inApp(url)) {
       return { action: "allow", overrideBrowserWindowOptions: { width: 1100, height: 800, icon: ICON, autoHideMenuBar: true, backgroundColor: BG } };
     }
