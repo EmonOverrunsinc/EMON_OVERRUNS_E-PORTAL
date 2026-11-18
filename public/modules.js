@@ -2111,7 +2111,7 @@
     const sum = (k) => ls.reduce((s2, l) => s2 + num(l[k]), 0);
     return E.pagedDoc({
       head: printHead("RETURN", `<img src="${E.pdf417DataUrl("EMONCM|" + m.memo_no)}" alt="" class="ph-bar"><div class="mono">${esc(m.memo_no)}</div>`),
-      contHead: printHead(`RETURN ${m.memo_no} (CONTINUED)`, ""),
+      contHead: printHead("RETURN", ""),
       top: `${box("Customer", `<div class="pgrid2">${cell("Customer Name", fullName(c))}${cell("Account No", c.account_no)}${cell("Invoice No", m.po_number)}${cell("Return Date", mdy(m.memo_date))}</div>`)}
         ${box("Return", `<div class="pgrid2">${cell("Kind of Return", (RET_KIND[m.return_kind] || "Return of Items").toUpperCase())}${cell("Status", ({ pending: "WAITING FOR APPROVAL", approved: "APPROVED · TAKEN OFF THE INVOICE", paid: "APPROVED · SETTLED", rejected: "NOT APPROVED" }[m.status] || String(m.status).toUpperCase()))}
           ${cell("Warehouse", wh + (m.warehouse_status === "received" && m.warehouse_at ? ` · ${mdy(m.warehouse_at)}` : ""))}${cell("Recorded By", m.created_by_name || "")}</div>`)}`,

@@ -570,7 +570,7 @@
 
   // Report sections laid out over A4 pages: a section continues on the next page when it does not fit.
   function sectionHtml(s, rows, cont, last) {
-    return `<div class="sb-sec">${esc(s.title)}${cont ? " (continued)" : ""}</div>
+    return `<div class="sb-sec">${esc(s.title)}</div>
       <table class="rp sb-items fixed${s.tight ? " tight" : ""}">${colgroup(s.widths)}<thead><tr>${s.cols.map((c) => `<th class="${c.num ? "num" : ""}">${esc(c.label)}</th>`).join("")}</tr></thead>
       <tbody>${rows.length ? rows.map((r) => `<tr>${s.cols.map((c) => `<td class="${c.num ? "num" : ""}">${esc(c.get(r))}</td>`).join("")}</tr>`).join("")
         : `<tr><td colspan="${s.cols.length}">${esc(s.empty || "None.")}</td></tr>`}</tbody>
@@ -712,7 +712,7 @@
     if (left < 3) pages.push(sys); else pages[pages.length - 1] += sys;
     // the photos, four on a page
     for (let i = 0; i < d.photos.length; i += 4) {
-      pages.push(`<div class="sb-sec">UPLOADED PHOTOS${i ? " (continued)" : ""}</div><div class="sb-photos">${d.photos.slice(i, i + 4).map((p, k) => `<figure class="sb-photo"><img src="${esc(p.url)}" alt="${esc(p.file_name)}">
+      pages.push(`<div class="sb-sec">UPLOADED PHOTOS</div><div class="sb-photos">${d.photos.slice(i, i + 4).map((p, k) => `<figure class="sb-photo"><img src="${esc(p.url)}" alt="${esc(p.file_name)}">
         <figcaption>${i + k + 1}. ${esc(p.file_name)} — ${esc(KINDS[p.kind] || cap(p.kind))} · <span class="nw">${esc(belongs(p))}</span> · <span class="nw">${esc(mdy(p.created_at))}</span></figcaption></figure>`).join("")}</div>`);
     }
     return pages.map((p, i) => (i ? contHead(`${label} · ${b.bill_no} — Page ${i + 1} of ${pages.length}`) : "") + p + pageFoot(label, i + 1, pages.length));

@@ -731,7 +731,7 @@
     const sorted = [...rs].sort((a, b) => String(a.cv_date).localeCompare(String(b.cv_date)) || String(a.cv_no).localeCompare(String(b.cv_no)));
     const total = sorted.reduce((s, v) => s + num(v.amount), 0);
     return E.pagedDoc({
-      head: E.printHead("MONTHLY COLLECTION", `<div class="sb-no"><small>Month</small><b>${esc(monthText(m))}</b></div>`), contHead: E.printHead(`MONTHLY COLLECTION ${monthText(m)} (CONTINUED)`, ""),
+      head: E.printHead("MONTHLY COLLECTION", `<div class="sb-no"><small>Month</small><b>${esc(monthText(m))}</b></div>`), contHead: E.printHead("MONTHLY COLLECTION", ""),
       top: "", boxTitle: `Collection Vouchers — ${monthText(m)}`,
       thead: `<tr><th>#</th><th>Voucher No</th><th>Date</th><th>Received From</th><th>Method</th><th class="num">Amount (₱)</th></tr>`,
       rows: sorted, rowHtml: (v, i) => `<tr><td>${i + 1}</td><td>${esc(v.cv_no)}</td><td>${esc(mdy(v.cv_date))}</td><td>${esc(v.received_from)}</td><td>${esc(methodLabel(v.method))}</td><td class="num">${peso(v.amount)}</td></tr>`,
