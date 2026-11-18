@@ -2572,7 +2572,7 @@
       $("#pkAdd").onclick = async (e) => {
         e.target.disabled = true;
         const r = await sb.auth.registerPasskey();
-        if (r.error) { e.target.disabled = false; const x = E.pkWhy(r.error); return x && toast(x, true); }
+        if (r.error) { e.target.disabled = false; const x = E.pkWhy(r.error); return toast(x || `The passkey was not saved (${r.error.name || r.error.code || "Error"}: ${String(r.error.message || r.error).slice(0, 140)}).`, true); }
         E.pkMem.set("eoPasskey", "1"); toast("Passkey saved."); draw();
       };
       $$("[data-pkdel]").forEach((b) => (b.onclick = async () => {
