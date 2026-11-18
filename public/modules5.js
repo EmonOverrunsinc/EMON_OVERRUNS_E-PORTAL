@@ -421,7 +421,7 @@
     const right = `<img src="${E.pdf417DataUrl("EMONPO|" + p.po_no)}" alt="" class="ph-bar"><div class="mono">${esc(p.po_no)}</div>`;
     const rows = p.items || [];
     return pagedDoc({
-      head: E.printHead("PURCHASE ORDER", right), contHead: E.printHead(`PURCHASE ORDER ${p.po_no} (CONTINUED)`, ""),
+      head: E.printHead("PURCHASE ORDER", right), contHead: E.printHead("PURCHASE ORDER", ""),
       top: `${pics.length ? `<div class="po-print-pics n${pics.length}">${pics.map((u) => `<img src="${esc(u)}" alt="Product photo">`).join("")}</div>` : ""}
         ${E.box("Lot", `<div class="pgrid2">${E.cell("Lot No", p.po_no)}${E.cell("Lot Name", p.lot_name)}${E.cell("Date", mdy(p.po_date))}${E.cell("Processing Time", p.processing_time || "—")}
           ${E.cell("Authorized Responsible", p.authorized_person || "—")}${E.cell("Request Created By", p.created_by_name || "")}</div>`)}`,
