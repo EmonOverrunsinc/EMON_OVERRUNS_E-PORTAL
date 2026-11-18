@@ -612,7 +612,8 @@
     if ($("#dPay")) {
       const rp = pays;
       $("#dPay").innerHTML = E.grid({ cols: [
-        { label: "Receipt", get: (r) => r.receipt_no }, { label: "Customer", get: (r) => fullName(r.customers || {}) },
+        // 3.99.82: the receipt with the customer under it (like Latest Invoices), so the 3 columns fit the box
+        { label: "Receipt / Customer", html: (r) => `<b>${esc(r.receipt_no)}</b><br><small>${esc(fullName(r.customers || {}))}</small>` },
         { label: "Amount (₱)", num: true, get: (r) => peso(r.amount) }, { label: "Date", get: (r) => mdy(r.paid_date) }],
         rows: rp, onRow: true, empty: "No payments yet." });
       E.bindGrid($("#dPay"), rp, (r) => (location.hash = "payment/" + r.id));

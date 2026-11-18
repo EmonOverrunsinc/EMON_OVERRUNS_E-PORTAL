@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.81"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.82"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.81"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.82"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1351,6 +1351,14 @@
   }
   // Swipe from the left edge to open the menu; swipe it back to close (phones and tablets).
   let swipeBound = false;
+  // 3.99.82: the page scrollbar starts under the top bar and stops above the status bar (styles.css reads these two)
+  let sbRO = null;
+  function fitScrollbar() {
+    const t = $("#topbar"), b = $("#app > .statusbar"), h = document.documentElement;
+    const set = () => { h.style.setProperty("--sb-top", (t?.offsetHeight || 0) + "px"); h.style.setProperty("--sb-bot", (b?.offsetHeight || 0) + "px"); };
+    sbRO?.disconnect(); set();
+    if (window.ResizeObserver) { sbRO = new ResizeObserver(set); if (t) sbRO.observe(t); if (b) sbRO.observe(b); }
+  }
   function bindSwipe() {
     if (swipeBound) return;
     swipeBound = true;
@@ -1489,6 +1497,7 @@
     drawerOpen(isPhone() ? false : saved !== "0");
     requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.remove("no-anim")));
     bindSwipe();
+    fitScrollbar();
     bindBack("#dashboard");
     $("#tbMenu").onclick = () => drawerOpen(!document.body.classList.contains("drawer-open"));
     if ($("#drawerX")) $("#drawerX").onclick = () => drawerOpen(false); // 3.99.4: the X at the top of the menu
