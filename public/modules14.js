@@ -410,7 +410,7 @@
       ${band("COVERAGE CERTIFICATE", `<div class="c2-no"><small>CERT. NO.</small><span>${esc(i.ins_no)}</span></div><div class="c2-orig">ORIGINAL</div>`)}
       <div class="c2-fields">
         ${fld("CUSTOMER", name, "w2")}${fld("ACCOUNT NO.", c.account_no || "")}${fld("DATE ISSUED", i.issued_at ? mdy(i.issued_at) : "")}
-        ${fld("ORDER NO.", i.order_no || "")}${fld("INVOICE NO.", invoice?.invoice_no || (o?.status === "completed" ? "" : "AFTER DELIVERY"))}${fld("BOXES COVERED", boxes)}${fld("COVERED VALUE", `PHP ${peso(covered)}${o?.status === "completed" ? " · AS DELIVERED" : ""}`)}
+        ${fld("ORDER NO.", i.order_no || "")}${fld("INVOICE NO.", invoice?.invoice_no || (o?.status === "completed" ? "" : "AFTER DELIVERY"))}${fld("BOXES COVERED", boxes)}${fld("COVERED VALUE", `PHP ${peso(covered)}`)}
       </div>
       <div class="c2-main">
         <div class="c2-left">
@@ -433,14 +433,13 @@
             <div class="c2-eqb tot"><b>${td == null ? "—" : td + DUE}</b><small>DAYS TO PAY</small></div>
           </div>
           <div class="c2-eqdue"><small>DUE DATE</small><b>${esc(i._due ? mdy(i._due.ext) : "COUNTED FROM THE INVOICE DATE")}</b></div>
-          <div class="c2-ver">${E.secSeal(i.ins_no, { code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
         </div></div>
       </div>
       <div class="c2-decl">${sec("CERTIFICATION")}
         <p><b>THIS IS TO CERTIFY</b> that the customer named above is covered by the EO-OFFICE COVERAGE of ${esc(C.company.name)} for the <b>${esc(boxes)}</b> of order <b>${esc(i.order_no || "")}</b>, with a covered value of <b>PHP ${peso(covered)}</b>, for the benefits in the Schedule of Coverage, from <b>${esc(i.issued_at ? mdy(i.issued_at) : "")}</b> until the benefits expire on <b>${esc(until)}</b>, and that the invoice of this order is payable within <b>${esc(td == null ? `its terms + ${DUE} days` : `${td + DUE} days (${td} days terms + ${DUE} days coverage)`)}</b>, subject to the terms and conditions of the EO-OFFICE COVERAGE.</p>
         <p><b>IN WITNESS WHEREOF</b>, ${esc(C.company.name)} has caused this certificate to be signed by its authorized signatory at Pasay City, Metro Manila, Philippines, on <b>${esc(i.approved_at ? mdy(i.approved_at) : mdy(E.isoToday()))}</b>.</p></div>
       <div class="c2-sigs">
-        ${codeBox("ORDER NO.", i.order_no ? "EMONCO|" + i.order_no : "", i.order_no || "")}
+        <div class="c2-sig c2-sealsig"><div class="c2-sec"><span>SECURITY SEAL</span></div>${E.secSeal(i.ins_no, { code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
         ${codeBox("INVOICE NO.", invoice?.invoice_no ? "EMONINV|" + invoice.invoice_no : "", invoice?.invoice_no || "AFTER DELIVERY")}
         ${sig("ISSUED BY", { name: who.approver, note: `Authorized Signatory · ${i.approved_at ? mdy(i.approved_at) : ""}` }, sign.pic)}
       </div>
