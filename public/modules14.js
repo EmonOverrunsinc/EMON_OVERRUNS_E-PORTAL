@@ -425,7 +425,8 @@
         <div class="c2-right"><div>
           ${sec("PREMIUM")}
           ${kv([["CALCULATION", `${boxes} × PHP ${peso(i.box_price)} + ${num(i.rate_pct)}%`], ["PREMIUM", `PHP ${peso(i.amount)}`, "tot"], ["IN WORDS", E.words(i.amount, "PESOS")],
-            ["PAID BY", PAID_BY[i.pay_method] || i.pay_method || ""], ...(i.pay_method === "account" ? [["PREMIUM INVOICE", i.pay_ref || ""]] : [["REFERENCE NO.", i.pay_ref || ""], ["COLLECTION VOUCHER", cv?.cv_no || ""]])])}
+            // 3.99.99: the receipt numbers in place of PAID BY
+            ["RECEIPT NO.", (i.pay_method === "account" ? "" : i.pay_ref) || "—"], ["COLLECTION RECEIPT NO.", cv?.cv_no || (i.pay_method === "account" ? i.pay_ref : "") || "—"]])}
           </div><div>${sec("PAYMENT DUE")}
           <div class="c2-eq">
             <div class="c2-eqb"><b>${td == null ? esc(terms || "—") : `${td}`}</b><small>${td == null ? "TERMS" : "DAYS · TERMS"}</small></div><i>+</i>
@@ -439,7 +440,7 @@
         <p><b>THIS IS TO CERTIFY</b> that the customer named above is covered by the EO-OFFICE COVERAGE of ${esc(C.company.name)} for the <b>${esc(boxes)}</b> of order <b>${esc(i.order_no || "")}</b>, with a covered value of <b>PHP ${peso(covered)}</b>, for the benefits in the Schedule of Coverage, from <b>${esc(i.issued_at ? mdy(i.issued_at) : "")}</b> until the benefits expire on <b>${esc(until)}</b>, and that the invoice of this order is payable within <b>${esc(td == null ? `its terms + ${DUE} days` : `${td + DUE} days (${td} days terms + ${DUE} days coverage)`)}</b>, subject to the terms and conditions of the EO-OFFICE COVERAGE.</p>
         <p><b>IN WITNESS WHEREOF</b>, ${esc(C.company.name)} has caused this certificate to be signed by its authorized signatory at Pasay City, Metro Manila, Philippines, on <b>${esc(i.approved_at ? mdy(i.approved_at) : mdy(E.isoToday()))}</b>.</p></div>
       <div class="c2-sigs">
-        <div class="c2-sig c2-sealsig"><div class="c2-sec"><span>SECURITY SEAL</span></div>${E.secSeal(i.ins_no, { code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
+        <div class="c2-sig c2-sealsig">${E.secSeal(i.ins_no, { code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
         ${codeBox("INVOICE NO.", invoice?.invoice_no ? "EMONINV|" + invoice.invoice_no : "", invoice?.invoice_no || "AFTER DELIVERY")}
         ${sig("ISSUED BY", { name: who.approver, note: `Authorized Signatory · ${i.approved_at ? mdy(i.approved_at) : ""}` }, sign.pic)}
       </div>
