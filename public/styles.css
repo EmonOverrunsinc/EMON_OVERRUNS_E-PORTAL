@@ -3824,7 +3824,7 @@ body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !
    The page's bar starts under the top bar and stops above the status bar, so it is never under the window's own
    – ▢ ✕ buttons; beside the top bar and the status bar its strip is navy like them. Phones and iPads keep theirs. */
 @media (hover: hover) and (pointer: fine) {
-  html { --sbt: 0px; --sbb: 0px; --sbg: #f2f4f8; }
+  html { --sbt: 0px; --sbb: 0px; --sbg: transparent; }
   html:has(#topbar) { --sbt: var(--sb-top, 58px); --sbb: var(--sb-bot, 29px); }
   html::-webkit-scrollbar { width: 10px; height: 10px;
     background: linear-gradient(#0f3a8c 0 calc(var(--sbt) - 3px), #f2b705 calc(var(--sbt) - 3px) var(--sbt), var(--sbg) var(--sbt) calc(100% - var(--sbb)), #f2b705 calc(100% - var(--sbb)) calc(100% - var(--sbb) + 2px), #0f3a8c 0); }
@@ -3833,6 +3833,7 @@ body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !
     background: rgba(15,58,140,.32); border: 2px solid transparent; background-clip: padding-box; border-radius: 10px; min-height: 36px; }
   html::-webkit-scrollbar-thumb:hover, body ::-webkit-scrollbar-thumb:hover { background-color: rgba(15,58,140,.6); }
   html::-webkit-scrollbar-thumb:active, body ::-webkit-scrollbar-thumb:active { background-color: #1d4fb0; }
+  html:has(.login)::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,.35); } /* 3.99.83: on the blue sign-in page */
   html::-webkit-scrollbar-button, body ::-webkit-scrollbar-button { display: none; }
   html::-webkit-scrollbar-corner, body ::-webkit-scrollbar-corner { background: transparent; }
   /* the tables, the menu and the windows inside the page */
@@ -3841,3 +3842,15 @@ body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !
 }
 /* Firefox has no -webkit- scrollbar: the thin bar in the same colour */
 @supports not selector(::-webkit-scrollbar) { @media (hover: hover) and (pointer: fine) { html { scrollbar-width: thin; scrollbar-color: rgba(15,58,140,.4) transparent; } } }
+/* 3.99.83: the Windows app draws its – ▢ ✕ buttons on one flat blue (#113e93), so everything under them is that same
+   blue: the top bar, the print preview's title bar, a bar at the top of the sign-in page; a window (and the notices that
+   cover the page) dims the page below the top bar only, so the bar never turns darker than the buttons */
+html.eo-overlay .topbar { background: #113e93; }
+html.eo-overlay .preview .pv-title { background: #113e93; color: #fff; border-bottom: 3px solid #f2b705; min-height: calc(env(titlebar-area-height, 54px) + 3px); display: flex; align-items: center; }
+html.eo-overlay :is(.login, .boot)::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(titlebar-area-height, 54px); background: #113e93; border-bottom: 3px solid #f2b705; z-index: 5; pointer-events: none; }
+html.eo-overlay .login { padding-top: calc(env(titlebar-area-height, 54px) + 27px); }
+html.eo-overlay :is(.modal, .legal-ov, .dev-ov) { top: calc(env(titlebar-area-height, 54px) + 3px); }
+html.eo-overlay .modal { padding-top: 12px; }
+html.eo-overlay .modal .window { max-height: calc(100vh - env(titlebar-area-height, 54px) - 30px); }
+html.eo-overlay body:has(:is(.modal, .legal-ov, .dev-ov)) .topbar > * { pointer-events: none; }
+html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-height, 54px) + 3px); }
