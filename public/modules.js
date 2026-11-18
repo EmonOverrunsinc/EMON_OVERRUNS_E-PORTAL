@@ -2158,10 +2158,16 @@
   // every box of that batch. 3.99.39: a summary on top (sold boxes, total amount sold, shipping, released, arrival and
   // sold dates, company) and a clean table; the print shows only the invoice no and the date sold of each sold box
   async function findBoxes(t, here) {
-    const key = t.toUpperCase().replace(/\s+/g, " ").slice(0, 60);
+    let key = t.toUpperCase().replace(/\s+/g, " ").slice(0, 60);
     const one = await sb.from("box_stock").select("*").eq("serial_no", key).limit(1).then((r) => r, () => ({ error: true }));
     if (one.error) return false; // no box database (or no access): the normal search
     let boxes = one.data || [], kind = "serial";
+    // 3.99.60: a serial no inside a longer text (a box sticker's whole code, or words typed with it)
+    if (!boxes.length && /[\s|;,]/.test(key)) {
+      const toks = [...new Set(key.split(/[\s|;,]+/).filter((x) => x.length >= 5 && /\d/.test(x)))].slice(0, 10);
+      if (toks.length) boxes = (await sb.from("box_stock").select("*").in("serial_no", toks).limit(1).then((r) => r.data || [], () => []));
+      if (boxes.length) key = boxes[0].serial_no;
+    }
     if (!boxes.length) { boxes = (await E.allRows(() => sb.from("box_stock").select("*").eq("batch", key).order("serial_no"))).data || []; kind = "batch"; }
     if (!boxes.length || !here()) return false;
     // where each box is: on an order, sold (invoiced) or in stock

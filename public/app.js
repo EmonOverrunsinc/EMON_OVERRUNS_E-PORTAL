@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.59"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.60"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.59"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.60"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1699,6 +1699,11 @@
     }
     if (cvm) { location.hash = "verify/" + cvm[1].toUpperCase(); return; } // 3.95: anyone else: the Verification page (never the key)
     if (/^EMON[A-Z]*\|/.test(t)) { location.hash = "verify/" + encodeURIComponent(t); return; }
+    // 3.99.60: a box sticker (the serial no with QTY, STYLE, BATCH … in its code) opens that box, not a search of all its words
+    if (isStaff() && window.EO.readLabel && /\s|[|;,]/.test(t)) {
+      const sn = window.EO.readLabel(t).serial_no;
+      if (sn && sn.length >= 5 && /\d/.test(sn)) { location.hash = "find/" + encodeURIComponent(sn); return true; }
+    }
     location.hash = "find/" + encodeURIComponent(t);
   }
   const setRecords = (txt) => { const e = $("#sbRecords"); if (e) e.textContent = txt; };
