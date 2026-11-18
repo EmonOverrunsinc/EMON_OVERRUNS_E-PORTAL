@@ -3813,3 +3813,10 @@ body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !
 /* 3.99.72: the one-box print top boxes a little smaller */
 .page .bx1-band b, .page .bxp-sum.money b, .page .bxp-sum.money .amt b { font-size: 11pt; }
 .page .bx1-band small, .page .bxp-sum.money small { font-size: 6pt; }
+/* 3.99.75: passkeys */
+.pk-btn { width: 100%; margin-top: 8px; background: #fff; color: #12306b; border: 1.5px solid #12306b; }
+.pk-btn .ic { width: 18px; height: 18px; }
+.pk-say { display: block; text-align: center; color: #6b7487; font-size: 12px; margin-top: 4px; }
+.pk-list { display: grid; gap: 8px; margin-bottom: 10px; }
+.pk-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #dfe5ef; border-radius: 10px; padding: 8px 12px; }
+.pk-row small { display: block; color: #6b7487; font-size: 12px; }

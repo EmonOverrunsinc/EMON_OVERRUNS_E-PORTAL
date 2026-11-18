@@ -2554,7 +2554,36 @@
       S.profile.username = u; toast(`Username @${u} saved.`); V.profile();
     };
     E.setRecords(emp ? `Employee: ${emp.employee_no}` : "My Profile");
+    passkeyBox(); // 3.99.75
   };
+  // 3.99.75: My Profile › Passkeys: the passkeys of this login (sign in with Face ID / fingerprint), add one, remove one
+  async function passkeyBox() {
+    if (!E.pkOk?.() || !sb.auth.passkey || !$("#main")) return;
+    $("#main").insertAdjacentHTML("beforeend", `<div class="window" id="pkBox"><div class="wtitle">${ic("key")} Passkeys</div><div class="wbody" id="pkBody">${busy()}</div></div>`);
+    const draw = async () => {
+      const { data, error } = await sb.auth.passkey.list().then((r) => r, (e) => ({ error: e }));
+      if (!$("#pkBody")) return;
+      const w = error ? E.pkWhy(error) : "";
+      const list = data || [];
+      $("#pkBody").innerHTML = `<p class="muted" style="margin-top:0">Sign in with <b>Face ID, your fingerprint or your phone PIN</b> instead of the password.</p>
+        ${w ? `<div class="empty">${esc(w)}</div>` : list.length ? `<div class="pk-list">${list.map((k) => `<div class="pk-row"><span>${ic("key")} <b>${esc(k.friendly_name || "Passkey")}</b><small>saved ${esc(E.dateTime(k.created_at))}${k.last_used_at ? ` · last used ${esc(E.dateTime(k.last_used_at))}` : ""}</small></span>
+          <button type="button" class="btn small danger" data-pkdel="${esc(k.id)}">Remove</button></div>`).join("")}</div>` : `<div class="empty">No passkey yet.</div>`}
+        <div class="btnrow"><button type="button" class="btn primary" id="pkAdd">${ic("plus")} Add a Passkey on This Device</button></div>`;
+      $("#pkAdd").onclick = async (e) => {
+        e.target.disabled = true;
+        const r = await sb.auth.registerPasskey();
+        if (r.error) { e.target.disabled = false; const x = E.pkWhy(r.error); return x && toast(x, true); }
+        E.pkMem.set("eoPasskey", "1"); toast("Passkey saved."); draw();
+      };
+      $$("[data-pkdel]").forEach((b) => (b.onclick = async () => {
+        if (!confirm("Remove this passkey? You can still sign in with your password.")) return;
+        const r = await sb.auth.passkey.delete({ passkeyId: b.dataset.pkdel });
+        if (r.error) return toast(E.pkWhy(r.error) || "Could not remove it.", true);
+        toast("Passkey removed."); draw();
+      }));
+    };
+    draw();
+  }
   V.settings = () => {
     if (!isAdmin()) { location.hash = "dashboard"; return; }
     E.shell("settings", "Company Logo", `<div class="window"><div class="wtitle">Company Logo</div><div class="wbody">
