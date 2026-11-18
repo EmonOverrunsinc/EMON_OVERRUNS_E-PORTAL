@@ -3779,3 +3779,16 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxsec-foot b { letter-spacing: .08em; }
 /* 3.99.61: while the EVA chat is open the floating Back button hides (it covered the Send button) */
 body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !important; }
+/* 3.99.63: the one-box print: the top boxes smaller and neater (the serial no, status, pcs and the price) */
+.page .bx1-band { gap: 5px; margin: 0 0 6px; }
+.page .bx1-band > div { padding: 4px 9px 5px; border-width: 1.2px; border-radius: 6px; }
+.page .bx1-band small { font-size: 6.5pt; letter-spacing: .05em; }
+.page .bx1-band b { font-size: 12.5pt; line-height: 1.2; }
+.page .bxp-sum.money { gap: 5px; margin: 0 0 6px; }
+.page .bxp-sum.money > div { padding: 4px 9px 5px; border-width: 1.2px; border-radius: 6px; }
+.page .bxp-sum.money small { font-size: 6.5pt; margin-bottom: 1px; }
+.page .bxp-sum.money b, .page .bxp-sum.money .amt b { font-size: 12.5pt; line-height: 1.2; }
+.page .bxtrack .bt i { width: 12px; height: 12px; margin-bottom: 3px; }
+.page .bxtrack .bt + .bt::before { top: 5px; height: 2px; }
+.page .bxtrack .bt.now i { width: 15px; height: 15px; margin-top: -1.5px; box-shadow: 0 0 0 3px rgba(18, 48, 107, .12); }
+.page .bxcards b { font-size: 9.5pt; }
