@@ -15918,6 +15918,264 @@ do $$ declare r record; begin
 end $$;
 
 select 'UPDATE 3.99.32 READY' as result;
+
+-- ======== 100_box_arrival.sql ========
+-- =====================================================================
+-- EMON OVERRUNS E-PORTAL - Update 3.99.38: the box database keeps the DATE OF ARRIVAL and every other column of the sheet
+-- 1. Read Sheet finds each column by its title in the top row of the sheet (any order).
+-- 2. box_stock.arrival_date: the date the box arrived (empty = the box is still SHIPPED, on the way).
+-- 3. box_stock.ship_date / release_date / sold_date / sheet_invoice: the SHIPPING DATE, RELEASED DATE, DATE SOLD and INVOICE NO
+--    columns of the sheet (when the sheet has them).
+-- 4. box_stock.extra: the other columns of the sheet (title -> value), shown with the box.
+-- Needs 099 (RUN_050_BOXES_AND_099.sql). Safe to run again.
+-- =====================================================================
+do $$ begin
+  if to_regclass('public.box_stock') is null then raise exception 'Update 3.99.38: the box database is missing (run RUN_050_BOXES_AND_099.sql first).'; end if;
+end $$;
+
+alter table public.box_stock add column if not exists price numeric(12,2) check (price is null or price >= 0);
+alter table public.box_stock add column if not exists arrival_date date;
+alter table public.box_stock add column if not exists extra jsonb not null default '{}'::jsonb;
+alter table public.box_stock add column if not exists ship_date date;
+alter table public.box_stock add column if not exists release_date date;
+alter table public.box_stock add column if not exists sold_date date;
+alter table public.box_stock add column if not exists sheet_invoice text check (char_length(sheet_invoice) <= 40);
+
+-- a date written yyyy-mm-dd, or null (a wrong date never stops the reading)
+create or replace function public.box_date(p text) returns date
+language plpgsql immutable set search_path = '' as $$
+declare d date;
+begin
+  if coalesce(trim(p), '') !~ '^\d{4}-\d{2}-\d{2}$' then return null; end if;
+  d := trim(p)::date;
+  return case when d between date '2000-01-01' and date '2100-12-31' then d end;
+exception when others then return null;
+end;
+$$;
+revoke execute on function public.box_date(text) from public, anon;
+
+create or replace function public.replace_box_stock(p_rows jsonb, p_source text default null) returns integer
+language plpgsql security definer set search_path = '' as $$
+declare n integer; me text := (select full_name from public.profiles where id = auth.uid());
+begin
+  if not public.is_admin() then raise exception 'Only the Director can read the box database'; end if;
+  if jsonb_typeof(p_rows) is distinct from 'array' or jsonb_array_length(p_rows) = 0 then raise exception 'The sheet has no boxes (the serial no column is empty).'; end if;
+  if jsonb_array_length(p_rows) > 100000 then raise exception 'Up to 100,000 boxes can be read.'; end if;
+  delete from public.box_stock where true;
+  insert into public.box_stock (serial_no, product, brand, ctn, style, qty, batch, price, arrival_date, ship_date, release_date, sold_date, sheet_invoice, extra)
+  select distinct on (x.s) x.s,
+    nullif(left(trim(coalesce(x.r ->> 'product', '')), 120), ''), nullif(left(trim(coalesce(x.r ->> 'brand', '')), 80), ''),
+    nullif(left(trim(coalesce(x.r ->> 'ctn', '')), 30), ''), nullif(left(upper(trim(coalesce(x.r ->> 'style', ''))), 30), ''),
+    case when trim(coalesce(x.r ->> 'qty', '')) ~ '^\d{1,9}(\.\d+)?$' then round(trim(x.r ->> 'qty')::numeric)::integer else 0 end,
+    nullif(left(upper(trim(coalesce(x.r ->> 'batch', ''))), 40), ''),
+    case when replace(trim(coalesce(x.r ->> 'price', '')), ',', '') ~ '^\d{1,9}(\.\d{1,4})?$' then round(replace(trim(x.r ->> 'price'), ',', '')::numeric, 2) end,
+    public.box_date(x.r ->> 'arrival'), public.box_date(x.r ->> 'ship'), public.box_date(x.r ->> 'released'), public.box_date(x.r ->> 'sold_on'),
+    nullif(left(upper(trim(coalesce(x.r ->> 'invoice', ''))), 40), ''),
+    case when jsonb_typeof(x.r -> 'extra') = 'object' and length((x.r -> 'extra')::text) <= 4000 then x.r -> 'extra' else '{}'::jsonb end
+  from (select left(upper(regexp_replace(trim(coalesce(e.r ->> 'serial_no', '')), '\s+', ' ', 'g')), 60) s, e.r, e.ord
+        from jsonb_array_elements(p_rows) with ordinality as e(r, ord)) x
+  where x.s <> ''
+  order by x.s, x.ord desc;
+  get diagnostics n = row_count;
+  insert into public.ai_settings (key, value, updated_by_name, updated_at)
+  values ('box_sheet_read', jsonb_build_object('boxes', n, 'source', left(coalesce(p_source, ''), 300), 'read_at', now(),
+    'has_arrival', exists (select 1 from public.box_stock where arrival_date is not null)), me, now())
+  on conflict (key) do update set value = excluded.value, updated_by_name = excluded.updated_by_name, updated_at = excluded.updated_at;
+  return n;
+end;
+$$;
+revoke execute on function public.replace_box_stock(jsonb, text) from public, anon;
+grant execute on function public.replace_box_stock(jsonb, text) to authenticated;
+
+select 'UPDATE 3.99.38 READY' as result;
+
+-- ======== 101_box_settings_read.sql ========
+-- =====================================================================
+-- EMON OVERRUNS E-PORTAL - Update 3.99.52: the staff who see customer orders also read two box settings
+-- (the COST PER BOX and whether the sheet has a DATE OF ARRIVAL), so their box search shows the same total cost and
+-- SHIPPED boxes as the Director's. Only the Director changes them. Safe to run again.
+-- =====================================================================
+do $$ begin
+  if to_regclass('public.ai_settings') is null then raise exception 'Update 3.99.52: the box database is missing (run RUN_050_BOXES_AND_099.sql first).'; end if;
+  if to_regprocedure('public.co_can_read()') is null then raise exception 'Update 3.99.52: customer orders are missing (045).'; end if;
+end $$;
+
+drop policy if exists "ai settings: staff read box settings" on public.ai_settings;
+create policy "ai settings: staff read box settings" on public.ai_settings for select to authenticated
+  using (key in ('box_cost', 'box_sheet_read') and (select public.co_can_read()));
+
+select 'UPDATE 3.99.52 READY' as result;
+
+-- ======== 102_coverage_middle_name.sql ========
+-- =====================================================================
+-- EMON OVERRUNS E-PORTAL - Update 3.99.71: the customer's MIDDLE NAME on the coverage (insurance) records
+-- The customer name a coverage keeps is written FIRST MIDDLE LAST (a new coverage, and the coverages saved before).
+-- Safe to run again.
+-- =====================================================================
+do $$ begin
+  if to_regclass('public.order_insurance') is null then raise exception 'Update 3.99.71: the coverage table is missing (077).'; end if;
+end $$;
+
+create or replace function public.order_insurance_name() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.customer_id is not null then
+    new.customer_name := coalesce((select nullif(trim(concat_ws(' ', nullif(trim(c.first_name), ''), nullif(trim(c.middle_name), ''), nullif(trim(c.last_name), ''))), '')
+                                   from public.customers c where c.id = new.customer_id), new.customer_name);
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function public.order_insurance_name() from public, anon, authenticated;
+drop trigger if exists order_insurance_name on public.order_insurance;
+create trigger order_insurance_name before insert or update of customer_id on public.order_insurance
+  for each row execute function public.order_insurance_name();
+
+-- the coverages saved before: the middle name added
+update public.order_insurance i
+   set customer_name = trim(concat_ws(' ', nullif(trim(c.first_name), ''), nullif(trim(c.middle_name), ''), nullif(trim(c.last_name), '')))
+  from public.customers c
+ where c.id = i.customer_id and nullif(trim(c.middle_name), '') is not null
+   and i.customer_name is distinct from trim(concat_ws(' ', nullif(trim(c.first_name), ''), nullif(trim(c.middle_name), ''), nullif(trim(c.last_name), '')));
+
+select 'UPDATE 3.99.71 READY' as result;
+
+-- ======== 103_director_salary_no_card.sql ========
+-- =====================================================================
+-- EMON OVERRUNS E-PORTAL - Update 3.99.76: the DIRECTOR pays a salary without scanning the employee's ID card
+-- Everyone else still scans the employee's ID card. A payment made by the Director without the card says so in its notes.
+-- Safe to run again.
+-- =====================================================================
+do $$ begin
+  if to_regprocedure('public.pay_salary(uuid,numeric,date,text,text,text,text)') is null then raise exception 'Update 3.99.76: payroll is missing (063).'; end if;
+end $$;
+
+create or replace function public.pay_salary(p_payslip uuid, p_amount numeric, p_date date, p_method text, p_ref text, p_notes text, p_card text)
+returns public.salary_payments
+language plpgsql security definer set search_path = '' set timezone to 'Asia/Manila' as $$
+declare s public.payslips; e public.employees; c public.employee_cards; sec text; mm text[]; paid numeric; left_amt numeric;
+  amt numeric := round(coalesce(p_amount, 0), 2); d date := coalesce(p_date, current_date); r public.salary_payments;
+  me text := (select full_name from public.profiles where id = auth.uid());
+begin
+  if not public.can_write('employees') then raise exception 'Not allowed'; end if;
+  select * into s from public.payslips where id = p_payslip for update;
+  if not found then raise exception 'Payslip not found'; end if;
+  select * into e from public.employees where id = s.employee_id;
+  if s.issued_at is null then raise exception 'Payslip % was paid when it was made', s.payslip_no; end if;
+  select coalesce(sum(amount), 0) into paid from public.salary_payments where payslip_id = s.id;
+  left_amt := s.net_pay - paid;
+  if left_amt <= 0 then raise exception 'Payslip % is paid already', s.payslip_no; end if;
+  if amt <= 0 then raise exception 'Enter the amount to pay'; end if;
+  if amt > left_amt then raise exception 'Only PHP % is left to pay on payslip %', to_char(left_amt, 'FM999,999,990.00'), s.payslip_no; end if;
+  if d > current_date then raise exception 'The pay date cannot be after today'; end if;
+  -- the employee's ID card: the card of this employee, valid today (3.99.76: the Director may pay without the card)
+  if not (public.is_admin() and coalesce(trim(p_card), '') = '') then
+    mm := regexp_match(upper(trim(coalesce(p_card, ''))), '^EMONID\|(EOID-[0-9]{4}-[0-9]{4,})\|([0-9A-F]{40})$');
+    if mm is null then raise exception 'Scan the QR code on the employee''s ID card first'; end if;
+    select * into c from public.employee_cards where card_no = mm[1];
+    select k.secret into sec from private.employee_card_keys k where k.card_id = c.id;
+    if c.id is null or sec is distinct from mm[2] then raise exception 'This ID card is not valid'; end if;
+    if c.employee_id <> s.employee_id then raise exception 'This ID card is not the card of % - scan the card of the employee who is paid', upper(e.first_name || ' ' || e.last_name); end if;
+    if c.status <> 'active' then raise exception 'This ID card is no longer valid (%) - use the new card', upper(c.status); end if;
+    if c.valid_until < current_date then raise exception 'This ID card expired on %', to_char(c.valid_until, 'FMMONTH DD YYYY'); end if;
+  end if;
+  insert into public.salary_payments (payment_no, employee_id, payslip_id, amount, pay_date, method, reference_no, notes, card_no, created_by_name)
+  values ('SP-' || to_char(d, 'YYYYMM') || '-' || lpad(public.next_counter('SP' || to_char(d, 'YYYYMM'))::text, 3, '0'), s.employee_id, s.id, amt, d,
+    nullif(left(trim(coalesce(p_method, '')), 40), ''), nullif(left(trim(coalesce(p_ref, '')), 60), ''), nullif(left(trim(coalesce(p_notes, '') || case when c.card_no is null then case when coalesce(trim(p_notes), '') = '' then '' else ' [[U+00B7]] ' end || 'Paid by the Director without the ID card' else '' end), 300), ''), c.card_no, me)
+  returning * into r;
+  if e.profile_id is not null then
+    perform public.notify_user(e.profile_id, 'Salary paid - ' || r.payment_no,
+      'PHP ' || to_char(amt, 'FM999,999,990.00') || ' paid on payslip ' || s.payslip_no
+      || case when amt < left_amt then ' (PHP ' || to_char(left_amt - amt, 'FM999,999,990.00') || ' still unpaid)' else ' (paid in full)' end, 'payslip/' || s.id);
+  end if;
+  return r;
+end;
+$$;
+revoke execute on function public.pay_salary(uuid, numeric, date, text, text, text, text) from public, anon;
+grant execute on function public.pay_salary(uuid, numeric, date, text, text, text, text) to authenticated;
+
+select 'UPDATE 3.99.76 READY' as result;
+
+-- ======== 104_security_seals.sql ========
+-- 3.99.93: SECURITY SEALS. Every printed box (1-box print) and Coverage Certificate gets ONE unique 16-digit seal number
+-- (15 random digits + 1 check digit). The seal shows it; anyone can check it on Verify a Record (emonoverruns.online/verify).
+-- Safe to run again.
+
+create table if not exists public.security_seals (
+  code text primary key check (code ~ '^[0-9]{16}$'),
+  kind text not null check (kind in ('box', 'coverage')),
+  ref text not null check (char_length(ref) between 1 and 60),
+  issued_at timestamptz not null default now(),
+  issued_by uuid default auth.uid(),
+  unique (kind, ref)
+);
+alter table public.security_seals enable row level security;
+-- no policies: only the two functions below read or write the seals
+revoke all on public.security_seals from anon, authenticated;
+
+-- the check digit (Luhn) of the 15 digits: a mistyped digit is found at once
+create or replace function public.seal_check_digit(p text) returns int
+language sql immutable set search_path = '' as $$
+  select (10 - (sum(case when (length(p) - i) % 2 = 0
+                         then (substr(p, i, 1)::int * 2) - case when substr(p, i, 1)::int * 2 > 9 then 9 else 0 end
+                         else substr(p, i, 1)::int end) % 10)::int) % 10
+  from generate_series(1, length(p)) i;
+$$;
+
+-- the seal number of a record (made the first time it is printed, the same number every time after)
+create or replace function public.seal_issue(p_kind text, p_ref text) returns text
+language plpgsql security definer set search_path = '' as $$
+declare r text := upper(trim(coalesce(p_ref, ''))); v text; body text;
+begin
+  if auth.uid() is null or not public.is_active() then raise exception 'Sign in first.'; end if;
+  if p_kind = 'box' then
+    if not public.is_staff() then raise exception 'Only EMON OVERRUNS staff print boxes.'; end if;
+    if not exists (select 1 from public.box_stock b where upper(b.serial_no) = r) then raise exception 'No box %', r; end if;
+  elsif p_kind = 'coverage' then
+    if not exists (select 1 from public.order_insurance i where upper(i.ins_no) = r) then raise exception 'No certificate %', r; end if;
+  else
+    raise exception 'Unknown kind';
+  end if;
+  select s.code into v from public.security_seals s where s.kind = p_kind and s.ref = r;
+  if v is not null then return v; end if;
+  for n in 1..20 loop
+    body := lpad(((('x' || substr(md5(gen_random_uuid()::text), 1, 15))::bit(60)::bigint) % 1000000000000000)::text, 15, '0');
+    v := body || public.seal_check_digit(body)::text;
+    begin
+      insert into public.security_seals (code, kind, ref) values (v, p_kind, r);
+      return v;
+    exception when unique_violation then
+      select s.code into v from public.security_seals s where s.kind = p_kind and s.ref = r;
+      if v is not null then return v; end if; -- printed at the same moment on another device
+    end;
+  end loop;
+  raise exception 'Could not make a seal number, try again.';
+end $$;
+
+-- anyone: is this a genuine seal? (kind, the record's no, when it was issued; a box also shows what is in it)
+create or replace function public.seal_verify(p_code text) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare c text := regexp_replace(coalesce(p_code, ''), '[^0-9]', '', 'g'); s public.security_seals; b public.box_stock;
+begin
+  if c !~ '^[0-9]{16}$' then return jsonb_build_object('found', false, 'reason', 'format'); end if;
+  if public.seal_check_digit(left(c, 15)) <> right(c, 1)::int then return jsonb_build_object('found', false, 'reason', 'check'); end if;
+  select * into s from public.security_seals where code = c;
+  if not found then return jsonb_build_object('found', false, 'reason', 'none'); end if;
+  if s.kind = 'box' then
+    select * into b from public.box_stock where upper(serial_no) = s.ref limit 1;
+    return jsonb_build_object('found', true, 'kind', s.kind, 'ref', s.ref, 'issued_at', s.issued_at,
+      'product', b.product, 'brand', b.brand, 'batch', b.batch, 'pcs', b.qty);
+  end if;
+  return jsonb_build_object('found', true, 'kind', s.kind, 'ref', s.ref, 'issued_at', s.issued_at);
+end $$;
+
+revoke all on function public.seal_issue(text, text) from public, anon;
+grant execute on function public.seal_issue(text, text) to authenticated;
+revoke all on function public.seal_verify(text) from public;
+grant execute on function public.seal_verify(text) to anon, authenticated;
+revoke all on function public.seal_check_digit(text) from public, anon, authenticated;
+
+select '104 OK - security seals ready' as result;
 $sql$;
 begin
   s := replace(s, chr(13), '');  -- Windows line breaks
