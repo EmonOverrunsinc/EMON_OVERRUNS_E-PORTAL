@@ -3665,3 +3665,12 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .co-ser { display: block; margin-top: 2px; font: 600 10.5px/1.2 var(--font-mono, monospace); color: #5b6577; letter-spacing: .02em; }
 .co-ser:empty { display: none; }
 .of-price { margin: 8px 0 4px; }
+/* 3.99.38: the state of a box: SOLD green, IN STOCK red, ON ORDER orange, SHIPPED blue (screen and print) */
+.pill.bx-sold { color: #fff; border-color: #1e8e3e; background: #1e8e3e; }
+.pill.bx-stock { color: #fff; border-color: #c41e3a; background: #c41e3a; }
+.pill.bx-order { color: var(--warn); border-color: var(--warn); background: #fff7e3; }
+.pill.bx-ship { color: #1f5fbf; border-color: #1f5fbf; background: #eaf2ff; }
+.bxp-sold { color: #1e8e3e !important; font-weight: 700; }
+.bxp-stock { color: #c41e3a !important; font-weight: 700; }
+.bxp-shipped { color: #1f5fbf !important; font-weight: 700; }
+.rec-tile.bad b { color: #c41e3a; }
