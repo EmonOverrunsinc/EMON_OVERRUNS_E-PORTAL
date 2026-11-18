@@ -3825,9 +3825,12 @@ body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !
    – ▢ ✕ buttons; beside the top bar and the status bar its strip is navy like them. Phones and iPads keep theirs. */
 @media (hover: hover) and (pointer: fine) {
   html { --sbt: 0px; --sbb: 0px; --sbg: transparent; }
+  html { --sbtb: linear-gradient(180deg, #134299, #0f3a8c); } html.eo-overlay { --sbtb: linear-gradient(#113e93, #113e93); }
   html:has(#topbar) { --sbt: var(--sb-top, 58px); --sbb: var(--sb-bot, 29px); }
   html::-webkit-scrollbar { width: 10px; height: 10px;
-    background: linear-gradient(#0f3a8c 0 calc(var(--sbt) - 3px), #f2b705 calc(var(--sbt) - 3px) var(--sbt), var(--sbg) var(--sbt) calc(100% - var(--sbb)), #f2b705 calc(100% - var(--sbb)) calc(100% - var(--sbb) + 2px), #0f3a8c 0); }
+    /* 3.99.84: beside the top bar the strip has the top bar's own fade (flat blue in the Windows app), so no seam shows */
+    background: var(--sbtb) 0 0 / 100% calc(var(--sbt) - 3px) no-repeat,
+      linear-gradient(transparent 0 calc(var(--sbt) - 3px), #f2b705 calc(var(--sbt) - 3px) var(--sbt), var(--sbg) var(--sbt) calc(100% - var(--sbb)), #f2b705 calc(100% - var(--sbb)) calc(100% - var(--sbb) + 2px), #0f3a8c 0); }
   html::-webkit-scrollbar-track { margin: calc(var(--sbt) + 2px) 0 calc(var(--sbb) + 2px); background: transparent; }
   html::-webkit-scrollbar-thumb, body ::-webkit-scrollbar-thumb {
     background: rgba(15,58,140,.32); border: 2px solid transparent; background-clip: padding-box; border-radius: 10px; min-height: 36px; }
