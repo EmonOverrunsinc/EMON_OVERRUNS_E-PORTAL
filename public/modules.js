@@ -2240,7 +2240,7 @@
       const avgOf = (l) => { const q = l.reduce((a, x) => a + (num(x.qty) || 1), 0); return q ? l.reduce((a, x) => a + num(x.price) * (num(x.qty) || 1), 0) / q : 0; };
       const others = same.filter((x) => x.serial_no !== r.serial_no), sameBrand = others.filter((x) => String(x.brand || "") === br);
       const sugFrom = sameBrand.length ? sameBrand : others, suggest = Math.round(avgOf(sugFrom) * 100) / 100;
-      const sugNote = suggest ? `from ${qtyText(sugFrom.length)} box${sugFrom.length === 1 ? "" : "es"} of ${[pr, sameBrand.length ? br : ""].filter(Boolean).join(" · ")}` : "";
+      const sugNote = suggest ? `a guide only, not counted · from ${qtyText(sugFrom.length)} box${sugFrom.length === 1 ? "" : "es"} of ${[pr, sameBrand.length ? br : ""].filter(Boolean).join(" · ")}` : "";
       const ret = rets.find((m) => m.is_return);
       const sold1 = r.st === "sold";
       // the tracking: every step up to the last one with data is done (a step with no date shows —)
@@ -2256,7 +2256,7 @@
         ...exTable.map((k) => [k, r.extra?.[k] || ""])].filter(([, v]) => v);
       const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>`
         : k === "Return" && ret ? `<a class="nw" href="#creditmemo/${esc(ret.id)}">${esc(v)}</a>` : esc(v));
-      const big = r.amount > 0 ? ["Amount Sold", `₱ ${peso(r.amount)}`] : suggest && !r.price ? ["Suggested Price", `₱ ${peso(suggest)}`] : ["Pcs", qtyText(r.qty)];
+      const big = r.amount > 0 ? ["Amount Sold", `₱ ${peso(r.amount)}`] : ["Pcs", qtyText(r.qty)]; // 3.99.62: the suggested price is no amount
       E.shell("find", `Search: ${t}`, "");
       $("#main").innerHTML = `<div class="bxr bx1">
         <div class="bxr-head bx1-${r.st}"><div>${ic("box")} <span>Box</span> <b class="mono nw">${esc(r.serial_no)}</b> ${stPill(r.st)}</div>
@@ -2270,7 +2270,7 @@
       // microtext lines, a light ORIGINAL mark, the document no made from the box and the print time, the PDF417)
       $("#fbPrint").onclick = () => {
         const money = r.price ? [["Price per Pc (₱)", peso(r.price)], [sold1 ? "Amount Sold (₱)" : "Amount (₱)", peso(r.amount || r.price * num(r.qty))]]
-          : suggest ? [["Suggested Price per Pc (₱)", peso(suggest)], ["Expected Amount (₱)", peso(suggest * num(r.qty))]] : [];
+          : []; // 3.99.62: the suggested price is only a card (a guide, no amount counted)
         const cards = det.filter(([k]) => !["Pcs", "Price per Pc (₱)", "Amount (₱)"].includes(k) && !(k === "Suggested Price per Pc (₱)" && money.length));
         const stamp = new Date().toISOString();
         let h = 2166136261; for (const ch of `${r.serial_no}|${r.st}|${r.price}|${stamp}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
