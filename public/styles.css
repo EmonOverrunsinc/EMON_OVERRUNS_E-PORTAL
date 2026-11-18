@@ -3882,7 +3882,7 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .eoseal.sm .eoseal-logo { width: 9mm; height: 9mm; } .eoseal.sm .eoseal-logo .eoseal-img { width: 7.4mm; height: 7.4mm; }
 .eoseal.sm .eoseal-url { font-size: 5pt; } .eoseal.sm .eoseal-ref { height: 6.4mm; font-size: 9pt; }
 /* where it sits: the 1-box print (right, under the cards, with a note) and the Coverage Certificate (beside Benefits Expire) */
-.bx1-seal { display: flex; align-items: center; gap: 4mm; margin: 4mm 0 2mm; }
+.bx1-seal { display: flex; align-items: center; justify-content: flex-end; gap: 4mm; margin: 4mm 0 2mm; }
 .bx1-seal-note { flex: 1; min-width: 0; font-size: 7pt; line-height: 1.35; color: #33415c; border-left: .6mm solid #c9a227; padding-left: 2.5mm; }
 .bx1-seal-note b { display: block; font-size: 7.5pt; color: #12306b; letter-spacing: .06em; margin-bottom: .6mm; }
 .bx1-seal-note span { display: block; margin-top: .6mm; }
