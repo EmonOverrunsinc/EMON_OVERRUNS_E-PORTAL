@@ -13,7 +13,7 @@
 (() => {
   "use strict";
   const E = window.EO;
-  const { sb, S, esc, peso, isoToday, isoDay, mdy, $, isAdmin, toast, fail, ic, busy, num, fullName } = E;
+  const { sb, S, esc, peso, isoToday, isoDay, mdy, $, isAdmin, ic, busy, num, fullName } = E;
   const V = window.EO_VIEWS;
   const BUCKET = "ai", FOLDER = "gate-pass";
   const notSet = (e) => ["PGRST205", "PGRST202", "42P01"].includes(e?.code) || /ai_models|ai_gate_log|schema cache|Bucket not found/i.test(e?.message || "");
