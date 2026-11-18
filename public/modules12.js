@@ -16,7 +16,7 @@
 (() => {
   "use strict";
   const E = window.EO;
-  const { sb, S, esc, peso, isoToday, isoDay, mdy, $, isAdmin, toast, fail, ic, num, fullName, qtyText } = E;
+  const { sb, S, esc, peso, isoToday, isoDay, mdy, $, toast, fail, ic, num, fullName, qtyText } = E;
 
   // ======================================================================
   // Words: the same word written a little wrong ("cureent", "balanse") is read as the word it is close to
