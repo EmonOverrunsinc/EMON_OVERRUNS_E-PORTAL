@@ -569,7 +569,7 @@
         <label for="paRef">Reference No</label><input type="text" id="paRef" maxlength="60">
         <label for="paNotes">Notes</label><input type="text" id="paNotes" maxlength="300">
       </div></div>
-      <fieldset class="opt pa-card"><legend>Verify the employee: scan the QR code on their ID card *</legend>
+      <fieldset class="opt pa-card"><legend>Verify the employee: scan the QR code on their ID card${E.isAdmin() ? " (not needed for the Director)" : " *"}</legend>
         <div class="btnrow"><button type="button" class="btn primary" id="paScan">${ic("scan")} Scan ID Card</button>
           <input type="text" id="paCode" placeholder="or scan with the USB scanner here" autocomplete="off" spellcheck="false" style="flex:1 1 220px"></div>
         <div id="paCard" class="pa-res muted">Not verified yet.</div></fieldset>`,
@@ -577,10 +577,12 @@
     const d = m.el;
     const emp = () => list.find((e) => e.id === $("#paEmp", d).value);
     const slip = () => open.find((p) => p.id === ($("input[name=paSlip]:checked", d) || {}).value);
-    const ready = () => { $("[data-save]", d).disabled = !(emp() && slip() && card && card.employee_id === emp().id && card.state === "VALID"); };
+    // 3.99.76: the Director may pay without the card (a card scanned must still be the employee's valid card)
+    const cardOk = () => (card ? card.employee_id === emp()?.id && card.state === "VALID" : E.isAdmin());
+    const ready = () => { $("[data-save]", d).disabled = !(emp() && slip() && cardOk()); };
     const showCard = () => {
       const el = $("#paCard", d), e = emp();
-      if (!card) { el.className = "pa-res muted"; el.textContent = "Not verified yet."; }
+      if (!card) { el.className = "pa-res muted"; el.textContent = E.isAdmin() ? "Director: you can pay without scanning the card." : "Not verified yet."; }
       else if (!card.found) { el.className = "pa-res bad"; el.textContent = "✖ This is not a valid EMON OVERRUNS ID card."; }
       else if (e && card.employee_id !== e.id) { el.className = "pa-res bad"; el.textContent = `✖ This is the card of ${card.name} (${card.card_no}), not of ${fullName(e).toUpperCase()}.`; }
       else if (card.state !== "VALID") { el.className = "pa-res bad"; el.textContent = `✖ ${card.card_no}: ${card.state}. Use the employee's new card.`; }
@@ -614,7 +616,7 @@
       if (amt > num(p.balance) + 0.001) return toast(`Only ₱ ${peso(p.balance)} is left on ${p.payslip_no}.`, true);
       const btn = $("[data-save]", d); btn.disabled = true;
       const { data, error } = await sb.rpc("pay_salary", { p_payslip: p.id, p_amount: amt, p_date: $("#paDate", d).value || isoToday(), p_method: $("#paMethod", d).value,
-        p_ref: $("#paRef", d).value.trim(), p_notes: $("#paNotes", d).value.trim(), p_card: card.code });
+        p_ref: $("#paRef", d).value.trim(), p_notes: $("#paNotes", d).value.trim(), p_card: card?.code || "" });
       if (error) { btn.disabled = false; return missingSql(error, "Could not record the payment"); }
       m.close();
       toast(`Salary paid — ${data.payment_no}: ₱ ${peso(data.amount)} on payslip ${p.payslip_no}.`);
