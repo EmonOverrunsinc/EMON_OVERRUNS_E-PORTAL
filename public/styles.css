@@ -3686,7 +3686,7 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxr-facts > div { border-top-color: #c9a227; }
 .bxr-counts small, .bxr-facts small { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #5b6577; }
 .bxr-counts b { font-size: 18px; color: #12306b; } .bxr-facts b { font-size: 13.5px; color: #1b2433; }
-.bxr-counts .ok { border-top-color: #1e8e3e; } .bxr-counts .ok b { color: #1e8e3e; font-size: 15px; }
+.bxr-counts .ok { border-top-color: #1e8e3e; } .bxr-counts .ok b { color: #1e8e3e; }
 .bxr-counts .bad { border-top-color: #c41e3a; } .bxr-counts .bad b { color: #c41e3a; }
 /* the print: counts in one row of small boxes, the total amount sold in green */
 .bxp-sum { display: flex; gap: 4px; margin: 0 0 6px; }
