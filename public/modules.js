@@ -2264,7 +2264,8 @@
     $("#fbPrint").onclick = () => {
       // 3.99.48: one SUMMARY box in the style of the Details box: the counts in row 1, the money in row 2
       const sc = (k, v, c = "", span = 1) => `<div class="pcell bxs ${c}"${span > 1 ? ` style="grid-column: span ${span}"` : ""}><div class="pl">${esc(k)}</div><div class="pv">${esc(v)}</div></div>`;
-      const row2 = [["On Order", qtyText(of("order").length)], ...(arr ? [["Shipped", qtyText(of("shipped").length)]] : []), ...(avgPrice ? [["Average Price per Pc (₱)", peso(avgPrice)]] : [])];
+      // 3.99.51: On Order and Shipped only when some boxes are
+      const row2 = [...(of("order").length ? [["On Order", qtyText(of("order").length)]] : []), ...(arr && of("shipped").length ? [["Shipped", qtyText(of("shipped").length)]] : []), ...(avgPrice ? [["Average Price per Pc (₱)", peso(avgPrice)]] : [])];
       const sumHtml = E.box("Summary", `<div class="pgrid4 bxsum">${sc("Boxes", qtyText(rows.length))}${sc("Pcs", qtyText(pcs))}${sc("Sold Boxes", qtyText(soldRows.length), "ok")}${sc("In Stock", qtyText(of("stock").length), "bad")}
         ${row2.map(([k, v]) => sc(k, v)).join("")}${sc("Total Amount Sold (₱)", peso(soldAmt), "amt", 4 - row2.length)}</div>`);
       const det = facts.filter(([k]) => !["Product", "Brand", "Date Sold"].includes(k));
