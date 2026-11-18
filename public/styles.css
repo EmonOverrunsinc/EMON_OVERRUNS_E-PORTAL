@@ -3853,3 +3853,7 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .bx1-band, .bxp-sum.money { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .bx1-band > .w2, .bxp-sum.money > div { grid-column: span 2; }
 .page .bx1-band, .page .bxp-sum.money { gap: 5px; }
+/* 3.99.90: the 1-box print: the words in the Serial No · Status · Pcs and Price · Amount Sold boxes a little smaller */
+.page .bx1-band > div, .page .bxp-sum.money > div { padding: 3px 8px 4px; }
+.page .bx1-band small, .page .bxp-sum.money small { font-size: 6pt; margin-bottom: 0; }
+.page .bx1-band b, .page .bxp-sum.money b, .page .bxp-sum.money .amt b { font-size: 10.5pt; line-height: 1.2; }
