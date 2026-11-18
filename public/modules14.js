@@ -433,7 +433,7 @@
             <div class="c2-eqb tot"><b>${td == null ? "—" : td + DUE}</b><small>DAYS TO PAY</small></div>
           </div>
           <div class="c2-eqdue"><small>DUE DATE</small><b>${esc(i._due ? mdy(i._due.ext) : "COUNTED FROM THE INVOICE DATE")}</b></div>
-          <div class="c2-ver">${E.secSeal(i.ins_no, { code: sealNo, cls: "sm" })}</div>
+          <div class="c2-ver">${E.secSeal(i.ins_no, { code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
         </div></div>
       </div>
       <div class="c2-decl">${sec("CERTIFICATION")}
@@ -444,7 +444,7 @@
         ${codeBox("INVOICE NO.", invoice?.invoice_no ? "EMONINV|" + invoice.invoice_no : "", invoice?.invoice_no || "AFTER DELIVERY")}
         ${sig("ISSUED BY", { name: who.approver, note: `Authorized Signatory · ${i.approved_at ? mdy(i.approved_at) : ""}` }, sign.pic)}
       </div>
-      <div class="c2-foot"><span>This certificate is valid only when its number is verified by the QR code. The terms of the EO-OFFICE COVERAGE in the E-Portal form part of this certificate.</span><span>${esc(C.company.name)} &nbsp;|&nbsp; Pasay City, Metro Manila</span></div></div>`;
+      <div class="c2-foot"><span>This certificate is valid only when its seal number is verified at ${esc(E.siteName?.() || "emonoverruns.online")}/verify. The terms of the EO-OFFICE COVERAGE in the E-Portal form part of this certificate.</span><span>${esc(C.company.name)} &nbsp;|&nbsp; Pasay City, Metro Manila</span></div></div>`;
     E.openPreview(`Coverage Certificate ${i.ins_no}`, [front], { bare: true }); // 3.78.3: 1 page, A4 portrait
   }
 
