@@ -3877,3 +3877,26 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .eos.sm { width: 60mm; height: 26mm; }
 .c2-ver:has(.eos) { display: flex; justify-content: center; align-items: center; padding: 1.5mm; }
 .eos.sm .eos-no { font-size: 9.2pt; letter-spacing: .03em; }
+/* 3.99.96: the seal: more microtext (a ring round the logo, the four edges), whole words only */
+.eos { grid-template-columns: 17mm 1fr; padding: 0 3.4mm; gap: 2.4mm; }
+.eos-logo { position: relative; width: 17mm; height: 17mm; border-radius: 50%; box-shadow: 0 0 0 .3mm rgba(18,48,107,.18); background: none; }
+.eos-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.eos-logo-in { position: absolute; inset: 14%; border-radius: 50%; overflow: hidden; background: #fff; display: grid; place-items: center; }
+.eos-logo-in .eos-img { display: block; width: 100%; height: 100%; object-fit: contain; padding: .6mm; box-sizing: border-box; background: #fff; font: 800 9pt/11mm Arial, sans-serif; text-align: center; color: #12306b; }
+.eos-mid { justify-content: center; gap: 1.6mm; padding: 3mm 0; }
+.eos-micro { position: absolute; display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 1.4mm; overflow: hidden;
+  font: 600 3pt/3.6pt Arial, sans-serif; letter-spacing: .03em; color: #12306b; opacity: .9; white-space: nowrap; }
+.eos-micro span:nth-child(3n+3) { color: #8a6a12; }
+.eos-micro.t, .eos-micro.b { left: 2.4mm; right: 2.4mm; height: 3.6pt; }
+.eos-micro.t { top: 1.1mm; } .eos-micro.b { bottom: 1.1mm; }
+.eos-micro.l, .eos-micro.r { top: 3mm; bottom: 3mm; width: 3.6pt; writing-mode: vertical-rl; }
+.eos-micro.l { left: 1.05mm; transform: rotate(180deg); } .eos-micro.r { right: 1.05mm; }
+.eos.sm .eos-no { font-size: 9.2pt; }
+.eos .eos-micro > span { font: 600 3pt/3.6pt Arial, Helvetica, sans-serif; letter-spacing: .03em; margin: 0; padding: 0; display: inline; }
+.eos .eos-no { font-size: 9.4pt; letter-spacing: .02em; } .eos.sm .eos-no { font-size: 8.6pt; }
+.eos { padding: 0 4mm; }
+.eos .eos-micro > span { font-size: 2.7pt; line-height: 3.3pt; }
+.eos-micro { column-gap: 1mm; }
+.eos-micro.t, .eos-micro.b { left: 3mm; right: 3mm; height: 3.3pt; } .eos-micro.t { top: 1.55mm; } .eos-micro.b { bottom: 1.55mm; }
+.eos-micro.l, .eos-micro.r { top: 3.4mm; bottom: 3.4mm; width: 3.3pt; } .eos-micro.l { left: 1.5mm; } .eos-micro.r { right: 1.5mm; }
+.eos .eos-no { font-size: 8.8pt; } .eos.sm .eos-no { font-size: 8.8pt; }
