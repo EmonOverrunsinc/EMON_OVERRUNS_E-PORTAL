@@ -3737,3 +3737,5 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxr-counts .cost { border-top-color: #c9a227; } .bxr-counts .cost b { color: #8a5a00; }
 .bxsum .pcell.bxs.cost .pv { color: #8a5a00; }
 .bxr-counts .cost { grid-column: span 2; } .bxr-counts b { white-space: nowrap; }
+/* 3.99.53: the link from EVA AI to EVA Records */
+.ai-more { display: block; margin-top: 14px; } .ai-more .ic { width: 16px; height: 16px; color: #c9a227; vertical-align: -3px; margin-right: 4px; }
