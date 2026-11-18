@@ -874,7 +874,7 @@
   let BOX = null;
   async function boxData() {
     if (BOX && Date.now() - BOX.at < 5000) return BOX;
-    const [stock, onOrders] = await Promise.all([rows(() => sb.from("box_stock").select("serial_no, product, brand, ctn, style, qty, batch").order("serial_no")),
+    const [stock, onOrders] = await Promise.all([rows(() => sb.from("box_stock").select("serial_no, product, brand, ctn, style, qty, batch, price").order("serial_no")),
       rows(() => sb.from("customer_order_boxes").select("serial_no, customer_orders(id, order_no, status, customer_id)").order("id"))]);
     const where = new Map();
     for (const b of onOrders) if (b.customer_orders && b.customer_orders.status !== "cancelled") where.set(b.serial_no, b.customer_orders);
@@ -882,6 +882,17 @@
     return BOX;
   }
   const STOCK_STOP = new Set(["how", "what", "which", "the", "of", "in", "for", "this", "brand", "product", "by", "have", "has", "are", "there", "show", "much", "pcs", "piece", "pieces", "now"]);
+  // 3.99.58: prices: the average price per pc (by pcs) of a list of boxes, and the SUGGESTED price of a box (the boxes of
+  // the same product + brand with a price, else of the same product); the cost of one box (EVA Records, ₱3,200)
+  const avgPrice = (list) => { const l = list.filter((x) => num(x.price) > 0), q = l.reduce((a, x) => a + (num(x.qty) || 1), 0); return q ? l.reduce((a, x) => a + num(x.price) * (num(x.qty) || 1), 0) / q : 0; };
+  function suggestFor(b, stock) {
+    const pr = String(b.product || "").toUpperCase(), br = String(b.brand || "").toUpperCase();
+    const same = stock.filter((x) => x.serial_no !== b.serial_no && num(x.price) > 0 && String(x.product || "").toUpperCase() === pr);
+    const sameBrand = same.filter((x) => String(x.brand || "").toUpperCase() === br), from = sameBrand.length ? sameBrand : same;
+    return { price: Math.round(avgPrice(from) * 100) / 100, n: from.length, label: [b.product, sameBrand.length && b.brand && b.brand !== "-" ? b.brand : ""].filter(Boolean).join(" · ") };
+  }
+  const boxCost = () => sb.from("ai_settings").select("value").eq("key", "box_cost").maybeSingle().then((r) => num(r.data?.value?.amount) || 3200, () => 3200);
+  const PRICE_WORDS = /\b(price|prices|priced|average|avg|suggest|suggested|suggestion|rate|cost|value|worth|presyo|magkano|expect|expected|amount|total)\b/i;
   const boxState = (o, b, sale, hasArrival) => BOX_STATE[boxKey(b, o, sale, hasArrival)];
   async function aBox(serial) {
     const [b, on, sale, arr] = await Promise.all([one(sb.from("box_stock").select("*").eq("serial_no", serial).maybeSingle()),
@@ -891,7 +902,17 @@
     if (!b && !o) return { html: `Box <b class="mono">${esc(serial)}</b> is not in the box database. If it is in your Google Sheet, press <b>Read Sheet</b> on the <a href="#evadata">EVA Records</a> page.` };
     const st = boxState(o, b, sale, arr);
     const soldTxt = sale ? ` · invoice <a href="#invoice/${esc(sale.invoice_id)}">${esc(sale.invoice_no || "")}</a> · ${qtyText(sale.pcs)} pcs × ₱ ${peso(sale.price)} = <b>₱ ${peso(sale.total)}</b>` : "";
-    return { cust: o?.customers, html: `Box <b class="mono">${esc(serial)}</b>: <b>${esc(st)}</b>${o ? ` · order <a href="#custorder/${esc(o.id)}">${esc(o.order_no)}</a>${o.customers ? ` for ${custLink(o.customers)}` : ""}` : ""}${soldTxt}
+    // 3.99.58: the price of the box: its price x pcs = total, else the suggested price and the expected total
+    let priceTxt = "";
+    if (b && !sale) {
+      if (num(b.price) > 0) priceTxt = `<br>Price: <b>₱ ${peso(b.price)}</b> per pc × ${qtyText(b.qty)} pcs = <b class="eva-amt">₱ ${peso(num(b.price) * num(b.qty))}</b>`;
+      else {
+        const sg = suggestFor(b, (await boxData()).stock);
+        priceTxt = sg.price ? `<br>No price in the sheet yet. <b>Suggested price: ₱ ${peso(sg.price)}</b> per pc (the average of ${qtyText(sg.n)} box${sg.n === 1 ? "" : "es"} of ${esc(sg.label)}) · expected total ${qtyText(b.qty)} pcs × ₱ ${peso(sg.price)} = <b class="eva-amt">₱ ${peso(sg.price * num(b.qty))}</b>`
+          : "<br>No price in the sheet yet, and no box of the same product has a price to suggest one.";
+      }
+    }
+    return { cust: o?.customers, html: `Box <b class="mono">${esc(serial)}</b>: <b>${esc(st)}</b>${o ? ` · order <a href="#custorder/${esc(o.id)}">${esc(o.order_no)}</a>${o.customers ? ` for ${custLink(o.customers)}` : ""}` : ""}${soldTxt}${priceTxt}
       ${b ? table(["Product", "Brand", "CTN", "Style", "Pcs", "Batch", "Price", "Arrival", ...Object.keys(b.extra || {})], [[esc(b.product || ""), esc(b.brand || ""), esc(b.ctn || ""), esc(b.style || ""), qtyText(b.qty), esc(b.batch || ""),
         num(b.price) ? peso(b.price) : "", b.arrival_date ? esc(mdy(b.arrival_date)) : "", ...Object.values(b.extra || {}).map((v) => esc(v))]]) : "<br>(not in the box database: the order's details are shown on the order)"}` };
   }
@@ -927,6 +948,19 @@
       for (const b of inS) { const k = `${b.product || ""}${b.brand && b.brand !== "-" ? ` · ${b.brand}` : ""}`; const x = g.get(k) || { n: 0, pcs: 0 }; x.n++; x.pcs += num(b.qty); g.set(k, x); }
       const top = [...g.entries()].sort((x, y) => y[1].n - x[1].n).slice(0, 12);
       if (top.length) html += table(["Product · Brand", "Boxes", "Pcs"], top.map(([k, x]) => [esc(k), qtyText(x.n), qtyText(x.pcs)]));
+    }
+    // 3.99.58: the prices: the average price per pc, the total (price x pcs of each box with a price), the total cost, and a
+    // suggested price for the boxes without one
+    {
+      const priced = pick.filter((b) => num(b.price) > 0), avg = avgPrice(priced), total = priced.reduce((t, b) => t + num(b.price) * num(b.qty), 0);
+      const cost = await boxCost(), noPrice = pick.filter((b) => !(num(b.price) > 0));
+      let sg = avg;
+      if (!sg && noPrice.length) { const x = suggestFor(noPrice[0], d.stock); sg = x.price; }
+      const wantPrice = PRICE_WORDS.test(q.text || "") || q.rest.some((w) => PRICE_WORDS.test(w));
+      if (priced.length || wantPrice) {
+        html += `<br><b>Prices of ${esc(label)}:</b> ${priced.length ? `average price <b>₱ ${peso(avg)}</b> per pc (${qtyText(priced.length)} box${priced.length === 1 ? "" : "es"} with a price) · total ${qtyText(priced.reduce((t, b) => t + num(b.qty), 0))} pcs × price = <b class="eva-amt">₱ ${peso(total)}</b>` : "no box has a price in the sheet yet"}
+          · total cost ₱ ${peso(cost)} × ${qtyText(pick.length)} boxes = <b>₱ ${peso(cost * pick.length)}</b>${noPrice.length && sg ? ` · <b>suggested price ₱ ${peso(sg)}</b> per pc for the ${qtyText(noPrice.length)} box${noPrice.length === 1 ? "" : "es"} without a price (expected ₱ ${peso(sg * noPrice.reduce((t, b) => t + num(b.qty), 0))})` : ""}`;
+      }
     }
     // 3.60: the e-bill of the batch
     if (batch && (E.hasModule("inventory") || E.hasModule("billing"))) {
@@ -1013,6 +1047,15 @@
       if (r.ent) ctx.lastOf[r.ent.kind] = r.ent.item;
       return { ...r, intent, sure };
     };
+    // 3.99.58: a word of the question that is a serial no in the box database (any form, e.g. EO-SS13-002) is a box
+    if (!q.codes.serial.length && !q.codes.doc.length) {
+      const toks = (String(text || "").toUpperCase().match(/[A-Z0-9][A-Z0-9-]{4,59}/g) || []).filter((x) => /\d/.test(x));
+      if (toks.length) {
+        const d = await boxData().catch(() => null);
+        const hit = d && toks.find((x) => d.stock.some((b) => String(b.serial_no).toUpperCase() === x));
+        if (hit) { q.codes.serial.push(hit); q.codes.batch = q.codes.batch.filter((x) => !hit.includes(x)); }
+      }
+    }
     // what the codes in the question say at once
     if (q.codes.doc.length) intent = "find";
     else if (q.codes.ebill.length) intent = "ebills";
