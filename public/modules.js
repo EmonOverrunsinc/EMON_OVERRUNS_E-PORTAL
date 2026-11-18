@@ -2208,7 +2208,8 @@
     const span = (f) => { const ds = rows.map(f).filter(Boolean).sort(); return ds.length ? day(ds[0]) : ""; }; // 3.99.44: one date (the first), no range
     const words = (f) => { const v = [...new Set(rows.map(f).filter(Boolean))]; return v.length > 3 ? `${v.slice(0, 3).join(", ")} +${v.length - 3}` : v.join(", "); };
     const ex = [...new Set(rows.flatMap((r) => Object.keys(r.extra || {})))];
-    const company = words((r) => r.extra?.COMPANY || r.extra?.SUPPLIER || "");
+    const coName = (r) => [r.extra?.COMPANY, r.extra?.SUPPLIER].find((v) => /[A-Z]/i.test(v || "")) || ""; // 3.99.74: a number is never a company
+    const company = words(coName);
     const exTable = ex.filter((k) => !["COMPANY", "SUPPLIER"].includes(k)); // company is in the summary
     const title = kind === "serial" ? `Box ${key}` : `Batch ${key}`;
     // the details of the search (screen and print): only those the sheet has
@@ -2250,7 +2251,7 @@
       if (lastDone < 0 && r.st === "stock") lastDone = 2; // in stock: it has arrived
       const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="${/^[A-Z]{3} \d{2} \d{4}$/.test(x) ? "dt" : "nw"}">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
       const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
-        ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Cost per Box (₱)", peso(boxCost)], ["Price (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
+        ["Company", coName(r)], ["Cost per Box (₱)", peso(boxCost)], ["Price (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
         ["Suggested Price", !r.price && suggest ? peso(suggest) : ""], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
         ].filter(([, v]) => v); // 3.99.72: no other sheet columns
       const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>`
