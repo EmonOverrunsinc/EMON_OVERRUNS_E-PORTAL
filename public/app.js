@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.77"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.78"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.77"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.78"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -688,7 +688,7 @@
     if (/credential_exists/.test(c + m)) return "This device already has a passkey for your account.";
     if (/email_not_confirmed/.test(c + m)) return "Your email is not confirmed yet.";
     if (/banned/i.test(m)) return "This account is blocked. Contact EMON HASAN.";
-    if (/SecurityError|rp ?id|origin/i.test(c + m + (err?.name || ""))) return "Passkeys work only on www.emonoverruns.online (not on this address).";
+    if (/SecurityError|rp ?id|origin/i.test(c + m + (err?.name || ""))) return `The passkey was blocked on ${location.hostname}. In Supabase › Authentication › Passkeys: Relying Party ID = emonoverruns.online, and Relying Party Origins must list https://${location.hostname}.${/emonoverruns\.online$/.test(location.hostname) ? "" : " This address cannot use passkeys: open www.emonoverruns.online."} (${err?.name || c || "error"}: ${m.slice(0, 120)})`;
     return m || "The passkey did not work. Sign in with your password.";
   }
   async function pkSignIn(quiet = false, onFail = (w) => toast(w, true)) {
