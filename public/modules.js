@@ -1982,7 +1982,7 @@
             <div><b>Defect Category</b>${Object.entries(DEFECT).map(([k, v], i) => `<label class="rline"><input type="radio" name="cmDef" value="${k}" ${i ? "" : "checked"}> ${v}</label>`).join("")}
               <div class="fields wide"><label for="cmDefD">Details</label><input type="text" id="cmDefD" placeholder="e.g. DOMINANT 60% GREEN"></div></div>
             <div><b>Requested Action</b>${Object.entries(ACTION).map(([k, v]) => `<label class="rline"><input type="radio" name="cmAct" value="${k}" ${k === "discount" ? "checked" : ""}> ${v}</label>`).join("")}
-              <div class="fields wide"><label for="cmRate">Rate per pc (₱)</label><input type="number" id="cmRate" min="0" step="0.01" value="0">
+              <div class="fields wide"><label for="cmRate">Rate (₱)</label><input type="number" id="cmRate" min="0" step="0.01" value="0">
               <label for="cmAmt">Requested Amount (₱)</label><input type="number" id="cmAmt" min="0" step="0.01" value="0"></div>
               <small id="cmCalc"></small>
               <div id="cmSettle"><b>Settle By</b> <small>(how the money goes back to the customer)</small>${Object.entries(SETTLE).map(([k, v]) => `<label class="rline"><input type="radio" name="cmSet" value="${k}" ${k === "account_credit" ? "checked" : ""}> ${v}</label>`).join("")}
@@ -2250,9 +2250,9 @@
       if (lastDone < 0 && r.st === "stock") lastDone = 2; // in stock: it has arrived
       const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="${/^[A-Z]{3} \d{2} \d{4}$/.test(x) ? "dt" : "nw"}">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
       const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
-        ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Cost per Box (₱)", peso(boxCost)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
+        ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Cost per Box (₱)", peso(boxCost)], ["Price (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
         ["Suggested Price", !r.price && suggest ? peso(suggest) : ""], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
-        ...exTable.map((k) => [k, r.extra?.[k] || ""])].filter(([, v]) => v);
+        ].filter(([, v]) => v); // 3.99.72: no other sheet columns
       const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>`
         : k === "Return" && ret ? `<a class="nw" href="#creditmemo/${esc(ret.id)}">${esc(v)}</a>` : esc(v));
       const big = r.amount > 0 ? ["Amount Sold", `₱ ${peso(r.amount)}`] : ["Pcs", qtyText(r.qty)]; // 3.99.62: the suggested price is no amount
@@ -2268,9 +2268,9 @@
       // 3.99.59: the print like the screen: cards, with security marks against copies (fine wave lines in the background,
       // microtext lines with the serial no, the PDF417)
       $("#fbPrint").onclick = () => {
-        const money = r.price ? [["Price per Pc (₱)", peso(r.price)], [sold1 ? "Amount Sold (₱)" : "Amount (₱)", peso(r.amount || r.price * num(r.qty))]]
+        const money = r.price ? [["Price (₱)", peso(r.price)], [sold1 ? "Amount Sold (₱)" : "Amount (₱)", peso(r.amount || r.price * num(r.qty))]]
           : []; // 3.99.62: the suggested price is only a card (a guide, no amount counted)
-        const cards = det.filter(([k]) => !["Pcs", "Price per Pc (₱)", "Amount (₱)"].includes(k) && !(k === "Suggested Price" && money.length));
+        const cards = det.filter(([k]) => !["Pcs", "Price (₱)", "Amount (₱)"].includes(k) && !(k === "Suggested Price" && money.length));
         const micro = `EMON OVERRUNS · ${r.serial_no} · `.repeat(24); // 3.99.70: no BX- number, no ORIGINAL
         E.openPreview(title, [`${printHead("SEARCH RESULT", `<img src="${E.pdf417DataUrl("EMONBOX|" + r.serial_no)}" alt="" class="ph-bar"><div class="mono">${esc(r.serial_no)}</div>`)}
           <div class="bxsec">
@@ -2279,7 +2279,7 @@
           ${money.length ? `<div class="bxp-sum money"><div><small>${esc(money[0][0])}</small><b>${money[0][1]}</b></div><div class="amt${sold1 ? "" : " sug"}"><small>${esc(money[1][0])}</small><b>${money[1][1]}</b></div></div>` : ""}
           ${E.box("Tracking", track)}
           <div class="bxcards">${cards.map(([k, v, n]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b>${n ? `<em>${esc(n)}</em>` : ""}</div>`).join("")}</div>
-          <div class="bxsec-micro">${esc(micro)}</div></div>`]);
+          <div class="bxsec-micro">${esc(micro)}</div></div>`], { bare: true }); // 3.99.72: no Date Printed box, no page number
       };
       E.setRecords("Boxes: 1");
       return true;
@@ -2302,7 +2302,7 @@
       // 3.99.48: one SUMMARY box in the style of the Details box: the counts in row 1, the money in row 2
       const sc = (k, v, c = "", span = 1) => `<div class="pcell bxs ${c}"${span > 1 ? ` style="grid-column: span ${span}"` : ""}><div class="pl">${esc(k)}</div><div class="pv">${esc(v)}</div></div>`;
       // 3.99.51: On Order and Shipped only when some boxes are
-      const row2 = [...(of("order").length ? [["On Order", qtyText(of("order").length)]] : []), ...(arr && of("shipped").length ? [["Shipped", qtyText(of("shipped").length)]] : []), ...(avgPrice ? [["Average Price per Pc (₱)", peso(avgPrice)]] : [])];
+      const row2 = [...(of("order").length ? [["On Order", qtyText(of("order").length)]] : []), ...(arr && of("shipped").length ? [["Shipped", qtyText(of("shipped").length)]] : []), ...(avgPrice ? [["Average Price (₱)", peso(avgPrice)]] : [])];
       const sumHtml = E.box("Summary", `<div class="pgrid4 bxsum">${sc("Boxes", qtyText(rows.length))}${sc("Pcs", qtyText(pcs))}${sc("Sold Boxes", qtyText(soldRows.length), "ok")}${sc("In Stock", qtyText(of("stock").length), "bad")}
         ${row2.map(([k, v]) => sc(k, v)).join("")}${sc(costLbl, peso(totalCost), "cost")}${sc("Total Amount Sold (₱)", peso(soldAmt), "amt", 4 - ((row2.length + 1) % 4))}</div>`);
       const det = facts.filter(([k]) => !["Product", "Brand", "Date Sold"].includes(k));

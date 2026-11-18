@@ -70,7 +70,7 @@
       { label: "Invoice", html: (r) => (r.invoice_id && E.canOpen("invoice") ? `<a href="#invoice/${esc(r.invoice_id)}">${esc(r.invoice_no || "")}</a>` : esc(r.invoice_no || "")) },
       { label: "Order", phone: false, html: (r) => `<a href="#custorder/${esc(r.order_id)}">${esc(r.order_no || "")}</a>` }, { label: "Customer", wrap: true, get: (r) => r.customer_name || "" }];
     $("#sbBody").innerHTML = `<div class="window"><div class="wtitle">Sold Boxes</div><div class="wbody">
-      <p class="muted" style="margin-top:0">Every box of an invoiced (completed) order, with the price per pc, the pcs, the total and the invoice no.</p>
+      <p class="muted" style="margin-top:0">Every box of an invoiced (completed) order, with the price, the pcs, the total and the invoice no.</p>
       <div class="btnrow"><input type="search" id="sbQ" placeholder="Search serial no, product, invoice, order or customer" style="flex:1;min-width:220px">
         <button type="button" class="btn primary" id="sbCsv">${ic("download")} Download (Excel / CSV)</button></div>
       <div class="rec-tiles" id="sbTiles"></div><div id="sbGrid"></div></div></div>`;
@@ -173,7 +173,7 @@
         <fieldset class="opt of-step"><legend><i>1</i> Customer</legend><div id="coCust"></div></fieldset>
         <fieldset class="opt of-step"><legend><i>2</i> Boxes</legend>
           <p class="of-say">Scan each box sticker: each box becomes <b>its own line</b>. The sheet's price fills in by itself; otherwise the price box shows a <b>suggested price</b> in grey (from your past prices of the same product) and you write the price. No sticker? Skip this step and type the lines.</p>
-          <div class="fields wide of-price"><label for="cfAllPrice">Price per pc for all boxes (optional)</label><input type="number" id="cfAllPrice" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 40.00"></div>
+          <div class="fields wide of-price"><label for="cfAllPrice">Price for all boxes (optional)</label><input type="number" id="cfAllPrice" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 40.00"></div>
           <div class="btnrow"><button type="button" class="btn" id="cfSuggest">${ic("check")} Use the Suggested Prices</button></div>
           <div class="btnrow cf-scan"><button type="button" class="btn primary" id="cfScan">${ic("scan")} Scan Boxes</button>
             <label class="btn" for="cfPhoto">${ic("image")} Box Label Photo</label><input type="file" id="cfPhoto" accept="image/*" multiple hidden>
@@ -754,10 +754,10 @@
     if (!dl?.has_pcs) return "";
     const ls = (dl.lines || []).filter((l) => num(l.ordered) || num(l.delivered)), odd = dl.odd || [];
     const oddHtml = odd.length ? `<div class="co-odd"><div class="cc-h">NOT ORDERED — ${boxesText(odd.reduce((t, g) => t + num(g.boxes), 0))} · ${qtyText(odd.reduce((t, g) => t + num(g.pcs), 0))} pcs not on the order, not charged yet.
-        ${isAdmin() ? "Add the price per pc: the items are added to the order and the invoice is charged." : "EMON HASAN adds the price."}</div>
-      <div class="grid-scroll"><table class="bx-table cc-table"><thead><tr><th class="num">BOXES</th><th>BATCH NO</th><th>CODE</th><th>ITEMS</th><th class="num">PCS</th>${isAdmin() ? `<th>PRICE PER PC (₱)</th><th></th>` : ""}</tr></thead><tbody>
+        ${isAdmin() ? "Add the price: the items are added to the order and the invoice is charged." : "EMON HASAN adds the price."}</div>
+      <div class="grid-scroll"><table class="bx-table cc-table"><thead><tr><th class="num">BOXES</th><th>BATCH NO</th><th>CODE</th><th>ITEMS</th><th class="num">PCS</th>${isAdmin() ? `<th>PRICE (₱)</th><th></th>` : ""}</tr></thead><tbody>
       ${odd.map((g, i) => `<tr data-odd="${i}"><td class="num">${qtyText(g.boxes || g.lines)}</td><td>${esc(g.lot || "—")}</td><td>${esc(g.code || "—")}</td><td>${esc(g.items || "—")}<br><small class="muted">${esc(g.serials || "")}</small></td><td class="num">${qtyText(g.pcs)}</td>
-        ${isAdmin() ? `<td><input type="number" class="odd-price" min="0" step="0.01" placeholder="0.00" aria-label="Price per pc"></td><td><button type="button" class="btn small primary odd-add">${ic("check")} Add Price</button></td>` : ""}</tr>`).join("")}</tbody></table></div></div>` : "";
+        ${isAdmin() ? `<td><input type="number" class="odd-price" min="0" step="0.01" placeholder="0.00" aria-label="Price"></td><td><button type="button" class="btn small primary odd-add">${ic("check")} Add Price</button></td>` : ""}</tr>`).join("")}</tbody></table></div></div>` : "";
     if (!ls.some((l) => num(l.ordered) !== num(l.delivered)) && !odd.length) return "";
     const done = o.status === "completed", diff = (l) => num(l.delivered) - num(l.ordered);
     const dt = (n) => (n ? `<b class="${n > 0 ? "cm-plus" : "cm-bad"}">${n > 0 ? "+" : ""}${qtyText(n)}</b>` : "✅");
@@ -771,7 +771,7 @@
     $$("#main .odd-add").forEach((b) => (b.onclick = async () => {
       const tr = b.closest("tr"), g = (o._dl?.odd || [])[Number(tr.dataset.odd)], price = num($(".odd-price", tr).value);
       if (!g) return;
-      if (!(price > 0)) return toast("Enter the price per pc.", true);
+      if (!(price > 0)) return toast("Enter the price.", true);
       if (!(await E.confirmBox(`Add <b>${esc(g.items || "these items")}</b> (${esc(qtyText(g.pcs))} pcs × ₱ ${esc(peso(price))} = <b>₱ ${esc(peso(num(g.pcs) * price))}</b>) to order <b>${esc(o.order_no)}</b>?${o.status === "completed" ? "<br><br>The invoice is charged too." : ""}`, { ok: "Add Price" }))) return;
       b.disabled = true;
       const { error } = await sb.rpc("price_not_ordered", { p_order: o.id, p_code: g.code || "", p_lot: g.lot || "", p_items: g.items || "", p_price: price });
