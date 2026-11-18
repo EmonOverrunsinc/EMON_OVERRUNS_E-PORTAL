@@ -2281,6 +2281,7 @@
           ${money.length ? `<div class="bxp-sum money"><div><small>${esc(money[0][0])}</small><b>${money[0][1]}</b></div><div class="amt${sold1 ? "" : " sug"}"><small>${esc(money[1][0])}</small><b>${money[1][1]}</b></div></div>` : ""}
           ${E.box("Tracking", track)}
           <div class="bxcards">${cards.map(([k, v, n]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b>${n ? `<em>${esc(n)}</em>` : ""}</div>`).join("")}</div>
+          <div class="bx1-seal"><div class="bx1-seal-note"><b>SECURITY SEAL</b><span>This print is genuine only with this seal: silver tiles with a colour shine, fine gold lines, microtext and the serial no of this box. A photocopy loses them.</span><span>Check the box: scan the barcode at the top with Scan in the E-Portal.</span></div>${E.secSeal(r.serial_no)}</div>
           <div class="bxsec-micro">${esc(micro)}</div></div>`], { bare: true }); // 3.99.72: no Date Printed box, no page number
       };
       E.setRecords("Boxes: 1");

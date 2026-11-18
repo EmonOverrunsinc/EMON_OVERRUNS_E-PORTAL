@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.90"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.91"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.90"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.91"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -564,6 +564,18 @@
   const logoHtml = (cls = "co-logo") => S.logoUrl
     ? `<img class="${cls}" src="${esc(S.logoUrl)}" alt="${esc(C.company.name)} logo">`
     : `<span class="${cls} co-logo-fallback" aria-hidden="true">EO</span>`;
+
+  // 3.99.91: the SECURITY SEAL of a printed record (a hologram-style sticker, our own design): silver tiles with a colour
+  // shine, a fine gold mesh with the logo and the address to check it, microtext and the reference no; a copy loses them
+  function secSeal(ref, { url = siteName(), cls = "" } = {}) {
+    const micro = esc(`GENUINE · ${C.company.name} · ${ref} · `.repeat(8));
+    return `<div class="eoseal ${cls}" role="img" aria-label="Security seal ${esc(ref)}">
+      <div class="eoseal-holo"><i></i><i class="c"></i><i class="c"></i><i></i><i></i><i class="c"></i></div>
+      <div class="eoseal-main"><div class="eoseal-mesh"><div class="eoseal-micro t">${micro}</div>
+        <div class="eoseal-logo">${logoHtml("eoseal-img")}</div><div class="eoseal-url">${esc(url)}</div>
+        <div class="eoseal-micro b">${micro}</div></div>
+        <div class="eoseal-ref">${esc(ref)}</div></div></div>`;
+  }
 
   // ---------- new versions ----------
   // version.json (never kept in the browser) names the version on the server. When it is not the version of this page,
@@ -2829,7 +2841,7 @@
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
     shell, miniShell, grid, bindGrid, hasModule, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
-    roleName, personTitle, publicUrl, logoHtml, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
+    roleName, personTitle, publicUrl, logoHtml, secSeal, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
   });
 })();
