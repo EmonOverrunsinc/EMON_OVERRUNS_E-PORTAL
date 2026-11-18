@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.93"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.94"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.93"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.94"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -579,18 +579,15 @@
     return sealMem.get(k);
   }
   const sealFmt = (c) => String(c || "").replace(/(\d{4})(?=\d)/g, "$1 ");
-  function secSeal(ref, { code = "", cls = "" } = {}) {
+  function secSeal(ref, { code = "", cls = "", doc = "" } = {}) {
     const site = siteName() || "emonoverruns.online";
-    const micro = esc(`GENUINE · ${C.company.name} · ${code ? sealFmt(code) : ref} · ORIGINAL · `.repeat(6));
-    const vmicro = esc(`${C.company.name} GENUINE `.repeat(5));
+    const micro = esc(`${C.company.name} · ${code ? sealFmt(code) : ref} · ${doc || ref} · `.repeat(6));
     return `<div class="eos ${cls}" role="img" aria-label="Security seal ${esc(code || ref)}">
-      <div class="eos-holo"><span>${vmicro}</span></div>
+      <div class="eos-logo">${logoHtml("eos-img")}</div>
       <div class="eos-mid"><div class="eos-micro">${micro}</div>
-        <div class="eos-head"><div class="eos-logo">${logoHtml("eos-img")}</div><div><b>SECURITY SEAL</b><small>GENUINE · ORIGINAL PRINT</small></div></div>
         <div class="eos-no">${esc(code ? sealFmt(code) : ref)}</div>
-        <div class="eos-ref">${code ? `REF ${esc(ref)}` : "REFERENCE NO"}</div>
-        <div class="eos-micro">${micro}</div></div>
-      <div class="eos-qr"><img src="${qrDataUrl(verifyUrl(code || ref))}" alt=""><small>SCAN TO VERIFY</small><em>${esc(site)}/verify</em></div></div>`;
+        <div class="eos-ref">${code ? `REF ${esc(ref)}` : "REFERENCE NO"}<small>VERIFY AT ${esc(site.toUpperCase())}/VERIFY</small></div>
+        <div class="eos-micro">${micro}</div></div></div>`;
   }
 
   // ---------- new versions ----------
