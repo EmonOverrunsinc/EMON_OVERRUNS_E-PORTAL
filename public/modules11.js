@@ -365,38 +365,31 @@
   // The EVA AI page (the Director): what it learned, Learn Now, every open customer's idea, suggestions and decisions,
   // its folder (the versions)
   // ======================================================================
+  // 3.99.54: EVA learns by itself: when the Director opens EVA AI or EVA Records and it last learned over 24 hours ago,
+  // it learns in the background (the bar on EVA Records shows it); no Learn Now button
+  let learning = false;
+  async function autoLearn() {
+    if (learning || !isAdmin()) return;
+    const { data: last, error } = await sb.from("ai_models").select("created_at").eq("name", FOLDER).order("created_at", { ascending: false }).limit(1).maybeSingle().then((r) => r, () => ({ error: true }));
+    if (error || (last && Date.now() - new Date(last.created_at).getTime() < 24 * 3600 * 1000)) return;
+    learning = true;
+    const show = (f, t) => { if ($("#aiProg")) { $("#aiProg").hidden = false; $("#aiProg i").style.width = `${Math.round(f * 100)}%`; } if ($("#aiStep")) $("#aiStep").textContent = `EVA is learning by itself: ${t}`; };
+    try { await new Promise((r) => setTimeout(r, 1500)); await learn(show); cache = null; if (location.hash === "#evadata") V.evadata(); }
+    catch (_) { if ($("#aiProg")) $("#aiProg").hidden = true; if ($("#aiStep")) $("#aiStep").textContent = "EVA could not learn this time; it tries again the next time this page opens."; }
+    finally { learning = false; }
+  }
   V.gateai = async () => {
     if (!isAdmin()) { location.hash = "dashboard"; return; }
     E.shell("gateai", "EVA AI", `<div id="aiBody">${busy()}</div>`);
     const here = E.stillHere();
-    const [vers, logs] = await Promise.all([
-      sb.from("ai_models").select("*").eq("name", FOLDER).order("created_at", { ascending: false }).limit(50),
-      sb.from("ai_gate_log").select("*, customers(first_name, last_name, account_no)").order("created_at", { ascending: false }).limit(100)]);
     if (!here() || !$("#aiBody")) return;
-    if (vers.error || logs.error) { const e = vers.error || logs.error; $("#aiBody").innerHTML = notSet(e) ? needUpdate : `<div class="empty">${esc(e.message)}</div>`; return; }
-    const v = vers.data || [], lg = logs.data || [], top = v[0];
-    const decided = lg.filter((x) => x.decision), agreed = decided.filter((x) => x.decision === x.suggestion).length;
     $("#aiBody").innerHTML = `
       <section class="ai-hero"><span class="ai-ic big">${ic("ai")}</span><div><h2>EVA AI</h2>
         <p>EMON Virtual Assistant, for EMON HASAN only. <b>Ask EVA</b> anything about your customers, money, orders, boxes, billing companies and their accounts, e-bills, payroll and employees, lots, projects and credit memos — or write any name or record number and EVA finds it: it understands your question with its own neural network and answers from the records on your server at that moment. For gate passes, a second neural network (14 inputs, 8 neurons, 1 answer) reads every customer record — invoices, payments, overdue days, credit memos and returns, charges and adjustments, open orders, suspensions, collection letters, gate pass holds — and gives its idea: <b>CLEAR</b> or <b>HOLD</b>, how sure it is, and why. You decide; each decision is learned the next time it learns.</p></div></section>
       <h3 class="sec">Ask EVA</h3><div id="aiChat" class="ai-chat-card"></div>
-      <div class="tiles ai-tiles">
-        <div class="tile"><span class="tile-ic">${ic("clock")}</span><div class="k">Last Learned</div><div class="v ai-v">${top ? esc(E.dateTime(top.created_at)) : "Not yet"}</div><small>${top ? `by ${esc(top.trained_by_name || "")}` : "Press Learn Now"}</small></div>
-        <div class="tile"><span class="tile-ic">${ic("doc")}</span><div class="k">Records Learned From</div><div class="v">${top ? top.samples : 0}</div><small>${top ? `${top.decisions} decision${top.decisions === 1 ? "" : "s"}` : ""}</small></div>
-        <div class="tile ok"><span class="tile-ic">${ic("check")}</span><div class="k">Right on Records It Had Not Seen</div><div class="v">${top?.accuracy != null ? `${num(top.accuracy).toFixed(0)}%` : "—"}</div><small>${top?.agree != null ? `${num(top.agree).toFixed(0)}% of your decisions` : ""}</small></div>
-        <div class="tile"><span class="tile-ic">${ic("shield")}</span><div class="k">Agreed With the Decision</div><div class="v">${decided.length ? `${agreed} / ${decided.length}` : "—"}</div><small>decisions taken with its idea</small></div>
-      </div>
-      <h3 class="sec">Learning</h3>
-      <div class="btnrow"><button type="button" class="btn primary" id="aiLearn">${ic("ai")} Learn Now</button><span class="muted" id="aiStep"></span></div>
-      <div class="ai-prog" id="aiProg" hidden><i></i></div>
-      <p class="muted ai-more">${ic("crown")} The customers' AI ideas, the decisions, the box database and the AI's folder are on <a href="#evadata"><b>EVA Records</b></a> (only EMON HASAN).</p>`;
+      <p class="muted ai-more">${ic("crown")} What EVA learned, the customers' AI ideas, the decisions, the box database and the AI's folder are on <a href="#evadata"><b>EVA Records</b></a> (only EMON HASAN). EVA learns by itself every day.</p>`;
     if (E.eva) E.eva.mount($("#aiChat"));
-    $("#aiLearn").onclick = async (e) => {
-      e.target.disabled = true; $("#aiProg").hidden = false;
-      const show = (f, t) => { if ($("#aiProg i")) $("#aiProg i").style.width = `${Math.round(f * 100)}%`; if ($("#aiStep")) $("#aiStep").textContent = t; };
-      try { await new Promise((r) => setTimeout(r, 30)); const r = await learn(show); toast(`EVA learned from ${r.model.samples} records. What it learned before was removed.`); V.gateai(); }
-      catch (err) { e.target.disabled = false; $("#aiProg").hidden = true; $("#aiStep").textContent = ""; fail(err, notSet(err) ? "Run the database update RUN_041_TO_046.sql first" : "The AI could not learn"); }
-    };
+    autoLearn(); // 3.99.54: EVA learns by itself (once a day)
   };
 
   // ======================================================================
@@ -413,9 +406,19 @@
     if (!here() || !$("#aiBody")) return;
     if (vers.error || logs.error) { const e = vers.error || logs.error; $("#aiBody").innerHTML = notSet(e) ? needUpdate : `<div class="empty">${esc(e.message)}</div>`; return; }
     const v = vers.data || [], lg = logs.data || [], top = v[0];
+    const decided = lg.filter((x) => x.decision), agreed = decided.filter((x) => x.decision === x.suggestion).length;
     $("#aiBody").innerHTML = `
       <section class="ai-hero"><span class="ai-ic big">${ic("crown")}</span><div><h2>EVA Records</h2>
-        <p>Only for EMON HASAN. What EVA thinks of every open customer today, the decisions taken with its idea, the box database read from your Google Sheets and the AI's folder on the server. <a href="#gateai">Back to EVA AI</a></p></div></section>
+        <p>Only for EMON HASAN. What EVA learned (it learns by itself every day), what it thinks of every open customer today, the decisions taken with its idea, the box database read from your Google Sheets and the AI's folder on the server. <a href="#gateai">Back to EVA AI</a></p></div></section>
+      <div class="tiles ai-tiles">
+        <div class="tile"><span class="tile-ic">${ic("clock")}</span><div class="k">Last Learned</div><div class="v ai-v">${top ? esc(E.dateTime(top.created_at)) : "Not yet"}</div><small>${top ? `by ${esc(top.trained_by_name || "")}` : "Press Learn Now"}</small></div>
+        <div class="tile"><span class="tile-ic">${ic("doc")}</span><div class="k">Records Learned From</div><div class="v">${top ? top.samples : 0}</div><small>${top ? `${top.decisions} decision${top.decisions === 1 ? "" : "s"}` : ""}</small></div>
+        <div class="tile ok"><span class="tile-ic">${ic("check")}</span><div class="k">Right on Records It Had Not Seen</div><div class="v">${top?.accuracy != null ? `${num(top.accuracy).toFixed(0)}%` : "—"}</div><small>${top?.agree != null ? `${num(top.agree).toFixed(0)}% of your decisions` : ""}</small></div>
+        <div class="tile"><span class="tile-ic">${ic("shield")}</span><div class="k">Agreed With the Decision</div><div class="v">${decided.length ? `${agreed} / ${decided.length}` : "—"}</div><small>decisions taken with its idea</small></div>
+      </div>
+      <h3 class="sec">Learning</h3>
+      <p class="muted" id="aiStep">EVA learns by itself every day from your records (no button to press).${top ? ` Last learned ${esc(E.dateTime(top.created_at))}.` : ""}</p>
+      <div class="ai-prog" id="aiProg" hidden><i></i></div>
       <h3 class="sec">Every Open Customer Today</h3><div id="aiNow">${top ? busy("The AI is reading every customer") : `<div class="empty">The AI has not learned yet. Press <b>Learn Now</b>.</div>`}</div>
       <h3 class="sec">Suggestions and Decisions</h3>
       ${E.grid({ cols: [{ label: "Date / Time", get: (x) => E.dateTime(x.created_at) }, { label: "Customer", html: (x) => `<b>${esc(fullName(x.customers || {}))}</b> <small class="mono">${esc(x.customers?.account_no || "")}</small>` },
@@ -427,6 +430,7 @@
       <p class="muted">Bucket <b class="mono">${BUCKET}</b>, folder <b class="mono">${FOLDER}/</b>: what it learned last. Each Learn Now replaces the old file with the new one.</p>
       ${E.grid({ cols: [{ label: "Learned", get: (x) => E.dateTime(x.created_at) }, { label: "File", html: (x) => `<span class="mono">${esc(x.path)}</span>` }, { label: "Records", num: true, get: (x) => String(x.samples) },
         { label: "EMON HASAN's Decisions", num: true, get: (x) => String(x.decisions) }, { label: "Right", num: true, get: (x) => (x.accuracy != null ? `${num(x.accuracy).toFixed(0)}%` : "—") }], rows: v, empty: "Empty: the AI has not learned yet." })}`;
+    autoLearn(); // 3.99.54: EVA learns by itself (once a day)
     if (E.eva) E.eva.boxSection($("#aiBoxes")).catch((err) => { if ($("#aiBoxes")) $("#aiBoxes").innerHTML = `<div class="empty">${esc(err.message)}</div>`; });
     if (!top) return;
     // every open customer: the AI's idea and the portal's rule, HOLD first
