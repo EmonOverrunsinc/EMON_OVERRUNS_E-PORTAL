@@ -379,6 +379,7 @@
     await E.loadSignatures?.().catch(() => {});
     await settings().catch(() => {});
     const st = stateOf(i), c = o?.customers || {}, ok = st.k === "valid";
+    const sealNo = await E.sealCode("coverage", i.ins_no); // 3.99.93: the certificate's unique seal no (its QR verifies it)
     const who = certSigners(i);
     const sign = E.approvedBy(i.issued_by_eva ? null : i.approved_by, who.approver, i.approved_at) || { name: who.approver, at: i.approved_at, pic: "" };
     i = { ...i, _due: await dueOf(invoice) };
@@ -432,7 +433,7 @@
             <div class="c2-eqb tot"><b>${td == null ? "—" : td + DUE}</b><small>DAYS TO PAY</small></div>
           </div>
           <div class="c2-eqdue"><small>DUE DATE</small><b>${esc(i._due ? mdy(i._due.ext) : "COUNTED FROM THE INVOICE DATE")}</b></div>
-          <div class="c2-ver"><img src="${E.qrDataUrl(E.verifyUrl(i.ins_no))}" alt="QR code: verify" class="c2-qr">${E.secSeal ? E.secSeal(i.ins_no, { url: `${E.siteName?.() || "emonoverruns.online"}/verify`, cls: "sm" }) : ""}</div>
+          <div class="c2-ver">${E.secSeal(i.ins_no, { code: sealNo, cls: "sm" })}</div>
         </div></div>
       </div>
       <div class="c2-decl">${sec("CERTIFICATION")}

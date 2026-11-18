@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.92"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.93"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.92"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.93"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -565,16 +565,32 @@
     ? `<img class="${cls}" src="${esc(S.logoUrl)}" alt="${esc(C.company.name)} logo">`
     : `<span class="${cls} co-logo-fallback" aria-hidden="true">EO</span>`;
 
-  // 3.99.91: the SECURITY SEAL of a printed record (a hologram-style sticker, our own design): silver tiles with a colour
-  // shine, a fine gold mesh with the logo and the address to check it, microtext and the reference no; a copy loses them
-  function secSeal(ref, { url = siteName(), cls = "" } = {}) {
-    const micro = esc(`GENUINE · ${C.company.name} · ${ref} · `.repeat(8));
-    return `<div class="eoseal ${cls}" role="img" aria-label="Security seal ${esc(ref)}">
-      <div class="eoseal-holo"><i></i><i class="c"></i><i class="c"></i><i></i><i></i><i class="c"></i></div>
-      <div class="eoseal-main"><div class="eoseal-mesh"><div class="eoseal-micro t">${micro}</div>
-        <div class="eoseal-logo">${logoHtml("eoseal-img")}</div><div class="eoseal-url">${esc(url)}</div>
-        <div class="eoseal-micro b">${micro}</div></div>
-        <div class="eoseal-ref">${esc(ref)}</div></div></div>`;
+  // 3.99.93: the SECURITY SEAL of a printed record (our own design): dark navy and gold, a rosette of fine lines, an
+  // iridescent strip, visible microtext, a hidden VOID pattern, the UNIQUE seal no (16 digits, made once per record by the
+  // server) with a QR code to verify it, and the record's reference no. Without a seal no (SQL 104 not run) it shows the ref.
+  const sealMem = new Map();
+  async function sealCode(kind, ref) {
+    const k = kind + "|" + ref;
+    if (!sealMem.has(k)) {
+      const { data, error } = await sb.rpc("seal_issue", { p_kind: kind, p_ref: ref }).then((r) => r, (e) => ({ error: e }));
+      if (error) { console.warn("seal:", error.message); return ""; }
+      sealMem.set(k, String(data || ""));
+    }
+    return sealMem.get(k);
+  }
+  const sealFmt = (c) => String(c || "").replace(/(\d{4})(?=\d)/g, "$1 ");
+  function secSeal(ref, { code = "", cls = "" } = {}) {
+    const site = siteName() || "emonoverruns.online";
+    const micro = esc(`GENUINE · ${C.company.name} · ${code ? sealFmt(code) : ref} · ORIGINAL · `.repeat(6));
+    const vmicro = esc(`${C.company.name} GENUINE `.repeat(5));
+    return `<div class="eos ${cls}" role="img" aria-label="Security seal ${esc(code || ref)}">
+      <div class="eos-holo"><span>${vmicro}</span></div>
+      <div class="eos-mid"><div class="eos-micro">${micro}</div>
+        <div class="eos-head"><div class="eos-logo">${logoHtml("eos-img")}</div><div><b>SECURITY SEAL</b><small>GENUINE · ORIGINAL PRINT</small></div></div>
+        <div class="eos-no">${esc(code ? sealFmt(code) : ref)}</div>
+        <div class="eos-ref">${code ? `REF ${esc(ref)}` : "REFERENCE NO"}</div>
+        <div class="eos-micro">${micro}</div></div>
+      <div class="eos-qr"><img src="${qrDataUrl(verifyUrl(code || ref))}" alt=""><small>SCAN TO VERIFY</small><em>${esc(site)}/verify</em></div></div>`;
   }
 
   // ---------- new versions ----------
@@ -706,7 +722,7 @@
       return rp && rp !== "emonoverruns.online" ? `Passkeys are not set up yet. In Supabase, the Relying Party ID is "${rp}". EMON HASAN must change it to emonoverruns.online.`
         : "Passkeys are not set up yet. In Supabase › Authentication › Passkeys, add https://" + location.hostname + " to the Relying Party Origins.";
     }
-    return m || "The passkey did not work. Sign in with your password.";
+    return "Passkey sign-in did not work. Sign in with your password.";
   }
   // 3.99.86: ONE passkey request at a time: a second one cancels the first (its PIN window then signs nobody in) and
   // Windows refuses the second. Pressing the button while the page's own request runs joins that request.
@@ -722,10 +738,9 @@
       if (run.quiet || /abort/i.test(String(error?.name || "") + String(error?.message || ""))) return false;
       // 3.99.81: a pressed button always says why it did not sign in
       const w = error ? pkWhy(error) : "";
-      const raw = error ? `${error.name || error.code || "Error"}: ${String(error.message || error).replace(/\s*See:?\s*https?:\S+/i, "").slice(0, 120)}` : "no session came back";
-      run.onFail(w || (/NotAllowed/i.test(raw)
-        ? `The passkey did not sign you in: its window was closed, took too long or was refused. Press Sign In with Passkey and enter your PIN (or use your face or fingerprint). If this device has no passkey for your account yet, sign in with your password, then save one (My Profile › Passkeys). (${raw})`
-        : `The passkey did not sign you in. If this device has no passkey for your account yet, sign in with your password, then save one (My Profile › Passkeys). (${raw})`));
+      // 3.99.93: short words saying what to do (the technical reason only in the console)
+      if (error) console.warn("passkey:", error.name || error.code, error.message);
+      run.onFail(w || "Passkey not used. Try again, or sign in with your password. No passkey on this device yet? After signing in, add one in My Profile › Passkeys.", true);
       return false;
     })().finally(() => { if (pkRun === run) pkRun = null; });
     return run.done;
@@ -741,7 +756,8 @@
       const { error } = await sb.auth.registerPasskey();
       if (!error || /credential_exists/.test(String(error.code || error.message))) { pkMem.set("eoPasskey", "1"); m.close(); return toast("Passkey saved. Next time sign in with Face ID or your fingerprint."); }
       e.target.disabled = false;
-      const w = pkWhy(error); toast(w || `The passkey was not saved (${error.name || error.code || "Error"}: ${String(error.message || error).slice(0, 140)}).`, true);
+      console.warn("passkey save:", error.name || error.code, error.message);
+      const w = pkWhy(error); toast(w || "The passkey was not saved. Try again.", true);
     };
   }
 
@@ -793,7 +809,8 @@
       $("#lgProblem")?.remove();
       $("#lgForm button[type=submit]")?.insertAdjacentHTML("afterend", `<div class="hint ${cls} small su-problem" id="lgProblem" role="${cls === "err" ? "alert" : "status"}">${html}</div>`);
     };
-    const lgFail = (say, server) => { lgSay("err", `<b>${esc(say)}</b>${server ? `<br><span class="muted">Server: ${esc(server)}</span>` : ""}`); toast(say, true); };
+    // 3.99.93: shown ONCE: in the box under the button (onlyBox), or there and as a note at the top
+    const lgFail = (say, server, onlyBox) => { lgSay("err", `<b>${esc(say)}</b>${server && server !== true ? `<br><span class="muted">Server: ${esc(server)}</span>` : ""}`); if (!(onlyBox || server === true)) toast(say, true); };
     $("#lgId").oninput = () => fieldErr("lgId", "");
     $("#lgPass").oninput = () => fieldErr("lgPass", "");
     $("#lgForm").onsubmit = async (e) => {
@@ -2841,7 +2858,7 @@
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
     shell, miniShell, grid, bindGrid, hasModule, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
-    roleName, personTitle, publicUrl, logoHtml, secSeal, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
+    roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
   });
 })();

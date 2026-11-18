@@ -408,6 +408,26 @@
         if (cv) { if ($("#vfResult")) { $(".verify-hero").hidden = true; window.scrollTo(0, 0); $("#vfResult").innerHTML = cv; } return; }
       }
       $("#vfCode").value = t.replace(/^.*#verify\//i, "");
+      // 3.99.93: a SECURITY SEAL no (16 digits): genuine or not, and what it belongs to
+      const sealNo = $("#vfCode").value.replace(/[\s-]/g, "");
+      if (/^\d{16}$/.test(sealNo)) {
+        $("#vfResult").innerHTML = `<div class="vf-wait">${busy("Checking the seal")}</div>`;
+        const { data: sv, error: se } = await sb.rpc("seal_verify", { p_code: sealNo }).then((r) => r, (e) => ({ error: e }));
+        const out = $("#vfResult"); if (!out) return;
+        if (se || !sv?.found) {
+          out.innerHTML = `<div class="vf-bad"><div class="vf-seal">✖</div><div class="vf-title">${se ? "CANNOT CHECK RIGHT NOW" : "NOT A GENUINE SEAL"}</div>
+            <div class="vf-sub">${se ? "Please try again in a moment." : sv?.reason === "check" ? "One of the digits is wrong. Check the 16 digits on the seal and try again." : "No EMON OVERRUNS seal has this number. The paper may be a copy: contact us."}</div></div>`;
+          return;
+        }
+        $(".verify-hero").hidden = true; window.scrollTo(0, 0);
+        const box = sv.kind === "box";
+        const rows = [["Seal No", E.sealFmt(sealNo)], [box ? "Box Serial No" : "Coverage Certificate", sv.ref], ["Seal Issued", E.dateTime(sv.issued_at)],
+          ...(box ? [["Product", sv.product], ["Brand", sv.brand], ["Batch No", sv.batch], ["Pcs", sv.pcs]] : [])].filter(([, v]) => v != null && v !== "");
+        out.innerHTML = `<div class="vf-ok"><div class="vf-seal">${ic("check")}</div><div class="vf-title">GENUINE SEAL</div><div class="vf-sub">ISSUED BY ${esc(C.company.name)}</div>
+          <table class="vf-fields"><tbody>${rows.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</tbody></table>
+          ${box ? "" : `<div class="btnrow center"><a class="btn primary" href="#verify/${encodeURIComponent(sv.ref)}">${ic("shield")} Check the Certificate</a></div>`}</div>`;
+        return;
+      }
       $("#vfResult").innerHTML = `<div class="vf-wait">${busy("Searching the records")}</div>`;
       // 3.72: an insurance certificate (INS-…) or an order with coverage (OR-…)
       const insHtml = await E.insVerify?.($("#vfCode").value);
