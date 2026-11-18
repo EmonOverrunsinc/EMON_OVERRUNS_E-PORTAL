@@ -341,7 +341,7 @@
     let cur;
     try { cur = await current(); }
     catch (e) { return notSet(e) ? "" : `<div class="ai-box"><span class="ai-ic">${ic("ai")}</span><div><b>EVA AI</b><small>Could not be read: ${esc(e.message)}</small></div></div>`; }
-    if (!cur.model) return `<div class="ai-box"><span class="ai-ic">${ic("ai")}</span><div><b>EVA AI</b><small>${cur.old ? "It reads more of your records now and must learn again." : "It has not learned yet."} Open <a href="#gateai">EVA AI</a> and press <b>Learn Now</b>.</small></div></div>`;
+    if (!cur.model) return `<div class="ai-box"><span class="ai-ic">${ic("ai")}</span><div><b>EVA AI</b><small>${cur.old ? "It reads more of your records now and must learn again." : "It has not learned yet."} EVA learns by itself: open <a href="#evadata">EVA Records</a> once.</small></div></div>`;
     // the customer's orders still open (the rest comes with the customer's page)
     const co = await sb.from("customer_orders").select("id, status, total_amount, created_at, completed_at, cancelled_at").eq("customer_id", c.id).then((r) => r.data || [], () => []);
     const recs = { invs: ctx.invs || [], pays: ctx.pays || [], memos: ctx.memos || [], letters: ctx.orders || [], corders: co };
@@ -409,7 +409,7 @@
     const decided = lg.filter((x) => x.decision), agreed = decided.filter((x) => x.decision === x.suggestion).length;
     $("#aiBody").innerHTML = `
       <section class="ai-hero"><span class="ai-ic big">${ic("crown")}</span><div><h2>EVA Records</h2>
-        <p>Only for EMON HASAN. What EVA learned (it learns by itself every day), what it thinks of every open customer today, the decisions taken with its idea, the box database read from your Google Sheets and the AI's folder on the server. <a href="#gateai">Back to EVA AI</a></p></div></section>
+        <p>Only for EMON HASAN. What EVA learned (it learns by itself every day), what it thinks of every open customer today, the decisions taken with its idea, the box database read from your Google Sheets and the AI's folder on the server. To chat with EVA, press the EVA button at the top.</p></div></section>
       <div class="tiles ai-tiles">
         <div class="tile"><span class="tile-ic">${ic("clock")}</span><div class="k">Last Learned</div><div class="v ai-v">${top ? esc(E.dateTime(top.created_at)) : "Not yet"}</div><small>${top ? `by ${esc(top.trained_by_name || "")}` : "Press Learn Now"}</small></div>
         <div class="tile"><span class="tile-ic">${ic("doc")}</span><div class="k">Records Learned From</div><div class="v">${top ? top.samples : 0}</div><small>${top ? `${top.decisions} decision${top.decisions === 1 ? "" : "s"}` : ""}</small></div>
@@ -447,5 +447,5 @@
   };
 
 
-  E.gateAI = { box, logDecision, learn, current, idea, recordAt, inputs, ruleClear, train, predict };
+  E.gateAI = { autoLearn, box, logDecision, learn, current, idea, recordAt, inputs, ruleClear, train, predict };
 })();

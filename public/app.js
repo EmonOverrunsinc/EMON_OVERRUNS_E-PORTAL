@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.56"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.57"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.56"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.57"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1267,7 +1267,7 @@
     ["logins", "Login Accounts", () => isAdmin(), "key"],
     ["forms", "Download Forms", () => true, "download"],
     ["printreqs", "Print Requests", () => isAdmin(), "print"], // 3.65
-    ["gateai", "EVA AI", () => isAdmin(), "ai"], // 3.38 (3.38.1: named EVA, EMON Virtual Assistant)
+    // 3.99.57: EVA AI opens only as the chat panel (the EVA button at the top), not from the menu
     ["evadata", "EVA Records", () => isAdmin(), "crown"], // 3.99.53: only EMON HASAN: the AI's ideas, the decisions, the box database, the AI's folder
     ["devices", "Devices", () => isAdmin(), "device"], // 3.80: the devices of every login; a new device waits for approval
     ["legal", "Legal Terms", () => true, "doc"] // 3.69: the terms every login accepts; EMON HASAN sees every acceptance
