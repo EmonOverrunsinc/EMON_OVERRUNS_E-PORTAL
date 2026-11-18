@@ -1351,7 +1351,7 @@
     const get = (r, k) => (at[k] == null ? "" : String(r[at[k]] ?? "").trim());
     return body.filter((r) => /\d/.test(get(r, "serial_no")) && !/^serial/i.test(get(r, "serial_no"))).map((r) => {
       const extra = {};
-      for (const [h, j] of extraCols) { const v = String(r[j] ?? "").trim(); if (v && v !== "-") extra[h.slice(0, 40).toUpperCase()] = v.slice(0, 120); }
+      for (const [h, j] of extraCols) { const v = String(r[j] ?? "").trim(); if (v && v !== "-" && !(h === "COMPANY" && !/[A-Z]/i.test(v))) extra[h.slice(0, 40).toUpperCase()] = v.slice(0, 120); }
       return { serial_no: get(r, "serial_no"), product: get(r, "product"), brand: get(r, "brand"), ctn: get(r, "ctn"), style: get(r, "style"), qty: num1(get(r, "qty")), batch: get(r, "batch"),
         price: num1(get(r, "price")), arrival: sheetDate(get(r, "arrival")), ship: sheetDate(get(r, "ship")), released: sheetDate(get(r, "released")),
         sold_on: sheetDate(get(r, "sold_on")), invoice: get(r, "invoice").slice(0, 40), extra };
