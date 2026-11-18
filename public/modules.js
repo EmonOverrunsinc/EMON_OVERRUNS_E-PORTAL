@@ -2262,8 +2262,11 @@
     // 3.99.45: the print of a batch: the counts, the money, the details (batch, company, dates), the BOXES (no empty price
     // columns) and, when boxes are sold, a SOLD BOXES table with the price, amount, invoice no and date sold
     $("#fbPrint").onclick = () => {
-      const sumHtml = `<div class="bxp-sum">${counts.filter(([k]) => k !== "Avg Price (₱)").map(([k, v, c]) => [k === "Sold Boxes" ? "Sold" : k, v, c]).map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div>
-        <div class="bxp-sum money">${avgPrice ? `<div><small>Average Price per Pc (₱)</small><b>${peso(avgPrice)}</b></div>` : ""}<div class="amt"><small>Total Amount Sold (₱)</small><b>${peso(soldAmt)}</b></div></div>`;
+      // 3.99.48: one SUMMARY box in the style of the Details box: the counts in row 1, the money in row 2
+      const sc = (k, v, c = "", span = 1) => `<div class="pcell bxs ${c}"${span > 1 ? ` style="grid-column: span ${span}"` : ""}><div class="pl">${esc(k)}</div><div class="pv">${esc(v)}</div></div>`;
+      const row2 = [["On Order", qtyText(of("order").length)], ...(arr ? [["Shipped", qtyText(of("shipped").length)]] : []), ...(avgPrice ? [["Average Price per Pc (₱)", peso(avgPrice)]] : [])];
+      const sumHtml = E.box("Summary", `<div class="pgrid4 bxsum">${sc("Boxes", qtyText(rows.length))}${sc("Pcs", qtyText(pcs))}${sc("Sold Boxes", qtyText(soldRows.length), "ok")}${sc("In Stock", qtyText(of("stock").length), "bad")}
+        ${row2.map(([k, v]) => sc(k, v)).join("")}${sc("Total Amount Sold (₱)", peso(soldAmt), "amt", 4 - row2.length)}</div>`);
       const det = facts.filter(([k]) => !["Product", "Brand", "Date Sold"].includes(k));
       const head = printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), cont = head; // 3.99.47: every page has the same short header
       const soldHead = `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th class="num">Pcs</th><th class="num">Price</th><th class="num">Amount</th><th>Invoice No</th><th>Date Sold</th></tr>`;
