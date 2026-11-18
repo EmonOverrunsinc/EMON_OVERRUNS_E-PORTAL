@@ -262,7 +262,7 @@ table.rp.sum { width: 75%; }
   body { background: #fff; }
   body > *:not(.preview) { display: none !important; }
   .preview { position: static; background: #fff; padding: 0; }
-  .preview .pv-title, .preview .pv-tools, .preview .statusbar { display: none; }
+  .preview .pv-title, .preview .pv-tools, .preview .statusbar { display: none !important; } /* 3.99.88: never on the paper (the Windows app's title bar style is display: flex) */
   .preview .pv-desk { padding: 0; overflow: visible; }
   .page { box-shadow: none; margin: 0; page-break-after: always; min-height: 296mm; max-width: none; }
   .preview .pv-desk { zoom: 1 !important; } /* the print is always 100% */
