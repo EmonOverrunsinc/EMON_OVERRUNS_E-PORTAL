@@ -2189,7 +2189,7 @@
       { label: "Price (₱)", num: true, get: (r) => (r.price ? peso(r.price) : "") }, { label: "Status", html: (r) => pill(r.st === "sold" ? "paid" : r.st === "order" ? "pending" : "active", BOX_ST[r.st]) },
       { label: "Order / Invoice", phone: false, html: (r) => [r.order ? `<a href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : "", r.sale?.invoice_id ? `<a href="#invoice/${esc(r.sale.invoice_id)}">${esc(r.sale.invoice_no || "")}</a>` : ""].filter(Boolean).join(" · ") }];
     E.shell("find", `Search: ${t}`, "");
-    $("#main").innerHTML = `<div class="find-sum">${ic("box")} ${kind === "serial" ? `Box <b class="mono">${esc(key)}</b> found in the box database (Google Sheet)` : `Batch <b>${esc(key)}</b>: ${qtyText(rows.length)} box${rows.length === 1 ? "" : "es"} in the box database (Google Sheet)`}</div>
+    $("#main").innerHTML = `<div class="find-sum">${ic("box")} ${kind === "serial" ? `Box <b class="mono">${esc(key)}</b>` : `Batch <b>${esc(key)}</b> · ${qtyText(rows.length)} box${rows.length === 1 ? "" : "es"}`}</div>
       <div class="rec-tiles"><div class="rec-tile"><small>Boxes</small><b>${qtyText(rows.length)}</b></div><div class="rec-tile"><small>Pcs</small><b>${qtyText(pcs)}</b></div>
         <div class="rec-tile ok"><small>In Stock</small><b>${qtyText(cnt("stock"))}</b></div><div class="rec-tile"><small>On Order</small><b>${qtyText(cnt("order"))}</b></div><div class="rec-tile"><small>Sold</small><b>${qtyText(cnt("sold"))}</b></div></div>
       <div class="btnrow"><button type="button" class="btn primary" id="fbPrint">${ic("print")} Print / Download</button>
