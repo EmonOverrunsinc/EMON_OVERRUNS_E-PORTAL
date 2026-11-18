@@ -3704,3 +3704,7 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxp-sum .amt b { font-size: 17pt; }
 .bxp-sum .amt { flex: 2.2 1 0; }
 .bxp-sum .amt b { font-size: 16pt; }
+.bxp-sum small { overflow: hidden; text-overflow: clip; }
+.bxp-sum b { overflow: hidden; }
+.bxp-sum.money > div { flex: 1 1 0; }
+.bxp-sum.money b { font-size: 18pt; }

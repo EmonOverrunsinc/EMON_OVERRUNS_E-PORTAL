@@ -2189,6 +2189,9 @@
     const sum = (list, f) => list.reduce((s, r) => s + num(f(r)), 0);
     const of = (k) => rows.filter((r) => r.st === k);
     const pcs = sum(rows, (r) => r.qty), soldRows = of("sold"), soldAmt = sum(soldRows, (r) => r.amount);
+    // 3.99.42: the average price per pc of the boxes that have a price (each box counted by its pcs)
+    const priced = rows.filter((r) => r.price > 0), pricedPcs = sum(priced, (r) => r.qty);
+    const avgPrice = pricedPcs ? sum(priced, (r) => r.price * num(r.qty)) / pricedPcs : 0;
     const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
     const day = (d) => { const [y, m, dd] = String(d || "").split("-"); return y && m ? `${MON[+m - 1]} ${dd} ${y}` : ""; };
     // one date, or the first to the last date of the boxes
@@ -2203,10 +2206,11 @@
       ["Shipping Date", span((r) => r.ship_date)], ["Released Date", span((r) => r.release_date)], ["Arrival Date", span((r) => r.arrival_date)], ["Date Sold", span((r) => (r.st === "sold" ? r.soldOn : ""))]]
       .filter(([, v], i) => i === 0 || v);
     const counts = [["Boxes", qtyText(rows.length)], ["Pcs", qtyText(pcs)], ["Sold Boxes", qtyText(soldRows.length), "ok"],
-      ["In Stock", qtyText(of("stock").length), "bad"], ["On Order", qtyText(of("order").length)], ...(arr ? [["Shipped", qtyText(of("shipped").length)]] : [])];
-    const cols = [{ label: "#", num: true, get: (r) => String(rows.indexOf(r) + 1) }, { label: "Serial No", html: (r) => `<b class="mono nw">${esc(r.serial_no)}</b>` },
+      ["In Stock", qtyText(of("stock").length), "bad"], ...(avgPrice ? [["Avg Price (₱)", peso(avgPrice)]] : []), ["On Order", qtyText(of("order").length)], ...(arr ? [["Shipped", qtyText(of("shipped").length)]] : [])];
+    const cols = [{ label: "#", num: true, get: (r) => String(rows.indexOf(r) + 1) }, { label: "Serial No", key: "serial", html: (r) => `<b class="mono nw">${esc(r.serial_no)}</b>` },
       { label: "Product", wrap: true, get: (r) => [r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · ") }, { label: "CTN", phone: false, get: (r) => r.ctn || "" },
-      { label: "Pcs", num: true, get: (r) => qtyText(r.qty) }, { label: "Price (₱)", num: true, get: (r) => (r.price ? peso(r.price) : "") }, { label: "Amount (₱)", num: true, get: (r) => (r.amount ? peso(r.amount) : "") },
+      { label: "Pcs", key: "pcs", num: true, get: (r) => qtyText(r.qty) }, { label: "Price (₱)", key: "price", num: true, get: (r) => (r.price ? peso(r.price) : "") },
+      { label: "Amount (₱)", key: "amount", num: true, get: (r) => (r.amount ? peso(r.amount) : "") },
       { label: "Status", html: (r) => stPill(r.st) },
       { label: "Invoice No", html: (r) => (r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(r.invoice)}</a>` : r.order && r.st !== "sold" ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : `<span class="nw">${esc(r.invoice)}</span>`) },
       { label: "Date Sold", get: (r) => (r.st === "sold" ? day(r.soldOn) : "") }, { label: "Arrival", phone: false, get: (r) => day(r.arrival_date) },
@@ -2220,17 +2224,19 @@
       <div class="btnrow"><button type="button" class="btn primary" id="fbPrint">${ic("print")} Print / Download</button>
         <a class="btn" href="#find/${encodeURIComponent(t)}" id="fbAll">${ic("search")} Search all records</a></div>
       <div id="fbGrid"></div></div>`;
-    $("#fbGrid").innerHTML = E.grid({ cols, rows, empty: "No box." });
+    $("#fbGrid").innerHTML = E.grid({ cols, rows, empty: "No box.", foot: { serial: `<b>TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"}</b>`, pcs: `<b>${qtyText(pcs)}</b>`,
+      price: avgPrice ? `<b class="nw">AVG ${peso(avgPrice)}</b>` : "", amount: `<b>${peso(soldAmt)}</b>` } });
     $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
     $("#fbPrint").onclick = () => E.openPreview(title, E.pagedDoc({
       head: printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), contHead: printHead(`SEARCH RESULT ${key} (CONTINUED)`, ""),
-      top: `<div class="bxp-sum">${counts.map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}<div class="amt"><small>Total Sold (₱)</small><b>${peso(soldAmt)}</b></div></div>`
+      top: `<div class="bxp-sum">${counts.filter(([k]) => k !== "Avg Price (₱)").map(([k, v, c]) => [k === "Sold Boxes" ? "Sold" : k, v, c]).map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div>
+        <div class="bxp-sum money">${avgPrice ? `<div><small>Average Price per Pc (₱)</small><b>${peso(avgPrice)}</b></div>` : ""}<div class="amt"><small>Total Amount Sold (₱)</small><b>${peso(soldAmt)}</b></div></div>`
         + E.box("Details", `<div class="pgrid2">${facts.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`),
       boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>CTN</th><th class="num">Pcs</th><th class="num">Price</th><th class="num">Amount</th><th>Status</th><th>Invoice No</th><th>Date Sold</th></tr>`,
       rows, rowHtml: (r, i) => `<tr><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · "))}</td><td>${esc(r.ctn || "")}</td>
         <td class="num">${qtyText(r.qty)}</td><td class="num">${r.price ? peso(r.price) : ""}</td><td class="num">${r.amount ? peso(r.amount) : ""}</td><td class="bxp-${r.st} nw">${LBL[r.st]}</td>
         <td class="nw">${r.st === "sold" ? esc(r.invoice) : ""}</td><td class="nw">${r.st === "sold" ? esc(day(r.soldOn)) : ""}</td></tr>`,
-      totalRow: `<tr class="ptl-tot"><td colspan="4">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"} · ${qtyText(soldRows.length)} SOLD</td><td class="num">${qtyText(pcs)}</td><td></td><td class="num">${peso(soldAmt)}</td><td colspan="3"></td></tr>`,
+      totalRow: `<tr class="ptl-tot"><td colspan="4">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"} · ${qtyText(soldRows.length)} SOLD</td><td class="num">${qtyText(pcs)}</td><td class="num nw">${avgPrice ? `AVG ${peso(avgPrice)}` : ""}</td><td class="num">${peso(soldAmt)}</td><td colspan="3"></td></tr>`,
       bottom: "", caps: { single: 20, first: 24, next: 32, last: 28 } }));
     E.setRecords(`Boxes: ${rows.length}`);
     return true;
