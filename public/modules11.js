@@ -389,6 +389,33 @@
       <h3 class="sec">Learning</h3>
       <div class="btnrow"><button type="button" class="btn primary" id="aiLearn">${ic("ai")} Learn Now</button><span class="muted" id="aiStep"></span></div>
       <div class="ai-prog" id="aiProg" hidden><i></i></div>
+      <p class="muted ai-more">${ic("crown")} The customers' AI ideas, the decisions, the box database and the AI's folder are on <a href="#evadata"><b>EVA Records</b></a> (only EMON HASAN).</p>`;
+    if (E.eva) E.eva.mount($("#aiChat"));
+    $("#aiLearn").onclick = async (e) => {
+      e.target.disabled = true; $("#aiProg").hidden = false;
+      const show = (f, t) => { if ($("#aiProg i")) $("#aiProg i").style.width = `${Math.round(f * 100)}%`; if ($("#aiStep")) $("#aiStep").textContent = t; };
+      try { await new Promise((r) => setTimeout(r, 30)); const r = await learn(show); toast(`EVA learned from ${r.model.samples} records. What it learned before was removed.`); V.gateai(); }
+      catch (err) { e.target.disabled = false; $("#aiProg").hidden = true; $("#aiStep").textContent = ""; fail(err, notSet(err) ? "Run the database update RUN_041_TO_046.sql first" : "The AI could not learn"); }
+    };
+  };
+
+  // ======================================================================
+  // 3.99.53: EVA RECORDS (only the Director): every open customer's AI idea, the suggestions and decisions, the box
+  // database (Google Sheet) and the AI's folder; separate from the EVA AI page
+  // ======================================================================
+  V.evadata = async () => {
+    if (!isAdmin()) { location.hash = "dashboard"; return; }
+    E.shell("evadata", "EVA Records", `<div id="aiBody">${busy()}</div>`);
+    const here = E.stillHere();
+    const [vers, logs] = await Promise.all([
+      sb.from("ai_models").select("*").eq("name", FOLDER).order("created_at", { ascending: false }).limit(50),
+      sb.from("ai_gate_log").select("*, customers(first_name, last_name, account_no)").order("created_at", { ascending: false }).limit(100)]);
+    if (!here() || !$("#aiBody")) return;
+    if (vers.error || logs.error) { const e = vers.error || logs.error; $("#aiBody").innerHTML = notSet(e) ? needUpdate : `<div class="empty">${esc(e.message)}</div>`; return; }
+    const v = vers.data || [], lg = logs.data || [], top = v[0];
+    $("#aiBody").innerHTML = `
+      <section class="ai-hero"><span class="ai-ic big">${ic("crown")}</span><div><h2>EVA Records</h2>
+        <p>Only for EMON HASAN. What EVA thinks of every open customer today, the decisions taken with its idea, the box database read from your Google Sheets and the AI's folder on the server. <a href="#gateai">Back to EVA AI</a></p></div></section>
       <h3 class="sec">Every Open Customer Today</h3><div id="aiNow">${top ? busy("The AI is reading every customer") : `<div class="empty">The AI has not learned yet. Press <b>Learn Now</b>.</div>`}</div>
       <h3 class="sec">Suggestions and Decisions</h3>
       ${E.grid({ cols: [{ label: "Date / Time", get: (x) => E.dateTime(x.created_at) }, { label: "Customer", html: (x) => `<b>${esc(fullName(x.customers || {}))}</b> <small class="mono">${esc(x.customers?.account_no || "")}</small>` },
@@ -400,13 +427,7 @@
       <p class="muted">Bucket <b class="mono">${BUCKET}</b>, folder <b class="mono">${FOLDER}/</b>: what it learned last. Each Learn Now replaces the old file with the new one.</p>
       ${E.grid({ cols: [{ label: "Learned", get: (x) => E.dateTime(x.created_at) }, { label: "File", html: (x) => `<span class="mono">${esc(x.path)}</span>` }, { label: "Records", num: true, get: (x) => String(x.samples) },
         { label: "EMON HASAN's Decisions", num: true, get: (x) => String(x.decisions) }, { label: "Right", num: true, get: (x) => (x.accuracy != null ? `${num(x.accuracy).toFixed(0)}%` : "—") }], rows: v, empty: "Empty: the AI has not learned yet." })}`;
-    if (E.eva) { E.eva.mount($("#aiChat")); E.eva.boxSection($("#aiBoxes")).catch((err) => { if ($("#aiBoxes")) $("#aiBoxes").innerHTML = `<div class="empty">${esc(err.message)}</div>`; }); }
-    $("#aiLearn").onclick = async (e) => {
-      e.target.disabled = true; $("#aiProg").hidden = false;
-      const show = (f, t) => { if ($("#aiProg i")) $("#aiProg i").style.width = `${Math.round(f * 100)}%`; if ($("#aiStep")) $("#aiStep").textContent = t; };
-      try { await new Promise((r) => setTimeout(r, 30)); const r = await learn(show); toast(`EVA learned from ${r.model.samples} records. What it learned before was removed.`); V.gateai(); }
-      catch (err) { e.target.disabled = false; $("#aiProg").hidden = true; $("#aiStep").textContent = ""; fail(err, notSet(err) ? "Run the database update RUN_041_TO_046.sql first" : "The AI could not learn"); }
-    };
+    if (E.eva) E.eva.boxSection($("#aiBoxes")).catch((err) => { if ($("#aiBoxes")) $("#aiBoxes").innerHTML = `<div class="empty">${esc(err.message)}</div>`; });
     if (!top) return;
     // every open customer: the AI's idea and the portal's rule, HOLD first
     try {
@@ -420,6 +441,7 @@
       E.bindGrid($("#aiNow"), list, (x) => (location.hash = "customer/" + x.c.id));
     } catch (err) { if ($("#aiNow")) $("#aiNow").innerHTML = `<div class="empty">${esc(err.message)}</div>`; }
   };
+
 
   E.gateAI = { box, logDecision, learn, current, idea, recordAt, inputs, ruleClear, train, predict };
 })();
