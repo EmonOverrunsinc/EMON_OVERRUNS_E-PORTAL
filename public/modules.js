@@ -2232,10 +2232,18 @@
         <div class="btnrow"><button type="button" class="btn primary" id="fbPrint">${ic("print")} Print / Download</button>
           <a class="btn" href="#find/${encodeURIComponent(t)}" id="fbAll">${ic("search")} Search all records</a></div></div>`;
       $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
-      $("#fbPrint").onclick = () => E.openPreview(title, [`${printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`)}
-        <div class="bx1-band bxp1-${r.st}"><div><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div>
-          <div><small>${r.amount > 0 ? "Amount Sold (₱)" : "Pcs"}</small><b>${r.amount > 0 ? peso(r.amount) : qtyText(r.qty)}</b></div></div>
-        ${E.box("Box Details", `<div class="pgrid2">${det.filter(([k]) => !["Serial No", "Status"].includes(k)).map(([k, v]) => E.cell(k, v)).join("")}</div>`)}`]);
+      // 3.99.45: the print of one box: a status band, then the box, its dates and its sale, each in its own box
+      $("#fbPrint").onclick = () => {
+        const sec = (name, list) => { const l = list.filter(([, v]) => v); return l.length ? E.box(name, `<div class="pgrid2">${l.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`) : ""; };
+        const sold1 = r.st === "sold";
+        E.openPreview(title, [`${printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`)}
+          <div class="bx1-band bxp1-${r.st}"><div class="w2"><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div><div><small>Pcs</small><b>${qtyText(r.qty)}</b></div></div>
+          ${sold1 && r.amount > 0 ? `<div class="bxp-sum money"><div><small>Price per Pc (₱)</small><b>${peso(r.price)}</b></div><div class="amt"><small>Amount Sold (₱)</small><b>${peso(r.amount)}</b></div></div>` : ""}
+          ${sec("Box", [["Product", r.product], ["Brand", r.brand && r.brand !== "-" ? r.brand : ""], ["Batch No", r.batch], ["CTN", r.ctn], ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""]])}
+          ${sec("Dates", [["Shipping Date", day(r.ship_date)], ["Released Date", day(r.release_date)], ["Arrival Date", day(r.arrival_date)], ["Date Sold", sold1 ? day(r.soldOn) : ""]])}
+          ${sec(sold1 ? "Sale" : "Order", [["Invoice No", sold1 ? r.invoice : "", "hl"], ["Order No", r.order?.order_no || ""], ["Price per Pc (₱)", !sold1 && r.price ? peso(r.price) : ""]])}
+          ${sec("Other Details", exTable.map((k) => [k, r.extra?.[k] || ""]))}`]);
+      };
       E.setRecords("Boxes: 1");
       return true;
     }
@@ -2251,17 +2259,30 @@
     $("#fbGrid").innerHTML = E.grid({ cols, rows, empty: "No box.", foot: { serial: `<b>TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"}</b>`, pcs: `<b>${qtyText(pcs)}</b>`,
       price: avgPrice ? `<b class="nw">AVG ${peso(avgPrice)}</b>` : "", amount: `<b>${peso(soldAmt)}</b>` } });
     $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
-    $("#fbPrint").onclick = () => E.openPreview(title, E.pagedDoc({
-      head: printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), contHead: printHead(`SEARCH RESULT ${key} (CONTINUED)`, ""),
-      top: `<div class="bxp-sum">${counts.filter(([k]) => k !== "Avg Price (₱)").map(([k, v, c]) => [k === "Sold Boxes" ? "Sold" : k, v, c]).map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div>
-        <div class="bxp-sum money">${avgPrice ? `<div><small>Average Price per Pc (₱)</small><b>${peso(avgPrice)}</b></div>` : ""}<div class="amt"><small>Total Amount Sold (₱)</small><b>${peso(soldAmt)}</b></div></div>`
-        + E.box("Details", `<div class="pgrid2">${facts.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`),
-      boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>CTN</th><th class="num">Pcs</th><th class="num">Price</th><th class="num">Amount</th><th>Status</th><th>Invoice No</th><th>Date Sold</th></tr>`,
-      rows, rowHtml: (r, i) => `<tr><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · "))}</td><td>${esc(r.ctn || "")}</td>
-        <td class="num">${qtyText(r.qty)}</td><td class="num">${r.price ? peso(r.price) : ""}</td><td class="num">${r.amount ? peso(r.amount) : ""}</td><td class="bxp-${r.st} nw">${LBL[r.st]}</td>
-        <td class="nw">${r.st === "sold" ? esc(r.invoice) : ""}</td><td class="nw">${r.st === "sold" ? esc(day(r.soldOn)) : ""}</td></tr>`,
-      totalRow: `<tr class="ptl-tot"><td colspan="4">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"} · ${qtyText(soldRows.length)} SOLD</td><td class="num">${qtyText(pcs)}</td><td class="num nw">${avgPrice ? `AVG ${peso(avgPrice)}` : ""}</td><td class="num">${peso(soldAmt)}</td><td colspan="3"></td></tr>`,
-      bottom: "", caps: { single: 20, first: 24, next: 32, last: 28 } }));
+    // 3.99.45: the print of a batch: the counts, the money, the details (batch, company, dates), the BOXES (no empty price
+    // columns) and, when boxes are sold, a SOLD BOXES table with the price, amount, invoice no and date sold
+    $("#fbPrint").onclick = () => {
+      const sumHtml = `<div class="bxp-sum">${counts.filter(([k]) => k !== "Avg Price (₱)").map(([k, v, c]) => [k === "Sold Boxes" ? "Sold" : k, v, c]).map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div>
+        <div class="bxp-sum money">${avgPrice ? `<div><small>Average Price per Pc (₱)</small><b>${peso(avgPrice)}</b></div>` : ""}<div class="amt"><small>Total Amount Sold (₱)</small><b>${peso(soldAmt)}</b></div></div>`;
+      const det = facts.filter(([k]) => !["Product", "Brand", "Date Sold"].includes(k));
+      const head = printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), cont = printHead(`SEARCH RESULT ${key} (CONTINUED)`, "");
+      const soldHead = `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th class="num">Pcs</th><th class="num">Price</th><th class="num">Amount</th><th>Invoice No</th><th>Date Sold</th></tr>`;
+      const soldRow = (r, i) => `<tr><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc(r.product || "")}</td><td class="num">${qtyText(r.qty)}</td><td class="num">${r.price ? peso(r.price) : ""}</td>
+        <td class="num">${r.amount ? peso(r.amount) : ""}</td><td class="nw">${esc(r.invoice)}</td><td class="nw">${esc(day(r.soldOn))}</td></tr>`;
+      const soldTot = `<tr class="ptl-tot"><td colspan="3">TOTAL · ${qtyText(soldRows.length)} SOLD</td><td class="num">${qtyText(sum(soldRows, (r) => r.qty))}</td><td class="num nw">${avgPrice ? `AVG ${peso(avgPrice)}` : ""}</td><td class="num">${peso(soldAmt)}</td><td colspan="2"></td></tr>`;
+      const few = soldRows.length && soldRows.length <= 8; // a short sold list goes under the boxes
+      const soldBox = few ? E.box("Sold Boxes (₱)", `<table class="ptl"><thead>${soldHead}</thead><tbody>${soldRows.map(soldRow).join("")}${soldTot}</tbody></table>`) : "";
+      const room = few ? soldRows.length + 4 : 0;
+      let pages = E.pagedDoc({ head, contHead: cont, top: sumHtml + E.box("Details", `<div class="pgrid2">${det.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`),
+        boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>CTN</th><th class="num">Pcs</th><th>Status</th></tr>`,
+        rows, rowHtml: (r, i) => `<tr><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · "))}</td><td>${esc(r.ctn || "")}</td>
+          <td class="num">${qtyText(r.qty)}</td><td class="bxp-${r.st} nw">${LBL[r.st]}</td></tr>`,
+        totalRow: `<tr class="ptl-tot"><td colspan="4">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"}</td><td class="num">${qtyText(pcs)}</td><td></td></tr>`,
+        bottom: soldBox, caps: { single: 22 - room, first: 26, next: 34, last: 32 - room } });
+      if (soldRows.length > 8) pages = pages.concat(E.pagedDoc({ head: printHead(`SOLD BOXES ${key}`, `<div class="mono">${esc(key)}</div>`), contHead: printHead(`SOLD BOXES ${key} (CONTINUED)`, ""),
+        top: "", boxTitle: "Sold Boxes (₱)", thead: soldHead, rows: soldRows, rowHtml: soldRow, totalRow: soldTot, bottom: "", caps: { single: 34, first: 34, next: 36, last: 36 } }));
+      E.openPreview(title, pages);
+    };
     E.setRecords(`Boxes: ${rows.length}`);
     return true;
   }
