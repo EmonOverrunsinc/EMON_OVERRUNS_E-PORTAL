@@ -2265,7 +2265,7 @@
       const sumHtml = `<div class="bxp-sum">${counts.filter(([k]) => k !== "Avg Price (₱)").map(([k, v, c]) => [k === "Sold Boxes" ? "Sold" : k, v, c]).map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div>
         <div class="bxp-sum money">${avgPrice ? `<div><small>Average Price per Pc (₱)</small><b>${peso(avgPrice)}</b></div>` : ""}<div class="amt"><small>Total Amount Sold (₱)</small><b>${peso(soldAmt)}</b></div></div>`;
       const det = facts.filter(([k]) => !["Product", "Brand", "Date Sold"].includes(k));
-      const head = printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), cont = printHead(`SEARCH RESULT ${key} (CONTINUED)`, "");
+      const head = printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), cont = head; // 3.99.47: every page has the same short header
       const soldHead = `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th class="num">Pcs</th><th class="num">Price</th><th class="num">Amount</th><th>Invoice No</th><th>Date Sold</th></tr>`;
       const soldRow = (r, i) => `<tr><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc(r.product || "")}</td><td class="num">${qtyText(r.qty)}</td><td class="num">${r.price ? peso(r.price) : ""}</td>
         <td class="num">${r.amount ? peso(r.amount) : ""}</td><td class="nw">${esc(r.invoice)}</td><td class="nw">${esc(day(r.soldOn))}</td></tr>`;
@@ -2279,7 +2279,7 @@
           <td class="num">${qtyText(r.qty)}</td><td class="bxp-${r.st} nw">${LBL[r.st]}</td></tr>`,
         totalRow: `<tr class="ptl-tot"><td colspan="4">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"}</td><td class="num">${qtyText(pcs)}</td><td></td></tr>`,
         bottom: soldBox, caps: { single: 22 - room, first: 26, next: 34, last: 32 - room } });
-      if (soldRows.length > 8) pages = pages.concat(E.pagedDoc({ head: printHead(`SOLD BOXES ${key}`, `<div class="mono">${esc(key)}</div>`), contHead: printHead(`SOLD BOXES ${key} (CONTINUED)`, ""),
+      if (soldRows.length > 8) pages = pages.concat(E.pagedDoc({ head, contHead: head,
         top: "", boxTitle: "Sold Boxes (₱)", thead: soldHead, rows: soldRows, rowHtml: soldRow, totalRow: soldTot, bottom: "", caps: { single: 34, first: 34, next: 36, last: 36 } }));
       E.openPreview(title, pages);
     };
