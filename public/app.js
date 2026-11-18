@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.74"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.75"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.74"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.75"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -51,7 +51,7 @@
   // to sign in. The sign in that was kept before (in the browser for good) is taken away.
   try { localStorage.removeItem(`sb-${new URL(C.supabaseUrl).hostname.split(".")[0]}-auth-token`); } catch { /* no site data */ }
   const authStore = (() => { try { sessionStorage.setItem("eo-t", "1"); sessionStorage.removeItem("eo-t"); return sessionStorage; } catch { return undefined; } })();
-  const sb = window.supabase.createClient(C.supabaseUrl, C.supabaseKey, { global: { fetch: sendOnce }, auth: { storage: authStore, persistSession: true } });
+  const sb = window.supabase.createClient(C.supabaseUrl, C.supabaseKey, { global: { fetch: sendOnce }, auth: { storage: authStore, persistSession: true, experimental: { passkey: true } } }); // 3.99.75: passkeys
   const app = document.getElementById("app");
   const S = { session: null, profile: null, lastResult: [] };
 
@@ -609,6 +609,7 @@
       data && ["admin", "staff"].includes(data.role) ? loadMiddleNames() : null // 3.99.71: the customers' middle names (FIRST MIDDLE LAST everywhere)
     ]);
     S.mainDirector = md === true; S.position = pos;
+    try { if (data && sessionStorage.getItem("eoAskPasskey") === "1") { sessionStorage.removeItem("eoAskPasskey"); setTimeout(askPasskey, 2500); } } catch (_) {}
     // 3.63: a staff login sees amounts only with "13 See Balances & History (₱)"; the screen carries the login's name (against screenshots)
     S.hideMoney = !!data && data.role !== "admin" && Array.isArray(data.modules) && !data.modules.includes("money");
     S.hideMoneyBase = S.hideMoney;
@@ -676,6 +677,42 @@
     return data || "";
   }
 
+  // 3.99.75: passkeys: what this device can do, and the words for a passkey problem
+  const PK_OK = () => !!(window.PublicKeyCredential && navigator.credentials && sb.auth.signInWithPasskey);
+  const pkMem = { get: (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} } };
+  function pkWhy(err) {
+    const c = String(err?.code || err?.error_code || ""), m = String(err?.message || err || "");
+    if (/passkey_disabled/.test(c + m)) return "Passkeys are not turned on yet. EMON HASAN turns them on in Supabase: Authentication › Passkeys.";
+    if (/NotAllowed|abort|cancel|timed out/i.test(c + m + (err?.name || ""))) return "";
+    if (/credential_not_found/.test(c + m)) return "This passkey is not saved for any account. Sign in with your password, then save a new passkey.";
+    if (/credential_exists/.test(c + m)) return "This device already has a passkey for your account.";
+    if (/email_not_confirmed/.test(c + m)) return "Your email is not confirmed yet.";
+    if (/banned/i.test(m)) return "This account is blocked. Contact EMON HASAN.";
+    if (/SecurityError|rp ?id|origin/i.test(c + m + (err?.name || ""))) return "Passkeys work only on www.emonoverruns.online (not on this address).";
+    return m || "The passkey did not work. Sign in with your password.";
+  }
+  async function pkSignIn(quiet = false, onFail = (w) => toast(w, true)) {
+    const { error } = await sb.auth.signInWithPasskey();
+    if (!error) { pkMem.set("eoPasskey", "1"); toast("Signed in with your passkey. Welcome!"); return true; }
+    const w = pkWhy(error);
+    if (w && !quiet) onFail(w);
+    return false;
+  }
+  // after a password sign-in: save a passkey on this device? (asked again after 30 days when "Not now")
+  async function askPasskey() {
+    if (!PK_OK() || pkMem.get("eoPasskey") === "1" || Date.now() - Number(pkMem.get("eoPasskeyNo") || 0) < 30 * 864e5) return;
+    const m = modal("Save a Passkey?", `<p>Sign in next time with <b>Face ID, your fingerprint or your phone PIN</b>, with no password to type.</p><p class="muted">The passkey stays on this device (or in your iCloud / Google account). You can remove it on My Profile.</p>`,
+      `<button type="button" class="btn" data-no>Not now</button><button type="button" class="btn primary" data-yes>${ic("key")} Save Passkey</button>`);
+    $("[data-no]", m.el).onclick = () => { pkMem.set("eoPasskeyNo", String(Date.now())); m.close(); };
+    $("[data-yes]", m.el).onclick = async (e) => {
+      e.target.disabled = true;
+      const { error } = await sb.auth.registerPasskey();
+      if (!error || /credential_exists/.test(String(error.code || error.message))) { pkMem.set("eoPasskey", "1"); m.close(); return toast("Passkey saved. Next time sign in with Face ID or your fingerprint."); }
+      e.target.disabled = false;
+      const w = pkWhy(error); if (w) toast(w, true);
+    };
+  }
+
   function renderLogin(mode = "signin", preset = "") {
     if (mode === "signup") return renderSignup();
     authFrame("Sign In", `<form class="wbody login-form" id="lgForm" novalidate>
@@ -686,6 +723,7 @@
         <button type="button" class="in-scan-btn" id="lgScanId" title="Scan your employee ID card or your customer Public ID" aria-label="Sign in by scanning your ID card or Public ID">${ic("scan")}</button></div>
       ${pwField("lgPass", "Password", "current-password")}
       <button class="btn primary big" type="submit">Sign In</button>
+      ${PK_OK() ? `<button type="button" class="btn big pk-btn" id="lgPasskey">${ic("key")} Sign In with Passkey</button><small class="pk-say">Face ID, fingerprint or phone PIN · no password</small>` : ""}
       <div class="login-links"><button type="button" class="linkbtn" id="toForgot">Forgot password?</button></div>
     </form>`);
     bindEyes();
@@ -696,6 +734,11 @@
     $(preset ? "#lgPass" : "#lgId").focus();
     $("#toSignup").onclick = () => renderSignup();
     $("#toForgot").onclick = () => renderForgot($("#lgId").value.trim());
+    if ($("#lgPasskey")) {
+      $("#lgPasskey").onclick = async (e) => { e.target.disabled = true; $("#lgProblem")?.remove(); if (!(await pkSignIn(false, lgFail))) e.target.disabled = false; };
+      // 3.99.75: a device with a saved passkey asks for it by itself
+      if (pkMem.get("eoPasskey") === "1" && !preset) setTimeout(() => { if ($("#lgPasskey") && !$("#lgPasskey").disabled) pkSignIn(true); }, 600);
+    }
     // 3.90: ONE scan for both: the employee ID card (then the password) or the customer's Public ID (then the Private PIN)
     $("#lgScanId").onclick = () => scanDialog((t) => {
       const v = String(t || "").trim();
@@ -732,6 +775,7 @@
       if (!error) {
         // the auth listener opens the portal (or the Waiting for Approval page of a new account)
         if (form.isConnected) { $("button[type=submit]", form).innerHTML = `<span class="spin sm light"></span> Opening the portal`; lgSay("ok", "<b>✔ Signed in.</b> Opening the portal…"); }
+        try { sessionStorage.setItem("eoAskPasskey", "1"); } catch (_) {} // 3.99.75: offer a passkey once the portal is open
         return toast("Signed in. Welcome!");
       }
       setBusy(form, false);
@@ -2754,7 +2798,7 @@
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
     shell, miniShell, grid, bindGrid, hasModule, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
-    drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
+    pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
   });
