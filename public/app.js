@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.55"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.56"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.55"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.56"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1678,6 +1678,9 @@
     // 3.37: a customer order's barcode opens that order (3.38.1: OR-202610-0001; CO- on the orders printed before)
     const co = /^EMONCO\|((?:CO|OR)-\d{6}-\d+)/i.exec(t);
     if (co && canOpen("custorder")) { location.hash = "custorder/" + co[1].toUpperCase(); return true; }
+    // 3.99.56: the PDF417 of a box (the box search print) opens that box
+    const bx = /^EMONBOX\|(.{1,60})$/i.exec(t);
+    if (bx && isStaff()) { location.hash = "find/" + encodeURIComponent(bx[1].trim()); return true; }
     // 3.1: a QC form barcode opens that QC form
     const qc = /^EMONQCK?\|(QC-\d{4}-\d+)/i.exec(t);
     if (qc && canOpen("qc")) {
