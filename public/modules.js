@@ -2252,7 +2252,7 @@
       <div class="bxr-head"><div>${ic("box")} <span>${kind === "serial" ? "Box" : "Batch"}</span> <b class="mono nw">${esc(key)}</b></div>
         <div class="bxr-amt"><small>Total Amount Sold</small><b>₱ ${peso(soldAmt)}</b></div></div>
       <div class="bxr-counts">${counts.map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div>
-      ${facts.length > 1 ? `<div class="bxr-facts">${facts.slice(1).map(([k, v]) => `<div><small>${esc(k)}</small><b>${/ – /.test(v) ? v.split(" – ").map((x) => `<span class="nw">${esc(x)}</span>`).join(" – ") : esc(v)}</b></div>`).join("")}</div>` : ""}
+      ${facts.length > 1 ? `<div class="bxr-facts">${facts.slice(1).filter(([k]) => !["Product", "Brand"].includes(k)).map(([k, v]) => `<div><small>${esc(k)}</small><b>${/ – /.test(v) ? v.split(" – ").map((x) => `<span class="nw">${esc(x)}</span>`).join(" – ") : esc(v)}</b></div>`).join("")}</div>` : ""}
       <div class="btnrow"><button type="button" class="btn primary" id="fbPrint">${ic("print")} Print / Download</button>
         <a class="btn" href="#find/${encodeURIComponent(t)}" id="fbAll">${ic("search")} Search all records</a></div>
       <div id="fbGrid"></div></div>`;
