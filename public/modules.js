@@ -2266,17 +2266,14 @@
           <a class="btn" href="#find/${encodeURIComponent(t)}" id="fbAll">${ic("search")} Search all records</a></div></div>`;
       $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
       // 3.99.59: the print like the screen: cards, with security marks against copies (fine wave lines in the background,
-      // microtext lines, a light ORIGINAL mark, the document no made from the box and the print time, the PDF417)
+      // microtext lines with the serial no, the PDF417)
       $("#fbPrint").onclick = () => {
         const money = r.price ? [["Price per Pc (₱)", peso(r.price)], [sold1 ? "Amount Sold (₱)" : "Amount (₱)", peso(r.amount || r.price * num(r.qty))]]
           : []; // 3.99.62: the suggested price is only a card (a guide, no amount counted)
         const cards = det.filter(([k]) => !["Pcs", "Price per Pc (₱)", "Amount (₱)"].includes(k) && !(k === "Suggested Price" && money.length));
-        const stamp = new Date().toISOString();
-        let h = 2166136261; for (const ch of `${r.serial_no}|${r.st}|${r.price}|${stamp}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
-        const docNo = `BX-${h.toString(36).toUpperCase().padStart(7, "0").slice(0, 7)}`;
-        const micro = `EMON OVERRUNS · ORIGINAL · ${r.serial_no} · ${docNo} · `.repeat(14);
+        const micro = `EMON OVERRUNS · ${r.serial_no} · `.repeat(24); // 3.99.70: no BX- number, no ORIGINAL
         E.openPreview(title, [`${printHead("SEARCH RESULT", `<img src="${E.pdf417DataUrl("EMONBOX|" + r.serial_no)}" alt="" class="ph-bar"><div class="mono">${esc(r.serial_no)}</div>`)}
-          <div class="bxsec"><div class="bxsec-wm">ORIGINAL</div>
+          <div class="bxsec">
           <div class="bxsec-micro">${esc(micro)}</div>
           <div class="bx1-band bxp1-${r.st}"><div class="w2"><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div><div><small>Pcs</small><b>${qtyText(r.qty)}</b></div></div>
           ${money.length ? `<div class="bxp-sum money"><div><small>${esc(money[0][0])}</small><b>${money[0][1]}</b></div><div class="amt${sold1 ? "" : " sug"}"><small>${esc(money[1][0])}</small><b>${money[1][1]}</b></div></div>` : ""}
