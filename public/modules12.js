@@ -902,13 +902,13 @@
     if (!b && !o) return { html: `Box <b class="mono">${esc(serial)}</b> is not in the box database. If it is in your Google Sheet, press <b>Read Sheet</b> on the <a href="#evadata">EVA Records</a> page.` };
     const st = boxState(o, b, sale, arr);
     const soldTxt = sale ? ` · invoice <a href="#invoice/${esc(sale.invoice_id)}">${esc(sale.invoice_no || "")}</a> · ${qtyText(sale.pcs)} pcs × ₱ ${peso(sale.price)} = <b>₱ ${peso(sale.total)}</b>` : "";
-    // 3.99.58: the price of the box: its price x pcs = total, else the suggested price and the expected total
+    // 3.99.58: the price of the box: its price x pcs = total, else the suggested price (3.99.62: a guide only, no amount)
     let priceTxt = "";
     if (b && !sale) {
       if (num(b.price) > 0) priceTxt = `<br>Price: <b>₱ ${peso(b.price)}</b> per pc × ${qtyText(b.qty)} pcs = <b class="eva-amt">₱ ${peso(num(b.price) * num(b.qty))}</b>`;
       else {
         const sg = suggestFor(b, (await boxData()).stock);
-        priceTxt = sg.price ? `<br>No price in the sheet yet. <b>Suggested price: ₱ ${peso(sg.price)}</b> per pc (the average of ${qtyText(sg.n)} box${sg.n === 1 ? "" : "es"} of ${esc(sg.label)}) · expected total ${qtyText(b.qty)} pcs × ₱ ${peso(sg.price)} = <b class="eva-amt">₱ ${peso(sg.price * num(b.qty))}</b>`
+        priceTxt = sg.price ? `<br>No price in the sheet yet. <b>Suggested price: ₱ ${peso(sg.price)}</b> per pc (the average of ${qtyText(sg.n)} box${sg.n === 1 ? "" : "es"} of ${esc(sg.label)}): a guide only, no amount is counted from it.`
           : "<br>No price in the sheet yet, and no box of the same product has a price to suggest one.";
       }
     }
@@ -959,7 +959,7 @@
       const wantPrice = PRICE_WORDS.test(q.text || "") || q.rest.some((w) => PRICE_WORDS.test(w));
       if (priced.length || wantPrice) {
         html += `<br><b>Prices of ${esc(label)}:</b> ${priced.length ? `average price <b>₱ ${peso(avg)}</b> per pc (${qtyText(priced.length)} box${priced.length === 1 ? "" : "es"} with a price) · total ${qtyText(priced.reduce((t, b) => t + num(b.qty), 0))} pcs × price = <b class="eva-amt">₱ ${peso(total)}</b>` : "no box has a price in the sheet yet"}
-          · total cost ₱ ${peso(cost)} × ${qtyText(pick.length)} boxes = <b>₱ ${peso(cost * pick.length)}</b>${noPrice.length && sg ? ` · <b>suggested price ₱ ${peso(sg)}</b> per pc for the ${qtyText(noPrice.length)} box${noPrice.length === 1 ? "" : "es"} without a price (expected ₱ ${peso(sg * noPrice.reduce((t, b) => t + num(b.qty), 0))})` : ""}`;
+          · total cost ₱ ${peso(cost)} × ${qtyText(pick.length)} boxes = <b>₱ ${peso(cost * pick.length)}</b>${noPrice.length && sg ? ` · <b>suggested price ₱ ${peso(sg)}</b> per pc for the ${qtyText(noPrice.length)} box${noPrice.length === 1 ? "" : "es"} without a price (a guide only, not counted)` : ""}`;
       }
     }
     // 3.60: the e-bill of the batch
