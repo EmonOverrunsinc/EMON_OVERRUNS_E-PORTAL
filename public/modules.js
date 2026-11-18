@@ -2154,6 +2154,63 @@
   // ======================================================================
   // Global search (top bar)
   // ======================================================================
+  // 3.99.35: the box database (the Google Sheet) in the top search: a box SERIAL NO shows only that box; a BATCH NO shows
+  // every box of that batch; each box with its state (IN STOCK / ON ORDER / SOLD) and price; Print the result
+  const BOX_ST = { stock: "IN STOCK", order: "ON ORDER", sold: "SOLD" };
+  async function findBoxes(t, here) {
+    const key = t.toUpperCase().replace(/\s+/g, " ").slice(0, 60);
+    const one = await sb.from("box_stock").select("*").eq("serial_no", key).limit(1).then((r) => r, () => ({ error: true }));
+    if (one.error) return false; // no box database (or no access): the normal search
+    let boxes = one.data || [], kind = "serial";
+    if (!boxes.length) { boxes = (await E.allRows(() => sb.from("box_stock").select("*").eq("batch", key).order("serial_no"))).data || []; kind = "batch"; }
+    if (!boxes.length || !here()) return false;
+    // where each box is: on an order, sold (invoiced) or in stock
+    const parts = [];
+    for (let i = 0; i < boxes.length; i += 150) parts.push(boxes.slice(i, i + 150).map((b) => b.serial_no));
+    const got = await Promise.all(parts.map((ch) => Promise.all([
+      sb.from("customer_order_boxes").select("serial_no, customer_orders(id, order_no, status)").in("serial_no", ch).then((r) => r.data || [], () => []),
+      sb.from("box_sales").select("serial_no, invoice_id, invoice_no, price, total, customer_name").in("serial_no", ch).then((r) => r.data || [], () => [])])));
+    if (!here()) return false;
+    const onOrder = new Map(), sold = new Map();
+    for (const [on, sd] of got) {
+      for (const x of on) if (x.customer_orders && x.customer_orders.status !== "cancelled") onOrder.set(x.serial_no, x.customer_orders);
+      for (const x of sd) sold.set(x.serial_no, x);
+    }
+    const rows = boxes.map((b) => {
+      const o = onOrder.get(b.serial_no), sl = sold.get(b.serial_no);
+      const st = sl || o?.status === "completed" ? "sold" : o ? "order" : "stock";
+      return { ...b, st, order: o, sale: sl, price: num(sl?.price) || num(b.price), total: num(sl?.total) || num(b.price) * num(b.qty) };
+    });
+    const cnt = (k) => rows.filter((r) => r.st === k).length, pcs = rows.reduce((s, r) => s + num(r.qty), 0);
+    const title = kind === "serial" ? `Box ${key}` : `Batch ${key}`;
+    const cols = [{ label: "#", num: true, get: (r) => String(rows.indexOf(r) + 1) }, { label: "Serial No", html: (r) => `<b class="mono">${esc(r.serial_no)}</b>` },
+      { label: "Product", wrap: true, get: (r) => r.product || "" }, { label: "Brand", get: (r) => r.brand || "" }, { label: "CTN", phone: false, get: (r) => r.ctn || "" },
+      { label: "Style", phone: false, get: (r) => r.style || "" }, { label: "Batch", get: (r) => r.batch || "" }, { label: "Pcs", num: true, get: (r) => qtyText(r.qty) },
+      { label: "Price (₱)", num: true, get: (r) => (r.price ? peso(r.price) : "") }, { label: "Status", html: (r) => pill(r.st === "sold" ? "paid" : r.st === "order" ? "pending" : "active", BOX_ST[r.st]) },
+      { label: "Order / Invoice", phone: false, html: (r) => [r.order ? `<a href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : "", r.sale?.invoice_id ? `<a href="#invoice/${esc(r.sale.invoice_id)}">${esc(r.sale.invoice_no || "")}</a>` : ""].filter(Boolean).join(" · ") }];
+    E.shell("find", `Search: ${t}`, "");
+    $("#main").innerHTML = `<div class="find-sum">${ic("box")} ${kind === "serial" ? `Box <b class="mono">${esc(key)}</b> found in the box database (Google Sheet)` : `Batch <b>${esc(key)}</b>: ${qtyText(rows.length)} box${rows.length === 1 ? "" : "es"} in the box database (Google Sheet)`}</div>
+      <div class="rec-tiles"><div class="rec-tile"><small>Boxes</small><b>${qtyText(rows.length)}</b></div><div class="rec-tile"><small>Pcs</small><b>${qtyText(pcs)}</b></div>
+        <div class="rec-tile ok"><small>In Stock</small><b>${qtyText(cnt("stock"))}</b></div><div class="rec-tile"><small>On Order</small><b>${qtyText(cnt("order"))}</b></div><div class="rec-tile"><small>Sold</small><b>${qtyText(cnt("sold"))}</b></div></div>
+      <div class="btnrow"><button type="button" class="btn primary" id="fbPrint">${ic("print")} Print / Download</button>
+        <a class="btn" href="#find/${encodeURIComponent(t)}" id="fbAll">${ic("search")} Search all records</a></div>
+      <div id="fbGrid"></div>`;
+    $("#fbGrid").innerHTML = E.grid({ cols, rows, empty: "No box." });
+    $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
+    $("#fbPrint").onclick = () => E.openPreview(title, E.pagedDoc({
+      head: printHead("BOX SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), contHead: printHead(`BOX SEARCH RESULT ${key} (CONTINUED)`, ""),
+      top: E.box(kind === "serial" ? "Box" : "Batch", `<div class="pgrid2">${E.cell(kind === "serial" ? "Serial No" : "Batch No", key, "hl")}${E.cell("Boxes", qtyText(rows.length))}${E.cell("Pcs", qtyText(pcs))}
+        ${E.cell("In Stock / On Order / Sold", `${qtyText(cnt("stock"))} / ${qtyText(cnt("order"))} / ${qtyText(cnt("sold"))}`)}</div>`),
+      boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>Brand</th><th>CTN</th><th>Style</th><th>Batch</th><th class="num">Pcs</th><th class="num">Price</th><th>Status</th></tr>`,
+      rows, rowHtml: (r, i) => `<tr><td class="num">${i + 1}</td><td>${esc(r.serial_no)}</td><td>${esc(r.product || "")}</td><td>${esc(r.brand || "")}</td><td>${esc(r.ctn || "")}</td><td>${esc(r.style || "")}</td>
+        <td>${esc(r.batch || "")}</td><td class="num">${qtyText(r.qty)}</td><td class="num">${r.price ? peso(r.price) : ""}</td><td>${BOX_ST[r.st]}${r.sale?.invoice_no ? ` · ${esc(r.sale.invoice_no)}` : r.order ? ` · ${esc(r.order.order_no)}` : ""}</td></tr>`,
+      totalRow: `<tr class="ptl-tot"><td colspan="7">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"}</td><td class="num">${qtyText(pcs)}</td><td colspan="2"></td></tr>`,
+      bottom: "", caps: { single: 22, first: 26, next: 32, last: 28 } }));
+    E.setRecords(`Boxes: ${rows.length}`);
+    return true;
+  }
+  let findAll = ""; // "Search all records" after a box result: the normal search of the same words
+
   V.find = async (q) => {
     const t = cleanQ(q);
     E.shell("find", `Search: ${t}`, `<div id="fdRes">${busy("Searching")}</div>`);
@@ -2165,7 +2222,8 @@
     const w = t.split(/\s+/)[0];
     const H = E.hasModule;
     const none = Promise.resolve({ data: [] });
-    if (/^EMONQCK?\|/i.test(t) && (await E.openScanned(t)) !== false) { done(); return; } // a QC form code opens that form (if there is none, the search goes on) // a typed or pasted QC form code opens the (locked) QC form
+    if (/^EMONQCK?\|/i.test(t) && (await E.openScanned(t)) !== false) { done(); return; }
+    if (findAll === t) findAll = ""; else if (isStaff() && (await findBoxes(t, here))) { done(); return; } // 3.99.35: a box serial no or batch no // a QC form code opens that form (if there is none, the search goes on) // a typed or pasted QC form code opens the (locked) QC form
     const [cs, iv, py, vo, em, qc, cv] = await Promise.all([
       H("customers") ? sb.from("customers").select("*").neq("status", "closed").or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,public_id.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%`).limit(100) : none,
       H("invoices") ? sb.from("invoice_balances").select("*").neq("customer_status", "closed").or(`invoice_no.ilike.%${w}%,po_number.ilike.%${w}%`).limit(50) : none,
