@@ -3912,3 +3912,7 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .bxseal-cell .eos { width: 100%; max-width: 62mm; grid-template-columns: 14mm 1fr; gap: 1.8mm; padding: 0 3.4mm; }
 .bxseal-cell .eos-logo { width: 14mm; height: 14mm; }
 .bxseal-cell .eos .eos-no { font-size: 8.2pt; }
+/* 3.99.98: the Coverage Certificate: the seal at the bottom beside the invoice no and the signature (the order no barcode out) */
+.page:not(.a4l) .c2-sigs:has(.c2-sealsig) { grid-template-columns: 1.35fr 1fr 1.1fr; align-items: end; }
+.c2-sealsig .eos { width: 100%; max-width: 62mm; }
+.c2-sealsig .eos { height: 22mm; grid-template-columns: 15mm 1fr; } .c2-sealsig .eos-logo { width: 15mm; height: 15mm; } .c2-sealsig .eos-mid { padding: 2.4mm 0; gap: 1mm; }
