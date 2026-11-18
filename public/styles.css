@@ -3708,3 +3708,16 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxp-sum b { overflow: hidden; }
 .bxp-sum.money > div { flex: 1 1 0; }
 .bxp-sum.money b { font-size: 18pt; }
+/* 3.99.43: one box: its own card (screen) and a status band (print) */
+.bx1 .bxr-head > div:first-child { flex-wrap: wrap; }
+.bx1 .bxr-head { border-left: 5px solid #12306b; }
+.bx1 .bx1-sold { border-left-color: #1e8e3e; } .bx1 .bx1-stock { border-left-color: #c41e3a; } .bx1 .bx1-order { border-left-color: #b26a00; } .bx1 .bx1-shipped { border-left-color: #1f5fbf; }
+.bx1 .bxr-facts { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.bx1 .bxr-facts b { font-size: 15px; }
+.bx1-band { display: flex; gap: 6px; margin: 0 0 8px; }
+.bx1-band > div { flex: 1 1 0; min-width: 0; border: 1.5px solid #12306b; border-radius: 8px; padding: 6px 10px 7px; }
+.bx1-band small { display: block; font-size: 7.5pt; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #12306b; }
+.bx1-band b { display: block; font-size: 17pt; line-height: 1.15; white-space: nowrap; }
+.bxp1-sold > div:nth-child(2), .bxp1-sold > div:nth-child(3) { border-color: #1e8e3e; background: #eaf6ea; } .bxp1-sold b { color: #1e8e3e; } .bxp1-sold > div:first-child b { color: #12306b; }
+.bxp1-stock > div:nth-child(2) { border-color: #c41e3a; } .bxp1-stock > div:nth-child(2) b { color: #c41e3a; }
+.bxp1-shipped > div:nth-child(2) b { color: #1f5fbf; } .bxp1-order > div:nth-child(2) b { color: #b26a00; }
