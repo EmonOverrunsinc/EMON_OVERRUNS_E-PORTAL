@@ -2281,8 +2281,8 @@
           <div class="bx1-band bxp1-${r.st}"><div class="w2"><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div><div><small>Pcs</small><b>${qtyText(r.qty)}</b></div></div>
           ${money.length ? `<div class="bxp-sum money"><div><small>${esc(money[0][0])}</small><b>${money[0][1]}</b></div><div class="amt${sold1 ? "" : " sug"}"><small>${esc(money[1][0])}</small><b>${money[1][1]}</b></div></div>` : ""}
           ${E.box("Tracking", track)}
-          <div class="bxcards">${cards.map(([k, v, n]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b>${n ? `<em>${esc(n)}</em>` : ""}</div>`).join("")}</div>
-          <div class="bx1-seal">${E.secSeal(r.serial_no, { code, doc: "BOX" })}</div>
+          <div class="bxcards"><div class="bxseal-cell">${E.secSeal(r.serial_no, { code, doc: "BOX" })}</div>
+            ${cards.map(([k, v, n]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b>${n ? `<em>${esc(n)}</em>` : ""}</div>`).join("")}</div>
           <div class="bxsec-micro">${esc(micro)}</div></div>`], { bare: true }); // 3.99.72: no Date Printed box, no page number
       };
       E.setRecords("Boxes: 1");
