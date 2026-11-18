@@ -26,7 +26,7 @@ and daily schedules `emon-monthly-soa` and `emon-community-cleanup`.
 ## Settings by hand (Supabase dashboard › Authentication)
 
 1. **URL Configuration**: Site URL `https://emonoverruns.online`; Redirect URLs `https://emonoverruns.online/**` and
-   `https://emon-overruns.vercel.app/**`.
+   `https://emon-overruns.emonoverruns.workers.dev/**`.
 2. **Emails › SMTP Settings**: turn on custom SMTP. Supabase's own sender only sends to the members of the
    organization (Team) and only a few emails an hour, so staff would get no code. With Gmail: host `smtp.gmail.com`,
    port `465`, username `emonoverruns@gmail.com`, password a Google **App Password** (Google Account › Security ›

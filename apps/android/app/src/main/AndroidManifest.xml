@@ -58,7 +58,6 @@
                 <data android:scheme="https" />
                 <data android:host="emon-overruns.emonoverruns.workers.dev" />
                 <data android:host="www.emonoverruns.online" />
-                <data android:host="emon-overruns.vercel.app" />
             </intent-filter>
         </activity>
 

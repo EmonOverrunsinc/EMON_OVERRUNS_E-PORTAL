@@ -61,7 +61,7 @@ Everything the Play Store asks for is ready in this repository. This page lists 
 - **Data safety** (answers):
   - Collects or shares data: **Yes**. Encrypted in transit: **Yes**. People can ask for their data to be deleted:
     **Yes**, link `https://www.emonoverruns.online/delete-account`.
-  - Shared with third parties: **No** (Supabase, Vercel and Google work for us as service providers; that is not
+  - Shared with third parties: **No** (Supabase, Cloudflare and Google work for us as service providers; that is not
     "sharing" in Google's form).
   - Collected (all **required**, purpose **App functionality** and **Account management**, not used for ads):
     - Personal info: Name, Email address, User IDs (username), Address, Phone number, Political or religious beliefs

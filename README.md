@@ -1,8 +1,7 @@
 # Emon Overruns Portal (E-Portal v2.2)
 
 **Live:** https://www.emonoverruns.online (hosted on **Cloudflare Pages** from November 2026: project connected to this
-repository, production branch `main`, no build command, output directory `public`; the headers are in `public/_headers`.
-`vercel.json` is kept for the old Vercel project only.)
+repository, production branch `main`, no build command, output directory `public`; the headers are in `public/_headers`.)
 
 Business portal for **EMON OVERRUNS**, Pasay City, Metro Manila · emonoverruns@gmail.com · emonoverruns.online.
 It is laid out like AutoCount: option panel, then Inquiry, Preview and Print, then a grid, and printable report pages.
@@ -155,17 +154,17 @@ email texts and the first sign-up: [docs/SINGAPORE_SERVER.md](docs/SINGAPORE_SER
    `python3 supabase/build_new_server_setup.py`), and ends with **E-PORTAL SERVER READY**: the tables, security rules,
    numbering, audit trail, storage buckets and monthly schedules. Then point `public/config.js` to the project (Project
    URL and publishable key) and raise the version (`version.json`, `BUILD` in `app.js`, `?v=` in `index.html`).
-2. **Host the site**: upload the `public/` folder to any static host, such as Vercel, Netlify or Cloudflare Pages. There is no build step.
-   - Vercel: New Project, Import, choose this folder, Framework "Other", Output directory `public`.
+2. **Host the site**: upload the `public/` folder to any static host, such as Cloudflare Pages or Netlify. There is no build step.
+   - Cloudflare: Workers & Pages › Create › connect this repository, no build command, output directory `public`.
    - Netlify: drag the `public` folder onto app.netlify.com/drop.
 3. **Auth links**: in Supabase, open **Authentication › URL Configuration** and set **Site URL** to your site address
-   (https://emonoverruns.online), and add `https://emonoverruns.online/**` and `https://emon-overruns.vercel.app/**` under
+   (https://emonoverruns.online), and add `https://emonoverruns.online/**` and `https://emon-overruns.emonoverruns.workers.dev/**` under
    **Redirect URLs**. Otherwise sign-up confirmation emails point to the wrong place. Also in **Authentication**: custom
    **SMTP Settings** (Supabase's own sender only reaches the organization's members), the 6-digit code `{{ .Token }}` in
    the **Confirm signup** and **Reset password** emails, and **Confirm email** kept ON; see
    [docs/SINGAPORE_SERVER.md](docs/SINGAPORE_SERVER.md).
-4. **Website address**: in Vercel, open the project › **Settings › Domains**, add `emonoverruns.online` (and
-   `www.emonoverruns.online`), and set the DNS records Vercel shows at the place where the domain was bought.
+4. **Website address**: in Cloudflare, open the project › **Settings › Domains & Routes**, add `emonoverruns.online` (and
+   `www.emonoverruns.online`) as **Custom Domain**; the domain's nameservers point to Cloudflare.
 5. **First sign-up**: the Director signs up first. The first account becomes an active Director and the main Director;
    emonoverruns@gmail.com also becomes a Director when it signs up. Everyone else waits as *Pending* (see Daily use).
 
