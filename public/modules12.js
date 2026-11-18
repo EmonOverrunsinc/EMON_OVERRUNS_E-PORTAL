@@ -1196,7 +1196,7 @@
     LOG.push({ who: "ai", busy: true, html: `<span class="eva-dots"><i></i><i></i><i></i></span>` });
     paint();
     try { const r = await answer(text, picked); LOG[LOG.length - 1] = { who: "ai", at: Date.now(), html: r.html, chips: r.chips, pick: r.pick }; }
-    catch (e) { LOG[LOG.length - 1] = { who: "ai", at: Date.now(), html: /box_stock|ai_settings|schema cache|PGRST20/.test(e?.message || "") ? "This needs the database update <b>RUN_048_TO_051.sql</b>. Run it in the Supabase SQL Editor." : `Sorry, I could not read that: ${esc(e?.message || e)}` }; }
+    catch (e) { LOG[LOG.length - 1] = { who: "ai", at: Date.now(), html: /box_stock|ai_settings|schema cache|PGRST20/.test(e?.message || "") ? "This needs the database update <b>RUN_050_BOXES_AND_099.sql</b>. Run it in the Supabase SQL Editor." : `Sorry, I could not read that: ${esc(e?.message || e)}` }; }
     busyAsk = false;
     if (LOG.length > 120) LOG.splice(0, LOG.length - 120);
     saveLog();
@@ -1387,7 +1387,7 @@
   async function boxSection(el) {
     const [set, read, cnt] = await Promise.all([sb.from("ai_settings").select("*").in("key", ["box_sheet", "box_sheet_read", "box_cost"]),
       sb.from("ai_settings").select("value").eq("key", "box_sheet_read").maybeSingle(), sb.from("box_stock").select("serial_no", { count: "exact", head: true })]);
-    if (set.error || cnt.error) { const e = set.error || cnt.error; el.innerHTML = `<div class="empty">${/ai_settings|box_stock|schema cache|PGRST20/.test(e.message || "") ? "The box database needs the database update <b>RUN_048_TO_051.sql</b>. Run it in the Supabase SQL Editor." : esc(e.message)}</div>`; return; }
+    if (set.error || cnt.error) { const e = set.error || cnt.error; el.innerHTML = `<div class="empty">${/ai_settings|box_stock|schema cache|PGRST20/.test(e.message || "") ? "The box database needs the database update <b>RUN_050_BOXES_AND_099.sql</b>. Run it in the Supabase SQL Editor." : esc(e.message)}</div>`; return; }
     const cfg = (set.data || []).find((x) => x.key === "box_sheet")?.value || {}, last = read.data?.value || null;
     const cost = num((set.data || []).find((x) => x.key === "box_cost")?.value?.amount) || 3200; // 3.99.52
     el.innerHTML = `<p class="muted">EVA, the top search and the box scan read your boxes from the Google Sheet <b>DATABASE</b>. The <b>top row</b> has the column titles: SERIAL NO, PRODUCT, BRAND, CTN, STYLE, QTY, BATCH, <b>PRICE</b>, <b>DATE OF ARRIVAL</b>, SHIPPING DATE, RELEASED DATE, DATE SOLD, INVOICE NO (any order); every other column is kept too. With no titles: A to G, H price, J company, K date of arrival. A box with a PRICE is <b>SOLD</b>; a box without a DATE OF ARRIVAL is <b>SHIPPED</b>. <b>Read Sheet</b> reads every sheet below and saves each box once (a serial no in two sheets is one box; an empty cell never erases a value). <b>Read a CSV File</b> adds and updates boxes.</p>

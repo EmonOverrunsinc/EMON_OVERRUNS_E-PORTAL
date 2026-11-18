@@ -237,7 +237,7 @@
       if (picked.some((b) => b.serial_no === ser)) return `✖ Box ${ser} is scanned already.`;
       const [st, on] = await Promise.all([sb.from("box_stock").select("*").eq("serial_no", ser).maybeSingle(),
         sb.from("customer_order_boxes").select("order_id, customer_orders(order_no, status)").eq("serial_no", ser)]);
-      if (st.error) return `✖ ${/box_stock|schema cache/i.test(st.error.message || "") ? "The box database needs the database update RUN_048_TO_051.sql." : st.error.message}`;
+      if (st.error) return `✖ ${/box_stock|schema cache/i.test(st.error.message || "") ? "The box database needs the database update RUN_050_BOXES_AND_099.sql." : st.error.message}`;
       if (!st.data) return `✖ Box ${ser} is not in the box database (the Google Sheet). ${isAdmin() ? "Press Read Sheet on the EVA Records page." : "EMON HASAN reads the sheet on the EVA AI page."}`;
       const other = (on.data || []).find((x) => x.customer_orders && x.customer_orders.status !== "cancelled" && x.order_id !== o?.id);
       if (other) return `✖ Box ${ser} is on order ${other.customer_orders.order_no} already.`;
@@ -775,7 +775,7 @@
       if (!(await E.confirmBox(`Add <b>${esc(g.items || "these items")}</b> (${esc(qtyText(g.pcs))} pcs × ₱ ${esc(peso(price))} = <b>₱ ${esc(peso(num(g.pcs) * price))}</b>) to order <b>${esc(o.order_no)}</b>?${o.status === "completed" ? "<br><br>The invoice is charged too." : ""}`, { ok: "Add Price" }))) return;
       b.disabled = true;
       const { error } = await sb.rpc("price_not_ordered", { p_order: o.id, p_code: g.code || "", p_lot: g.lot || "", p_items: g.items || "", p_price: price });
-      if (error) { b.disabled = false; return fail(error, /price_not_ordered/.test(error.message || "") ? "Run the database update RUN_062_TO_064.sql first" : "Could not add the price"); }
+      if (error) { b.disabled = false; return fail(error, /price_not_ordered/.test(error.message || "") ? "Run the database update RUN_062_TO_067.sql first" : "Could not add the price"); }
       toast(`Added to ${o.order_no}: ₱ ${peso(num(g.pcs) * price)}.${o.status === "completed" ? " The invoice was charged." : ""}`);
       reload();
     }));
@@ -810,7 +810,7 @@
   const serialOf = (raw) => String(raw || "").trim().toUpperCase().replace(/\s+/g, " ").slice(0, 60);
   async function findBox(ser, rpc) {
     const r = rpc ? await rpc("delivery_find_box", { p_serial: ser }) : await sb.from("box_stock").select("*").eq("serial_no", ser).maybeSingle();
-    if (r.error) throw new Error(/delivery_find_box/.test(r.error.message || "") && notSet(r.error) ? "Finding boxes needs the database update 053_box_find.sql." : /box_stock/.test(r.error.message || "") ? "The box database needs the database update RUN_048_TO_051.sql." : r.error.message);
+    if (r.error) throw new Error(/delivery_find_box/.test(r.error.message || "") && notSet(r.error) ? "Finding boxes needs the database update 053_box_find.sql." : /box_stock/.test(r.error.message || "") ? "The box database needs the database update RUN_050_BOXES_AND_099.sql." : r.error.message);
     return r.data || null;
   }
   const foundSays = (b) => [b.product, b.brand && b.brand !== "-" ? b.brand : "", b.ctn ? `CTN ${b.ctn}` : "", b.style ? `Code ${b.style}` : "", b.qty ? `${qtyText(b.qty)} pcs` : "", b.batch].filter(Boolean).join(" · ");

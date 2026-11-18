@@ -700,7 +700,7 @@
       const x = pays.rows.find((r) => r.id === b.dataset.spdel);
       if (!(await E.confirmBox(`Delete salary payment <b>${esc(x.payment_no)}</b> (₱ ${esc(peso(x.amount))})?<br><br>Payslip ${esc(p.payslip_no)} is unpaid again by ₱ ${esc(peso(x.amount))}.`, { ok: "Delete", danger: true }))) return;
       const { error } = await sb.rpc("delete_salary_payment", { p_id: x.id });
-      if (error) return fail(error, /delete_salary_payment/.test(error.message || "") ? "Run the database update RUN_062_TO_066.sql first" : "Could not delete the payment");
+      if (error) return fail(error, /delete_salary_payment/.test(error.message || "") ? "Run the database update RUN_062_TO_067.sql first" : "Could not delete the payment");
       toast(`Salary payment ${x.payment_no} deleted.`); V.payslip(id);
     }));
     E.bindDocCards($("#main"), () => V.payslip(id));
