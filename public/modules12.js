@@ -853,6 +853,24 @@
   }
 
   // ---------- boxes (the box database read from the sheet) ----------
+  // 3.99.38: the state of a box: SOLD (green) when its order is invoiced or the sheet has its PRICE; ON ORDER; SHIPPED (on the
+  // way) when the sheet has a DATE OF ARRIVAL column and the box has no date yet; else IN STOCK (red: arrived, not sold)
+  const BOX_STATE = { sold: "SOLD", order: "ON ORDER", shipped: "SHIPPED", stock: "IN STOCK" };
+  const BOX_PILL = { sold: "bx-sold", order: "bx-order", shipped: "bx-ship", stock: "bx-stock" };
+  function boxKey(b, o, sale, hasArrival) {
+    if (sale || o?.status === "completed" || num(b?.price) > 0) return "sold";
+    if (o && o.status !== "cancelled") return "order";
+    if (hasArrival && b && !b.arrival_date) return "shipped";
+    return "stock";
+  }
+  // whether the sheet read last has a DATE OF ARRIVAL column (then a box without a date is SHIPPED)
+  let HAS_ARR = null;
+  const hasArrival = async () => {
+    if (HAS_ARR && Date.now() - HAS_ARR.at < 60000) return HAS_ARR.v;
+    const r = await sb.from("ai_settings").select("value").eq("key", "box_sheet_read").maybeSingle().then((x) => x, () => ({}));
+    HAS_ARR = { at: Date.now(), v: !!r.data?.value?.has_arrival }; return HAS_ARR.v;
+  };
+  E.boxStatus = { key: boxKey, label: BOX_STATE, pill: (k) => E.pill(BOX_PILL[k], BOX_STATE[k]), hasArrival };
   let BOX = null;
   async function boxData() {
     if (BOX && Date.now() - BOX.at < 5000) return BOX;
@@ -864,17 +882,18 @@
     return BOX;
   }
   const STOCK_STOP = new Set(["how", "what", "which", "the", "of", "in", "for", "this", "brand", "product", "by", "have", "has", "are", "there", "show", "much", "pcs", "piece", "pieces", "now"]);
-  const boxState = (o) => (!o ? "IN STOCK" : o.status === "completed" ? "SOLD" : "ON ORDER"); // 3.99.32: an invoiced box is SOLD
+  const boxState = (o, b, sale, hasArrival) => BOX_STATE[boxKey(b, o, sale, hasArrival)];
   async function aBox(serial) {
-    const [b, on, sale] = await Promise.all([one(sb.from("box_stock").select("*").eq("serial_no", serial).maybeSingle()),
+    const [b, on, sale, arr] = await Promise.all([one(sb.from("box_stock").select("*").eq("serial_no", serial).maybeSingle()),
       one(sb.from("customer_order_boxes").select("serial_no, items, pcs, customer_orders(id, order_no, status, customers(id, first_name, last_name, account_no))").eq("serial_no", serial)),
-      sb.from("box_sales").select("*").eq("serial_no", serial).order("sold_at", { ascending: false }).limit(1).then((r) => (r.error ? null : r.data?.[0] || null), () => null)]);
+      sb.from("box_sales").select("*").eq("serial_no", serial).order("sold_at", { ascending: false }).limit(1).then((r) => (r.error ? null : r.data?.[0] || null), () => null), hasArrival()]);
     const o = (on || []).map((x) => x.customer_orders).find((x) => x && x.status !== "cancelled");
     if (!b && !o) return { html: `Box <b class="mono">${esc(serial)}</b> is not in the box database. If it is in your Google Sheet, press <b>Read Sheet</b> on the <a href="#gateai">EVA AI</a> page.` };
-    const st = boxState(o);
+    const st = boxState(o, b, sale, arr);
     const soldTxt = sale ? ` · invoice <a href="#invoice/${esc(sale.invoice_id)}">${esc(sale.invoice_no || "")}</a> · ${qtyText(sale.pcs)} pcs × ₱ ${peso(sale.price)} = <b>₱ ${peso(sale.total)}</b>` : "";
     return { cust: o?.customers, html: `Box <b class="mono">${esc(serial)}</b>: <b>${esc(st)}</b>${o ? ` · order <a href="#custorder/${esc(o.id)}">${esc(o.order_no)}</a>${o.customers ? ` for ${custLink(o.customers)}` : ""}` : ""}${soldTxt}
-      ${b ? table(["Product", "Brand", "CTN", "Style", "Pcs", "Batch"], [[esc(b.product || ""), esc(b.brand || ""), esc(b.ctn || ""), esc(b.style || ""), qtyText(b.qty), esc(b.batch || "")]]) : "<br>(not in the box database: the order's details are shown on the order)"}` };
+      ${b ? table(["Product", "Brand", "CTN", "Style", "Pcs", "Batch", "Price", "Arrival", ...Object.keys(b.extra || {})], [[esc(b.product || ""), esc(b.brand || ""), esc(b.ctn || ""), esc(b.style || ""), qtyText(b.qty), esc(b.batch || ""),
+        num(b.price) ? peso(b.price) : "", b.arrival_date ? esc(mdy(b.arrival_date)) : "", ...Object.values(b.extra || {}).map((v) => esc(v))]]) : "<br>(not in the box database: the order's details are shown on the order)"}` };
   }
   async function aStock(q) {
     const d = await boxData();
@@ -1204,14 +1223,19 @@
   // ======================================================================
   const NOT_SHARED = "The sheet could not be read. In Google Sheets press Share → General access → \"Anyone with the link\" (Viewer), then press Read Sheet again.";
   const sheetIdOf = (url) => (/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/.exec(url || "") || /^\s*([a-zA-Z0-9_-]{30,})\s*$/.exec(url || "") || [])[1] || "";
-  const cellText = (c) => (c == null || c.v == null ? "" : typeof c.v === "number" ? String(Number.isInteger(c.v) ? c.v : +c.v.toFixed(4)) : String(c.v)).trim();
+  const cellText = (c) => {
+    if (c == null || c.v == null) return "";
+    const d = typeof c.v === "string" && /^Date\((\d+),(\d+),(\d+)/.exec(c.v); // a date cell (month 0 to 11)
+    if (d) return `${d[1]}-${String(+d[2] + 1).padStart(2, "0")}-${String(+d[3]).padStart(2, "0")}`;
+    return (typeof c.v === "number" ? String(Number.isInteger(c.v) ? c.v : +c.v.toFixed(4)) : String(c.v)).trim();
+  };
   // the rows of the sheet (JSONP: works from the browser without a key, for a sheet anyone with the link can view)
   function readSheet(url, tab) {
     const id = sheetIdOf(url);
     if (!id) return Promise.reject(new Error("This is not a Google Sheet link. Copy the link from the address bar of the sheet."));
     const cb = "__evaSheet" + Date.now();
     const gid = (/[#&?]gid=(\d+)/.exec(url) || [])[1];
-    const qs = new URLSearchParams({ tqx: `out:json;responseHandler:${cb}`, headers: "0", tq: "select A, B, C, D, E, F, G" });
+    const qs = new URLSearchParams({ tqx: `out:json;responseHandler:${cb}`, headers: "0" }); // 3.99.38: every column (A to H was cut at G)
     if (tab) qs.set("sheet", tab); else if (gid) qs.set("gid", gid);
     return new Promise((ok, bad) => {
       const s = document.createElement("script");
@@ -1219,7 +1243,7 @@
       const timer = setTimeout(() => done(bad, new Error(NOT_SHARED)), 25000);
       window[cb] = (resp) => {
         if (!resp || resp.status === "error") return done(bad, new Error((resp?.errors || []).map((x) => x.detailed_message || x.message).filter(Boolean).join(" ") || NOT_SHARED));
-        done(ok, (resp.table?.rows || []).map((r) => (r.c || []).slice(0, 7).map(cellText)));
+        done(ok, (resp.table?.rows || []).map((r) => (r.c || []).map(cellText)));
       };
       s.onerror = () => done(bad, new Error(NOT_SHARED));
       // a sheet not shared answers with Google's sign-in page, not with the rows: the answer is never called
@@ -1240,12 +1264,42 @@
       else cell += ch;
     }
     if (cell || row.length) { row.push(cell); out.push(row); }
-    return out.map((r) => r.slice(0, 8).map((x) => x.trim())); // 3.99.32: A to H (H = price)
+    return out.map((r) => r.map((x) => x.trim())); // 3.99.38: every column
   }
-  // rows of A to G → boxes (a first row of titles, rows with no serial no and the same serial no twice are left out)
+  // 3.99.38: the columns are found by their TITLES in the top row (any order); a sheet without titles is read as
+  // A serial no, B product, C brand, D CTN, E style, F qty, G batch, H price. Every other titled column is kept (extra).
+  const COL_RE = { serial_no: /serial|^s\.?\s*n\.?o?$|box\s*no/, product: /product|item|article|description/, brand: /brand/, ctn: /ctn|carton/, style: /style|code/,
+    qty: /qty|pcs|quantity|pieces/, batch: /batch|lot/, price: /price|rate/, arrival: /arriv|received\s*date|date\s*in\b/ };
+  // a date written in the sheet → yyyy-mm-dd ("" when it is not a date)
+  const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+  function sheetDate(t) {
+    t = String(t || "").trim(); if (!t) return "";
+    const iso = (y, m, d) => (y >= 2000 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : "");
+    let m;
+    if ((m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/.exec(t))) return iso(+m[1], +m[2], +m[3]);
+    if ((m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/.exec(t))) { const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; return +m[1] > 12 ? iso(y, +m[2], +m[1]) : iso(y, +m[1], +m[2]); } // month first (11/02/2026), day first when over 12
+    if ((m = /^(\d{1,2})[\s-]*([a-z]{3})[a-z]*[\s,-]*(\d{4})/i.exec(t))) return iso(+m[3], MON[m[2].toLowerCase()] || 0, +m[1]);
+    if ((m = /^([a-z]{3})[a-z]*[\s-]*(\d{1,2})[\s,-]*(\d{4})/i.exec(t))) return iso(+m[3], MON[m[1].toLowerCase()] || 0, +m[2]);
+    return "";
+  }
   function boxesOf(table_) {
-    const list = table_.filter((r) => r[0] && /\d/.test(r[0]) && !/^serial/i.test(r[0]));
-    return list.map((r) => ({ serial_no: r[0], product: r[1] || "", brand: r[2] || "", ctn: r[3] || "", style: r[4] || "", qty: (String(r[5] || "").match(/\d+(\.\d+)?/) || [""])[0], batch: r[6] || "", price: (String(r[7] || "").replace(/,/g, "").match(/\d+(\.\d+)?/) || [""])[0] }));
+    const num1 = (v) => (String(v || "").replace(/,/g, "").match(/\d+(\.\d+)?/) || [""])[0];
+    const top = table_.slice(0, 5).findIndex((r) => r.some((x) => COL_RE.serial_no.test(String(x || "").trim().toLowerCase())));
+    let at = { serial_no: 0, product: 1, brand: 2, ctn: 3, style: 4, qty: 5, batch: 6, price: 7 }, extraCols = [], body = table_;
+    if (top >= 0) {
+      const heads = table_[top].map((x) => String(x || "").trim()), used = new Set();
+      at = {};
+      for (const [k, re] of Object.entries(COL_RE)) { const i = heads.findIndex((h, j) => !used.has(j) && h && re.test(h.toLowerCase())); if (i >= 0) { at[k] = i; used.add(i); } }
+      extraCols = heads.map((h, j) => [h, j]).filter(([h, j]) => h && !used.has(j)).slice(0, 20);
+      body = table_.slice(top + 1);
+    }
+    const get = (r, k) => (at[k] == null ? "" : String(r[at[k]] ?? "").trim());
+    return body.filter((r) => /\d/.test(get(r, "serial_no")) && !/^serial/i.test(get(r, "serial_no"))).map((r) => {
+      const extra = {};
+      for (const [h, j] of extraCols) { const v = String(r[j] ?? "").trim(); if (v) extra[h.slice(0, 40).toUpperCase()] = v.slice(0, 120); }
+      return { serial_no: get(r, "serial_no"), product: get(r, "product"), brand: get(r, "brand"), ctn: get(r, "ctn"), style: get(r, "style"), qty: num1(get(r, "qty")), batch: get(r, "batch"),
+        price: num1(get(r, "price")), arrival: sheetDate(get(r, "arrival")), extra };
+    });
   }
   async function saveBoxes(boxes, source) {
     if (!boxes.length) throw new Error("No boxes found: column A must have the serial no (for example U20261240).");
@@ -1260,15 +1314,15 @@
       sb.from("ai_settings").select("value").eq("key", "box_sheet_read").maybeSingle(), sb.from("box_stock").select("serial_no", { count: "exact", head: true })]);
     if (set.error || cnt.error) { const e = set.error || cnt.error; el.innerHTML = `<div class="empty">${/ai_settings|box_stock|schema cache|PGRST20/.test(e.message || "") ? "The box database needs the database update <b>RUN_048_TO_051.sql</b>. Run it in the Supabase SQL Editor." : esc(e.message)}</div>`; return; }
     const cfg = (set.data || []).find((x) => x.key === "box_sheet")?.value || {}, last = read.data?.value || null;
-    el.innerHTML = `<p class="muted">EVA and the box scan read your boxes from the Google Sheet <b>DATABASE</b>, columns <b>A to G</b>: serial no, product, brand, CTN, style, qty, batch. Each <b>Read Sheet</b> brings the new rows and removes the old ones. A box scanned on a customer order fills its details from here.</p>
+    el.innerHTML = `<p class="muted">EVA, the top search and the box scan read your boxes from the Google Sheet <b>DATABASE</b>. The <b>top row</b> has the column titles: SERIAL NO, PRODUCT, BRAND, CTN, STYLE, QTY, BATCH, <b>PRICE</b>, <b>DATE OF ARRIVAL</b> (any order); every other column is kept too. A box with a PRICE is <b>SOLD</b>; a box without a DATE OF ARRIVAL is <b>SHIPPED</b>. Each <b>Read Sheet</b> brings the new rows and removes the old ones.</p>
       <div class="fields wide eva-sheet"><label for="bsUrl">Google Sheet Link</label><input type="url" id="bsUrl" placeholder="https://docs.google.com/spreadsheets/d/…" value="${esc(cfg.url || "")}">
         <label for="bsTab">Sheet (tab) Name</label><input type="text" id="bsTab" maxlength="60" data-case="keep" value="${esc(cfg.tab || "DATABASE")}"></div>
       <div class="btnrow"><button type="button" class="btn primary" id="bsRead">${ic("download")} Read Sheet</button>
-        <label class="btn" for="bsCsv">${ic("upload")} Read a CSV File</label><input type="file" id="bsCsv" accept=".csv,text/csv" hidden><span class="muted" id="bsStep"></span></div>
+        <label class="btn" for="bsCsv">${ic("upload")} Read a CSV File</label><button type="button" class="btn" id="bsOut">${ic("download")} Download with Status</button><input type="file" id="bsCsv" accept=".csv,text/csv" hidden><span class="muted" id="bsStep"></span></div>
       <div class="tiles ai-tiles"><div class="tile"><span class="tile-ic">${ic("box")}</span><div class="k">Boxes in the Database</div><div class="v">${qtyText(cnt.count || 0)}</div><small>${last ? `read ${esc(E.dateTime(last.read_at))}` : "not read yet"}</small></div></div>
       <small class="muted">The sheet must be shared: Share → General access → "Anyone with the link" (Viewer). Or download it (File → Download → CSV) and press Read a CSV File.</small>`;
     const step = (t) => { if ($("#bsStep")) $("#bsStep").textContent = t; };
-    const done = (n) => { toast(`${qtyText(n)} boxes read. The old box data was removed.`); boxSection(el); };
+    const done = (n) => { HAS_ARR = null; toast(`${qtyText(n)} boxes read. The old box data was removed.`); boxSection(el); };
     $("#bsRead").onclick = async (e) => {
       const url = $("#bsUrl").value.trim(), tab = $("#bsTab").value.trim();
       if (!sheetIdOf(url)) return toast("Paste the link of your Google Sheet first.", true);
@@ -1279,6 +1333,28 @@
         step(`Saving ${qtyText(boxes.length)} boxes…`);
         done(await saveBoxes(boxes, `Google Sheet ${tab || ""}`.trim()));
       } catch (err) { e.target.disabled = false; step(""); fail(err, "Could not read the sheet"); }
+    };
+    // 3.99.38: the box database with the STATUS of each box, to copy back into the Google Sheet (or open in Excel)
+    $("#bsOut").onclick = async (e) => {
+      e.target.disabled = true; step("Making the file…");
+      try {
+        const [st, on, sd, arr] = await Promise.all([E.allRows(() => sb.from("box_stock").select("*").order("serial_no")),
+          E.allRows(() => sb.from("customer_order_boxes").select("serial_no, customer_orders(order_no, status)")), E.allRows(() => sb.from("box_sales").select("serial_no, invoice_no")), hasArrival()]);
+        if (st.error) throw st.error;
+        const ord = new Map(), sold = new Map();
+        for (const x of on.data || []) if (x.customer_orders && x.customer_orders.status !== "cancelled") ord.set(x.serial_no, x.customer_orders);
+        for (const x of sd.data || []) sold.set(x.serial_no, x);
+        const ex = [...new Set((st.data || []).flatMap((b) => Object.keys(b.extra || {})))];
+        const cell = (v) => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+        const head = ["SERIAL NO", "PRODUCT", "BRAND", "CTN", "STYLE", "QTY", "BATCH", "PRICE", "DATE OF ARRIVAL", ...ex, "STATUS", "ORDER NO", "INVOICE NO"];
+        const lines = [head, ...(st.data || []).map((b) => { const o = ord.get(b.serial_no), s0 = sold.get(b.serial_no);
+          return [b.serial_no, b.product, b.brand, b.ctn, b.style, b.qty, b.batch, num(b.price) ? num(b.price).toFixed(2) : "", b.arrival_date || "", ...ex.map((k) => b.extra?.[k] || ""),
+            BOX_STATE[boxKey(b, o, s0, arr)], o?.order_no || "", s0?.invoice_no || ""]; })];
+        const blob = new Blob(["\ufeff" + lines.map((l) => l.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `Box-Database-Status-${isoToday()}.csv`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+        step("");
+      } catch (err) { step(""); fail(err, "Could not make the file"); }
+      e.target.disabled = false;
     };
     $("#bsCsv").onchange = async (e) => {
       const f = e.target.files[0]; e.target.value = "";
