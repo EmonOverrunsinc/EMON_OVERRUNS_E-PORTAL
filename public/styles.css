@@ -3810,3 +3810,6 @@ body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !
   .bx1-card .bxtrack .bt small .nw { font-size: 8.5px; }
   .bx1 .bxr-facts em { white-space: normal; overflow: visible; }
 }
+/* 3.99.72: the one-box print top boxes a little smaller */
+.page .bx1-band b, .page .bxp-sum.money b, .page .bxp-sum.money .amt b { font-size: 11pt; }
+.page .bx1-band small, .page .bxp-sum.money small { font-size: 6pt; }
