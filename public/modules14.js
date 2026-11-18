@@ -432,8 +432,7 @@
             <div class="c2-eqb tot"><b>${td == null ? "—" : td + DUE}</b><small>DAYS TO PAY</small></div>
           </div>
           <div class="c2-eqdue"><small>DUE DATE</small><b>${esc(i._due ? mdy(i._due.ext) : "COUNTED FROM THE INVOICE DATE")}</b></div>
-          <div class="c2-ver"><img src="${E.qrDataUrl(E.verifyUrl(i.ins_no))}" alt="QR code: verify" class="c2-qr"><div><b>VERIFY THIS CERTIFICATE</b><span>Scan the QR code or enter ${esc(i.ins_no)} at ${esc(E.siteName?.() || "emonoverruns.online")}</span>
-            <img src="${E.pdf417DataUrl("EMONINS|" + i.ins_no)}" alt="" class="c2-bar"></div></div>
+          <div class="c2-ver"><img src="${E.qrDataUrl(E.verifyUrl(i.ins_no))}" alt="QR code: verify" class="c2-qr">${E.secSeal ? E.secSeal(i.ins_no, { url: `${E.siteName?.() || "emonoverruns.online"}/verify`, cls: "sm" }) : ""}</div>
         </div></div>
       </div>
       <div class="c2-decl">${sec("CERTIFICATION")}

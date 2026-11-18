@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify a Record · EMON OVERRUNS</title>
+<meta name="robots" content="noindex">
+<!-- 3.99.91: the address on the security seals (emonoverruns.online/verify) opens Verify a Record of the E-Portal;
+     /verify?no=INS-202611-002 opens it with that number -->
+<meta http-equiv="refresh" content="0; url=/#verify">
+<script>
+  (function () { var no = ""; try { no = new URLSearchParams(location.search).get("no") || ""; } catch (e) {}
+    location.replace("/#verify" + (no ? "/" + encodeURIComponent(no) : "")); })();
+</script>
+</head>
+<body style="font:16px system-ui,sans-serif;padding:24px"><a href="/#verify">Open Verify a Record</a></body>
+</html>
