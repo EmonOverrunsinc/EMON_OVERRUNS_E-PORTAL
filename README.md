@@ -205,7 +205,7 @@ smaller before upload, 2.2.2) and a custom domain for the database address.
   **Help › Check for Updates…** looks at once. Download: https://github.com/EmonOverrunsinc/EMON-OVERRUNS/releases/latest
 - **Android**: `EMON-OVERRUNS-E-Portal-<version>.apk` opens the E-Portal full screen in Chrome. GitHub Actions signs it with
   the release key in the repository secrets (new key from 1.6, November 2026) and publishes it as the release
-  `android-v<version>`. Download (the repository is private from November 2026, so the app is served by the website): https://emon-overruns.emonoverruns.workers.dev/downloads/EMON-OVERRUNS-E-Portal.apk (copy each new signed APK to `public/downloads/`)
+  `android-v<version>`. Download (the repository is private from November 2026, so the app is served by the website): https://www.emonoverruns.online/downloads/EMON-OVERRUNS-E-Portal.apk (copy each new signed APK to `public/downloads/`; now 1.9)
 - How they are built and signed: [apps/README.md](apps/README.md).
 
 ## Files
