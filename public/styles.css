@@ -3733,3 +3733,7 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxsum .pcell.bxs.ok .pv { color: #1e8e3e; } .bxsum .pcell.bxs.bad .pv { color: #c41e3a; }
 .bxsum .pcell.bxs.amt { background: #eaf6ea; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .bxsum .pcell.bxs.amt .pl { color: #1e8e3e; } .bxsum .pcell.bxs.amt .pv { color: #1e8e3e; font-size: 16pt; }
+/* 3.99.52: the total cost of the boxes (cost per box × boxes) */
+.bxr-counts .cost { border-top-color: #c9a227; } .bxr-counts .cost b { color: #8a5a00; }
+.bxsum .pcell.bxs.cost .pv { color: #8a5a00; }
+.bxr-counts .cost { grid-column: span 2; } .bxr-counts b { white-space: nowrap; }

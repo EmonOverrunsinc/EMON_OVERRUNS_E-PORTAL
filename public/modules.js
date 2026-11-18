@@ -2167,7 +2167,10 @@
     // where each box is: on an order, sold (invoiced) or in stock
     const parts = [];
     for (let i = 0; i < boxes.length; i += 150) parts.push(boxes.slice(i, i + 150).map((b) => b.serial_no));
-    const BX = E.boxStatus, arr = BX ? await BX.hasArrival() : false;
+    const BX = E.boxStatus;
+    // 3.99.52: the cost of one box (EVA AI page; ₱3,200 when not set)
+    const [arr, costRow] = await Promise.all([BX ? BX.hasArrival() : false, sb.from("ai_settings").select("value").eq("key", "box_cost").maybeSingle().then((r) => r.data, () => null)]);
+    const boxCost = num(costRow?.value?.amount) || 3200;
     const got = await Promise.all(parts.map((ch) => Promise.all([
       sb.from("customer_order_boxes").select("serial_no, customer_orders(id, order_no, status)").in("serial_no", ch).then((r) => r.data || [], () => []),
       sb.from("box_sales").select("serial_no, invoice_id, invoice_no, price, total, sold_at").in("serial_no", ch).then((r) => r.data || [], () => [])])));
@@ -2189,6 +2192,7 @@
     const sum = (list, f) => list.reduce((s, r) => s + num(f(r)), 0);
     const of = (k) => rows.filter((r) => r.st === k);
     const pcs = sum(rows, (r) => r.qty), soldRows = of("sold"), soldAmt = sum(soldRows, (r) => r.amount);
+    const totalCost = boxCost * rows.length, costLbl = "Total Cost (₱)"; // 3.99.52: cost per box × boxes
     // 3.99.42: the average price per pc of the boxes that have a price (each box counted by its pcs)
     const priced = rows.filter((r) => r.price > 0), pricedPcs = sum(priced, (r) => r.qty);
     const avgPrice = pricedPcs ? sum(priced, (r) => r.price * num(r.qty)) / pricedPcs : 0;
@@ -2206,7 +2210,7 @@
       ["Shipping Date", span((r) => r.ship_date)], ["Released Date", span((r) => r.release_date)], ["Arrival Date", span((r) => r.arrival_date)], ["Date Sold", span((r) => (r.st === "sold" ? r.soldOn : ""))]]
       .filter(([, v], i) => i === 0 || v);
     const counts = [["Boxes", qtyText(rows.length)], ["Pcs", qtyText(pcs)], ["Sold Boxes", qtyText(soldRows.length), "ok"],
-      ["In Stock", qtyText(of("stock").length), "bad"], ...(avgPrice ? [["Avg Price (₱)", peso(avgPrice)]] : []), ["On Order", qtyText(of("order").length)], ...(arr ? [["Shipped", qtyText(of("shipped").length)]] : [])];
+      ["In Stock", qtyText(of("stock").length), "bad"], ...(avgPrice ? [["Avg Price (₱)", peso(avgPrice)]] : []), ["Total Cost", `₱ ${peso(totalCost)}`, "cost"], ["On Order", qtyText(of("order").length)], ...(arr ? [["Shipped", qtyText(of("shipped").length)]] : [])];
     const cols = [{ label: "#", num: true, get: (r) => String(rows.indexOf(r) + 1) }, { label: "Serial No", key: "serial", html: (r) => `<b class="mono nw">${esc(r.serial_no)}</b>` },
       { label: "Product", wrap: true, get: (r) => [r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · ") }, { label: "CTN", phone: false, get: (r) => r.ctn || "" },
       { label: "Pcs", key: "pcs", num: true, get: (r) => qtyText(r.qty) }, { label: "Price (₱)", key: "price", num: true, get: (r) => (r.price ? peso(r.price) : "") },
@@ -2219,7 +2223,7 @@
     if (kind === "serial") {
       const r = rows[0];
       const det = [["Serial No", r.serial_no, "hl"], ["Status", LBL[r.st]], ["Product", r.product], ["Brand", r.brand && r.brand !== "-" ? r.brand : ""], ["Batch No", r.batch], ["CTN", r.ctn],
-        ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
+        ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""], ["Cost per Box (₱)", peso(boxCost)],
         ["Invoice No", r.st === "sold" ? r.invoice : ""], ["Date Sold", r.st === "sold" ? day(r.soldOn) : ""], ["Order No", r.order?.order_no || ""],
         ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Shipping Date", day(r.ship_date)], ["Released Date", day(r.release_date)], ["Arrival Date", day(r.arrival_date)],
         ...exTable.map((k) => [k, r.extra?.[k] || ""])].filter(([, v], i) => i < 2 || v);
@@ -2239,7 +2243,7 @@
         E.openPreview(title, [`${printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`)}
           <div class="bx1-band bxp1-${r.st}"><div class="w2"><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div><div><small>Pcs</small><b>${qtyText(r.qty)}</b></div></div>
           ${sold1 && r.amount > 0 ? `<div class="bxp-sum money"><div><small>Price per Pc (₱)</small><b>${peso(r.price)}</b></div><div class="amt"><small>Amount Sold (₱)</small><b>${peso(r.amount)}</b></div></div>` : ""}
-          ${sec("Box", [["Product", r.product], ["Brand", r.brand && r.brand !== "-" ? r.brand : ""], ["Batch No", r.batch], ["CTN", r.ctn], ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""]])}
+          ${sec("Box", [["Cost per Box (₱)", peso(boxCost), "hl"], ["Product", r.product], ["Brand", r.brand && r.brand !== "-" ? r.brand : ""], ["Batch No", r.batch], ["CTN", r.ctn], ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""]])}
           ${sec("Dates", [["Shipping Date", day(r.ship_date)], ["Released Date", day(r.release_date)], ["Arrival Date", day(r.arrival_date)], ["Date Sold", sold1 ? day(r.soldOn) : ""]])}
           ${sec(sold1 ? "Sale" : "Order", [["Invoice No", sold1 ? r.invoice : "", "hl"], ["Order No", r.order?.order_no || ""], ["Price per Pc (₱)", !sold1 && r.price ? peso(r.price) : ""]])}
           ${sec("Other Details", exTable.map((k) => [k, r.extra?.[k] || ""]))}`]);
@@ -2267,7 +2271,7 @@
       // 3.99.51: On Order and Shipped only when some boxes are
       const row2 = [...(of("order").length ? [["On Order", qtyText(of("order").length)]] : []), ...(arr && of("shipped").length ? [["Shipped", qtyText(of("shipped").length)]] : []), ...(avgPrice ? [["Average Price per Pc (₱)", peso(avgPrice)]] : [])];
       const sumHtml = E.box("Summary", `<div class="pgrid4 bxsum">${sc("Boxes", qtyText(rows.length))}${sc("Pcs", qtyText(pcs))}${sc("Sold Boxes", qtyText(soldRows.length), "ok")}${sc("In Stock", qtyText(of("stock").length), "bad")}
-        ${row2.map(([k, v]) => sc(k, v)).join("")}${sc("Total Amount Sold (₱)", peso(soldAmt), "amt", 4 - row2.length)}</div>`);
+        ${row2.map(([k, v]) => sc(k, v)).join("")}${sc(costLbl, peso(totalCost), "cost")}${sc("Total Amount Sold (₱)", peso(soldAmt), "amt", 4 - ((row2.length + 1) % 4))}</div>`);
       const det = facts.filter(([k]) => !["Product", "Brand", "Date Sold"].includes(k));
       const head = printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), cont = head; // 3.99.47: every page has the same short header
       const soldHead = `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th class="num">Pcs</th><th class="num">Price</th><th class="num">Amount</th><th>Invoice No</th><th>Date Sold</th></tr>`;
