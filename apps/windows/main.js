@@ -9,7 +9,7 @@ const os = require("os");
 const { execFile, spawn } = require("child_process");
 const updater = require("./updater");
 
-// 1.8.2: the E-Portal is on Cloudflare (Vercel stopped); the Cloudflare address works even while the domain moves
+// 1.8.2: the E-Portal is on Cloudflare (the old host stopped); the Cloudflare address works even while the domain moves
 const HOME = process.env.EO_URL || "https://emon-overruns.emonoverruns.workers.dev/#dashboard";
 const SITE = new URL(HOME).origin;
 // Uploaded files open from signed links of the E-Portal's Supabase server. Its address is read from the E-Portal page

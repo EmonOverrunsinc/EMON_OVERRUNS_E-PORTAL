@@ -1,6 +1,6 @@
 # E-Portal apps for Windows and Android
 
-Both apps open the live E-Portal (https://emon-overruns.vercel.app). Records, prints and uploads come from the
+Both apps open the live E-Portal (https://www.emonoverruns.online). Records, prints and uploads come from the
 site, so a change to the E-Portal reaches the apps at once and the apps rarely need a new version.
 
 ## Windows 11: `windows/`

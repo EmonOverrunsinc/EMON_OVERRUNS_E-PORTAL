@@ -1,4 +1,4 @@
-# Cloudflare Pages: the headers of the website (the same as vercel.json had on Vercel)
+# Cloudflare: the headers of the website
 /*
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   X-Content-Type-Options: nosniff

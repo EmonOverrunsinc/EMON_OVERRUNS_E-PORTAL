@@ -10,8 +10,6 @@
         [{ \"relation\": [\"delegate_permission/common.handle_all_urls\"],
            \"target\": { \"namespace\": \"web\", \"site\": \"https://emon-overruns.emonoverruns.workers.dev\" } },
          { \"relation\": [\"delegate_permission/common.handle_all_urls\"],
-           \"target\": { \"namespace\": \"web\", \"site\": \"https://www.emonoverruns.online\" } },
-         { \"relation\": [\"delegate_permission/common.handle_all_urls\"],
-           \"target\": { \"namespace\": \"web\", \"site\": \"https://emon-overruns.vercel.app\" } }]
+           \"target\": { \"namespace\": \"web\", \"site\": \"https://www.emonoverruns.online\" } }]
     </string>
 </resources>

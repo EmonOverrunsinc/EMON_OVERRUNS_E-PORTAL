@@ -30,7 +30,7 @@
   </div>
 </main>
 <script>
-  const target = new URLSearchParams(location.search).get("u") || "https://emon-overruns.vercel.app/#dashboard";
+  const target = new URLSearchParams(location.search).get("u") || "https://emon-overruns.emonoverruns.workers.dev/#dashboard";
   const go = () => { location.href = target; };
   document.getElementById("retry").onclick = go;
   window.addEventListener("online", go);
