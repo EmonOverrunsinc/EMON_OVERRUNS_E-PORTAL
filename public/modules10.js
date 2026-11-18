@@ -843,6 +843,7 @@
     input.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } };
   }
   // A box label read: the serial no (L20260667) and what else the code carries (QTY: 252 PCS, STYLE: 01, ITEMS: …, BATCH …).
+  E.readLabel = (text) => readLabel(text); // 3.99.60: the top Scan button reads box stickers too
   function readLabel(text) {
     const t = String(text || "").replace(/\s+/g, " ").trim();
     const pick = (re) => (re.exec(t) || [])[1] || "";
