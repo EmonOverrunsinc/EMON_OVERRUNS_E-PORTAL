@@ -2224,7 +2224,7 @@
     $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
     $("#fbPrint").onclick = () => E.openPreview(title, E.pagedDoc({
       head: printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), contHead: printHead(`SEARCH RESULT ${key} (CONTINUED)`, ""),
-      top: `<div class="bxp-sum">${counts.map(([k, v, c]) => (k === "Sold" ? ["Sold Boxes", qtyText(soldRows.length), c] : [k, v, c])).map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}<div class="amt"><small>Total Amount Sold (₱)</small><b>${peso(soldAmt)}</b></div></div>`
+      top: `<div class="bxp-sum">${counts.map(([k, v, c]) => (k === "Sold" ? ["Sold Boxes", qtyText(soldRows.length), c] : [k, v, c])).map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}<div class="amt"><small>Total Sold (₱)</small><b>${peso(soldAmt)}</b></div></div>`
         + E.box("Details", `<div class="pgrid2">${facts.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`),
       boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>CTN</th><th class="num">Pcs</th><th class="num">Price</th><th class="num">Amount</th><th>Status</th><th>Invoice No</th><th>Date Sold</th></tr>`,
       rows, rowHtml: (r, i) => `<tr><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · "))}</td><td>${esc(r.ctn || "")}</td>

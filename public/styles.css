@@ -3696,3 +3696,11 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxp-sum .ok b { color: #1e8e3e; } .bxp-sum .bad b { color: #c41e3a; }
 .bxp-sum .amt { flex: 1.6 1 0; border-color: #1e8e3e; background: #eaf6ea; } .bxp-sum .amt small { color: #1e8e3e; } .bxp-sum .amt b { color: #1e8e3e; font-size: 10.5pt; }
 .bxp-order { color: #b26a00 !important; font-weight: 700; }
+/* 3.99.40: the counts of the box search print are BIG */
+.bxp-sum { gap: 6px; margin: 0 0 8px; }
+.bxp-sum > div { padding: 6px 8px 7px; border-width: 1.5px; border-radius: 8px; }
+.bxp-sum small { font-size: 7.5pt; margin-bottom: 2px; }
+.bxp-sum b { display: block; font-size: 17pt; line-height: 1.1; }
+.bxp-sum .amt b { font-size: 17pt; }
+.bxp-sum .amt { flex: 2.2 1 0; }
+.bxp-sum .amt b { font-size: 16pt; }
