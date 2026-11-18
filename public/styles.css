@@ -3820,3 +3820,24 @@ body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !
 .pk-list { display: grid; gap: 8px; margin-bottom: 10px; }
 .pk-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #dfe5ef; border-radius: 10px; padding: 8px 12px; }
 .pk-row small { display: block; color: #6b7487; font-size: 12px; }
+/* 3.99.82: scrolling on a computer (the Windows app and the browser): one thin round scrollbar in the portal colours.
+   The page's bar starts under the top bar and stops above the status bar, so it is never under the window's own
+   – ▢ ✕ buttons; beside the top bar and the status bar its strip is navy like them. Phones and iPads keep theirs. */
+@media (hover: hover) and (pointer: fine) {
+  html { --sbt: 0px; --sbb: 0px; --sbg: #f2f4f8; }
+  html:has(#topbar) { --sbt: var(--sb-top, 58px); --sbb: var(--sb-bot, 29px); }
+  html::-webkit-scrollbar { width: 10px; height: 10px;
+    background: linear-gradient(#0f3a8c 0 calc(var(--sbt) - 3px), #f2b705 calc(var(--sbt) - 3px) var(--sbt), var(--sbg) var(--sbt) calc(100% - var(--sbb)), #f2b705 calc(100% - var(--sbb)) calc(100% - var(--sbb) + 2px), #0f3a8c 0); }
+  html::-webkit-scrollbar-track { margin: calc(var(--sbt) + 2px) 0 calc(var(--sbb) + 2px); background: transparent; }
+  html::-webkit-scrollbar-thumb, body ::-webkit-scrollbar-thumb {
+    background: rgba(15,58,140,.32); border: 2px solid transparent; background-clip: padding-box; border-radius: 10px; min-height: 36px; }
+  html::-webkit-scrollbar-thumb:hover, body ::-webkit-scrollbar-thumb:hover { background-color: rgba(15,58,140,.6); }
+  html::-webkit-scrollbar-thumb:active, body ::-webkit-scrollbar-thumb:active { background-color: #1d4fb0; }
+  html::-webkit-scrollbar-button, body ::-webkit-scrollbar-button { display: none; }
+  html::-webkit-scrollbar-corner, body ::-webkit-scrollbar-corner { background: transparent; }
+  /* the tables, the menu and the windows inside the page */
+  body ::-webkit-scrollbar { width: 9px; height: 9px; background: transparent; }
+  body ::-webkit-scrollbar-track { background: transparent; }
+}
+/* Firefox has no -webkit- scrollbar: the thin bar in the same colour */
+@supports not selector(::-webkit-scrollbar) { @media (hover: hover) and (pointer: fine) { html { scrollbar-width: thin; scrollbar-color: rgba(15,58,140,.4) transparent; } } }
