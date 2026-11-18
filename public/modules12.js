@@ -1194,11 +1194,11 @@
     if (!p) {
       p = document.createElement("aside");
       p.className = "eva-panel"; p.setAttribute("aria-label", "EVA AI chat");
-      p.innerHTML = `<div class="ep-head"><span class="ep-title">${ic("ai")} EVA AI <small>ask me</small></span>${isAdmin() ? `<a href="#gateai" class="ep-page" title="EVA AI page">${ic("doc")}</a>` : ""}
+      p.innerHTML = `<div class="ep-head"><span class="ep-title">${ic("ai")} EVA AI <small>ask me</small></span>${isAdmin() ? `<a href="#evadata" class="ep-page" title="EVA Records (only EMON HASAN)">${ic("crown")}</a><a href="#gateai" class="ep-page" title="EVA AI page">${ic("doc")}</a>` : ""}
         <button type="button" class="ep-x" aria-label="Close">${ic("x")}</button></div><div class="ep-ctx" hidden></div><div class="ep-body"></div>`;
       document.body.appendChild(p);
       $(".ep-x", p).onclick = closePanel;
-      if ($(".ep-page", p)) $(".ep-page", p).onclick = () => closePanel();
+      p.querySelectorAll(".ep-page").forEach((a) => (a.onclick = () => closePanel())); // 3.99.55: EVA Records too
       mount($(".ep-body", p));
       document.addEventListener("keydown", panelKey);
     }
