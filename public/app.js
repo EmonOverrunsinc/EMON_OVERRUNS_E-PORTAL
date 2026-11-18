@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.80"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.81"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.80"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.81"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -697,10 +697,15 @@
     return m || "The passkey did not work. Sign in with your password.";
   }
   async function pkSignIn(quiet = false, onFail = (w) => toast(w, true)) {
-    const { error } = await sb.auth.signInWithPasskey();
-    if (!error) { pkMem.set("eoPasskey", "1"); toast("Signed in with your passkey. Welcome!"); return true; }
-    const w = pkWhy(error);
-    if (w && !quiet) onFail(w);
+    let res;
+    try { res = await sb.auth.signInWithPasskey(); } catch (e) { res = { error: e }; }
+    const { data, error } = res || {};
+    if (!error && data?.session) { pkMem.set("eoPasskey", "1"); toast("Signed in with your passkey. Welcome!"); return true; }
+    if (quiet) return false;
+    // 3.99.81: a pressed button always says why it did not sign in (Windows answers "not allowed" also when this computer has no passkey)
+    const w = error ? pkWhy(error) : "";
+    const raw = error ? `${error.name || error.code || "Error"}: ${String(error.message || error).slice(0, 140)}` : "no session came back";
+    onFail(w || `The passkey did not sign you in. If this device has no passkey for your account yet, sign in with your password, then save one (My Profile › Passkeys). (${raw})`);
     return false;
   }
   // after a password sign-in: save a passkey on this device? (asked again after 30 days when "Not now")
@@ -714,7 +719,7 @@
       const { error } = await sb.auth.registerPasskey();
       if (!error || /credential_exists/.test(String(error.code || error.message))) { pkMem.set("eoPasskey", "1"); m.close(); return toast("Passkey saved. Next time sign in with Face ID or your fingerprint."); }
       e.target.disabled = false;
-      const w = pkWhy(error); if (w) toast(w, true);
+      const w = pkWhy(error); toast(w || `The passkey was not saved (${error.name || error.code || "Error"}: ${String(error.message || error).slice(0, 140)}).`, true);
     };
   }
 
