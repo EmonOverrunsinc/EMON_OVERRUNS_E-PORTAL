@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.85"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.86"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.85"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.86"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -696,17 +696,27 @@
     }
     return m || "The passkey did not work. Sign in with your password.";
   }
-  async function pkSignIn(quiet = false, onFail = (w) => toast(w, true)) {
-    let res;
-    try { res = await sb.auth.signInWithPasskey(); } catch (e) { res = { error: e }; }
-    const { data, error } = res || {};
-    if (!error && data?.session) { pkMem.set("eoPasskey", "1"); toast("Signed in with your passkey. Welcome!"); return true; }
-    if (quiet) return false;
-    // 3.99.81: a pressed button always says why it did not sign in (Windows answers "not allowed" also when this computer has no passkey)
-    const w = error ? pkWhy(error) : "";
-    const raw = error ? `${error.name || error.code || "Error"}: ${String(error.message || error).slice(0, 140)}` : "no session came back";
-    onFail(w || `The passkey did not sign you in. If this device has no passkey for your account yet, sign in with your password, then save one (My Profile › Passkeys). (${raw})`);
-    return false;
+  // 3.99.86: ONE passkey request at a time: a second one cancels the first (its PIN window then signs nobody in) and
+  // Windows refuses the second. Pressing the button while the page's own request runs joins that request.
+  let pkRun = null;
+  function pkSignIn(quiet = false, onFail = (w) => toast(w, true)) {
+    if (pkRun) { if (!quiet) { pkRun.quiet = false; pkRun.onFail = onFail; } return pkRun.done; }
+    const run = (pkRun = { quiet, onFail });
+    run.done = (async () => {
+      let res;
+      try { res = await sb.auth.signInWithPasskey(); } catch (e) { res = { error: e }; }
+      const { data, error } = res || {};
+      if (!error && data?.session) { pkMem.set("eoPasskey", "1"); toast("Signed in with your passkey. Welcome!"); return true; }
+      if (run.quiet || /abort/i.test(String(error?.name || "") + String(error?.message || ""))) return false;
+      // 3.99.81: a pressed button always says why it did not sign in
+      const w = error ? pkWhy(error) : "";
+      const raw = error ? `${error.name || error.code || "Error"}: ${String(error.message || error).replace(/\s*See:?\s*https?:\S+/i, "").slice(0, 120)}` : "no session came back";
+      run.onFail(w || (/NotAllowed/i.test(raw)
+        ? `The passkey did not sign you in: its window was closed, took too long or was refused. Press Sign In with Passkey and enter your PIN (or use your face or fingerprint). If this device has no passkey for your account yet, sign in with your password, then save one (My Profile › Passkeys). (${raw})`
+        : `The passkey did not sign you in. If this device has no passkey for your account yet, sign in with your password, then save one (My Profile › Passkeys). (${raw})`));
+      return false;
+    })().finally(() => { if (pkRun === run) pkRun = null; });
+    return run.done;
   }
   // after a password sign-in: save a passkey on this device? (asked again after 30 days when "Not now")
   async function askPasskey() {
@@ -745,9 +755,19 @@
     $("#toSignup").onclick = () => renderSignup();
     $("#toForgot").onclick = () => renderForgot($("#lgId").value.trim());
     if ($("#lgPasskey")) {
-      $("#lgPasskey").onclick = async (e) => { e.target.disabled = true; $("#lgProblem")?.remove(); if (!(await pkSignIn(false, lgFail))) e.target.disabled = false; };
+      const pkBtn = $("#lgPasskey"), pkIdle = pkBtn.innerHTML;
+      // 3.99.86: while the passkey window is open the button says so and waits (pressing again starts nothing new)
+      const pkWait = async (p) => {
+        pkBtn.innerHTML = `<span class="spin sm"></span> Waiting for your passkey…`;
+        const ok = await p;
+        if (!ok && pkBtn.isConnected) pkBtn.innerHTML = pkIdle;
+      };
+      pkBtn.onclick = () => {
+        if (pkRun) { pkSignIn(false, lgFail); return toast(window.EOApp?.windows ? "The Windows Security window is open: enter your PIN there (or use your face or fingerprint). If you cannot see it, look on the taskbar." : "The passkey window is open: use your face, fingerprint or PIN there."); }
+        $("#lgProblem")?.remove(); pkWait(pkSignIn(false, lgFail));
+      };
       // 3.99.75: a device with a saved passkey asks for it by itself
-      if (pkMem.get("eoPasskey") === "1" && !preset) setTimeout(() => { if ($("#lgPasskey") && !$("#lgPasskey").disabled) pkSignIn(true); }, 600);
+      if (pkMem.get("eoPasskey") === "1" && !preset) setTimeout(() => { if (pkBtn.isConnected && !pkRun) pkWait(pkSignIn(true)); }, 600);
     }
     // 3.90: ONE scan for both: the employee ID card (then the password) or the customer's Public ID (then the Private PIN)
     $("#lgScanId").onclick = () => scanDialog((t) => {
