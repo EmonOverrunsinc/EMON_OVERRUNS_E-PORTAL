@@ -292,7 +292,7 @@
   let CUST = null;
   async function customers() {
     if (CUST && Date.now() - CUST.at < 20000) return CUST.list;
-    const r = await E.allRows(() => sb.from("customers").select("id, first_name, last_name, business_name, account_no, status, credit_limit, opening_balance, application_date").order("id"));
+    const r = await E.allRows(() => sb.from("customers").select("id, first_name,middle_name, last_name, business_name, account_no, status, credit_limit, opening_balance, application_date").order("id"));
     if (r.error) throw r.error;
     const list = r.data.map((c) => ({ ...c, toks: [...new Set(norm(`${c.first_name || ""} ${c.last_name || ""} ${c.business_name || ""}`).split(" ").filter((w) => w.length >= 2))] }));
     CUST = { at: Date.now(), list };
@@ -454,7 +454,7 @@
       return { cust: c, html: `Last payment of ${custLink(c)}: <b class="eva-amt">${money(p.amount)}</b> on <b>${esc(mdy(p.paid_date))}</b> (${d === 0 ? "today" : `${d} day${d === 1 ? "" : "s"} ago`}) · receipt <a href="#payment/${esc(p.id)}">${esc(p.receipt_no || "")}</a>`,
         chips: [["Due now", "how much due this customer"], ["All payments", "payments of this customer"]] };
     }
-    const list = await one(sb.from("payments_received").select("id, receipt_no, paid_date, amount, customers(id, first_name, last_name, account_no)").order("paid_date", { ascending: false }).order("created_at", { ascending: false }).limit(5));
+    const list = await one(sb.from("payments_received").select("id, receipt_no, paid_date, amount, customers(id, first_name,middle_name, last_name, account_no)").order("paid_date", { ascending: false }).order("created_at", { ascending: false }).limit(5));
     if (!list?.length) return { html: "No payment recorded yet." };
     return { html: `The last payments received:${table(["Date", "Customer", "Receipt", "Amount ₱"], list.map((p) => [esc(mdy(p.paid_date)), p.customers ? custLink(p.customers) : "", `<a href="#payment/${esc(p.id)}">${esc(p.receipt_no || "")}</a>`, peso(p.amount)]))}` };
   }
@@ -501,7 +501,7 @@
     return { html: `${list.length} unpaid invoice${list.length === 1 ? "" : "s"} now, balance <b class="eva-amt">${money(list.reduce((s, i) => s + num(i.balance), 0))}</b> (${list.filter(isOver).length} overdue).`, chips: [["Overdue", "overdue customers"], ["Top due", "who has most due"]] };
   }
   async function aOrders(c, no, period) {
-    const sel = "id, order_no, status, order_date, total_boxes, total_pcs, total_amount, invoice_id, customer_id, customers(id, first_name, last_name, account_no)";
+    const sel = "id, order_no, status, order_date, total_boxes, total_pcs, total_amount, invoice_id, customer_id, customers(id, first_name,middle_name, last_name, account_no)";
     if (no) {
       const o = await one(sb.from("customer_orders").select(sel).in("order_no", [no, no.replace(/^CO-/, "OR-"), no.replace(/^OR-/, "CO-")]).limit(1).maybeSingle());
       if (!o) return { html: `Order ${esc(no)} is not found.` };
@@ -717,7 +717,7 @@
   }
   async function aMemos(period, c = null) {
     if (!E.hasModule("creditmemos")) return noAccess("Credit Memo");
-    const list = await rows(() => { const x = sb.from("credit_memos").select("id, memo_no, memo_date, status, request_amount, customers(id, first_name, last_name, account_no)"); return (c ? x.eq("customer_id", c.id) : x).order("memo_date", { ascending: false }).order("id"); });
+    const list = await rows(() => { const x = sb.from("credit_memos").select("id, memo_no, memo_date, status, request_amount, customers(id, first_name,middle_name, last_name, account_no)"); return (c ? x.eq("customer_id", c.id) : x).order("memo_date", { ascending: false }).order("id"); });
     if (!list.length) return { cust: c || undefined, html: c ? `${custLink(c)} has no credit memo.` : "No credit memo yet." };
     const by = (s) => list.filter((m) => m.status === s), pend = by("pending"), inP = period ? list.filter((m) => inPeriod(m.memo_date, period)) : null;
     return { cust: c || undefined, html: `${c ? `${custLink(c)} — ` : ""}${plural(list.length, "credit memo")}: <b>${pend.length} waiting for approval</b>${pend.length ? ` (${money(sumOf(pend, "request_amount"))})` : ""} · ${by("approved").length} approved · ${by("paid").length} settled · ${by("rejected").length} not approved
@@ -765,11 +765,11 @@
   const empOf = (ents, id) => { const m = ents.employee.find((x) => x.id === id); return m ? empLink(m) : "an employee"; };
   // [number, menu, table, column, what is read, the answer] or [number, menu, table, column, what is read, null, the account's own answer]
   const DOCS = [
-    [/^A-/, ["payments", "invoices"], "payments_received", "receipt_no", "id, receipt_no, paid_date, amount, method, customers(id, first_name, last_name, account_no)",
+    [/^A-/, ["payments", "invoices"], "payments_received", "receipt_no", "id, receipt_no, paid_date, amount, method, customers(id, first_name,middle_name, last_name, account_no)",
       (r) => `Payment receipt <a href="#payment/${esc(r.id)}"><b>${esc(r.receipt_no)}</b></a>: <b class="eva-amt">${money(r.amount)}</b>${r.customers ? ` from ${custLink(r.customers)}` : ""} on ${esc(mdy(r.paid_date))}${r.method ? ` · ${esc(String(r.method).toUpperCase())}` : ""}`],
     [/^BD/, "billing", "pay_vouchers", "voucher_no", "id, voucher_no, pay_date, amount_php, amount_bdt, purpose, pay_companies(id, name), pay_accounts(account_name, bank_name)",
       (r) => `Payment voucher <a href="#voucher/${esc(r.id)}"><b>${esc(r.voucher_no)}</b></a>: <b class="eva-amt">${vAmt(r)}</b>${r.pay_companies ? ` to ${coLink(r.pay_companies)}` : ""}${r.pay_accounts ? ` · ${esc(r.pay_accounts.account_name)}${r.pay_accounts.bank_name ? ` (${esc(r.pay_accounts.bank_name)})` : ""}` : ""} on ${esc(mdy(r.pay_date))}${r.purpose ? `<br>${esc(r.purpose)}` : ""}`],
-    [/^EOC-/, "creditmemos", "credit_memos", "memo_no", "id, memo_no, memo_date, status, request_amount, customers(id, first_name, last_name, account_no)",
+    [/^EOC-/, "creditmemos", "credit_memos", "memo_no", "id, memo_no, memo_date, status, request_amount, customers(id, first_name,middle_name, last_name, account_no)",
       (r) => `Credit memo <a href="#creditmemo/${esc(r.id)}"><b>${esc(r.memo_no)}</b></a>: ${money(r.request_amount)}${r.customers ? ` for ${custLink(r.customers)}` : ""} · <b>${esc(MEMO_ST[r.status] || r.status)}</b> · ${esc(mdy(r.memo_date))}`],
     [/^CV-/, "eooffice", "collection_vouchers", "cv_no", "id, cv_no, cv_date, received_from, amount, method",
       (r) => `Collection voucher <a href="#collection/${esc(r.id)}"><b>${esc(r.cv_no)}</b></a>: <b class="eva-amt">${money(r.amount)}</b> received from <b>${esc(r.received_from)}</b> on ${esc(mdy(r.cv_date))}${r.method ? ` · ${esc(String(r.method).toUpperCase())}` : ""}`],
@@ -783,7 +783,7 @@
     [/^LOT-/, "purchase", "purchase_orders", "po_no", "id, po_no, lot_name, status", null, (r) => aPurchase(r)],
     [/^QC-/, "eooffice", "qc_tests", "qc_no", "id, qc_no, serial_no, item, brand, batch, score",
       (r) => `QC form <a href="#qc/${esc(r.id)}"><b>${esc(r.qc_no)}</b></a>: ${esc([r.item, r.brand, r.batch && `batch ${r.batch}`, r.serial_no].filter(Boolean).join(" · "))}${r.score != null ? ` · score <b>${r.score} / 100</b>${E.qcVerdict ? ` · ${esc(E.qcVerdict(r.score))}` : ""}` : ""}`],
-    [/^(?:EO-\d{4}-\d{2}-|ORDER-)/, "customers", "order_letters", "order_no", "id, order_no, order_date, subject, status, customers(id, first_name, last_name, account_no)",
+    [/^(?:EO-\d{4}-\d{2}-|ORDER-)/, "customers", "order_letters", "order_no", "id, order_no, order_date, subject, status, customers(id, first_name,middle_name, last_name, account_no)",
       (r) => `Order letter <a href="#order/${esc(r.id)}"><b>${esc(r.order_no)}</b></a>: ${esc(r.subject || "")} · <b>${esc(String(r.status || "").toUpperCase())}</b> · ${esc(mdy(r.order_date))}${r.customers ? ` · ${custLink(r.customers)}` : ""}`],
     [/^EO-\d{8}$/, "employees", "employees", "employee_no", "id", null, (r, e) => { const m = e.employee.find((x) => x.id === r.id); return m ? aEmployee(m) : null; }],
     [/^EO-\d{4}-\d{5}$/, "customers", "customers", "application_no", "id", null, (r, e) => { const c = e.customer.find((x) => x.id === r.id); return c ? aCustomer(c) : null; }],
@@ -791,7 +791,7 @@
       const m = e.employee.find((x) => x.id === r.employee_id); if (!m) return null;
       const a = await aEmployee(m); return { ...a, html: `ID card <b>${esc(r.card_no)}</b> (${esc(String(r.status || "").toUpperCase())}) belongs to:<br>${a.html}` }; }],
     [/^RN-/, ["inventory", "billing"], "stock_bill_totals", "release_order_no", "*", ebillCard],
-    [/^SOA-/, "customers", "statements", "statement_no", "id, statement_no, period_start, period_end, closing_balance, customers(id, first_name, last_name, account_no)",
+    [/^SOA-/, "customers", "statements", "statement_no", "id, statement_no, period_start, period_end, closing_balance, customers(id, first_name,middle_name, last_name, account_no)",
       (r) => `Statement of account <b>${esc(r.statement_no)}</b>${r.customers ? ` of ${custLink(r.customers)}` : ""}: ${esc(mdy(r.period_start))} to ${esc(mdy(r.period_end))} · closing balance <b class="eva-amt">${money(r.closing_balance)}</b>`],
     [/^MS-/, null, "contact_messages", "ref_no", "id, ref_no, name, status, message, created_at",
       (r) => `Contact message <a href="#contacts"><b>${esc(r.ref_no)}</b></a> from <b>${esc(r.name)}</b> · ${esc(String(r.status || "").toUpperCase())} · ${esc(E.dateTime(r.created_at))}<br>${esc(String(r.message || "").slice(0, 180))}`],
@@ -815,7 +815,7 @@
   const textOf = (r) => Object.entries(r).filter(([k]) => !/(^|_)id$/.test(k)).map(([, v]) => (v && typeof v === "object" ? Object.values(v).join(" ") : v ?? "")).join(" ").toLowerCase();
   // [the kind, the menu(s), what is asked, the record's name, its page, its details]
   const FINDS = [
-    ["Customer", ["customers"], (l) => sb.from("customers").select("id, first_name, last_name, business_name, account_no, phone, public_id").or(`first_name.ilike.${l},last_name.ilike.${l},business_name.ilike.${l},account_no.ilike.${l},phone.ilike.${l},public_id.ilike.${l}`).limit(30),
+    ["Customer", ["customers"], (l) => sb.from("customers").select("id, first_name,middle_name, last_name, business_name, account_no, phone, public_id").or(`first_name.ilike.${l},last_name.ilike.${l},business_name.ilike.${l},account_no.ilike.${l},phone.ilike.${l},public_id.ilike.${l}`).limit(30),
       (r) => fullName(r).toUpperCase(), (r) => `#customer/${r.id}`, (r) => [r.account_no, r.business_name].filter(Boolean).join(" · ")],
     ["Employee", ["employees"], (l) => sb.from("employees").select("id, first_name, last_name, employee_no, position, phone, email").or(`first_name.ilike.${l},last_name.ilike.${l},employee_no.ilike.${l},position.ilike.${l},phone.ilike.${l},email.ilike.${l}`).limit(20),
       (r) => fullName(r).toUpperCase(), (r) => `#employee/${r.id}`, (r) => [r.employee_no, r.position].filter(Boolean).join(" · ")],
@@ -896,7 +896,7 @@
   const boxState = (o, b, sale, hasArrival) => BOX_STATE[boxKey(b, o, sale, hasArrival)];
   async function aBox(serial) {
     const [b, on, sale, arr] = await Promise.all([one(sb.from("box_stock").select("*").eq("serial_no", serial).maybeSingle()),
-      one(sb.from("customer_order_boxes").select("serial_no, items, pcs, customer_orders(id, order_no, status, customers(id, first_name, last_name, account_no))").eq("serial_no", serial)),
+      one(sb.from("customer_order_boxes").select("serial_no, items, pcs, customer_orders(id, order_no, status, customers(id, first_name,middle_name, last_name, account_no))").eq("serial_no", serial)),
       sb.from("box_sales").select("*").eq("serial_no", serial).order("sold_at", { ascending: false }).limit(1).then((r) => (r.error ? null : r.data?.[0] || null), () => null), hasArrival()]);
     const o = (on || []).map((x) => x.customer_orders).find((x) => x && x.status !== "cancelled");
     if (!b && !o) return { html: `Box <b class="mono">${esc(serial)}</b> is not in the box database. If it is in your Google Sheet, press <b>Read Sheet</b> on the <a href="#evadata">EVA Records</a> page.` };

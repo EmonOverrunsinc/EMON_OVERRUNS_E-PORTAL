@@ -195,7 +195,7 @@
   async function loadAll() {
     const rows = (q) => E.allRows(q).then((r) => { if (r.error) throw r.error; return r.data; });
     const [cust, invs, pays, links, memos, letters, evs, corders] = await Promise.all([
-      rows(() => sb.from("customers").select("id, first_name, last_name, account_no, status, application_date, credit_limit, opening_balance").order("id")),
+      rows(() => sb.from("customers").select("id, first_name,middle_name, last_name, account_no, status, application_date, credit_limit, opening_balance").order("id")),
       rows(() => sb.from("customer_invoices").select("id, customer_id, invoice_no, invoice_date, total_amount, payment_terms").order("id")),
       rows(() => sb.from("payments_received").select("id, customer_id, paid_date, amount").order("id")),
       rows(() => sb.from("payment_links").select("id, payment_id, invoice_id, amount, removed_at").order("id")),
@@ -402,7 +402,7 @@
     const here = E.stillHere();
     const [vers, logs] = await Promise.all([
       sb.from("ai_models").select("*").eq("name", FOLDER).order("created_at", { ascending: false }).limit(50),
-      sb.from("ai_gate_log").select("*, customers(first_name, last_name, account_no)").order("created_at", { ascending: false }).limit(100)]);
+      sb.from("ai_gate_log").select("*, customers(first_name,middle_name, last_name, account_no)").order("created_at", { ascending: false }).limit(100)]);
     if (!here() || !$("#aiBody")) return;
     if (vers.error || logs.error) { const e = vers.error || logs.error; $("#aiBody").innerHTML = notSet(e) ? needUpdate : `<div class="empty">${esc(e.message)}</div>`; return; }
     const v = vers.data || [], lg = logs.data || [], top = v[0];

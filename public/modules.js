@@ -567,11 +567,11 @@
     // 3.35: the numbers count every row (the applications waiting are counted; the balances and this month's payments
     // are added up from all rows, also past 1000)
     const [cust, bal, inv, pay, month, activeN, waitN] = await Promise.all([
-      sb.from("customers").select("id,first_name,last_name,account_no,application_no,status,application_date,business_name").in("status", ["pending", "verified"]).order("created_at", { ascending: false }).limit(8),
+      sb.from("customers").select("id,first_name,middle_name,last_name,account_no,application_no,status,application_date,business_name").in("status", ["pending", "verified"]).order("created_at", { ascending: false }).limit(8),
       // 3.95: this month's invoices still unpaid (not the whole balance of every customer)
       E.allRows(() => sb.from("invoice_balances").select("id,balance").gte("invoice_date", ym + "-01").lt("invoice_date", nextMonth(ym)).gt("balance", 0).order("id")),
       sb.from("invoice_balances").select("id,invoice_no,first_name,last_name,balance,pay_status,due_date").order("invoice_date", { ascending: false }).order("invoice_no", { ascending: false }).limit(8),
-      sb.from("payments_received").select("id,receipt_no,amount,paid_date,customers(first_name,last_name)").order("created_at", { ascending: false }).limit(8),
+      sb.from("payments_received").select("id,receipt_no,amount,paid_date,customers(first_name,middle_name,last_name)").order("created_at", { ascending: false }).limit(8),
       E.allRows(() => sb.from("payments_received").select("id,amount").gte("paid_date", ym + "-01").lt("paid_date", nextMonth(ym)).order("id")),
       sb.from("customers").select("id", { count: "exact", head: true }).eq("status", "active"),
       sb.from("customers").select("id", { count: "exact", head: true }).in("status", ["pending", "verified"])
@@ -1786,7 +1786,7 @@
       "All payments received. Each payment gets a receipt number like <b>A-2026-1003-001</b> and a printable acknowledgment.");
     const here = E.stillHere();
     // 3.35: every payment (also past the 1000 rows the server sends at once), so the total counts them all
-    const { data, error } = await E.allRows(() => sb.from("payments_received").select("*, customers(first_name,last_name,account_no)").order("created_at", { ascending: false }).order("id"));
+    const { data, error } = await E.allRows(() => sb.from("payments_received").select("*, customers(first_name,middle_name,last_name,account_no)").order("created_at", { ascending: false }).order("id"));
     if (!here()) return;
     if (error) return fail(error, "Could not load payments");
     // 3.64: a staff login without "13 See Balances & History" sees only the payments it recorded
@@ -1944,7 +1944,7 @@
       <div class="btnrow">${E.canWrite("creditmemos") ? `<a class="btn primary" href="#newcreditmemo">+ New Credit Memo</a>` : ""}</div><div id="cmRes">${busy()}</div>`,
       "Customer complaints and defect claims. Approved <b>Credit</b> and <b>Discount</b> memos reduce the customer's balance due.");
     const here = E.stillHere();
-    const { data, error } = await E.allRows(() => sb.from("credit_memos").select("*, customers(first_name,last_name,account_no)").order("created_at", { ascending: false }).order("id"));
+    const { data, error } = await E.allRows(() => sb.from("credit_memos").select("*, customers(first_name,middle_name,last_name,account_no)").order("created_at", { ascending: false }).order("id"));
     if (!here()) return;
     if (error) return fail(error, "Could not load credit memos");
     const rows = data || [];
@@ -2345,7 +2345,7 @@
     const [cs, iv, py, vo, em, qc, cv] = await Promise.all([
       H("customers") ? sb.from("customers").select("*").neq("status", "closed").or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,public_id.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%`).limit(100) : none,
       H("invoices") ? sb.from("invoice_balances").select("*").neq("customer_status", "closed").or(`invoice_no.ilike.%${w}%,po_number.ilike.%${w}%`).limit(50) : none,
-      H("payments") ? sb.from("payments_received").select("*, customers(first_name,last_name,account_no,status)").or(`receipt_no.ilike.%${w}%,reference_no.ilike.%${w}%`).limit(50) : none,
+      H("payments") ? sb.from("payments_received").select("*, customers(first_name,middle_name,last_name,account_no,status)").or(`receipt_no.ilike.%${w}%,reference_no.ilike.%${w}%`).limit(50) : none,
       H("billing") ? sb.from("pay_vouchers").select("*, pay_companies(name)").or(`voucher_no.ilike.%${w}%,reference_no.ilike.%${w}%,purpose.ilike.%${w}%`).limit(30) : none,
       H("employees") ? sb.from("employees").select("*").or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,employee_no.ilike.%${w}%,email.ilike.%${w}%`).limit(30) : none,
       isStaff() && H("eooffice") ? sb.from("qc_tests").select("*").or(`qc_no.ilike.%${w}%,serial_no.ilike.%${w}%,item.ilike.%${w}%,brand.ilike.%${w}%,batch.ilike.%${w}%`).limit(30) : none,

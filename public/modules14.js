@@ -136,7 +136,7 @@
       const no = $("#insNo").value.trim().toUpperCase().replace(/^.*\|/, "");
       if (!no) return toast("Type or scan the order number.", true);
       $("#insOrder").innerHTML = busy("Finding the order");
-      const { data: o } = await sb.from("customer_orders").select("*, customers(first_name, last_name, account_no)").eq("order_no", no).maybeSingle();
+      const { data: o } = await sb.from("customer_orders").select("*, customers(first_name,middle_name, last_name, account_no)").eq("order_no", no).maybeSingle();
       if (!o) { $("#insOrder").innerHTML = `<div class="empty small">Order ${esc(no)} not found.</div>`; return; }
       const { data: open } = await sb.from("order_insurance").select("id, ins_no, status").eq("order_id", o.id).in("status", ["unpaid", "review", "active"]).limit(1);
       const c = calc(o.total_boxes, o.total_amount, s.ins_box_price, s.ins_rate_pct);
@@ -200,7 +200,7 @@
     if (error) { $("#main").innerHTML = notSet(error) ? needUpdate : `<div class="empty">${esc(error.message)}</div>`; return; }
     if (!i) { $("#main").innerHTML = `<div class="empty">Coverage not found. <a href="#insurance">Back to Coverage</a></div>`; return; }
     const [o, s, cv, inv, proof] = await Promise.all([
-      sb.from("customer_orders").select("*, customers(first_name, last_name, account_no)").eq("id", i.order_id).maybeSingle().then((r) => r.data),
+      sb.from("customer_orders").select("*, customers(first_name,middle_name, last_name, account_no)").eq("id", i.order_id).maybeSingle().then((r) => r.data),
       settings(),
       i.cv_id ? sb.from("collection_vouchers").select("*").eq("id", i.cv_id).maybeSingle().then((r) => r.data, () => null) : null,
       null, i.proof_path ? E.signedMap([i.proof_path]).then((m) => m.get(i.proof_path) || "") : ""]);
