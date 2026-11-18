@@ -1313,6 +1313,25 @@
         sold_on: sheetDate(get(r, "sold_on")), invoice: get(r, "invoice").slice(0, 40), extra };
     });
   }
+  // 3.99.52: many sheets in one box database: ONE box per serial no (a duplicate is saved once); a later sheet updates
+  // the box, an empty cell never erases a value
+  const serialKey = (v) => String(v || "").trim().replace(/\s+/g, " ").toUpperCase();
+  function mergeBoxes(lists) {
+    const m = new Map(); let dup = 0;
+    for (const list of lists) for (const b of list) {
+      const k = serialKey(b.serial_no); if (!k) continue;
+      const old = m.get(k);
+      if (!old) { m.set(k, { ...b, serial_no: k, extra: { ...(b.extra || {}) } }); continue; }
+      dup++;
+      for (const [f, v] of Object.entries(b)) if (f !== "extra" && f !== "serial_no" && String(v ?? "").trim() !== "") old[f] = v;
+      for (const [f, v] of Object.entries(b.extra || {})) if (String(v ?? "").trim()) old.extra[f] = v;
+    }
+    return { boxes: [...m.values()], dup };
+  }
+  // a box of the database in the form the sheet gives (to keep it when a CSV file adds boxes)
+  const fromDb = (b) => ({ serial_no: b.serial_no, product: b.product || "", brand: b.brand || "", ctn: b.ctn || "", style: b.style || "", qty: num(b.qty) ? String(b.qty) : "", batch: b.batch || "",
+    price: b.price != null ? String(b.price) : "", arrival: b.arrival_date || "", ship: b.ship_date || "", released: b.release_date || "", sold_on: b.sold_date || "", invoice: b.sheet_invoice || "", extra: b.extra || {} });
+  const sheetLinks = (t) => [...new Set(String(t || "").split(/[\s,]+/).map((x) => x.trim()).filter((x) => sheetIdOf(x)))].slice(0, 20);
   async function saveBoxes(boxes, source) {
     if (!boxes.length) throw new Error("No boxes found: column A must have the serial no (for example U20261240).");
     const { data, error } = await sb.rpc("replace_box_stock", { p_rows: boxes, p_source: source });
@@ -1322,28 +1341,46 @@
   }
   // the Box Database part of the EVA AI page
   async function boxSection(el) {
-    const [set, read, cnt] = await Promise.all([sb.from("ai_settings").select("*").in("key", ["box_sheet", "box_sheet_read"]),
+    const [set, read, cnt] = await Promise.all([sb.from("ai_settings").select("*").in("key", ["box_sheet", "box_sheet_read", "box_cost"]),
       sb.from("ai_settings").select("value").eq("key", "box_sheet_read").maybeSingle(), sb.from("box_stock").select("serial_no", { count: "exact", head: true })]);
     if (set.error || cnt.error) { const e = set.error || cnt.error; el.innerHTML = `<div class="empty">${/ai_settings|box_stock|schema cache|PGRST20/.test(e.message || "") ? "The box database needs the database update <b>RUN_048_TO_051.sql</b>. Run it in the Supabase SQL Editor." : esc(e.message)}</div>`; return; }
     const cfg = (set.data || []).find((x) => x.key === "box_sheet")?.value || {}, last = read.data?.value || null;
-    el.innerHTML = `<p class="muted">EVA, the top search and the box scan read your boxes from the Google Sheet <b>DATABASE</b>. The <b>top row</b> has the column titles: SERIAL NO, PRODUCT, BRAND, CTN, STYLE, QTY, BATCH, <b>PRICE</b>, <b>DATE OF ARRIVAL</b>, SHIPPING DATE, RELEASED DATE, DATE SOLD, INVOICE NO (any order); every other column is kept too. With no titles: A to G, H price, J company, K date of arrival. A box with a PRICE is <b>SOLD</b>; a box without a DATE OF ARRIVAL is <b>SHIPPED</b>. Each <b>Read Sheet</b> brings the new rows and removes the old ones.</p>
-      <div class="fields wide eva-sheet"><label for="bsUrl">Google Sheet Link</label><input type="url" id="bsUrl" placeholder="https://docs.google.com/spreadsheets/d/…" value="${esc(cfg.url || "")}">
-        <label for="bsTab">Sheet (tab) Name</label><input type="text" id="bsTab" maxlength="60" data-case="keep" value="${esc(cfg.tab || "DATABASE")}"></div>
+    const cost = num((set.data || []).find((x) => x.key === "box_cost")?.value?.amount) || 3200; // 3.99.52
+    el.innerHTML = `<p class="muted">EVA, the top search and the box scan read your boxes from the Google Sheet <b>DATABASE</b>. The <b>top row</b> has the column titles: SERIAL NO, PRODUCT, BRAND, CTN, STYLE, QTY, BATCH, <b>PRICE</b>, <b>DATE OF ARRIVAL</b>, SHIPPING DATE, RELEASED DATE, DATE SOLD, INVOICE NO (any order); every other column is kept too. With no titles: A to G, H price, J company, K date of arrival. A box with a PRICE is <b>SOLD</b>; a box without a DATE OF ARRIVAL is <b>SHIPPED</b>. <b>Read Sheet</b> reads every sheet below and saves each box once (a serial no in two sheets is one box; an empty cell never erases a value). <b>Read a CSV File</b> adds and updates boxes.</p>
+      <div class="fields wide eva-sheet"><label for="bsUrl">Google Sheet Links (one per line: every sheet, or every tab, is read)</label>
+        <textarea id="bsUrl" rows="3" data-case="keep" placeholder="https://docs.google.com/spreadsheets/d/…&#10;https://docs.google.com/spreadsheets/d/…">${esc((cfg.urls || (cfg.url ? [cfg.url] : [])).join("\n"))}</textarea>
+        <label for="bsTab">Sheet (tab) Name</label><input type="text" id="bsTab" maxlength="60" data-case="keep" value="${esc(cfg.tab || "DATABASE")}">
+        <label for="bsCost">Cost per Box (₱)</label><input type="number" id="bsCost" min="0" step="0.01" inputmode="decimal" value="${esc(String(cost))}"></div>
       <div class="btnrow"><button type="button" class="btn primary" id="bsRead">${ic("download")} Read Sheet</button>
         <label class="btn" for="bsCsv">${ic("upload")} Read a CSV File</label><button type="button" class="btn" id="bsOut">${ic("download")} Download with Status</button><input type="file" id="bsCsv" accept=".csv,text/csv" hidden><span class="muted" id="bsStep"></span></div>
       <div class="tiles ai-tiles"><div class="tile"><span class="tile-ic">${ic("box")}</span><div class="k">Boxes in the Database</div><div class="v">${qtyText(cnt.count || 0)}</div><small>${last ? `read ${esc(E.dateTime(last.read_at))}` : "not read yet"}</small></div></div>
       <small class="muted">The sheet must be shared: Share → General access → "Anyone with the link" (Viewer). Or download it (File → Download → CSV) and press Read a CSV File.</small>`;
     const step = (t) => { if ($("#bsStep")) $("#bsStep").textContent = t; };
-    const done = (n) => { HAS_ARR = null; toast(`${qtyText(n)} boxes read. The old box data was removed.`); boxSection(el); };
+    const done = (n, msg) => { HAS_ARR = null; toast(msg || `${qtyText(n)} boxes saved.`); boxSection(el); };
+    // 3.99.52: the cost of one box (the box search shows the total cost: cost × boxes)
+    $("#bsCost").onchange = async () => {
+      const v = Math.round(num($("#bsCost").value) * 100) / 100;
+      if (!(v > 0)) return toast("Write the cost of one box.", true);
+      const { error } = await sb.from("ai_settings").upsert({ key: "box_cost", value: { amount: v }, updated_by_name: S.profile?.full_name || null, updated_at: new Date().toISOString() });
+      if (error) return fail(error, "Could not save the cost");
+      toast(`Cost per box saved: ₱ ${peso(v)}`);
+    };
     $("#bsRead").onclick = async (e) => {
-      const url = $("#bsUrl").value.trim(), tab = $("#bsTab").value.trim();
-      if (!sheetIdOf(url)) return toast("Paste the link of your Google Sheet first.", true);
-      e.target.disabled = true; step("Reading the sheet…");
+      const urls = sheetLinks($("#bsUrl").value), tab = $("#bsTab").value.trim();
+      if (!urls.length) return toast("Paste the link of your Google Sheet first.", true);
+      e.target.disabled = true;
       try {
-        await sb.from("ai_settings").upsert({ key: "box_sheet", value: { url, tab }, updated_by_name: S.profile?.full_name || null, updated_at: new Date().toISOString() });
-        const boxes = boxesOf(await readSheetCsv(url).catch(() => readSheet(url, tab)));
+        await sb.from("ai_settings").upsert({ key: "box_sheet", value: { url: urls[0], urls, tab }, updated_by_name: S.profile?.full_name || null, updated_at: new Date().toISOString() });
+        const lists = [];
+        for (const [i, url] of urls.entries()) { // every sheet must be read; else nothing is changed (no box is lost)
+          step(`Reading sheet ${i + 1} of ${urls.length}…`);
+          try { lists.push(boxesOf(await readSheetCsv(url).catch(() => readSheet(url, tab)))); }
+          catch (err) { throw new Error(`Sheet ${i + 1} could not be read, so nothing was changed. ${err.message || ""}`); }
+        }
+        const { boxes, dup } = mergeBoxes(lists);
         step(`Saving ${qtyText(boxes.length)} boxes…`);
-        done(await saveBoxes(boxes, `Google Sheet ${tab || ""}`.trim()));
+        const n = await saveBoxes(boxes, `Google Sheets (${urls.length})`);
+        done(n, `${qtyText(n)} boxes saved from ${urls.length} sheet${urls.length === 1 ? "" : "s"}.${dup ? ` ${qtyText(dup)} duplicate${dup === 1 ? "" : "s"} saved once.` : ""}`);
       } catch (err) { e.target.disabled = false; step(""); fail(err, "Could not read the sheet"); }
     };
     // 3.99.38: the box database with the STATUS of each box, to copy back into the Google Sheet (or open in Excel)
@@ -1372,11 +1409,21 @@
       const f = e.target.files[0]; e.target.value = "";
       if (!f) return;
       step("Reading the file…");
-      try { const boxes = boxesOf(readCsv(await f.text())); step(`Saving ${qtyText(boxes.length)} boxes…`); done(await saveBoxes(boxes, `CSV ${f.name}`)); }
+      try {
+        // 3.99.52: the file ADDS and UPDATES boxes; the boxes already saved stay (a duplicate is saved once)
+        const csv = boxesOf(readCsv(await f.text()));
+        if (!csv.length) throw new Error("No boxes found in the file (the serial no column is empty).");
+        const have = await E.allRows(() => sb.from("box_stock").select("*").order("serial_no"));
+        if (have.error) throw have.error;
+        const { boxes, dup } = mergeBoxes([(have.data || []).map(fromDb), csv]);
+        step(`Saving ${qtyText(boxes.length)} boxes…`);
+        const n = await saveBoxes(boxes, `CSV ${f.name}`);
+        done(n, `${qtyText(csv.length)} boxes read from the file · ${qtyText(n)} boxes in the database.${dup ? ` ${qtyText(dup)} duplicate${dup === 1 ? "" : "s"} saved once.` : ""}`);
+      }
       catch (err) { step(""); fail(err, "Could not read the file"); }
     };
   }
 
-  E.eva = { open: openPanel, close: closePanel, mount, ask, answer, readQuestion, classify, entities, boxSection, boxesOf, readCsv, sheetIdOf, clear: clearChat,
+  E.eva = { mergeBoxes, open: openPanel, close: closePanel, mount, ask, answer, readQuestion, classify, entities, boxSection, boxesOf, readCsv, sheetIdOf, clear: clearChat,
     reset: () => { CUST = null; BOX = null; ENTS = null; clearChat(); } };
 })();
