@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.70"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.71"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.70"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.71"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -63,7 +63,17 @@
   // 2.9: small helpers shared by every section (they were written again in each file)
   const num = (v) => Number(v || 0);
   // 3.85: a customer's middle name is in the name (FIRST MIDDLE LAST)
-  const fullName = (r) => [r?.first_name, r?.middle_name, r?.last_name].filter(Boolean).join(" ").trim();
+  // 3.99.71: the customer's middle name everywhere (FIRST MIDDLE LAST): a record read without it (a list read from a view)
+  // takes it from MIDDLE, the middle names of the customers read once after sign-in
+  const MIDDLE = new Map();
+  const middleOf = (r) => (r?.middle_name !== undefined ? r.middle_name : r?.first_name && r?.last_name ? MIDDLE.get(r.customer_id) || MIDDLE.get(r.id) || "" : "");
+  const fullName = (r) => [r?.first_name, middleOf(r), r?.last_name].filter(Boolean).join(" ").trim();
+  async function loadMiddleNames() {
+    try {
+      const { data } = await allRows(() => sb.from("customers").select("id, middle_name").not("middle_name", "is", null));
+      MIDDLE.clear(); for (const c of data || []) if (c.middle_name) MIDDLE.set(c.id, c.middle_name);
+    } catch (_) {}
+  }
   const qtyText = (n) => Number(n || 0).toLocaleString("en-PH", { maximumFractionDigits: 2 });
   const bdt = (n) => `BDT ${peso(n)}`;
   const verifyUrl = (code) => `${location.origin}${location.pathname}#verify/${encodeURIComponent(code)}`;
@@ -595,7 +605,8 @@
     // name (the Director is shown as Director). 3.0: both asked at the same time.
     const [md, pos] = await Promise.all([
       data && data.role === "admin" && data.status === "active" ? sb.rpc("is_main_director").then((r) => r.data, () => false) : false,
-      data && data.role !== "admin" ? sb.from("employees").select("position").eq("profile_id", data.id).maybeSingle().then((r) => r.data?.position || "", () => "") : ""
+      data && data.role !== "admin" ? sb.from("employees").select("position").eq("profile_id", data.id).maybeSingle().then((r) => r.data?.position || "", () => "") : "",
+      data && ["admin", "staff"].includes(data.role) ? loadMiddleNames() : null // 3.99.71: the customers' middle names (FIRST MIDDLE LAST everywhere)
     ]);
     S.mainDirector = md === true; S.position = pos;
     // 3.63: a staff login sees amounts only with "13 See Balances & History (₱)"; the screen carries the login's name (against screenshots)
