@@ -3761,3 +3761,19 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxp-sum.money .amt.sug { border-color: #c9a227; background: #fff8e1; } .bxp-sum.money .amt.sug small, .bxp-sum.money .amt.sug b { color: #8a5a00; }
 .bxr-amt.sug b { color: #8a5a00; }
 .pbox .bxtrack .bt small .nw { font-size: 7pt; }
+/* 3.99.59: one-box print security: fine wave lines (guilloche), microtext, a light ORIGINAL mark (copies lose them) */
+.bxr-facts em, .bxcards em, .bxp-sum em { display: block; font-style: normal; font-size: 11px; font-weight: 500; color: #6b7487; margin-top: 2px; line-height: 1.3; }
+.bxsec { position: relative; padding: 4px 0 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='60'%3E%3Cg fill='none' stroke='%2312306b' stroke-width='.4' opacity='.3'%3E%3Cpath d='M0 30 Q30 5 60 30 T120 30 T180 30 T240 30'/%3E%3Cpath d='M0 30 Q30 55 60 30 T120 30 T180 30 T240 30'/%3E%3Cpath d='M0 22 Q30 0 60 22 T120 22 T180 22 T240 22'/%3E%3Cpath d='M0 38 Q30 60 60 38 T120 38 T180 38 T240 38'/%3E%3Cpath d='M0 14 Q30 34 60 14 T120 14 T180 14 T240 14'/%3E%3Cpath d='M0 46 Q30 26 60 46 T120 46 T180 46 T240 46'/%3E%3C/g%3E%3Cg fill='none' stroke='%23c9a227' stroke-width='.35' opacity='.32'%3E%3Cpath d='M0 30 Q15 10 30 30 T60 30 T90 30 T120 30 T150 30 T180 30 T210 30 T240 30'/%3E%3C/g%3E%3C/svg%3E"); background-size: 120px 30px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.bxsec > * { position: relative; z-index: 1; }
+.bxsec .bx1-band > div, .bxsec .bxp-sum > div, .bxsec .pbox, .bxsec .bxcards > div { background-color: rgba(255, 255, 255, .9); }
+.bxsec .bxp-sum .amt { background-color: rgba(234, 246, 234, .92); } .bxsec .bxp-sum .amt.sug { background-color: rgba(255, 248, 225, .92); }
+.bxsec-wm { position: absolute !important; z-index: 0 !important; left: 0; right: 0; top: 46%; text-align: center; font: 800 92px/1 Arial, sans-serif; letter-spacing: .12em; color: rgba(18, 48, 107, .07); transform: rotate(-24deg); pointer-events: none; }
+.bxsec-micro { font: 600 3.4pt/1.2 Arial, sans-serif; letter-spacing: .06em; color: #12306b; white-space: nowrap; overflow: hidden; opacity: .75; margin: 2px 0 6px; }
+.bxcards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 6px 0; }
+.bxcards > div { border: 1px solid #c9d3e3; border-top: 3px solid #c9a227; border-radius: 6px; padding: 5px 8px 6px; min-width: 0; }
+.bxcards small { display: block; font-size: 6.5pt; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #12306b; }
+.bxcards b { display: block; font-size: 10pt; color: #1b2433; overflow-wrap: anywhere; }
+.bxcards em { font-size: 7pt; }
+.bxp-sum em { font-size: 7pt; margin-top: 1px; }
+.bxsec-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 7pt; color: #12306b; border-top: 1px dashed #9fb0cc; padding-top: 4px; margin-top: 6px; }
+.bxsec-foot b { letter-spacing: .08em; }

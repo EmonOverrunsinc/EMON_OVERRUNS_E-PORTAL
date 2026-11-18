@@ -2234,7 +2234,7 @@
       const avgOf = (l) => { const q = l.reduce((a, x) => a + (num(x.qty) || 1), 0); return q ? l.reduce((a, x) => a + num(x.price) * (num(x.qty) || 1), 0) / q : 0; };
       const others = same.filter((x) => x.serial_no !== r.serial_no), sameBrand = others.filter((x) => String(x.brand || "") === br);
       const sugFrom = sameBrand.length ? sameBrand : others, suggest = Math.round(avgOf(sugFrom) * 100) / 100;
-      const sugTxt = suggest ? `${peso(suggest)} (from ${qtyText(sugFrom.length)} box${sugFrom.length === 1 ? "" : "es"} of ${[pr, sameBrand.length ? br : ""].filter(Boolean).join(" · ")})` : "";
+      const sugNote = suggest ? `from ${qtyText(sugFrom.length)} box${sugFrom.length === 1 ? "" : "es"} of ${[pr, sameBrand.length ? br : ""].filter(Boolean).join(" · ")}` : "";
       const ret = rets.find((m) => m.is_return);
       const sold1 = r.st === "sold";
       // the tracking: every step up to the last one with data is done (a step with no date shows —)
@@ -2246,7 +2246,7 @@
       const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="nw">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
       const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
         ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Cost per Box (₱)", peso(boxCost)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
-        ["Suggested Price per Pc (₱)", !r.price ? sugTxt : ""], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
+        ["Suggested Price per Pc (₱)", !r.price && suggest ? peso(suggest) : "", sugNote], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
         ...exTable.map((k) => [k, r.extra?.[k] || ""])].filter(([, v]) => v);
       const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>`
         : k === "Return" && ret ? `<a class="nw" href="#creditmemo/${esc(ret.id)}">${esc(v)}</a>` : esc(v));
@@ -2256,20 +2256,29 @@
         <div class="bxr-head bx1-${r.st}"><div>${ic("box")} <span>Box</span> <b class="mono nw">${esc(r.serial_no)}</b> ${stPill(r.st)}</div>
           <div class="bxr-amt${big[0] === "Suggested Price" ? " sug" : ""}"><small>${big[0]}</small><b>${big[1]}</b></div></div>
         <div class="bx1-card"><small>Tracking</small>${track}</div>
-        <div class="bxr-facts">${det.map(([k, v]) => `<div><small>${esc(k)}</small><b>${link(k, v)}</b></div>`).join("")}</div>
+        <div class="bxr-facts">${det.map(([k, v, n]) => `<div><small>${esc(k)}</small><b>${link(k, v)}</b>${n ? `<em>${esc(n)}</em>` : ""}</div>`).join("")}</div>
         <div class="btnrow"><button type="button" class="btn primary" id="fbPrint">${ic("print")} Print / Download</button>
           <a class="btn" href="#find/${encodeURIComponent(t)}" id="fbAll">${ic("search")} Search all records</a></div></div>`;
       $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
+      // 3.99.59: the print like the screen: cards, with security marks against copies (fine wave lines in the background,
+      // microtext lines, a light ORIGINAL mark, the document no made from the box and the print time, the PDF417)
       $("#fbPrint").onclick = () => {
-        const cells = (list) => `<div class="pgrid2">${list.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`;
         const money = r.price ? [["Price per Pc (₱)", peso(r.price)], [sold1 ? "Amount Sold (₱)" : "Amount (₱)", peso(r.amount || r.price * num(r.qty))]]
           : suggest ? [["Suggested Price per Pc (₱)", peso(suggest)], ["Expected Amount (₱)", peso(suggest * num(r.qty))]] : [];
+        const cards = det.filter(([k]) => !["Pcs", "Price per Pc (₱)", "Amount (₱)"].includes(k) && !(k === "Suggested Price per Pc (₱)" && money.length));
+        const stamp = new Date().toISOString();
+        let h = 2166136261; for (const ch of `${r.serial_no}|${r.st}|${r.price}|${stamp}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+        const docNo = `BX-${h.toString(36).toUpperCase().padStart(7, "0").slice(0, 7)}`;
+        const micro = `EMON OVERRUNS · ORIGINAL · ${r.serial_no} · ${docNo} · `.repeat(14);
         E.openPreview(title, [`${printHead("SEARCH RESULT", `<img src="${E.pdf417DataUrl("EMONBOX|" + r.serial_no)}" alt="" class="ph-bar"><div class="mono">${esc(r.serial_no)}</div>`)}
+          <div class="bxsec"><div class="bxsec-wm">ORIGINAL</div>
+          <div class="bxsec-micro">${esc(micro)}</div>
           <div class="bx1-band bxp1-${r.st}"><div class="w2"><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div><div><small>Pcs</small><b>${qtyText(r.qty)}</b></div></div>
-          ${money.length ? `<div class="bxp-sum money"><div><small>${esc(money[0][0])}</small><b>${money[0][1]}</b></div><div class="amt${sold1 ? "" : " sug"}"><small>${esc(money[1][0])}</small><b>${money[1][1]}</b></div></div>` : ""}
+          ${money.length ? `<div class="bxp-sum money"><div><small>${esc(money[0][0])}</small><b>${money[0][1]}</b>${!r.price && sugNote ? `<em>${esc(sugNote)}</em>` : ""}</div><div class="amt${sold1 ? "" : " sug"}"><small>${esc(money[1][0])}</small><b>${money[1][1]}</b></div></div>` : ""}
           ${E.box("Tracking", track)}
-          ${E.box("Box", cells(det.filter(([k]) => !["Pcs", "Price per Pc (₱)", "Amount (₱)", "Suggested Price per Pc (₱)"].includes(k) && !exTable.includes(k))))}
-          ${exTable.some((k) => r.extra?.[k]) ? E.box("Other Details", cells(exTable.map((k) => [k, r.extra?.[k] || ""]).filter(([, v]) => v))) : ""}`]);
+          <div class="bxcards">${cards.map(([k, v, n]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b>${n ? `<em>${esc(n)}</em>` : ""}</div>`).join("")}</div>
+          <div class="bxsec-foot"><span>Document No <b>${docNo}</b></span><span>Original printed from the ${esc(E.APP)} · a copy shows no fine lines</span></div>
+          <div class="bxsec-micro">${esc(micro)}</div></div>`]);
       };
       E.setRecords("Boxes: 1");
       return true;
