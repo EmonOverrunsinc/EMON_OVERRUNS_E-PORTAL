@@ -858,7 +858,7 @@
   const BOX_STATE = { sold: "SOLD", order: "ON ORDER", shipped: "SHIPPED", stock: "IN STOCK" };
   const BOX_PILL = { sold: "bx-sold", order: "bx-order", shipped: "bx-ship", stock: "bx-stock" };
   function boxKey(b, o, sale, hasArrival) {
-    if (sale || o?.status === "completed" || num(b?.price) > 0) return "sold";
+    if (sale || o?.status === "completed" || num(b?.price) > 0 || b?.sold_date || b?.sheet_invoice) return "sold"; // (3.99.39: a DATE SOLD or INVOICE NO in the sheet too)
     if (o && o.status !== "cancelled") return "order";
     if (hasArrival && b && !b.arrival_date) return "shipped";
     return "stock";
@@ -1252,6 +1252,15 @@
       document.head.appendChild(s);
     });
   }
+  // 3.99.39: the sheet as CSV (every cell exactly as it shows: a column with dates and typed dates is read whole; the
+  // quick way below drops the cells of the other kind). The tab is the one open in the link (#gid=…), else the first tab.
+  async function readSheetCsv(url) {
+    const id = sheetIdOf(url), gid = (/[#&?]gid=(\d+)/.exec(url) || [])[1] || "0";
+    const r = await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`, { credentials: "omit" });
+    const t = r.ok ? await r.text() : "";
+    if (!t || /^\s*<(!doctype|html)/i.test(t)) throw new Error(NOT_SHARED);
+    return readCsv(t);
+  }
   // a CSV file (Google Sheets: File → Download → CSV): its columns A to G
   function readCsv(text) {
     const out = []; let row = [], cell = "", q = false;
@@ -1269,9 +1278,10 @@
   // 3.99.38: the columns are found by their TITLES in the top row (any order); a sheet without titles is read as
   // A serial no, B product, C brand, D CTN, E style, F qty, G batch, H price. Every other titled column is kept (extra).
   const COL_RE = { serial_no: /serial|^s\.?\s*n\.?o?$|box\s*no/, product: /product|item|article|description/, brand: /brand/, ctn: /ctn|carton/, style: /style|code/,
-    qty: /qty|pcs|quantity|pieces/, batch: /batch|lot/, price: /price|rate/, arrival: /arriv|received\s*date|date\s*in\b/ };
+    qty: /qty|pcs|quantity|pieces/, batch: /batch|lot/, price: /price|rate/, arrival: /arriv|received\s*date|date\s*in\b/,
+    ship: /ship/, released: /releas/, sold_on: /sold|sale\s*date|date\s*of\s*sale/, invoice: /invoice|inv\.?\s*no/ };
   // a date written in the sheet → yyyy-mm-dd ("" when it is not a date)
-  const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+  const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, agu: 8, agt: 8, sep: 9, oct: 10, okt: 10, nov: 11, dec: 12 }; // (Agust, Okt as typed)
   function sheetDate(t) {
     t = String(t || "").trim(); if (!t) return "";
     const iso = (y, m, d) => (y >= 2000 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : "");
@@ -1285,7 +1295,8 @@
   function boxesOf(table_) {
     const num1 = (v) => (String(v || "").replace(/,/g, "").match(/\d+(\.\d+)?/) || [""])[0];
     const top = table_.slice(0, 5).findIndex((r) => r.some((x) => COL_RE.serial_no.test(String(x || "").trim().toLowerCase())));
-    let at = { serial_no: 0, product: 1, brand: 2, ctn: 3, style: 4, qty: 5, batch: 6, price: 7 }, extraCols = [], body = table_;
+    // no titles: A serial no, B product, C brand, D CTN, E style, F qty, G batch, H price, J company, K date of arrival
+    let at = { serial_no: 0, product: 1, brand: 2, ctn: 3, style: 4, qty: 5, batch: 6, price: 7, arrival: 10 }, extraCols = [["COMPANY", 9]], body = table_;
     if (top >= 0) {
       const heads = table_[top].map((x) => String(x || "").trim()), used = new Set();
       at = {};
@@ -1296,9 +1307,10 @@
     const get = (r, k) => (at[k] == null ? "" : String(r[at[k]] ?? "").trim());
     return body.filter((r) => /\d/.test(get(r, "serial_no")) && !/^serial/i.test(get(r, "serial_no"))).map((r) => {
       const extra = {};
-      for (const [h, j] of extraCols) { const v = String(r[j] ?? "").trim(); if (v) extra[h.slice(0, 40).toUpperCase()] = v.slice(0, 120); }
+      for (const [h, j] of extraCols) { const v = String(r[j] ?? "").trim(); if (v && v !== "-") extra[h.slice(0, 40).toUpperCase()] = v.slice(0, 120); }
       return { serial_no: get(r, "serial_no"), product: get(r, "product"), brand: get(r, "brand"), ctn: get(r, "ctn"), style: get(r, "style"), qty: num1(get(r, "qty")), batch: get(r, "batch"),
-        price: num1(get(r, "price")), arrival: sheetDate(get(r, "arrival")), extra };
+        price: num1(get(r, "price")), arrival: sheetDate(get(r, "arrival")), ship: sheetDate(get(r, "ship")), released: sheetDate(get(r, "released")),
+        sold_on: sheetDate(get(r, "sold_on")), invoice: get(r, "invoice").slice(0, 40), extra };
     });
   }
   async function saveBoxes(boxes, source) {
@@ -1314,7 +1326,7 @@
       sb.from("ai_settings").select("value").eq("key", "box_sheet_read").maybeSingle(), sb.from("box_stock").select("serial_no", { count: "exact", head: true })]);
     if (set.error || cnt.error) { const e = set.error || cnt.error; el.innerHTML = `<div class="empty">${/ai_settings|box_stock|schema cache|PGRST20/.test(e.message || "") ? "The box database needs the database update <b>RUN_048_TO_051.sql</b>. Run it in the Supabase SQL Editor." : esc(e.message)}</div>`; return; }
     const cfg = (set.data || []).find((x) => x.key === "box_sheet")?.value || {}, last = read.data?.value || null;
-    el.innerHTML = `<p class="muted">EVA, the top search and the box scan read your boxes from the Google Sheet <b>DATABASE</b>. The <b>top row</b> has the column titles: SERIAL NO, PRODUCT, BRAND, CTN, STYLE, QTY, BATCH, <b>PRICE</b>, <b>DATE OF ARRIVAL</b> (any order); every other column is kept too. A box with a PRICE is <b>SOLD</b>; a box without a DATE OF ARRIVAL is <b>SHIPPED</b>. Each <b>Read Sheet</b> brings the new rows and removes the old ones.</p>
+    el.innerHTML = `<p class="muted">EVA, the top search and the box scan read your boxes from the Google Sheet <b>DATABASE</b>. The <b>top row</b> has the column titles: SERIAL NO, PRODUCT, BRAND, CTN, STYLE, QTY, BATCH, <b>PRICE</b>, <b>DATE OF ARRIVAL</b>, SHIPPING DATE, RELEASED DATE, DATE SOLD, INVOICE NO (any order); every other column is kept too. With no titles: A to G, H price, J company, K date of arrival. A box with a PRICE is <b>SOLD</b>; a box without a DATE OF ARRIVAL is <b>SHIPPED</b>. Each <b>Read Sheet</b> brings the new rows and removes the old ones.</p>
       <div class="fields wide eva-sheet"><label for="bsUrl">Google Sheet Link</label><input type="url" id="bsUrl" placeholder="https://docs.google.com/spreadsheets/d/…" value="${esc(cfg.url || "")}">
         <label for="bsTab">Sheet (tab) Name</label><input type="text" id="bsTab" maxlength="60" data-case="keep" value="${esc(cfg.tab || "DATABASE")}"></div>
       <div class="btnrow"><button type="button" class="btn primary" id="bsRead">${ic("download")} Read Sheet</button>
@@ -1329,7 +1341,7 @@
       e.target.disabled = true; step("Reading the sheet…");
       try {
         await sb.from("ai_settings").upsert({ key: "box_sheet", value: { url, tab }, updated_by_name: S.profile?.full_name || null, updated_at: new Date().toISOString() });
-        const boxes = boxesOf(await readSheet(url, tab));
+        const boxes = boxesOf(await readSheetCsv(url).catch(() => readSheet(url, tab)));
         step(`Saving ${qtyText(boxes.length)} boxes…`);
         done(await saveBoxes(boxes, `Google Sheet ${tab || ""}`.trim()));
       } catch (err) { e.target.disabled = false; step(""); fail(err, "Could not read the sheet"); }

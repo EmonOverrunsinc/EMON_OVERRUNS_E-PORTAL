@@ -3674,3 +3674,25 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxp-stock { color: #c41e3a !important; font-weight: 700; }
 .bxp-shipped { color: #1f5fbf !important; font-weight: 700; }
 .rec-tile.bad b { color: #c41e3a; }
+/* 3.99.39: box search result: a summary on top (screen) */
+.bxr-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: var(--card, #fff); border: 1px solid #dfe5ef; border-radius: 14px; padding: 12px 16px; margin-bottom: 10px; }
+.bxr-head > div:first-child { display: flex; align-items: center; gap: 8px; font-size: 18px; color: #12306b; }
+.bxr-head > div:first-child .ic { width: 22px; height: 22px; }
+.bxr-amt { text-align: right; } .bxr-amt small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #5b6577; }
+.bxr-amt b { font-size: 24px; color: #1e8e3e; white-space: nowrap; }
+.bxr-counts, .bxr-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.bxr-facts { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.bxr-counts > div, .bxr-facts > div { background: var(--card, #fff); border: 1px solid #dfe5ef; border-top: 3px solid #12306b; border-radius: 12px; padding: 8px 12px; min-width: 0; }
+.bxr-facts > div { border-top-color: #c9a227; }
+.bxr-counts small, .bxr-facts small { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #5b6577; }
+.bxr-counts b { font-size: 18px; color: #12306b; } .bxr-facts b { font-size: 13.5px; color: #1b2433; }
+.bxr-counts .ok { border-top-color: #1e8e3e; } .bxr-counts .ok b { color: #1e8e3e; font-size: 15px; }
+.bxr-counts .bad { border-top-color: #c41e3a; } .bxr-counts .bad b { color: #c41e3a; }
+/* the print: counts in one row of small boxes, the total amount sold in green */
+.bxp-sum { display: flex; gap: 4px; margin: 0 0 6px; }
+.bxp-sum > div { flex: 1 1 0; min-width: 0; border: 1px solid #12306b; border-radius: 6px; padding: 3px 6px; }
+.bxp-sum small { display: block; font-size: 6.5pt; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #12306b; white-space: nowrap; }
+.bxp-sum b { font-size: 9pt; white-space: nowrap; }
+.bxp-sum .ok b { color: #1e8e3e; } .bxp-sum .bad b { color: #c41e3a; }
+.bxp-sum .amt { flex: 1.6 1 0; border-color: #1e8e3e; background: #eaf6ea; } .bxp-sum .amt small { color: #1e8e3e; } .bxp-sum .amt b { color: #1e8e3e; font-size: 10.5pt; }
+.bxp-order { color: #b26a00 !important; font-weight: 700; }
