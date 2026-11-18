@@ -2215,6 +2215,30 @@
       { label: "Invoice No", html: (r) => (r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(r.invoice)}</a>` : r.order && r.st !== "sold" ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : `<span class="nw">${esc(r.invoice)}</span>`) },
       { label: "Date Sold", get: (r) => (r.st === "sold" ? day(r.soldOn) : "") }, { label: "Arrival", phone: false, get: (r) => day(r.arrival_date) },
       ...exTable.map((k) => ({ label: k, phone: false, get: (r) => r.extra?.[k] || "" }))];
+    // 3.99.43: ONE box (a serial no): its own clean card, no counts and no table (screen and print)
+    if (kind === "serial") {
+      const r = rows[0];
+      const det = [["Serial No", r.serial_no, "hl"], ["Status", LBL[r.st]], ["Product", r.product], ["Brand", r.brand && r.brand !== "-" ? r.brand : ""], ["Batch No", r.batch], ["CTN", r.ctn],
+        ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
+        ["Invoice No", r.st === "sold" ? r.invoice : ""], ["Date Sold", r.st === "sold" ? day(r.soldOn) : ""], ["Order No", r.order?.order_no || ""],
+        ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Shipping Date", day(r.ship_date)], ["Released Date", day(r.release_date)], ["Arrival Date", day(r.arrival_date)],
+        ...exTable.map((k) => [k, r.extra?.[k] || ""])].filter(([, v], i) => i < 2 || v);
+      const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>` : esc(v));
+      E.shell("find", `Search: ${t}`, "");
+      $("#main").innerHTML = `<div class="bxr bx1">
+        <div class="bxr-head bx1-${r.st}"><div>${ic("box")} <span>Box</span> <b class="mono nw">${esc(r.serial_no)}</b> ${stPill(r.st)}</div>
+          <div class="bxr-amt"><small>${r.amount > 0 ? "Amount Sold" : "Pcs"}</small><b>${r.amount > 0 ? `₱ ${peso(r.amount)}` : qtyText(r.qty)}</b></div></div>
+        <div class="bxr-facts">${det.slice(1).filter(([k]) => k !== "Status").map(([k, v]) => `<div><small>${esc(k)}</small><b>${link(k, v)}</b></div>`).join("")}</div>
+        <div class="btnrow"><button type="button" class="btn primary" id="fbPrint">${ic("print")} Print / Download</button>
+          <a class="btn" href="#find/${encodeURIComponent(t)}" id="fbAll">${ic("search")} Search all records</a></div></div>`;
+      $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
+      $("#fbPrint").onclick = () => E.openPreview(title, [`${printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`)}
+        <div class="bx1-band bxp1-${r.st}"><div><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div>
+          <div><small>${r.amount > 0 ? "Amount Sold (₱)" : "Pcs"}</small><b>${r.amount > 0 ? peso(r.amount) : qtyText(r.qty)}</b></div></div>
+        ${E.box("Box Details", `<div class="pgrid2">${det.filter(([k]) => !["Serial No", "Status"].includes(k)).map(([k, v]) => E.cell(k, v)).join("")}</div>`)}`]);
+      E.setRecords("Boxes: 1");
+      return true;
+    }
     E.shell("find", `Search: ${t}`, "");
     $("#main").innerHTML = `<div class="bxr">
       <div class="bxr-head"><div>${ic("box")} <span>${kind === "serial" ? "Box" : "Batch"}</span> <b class="mono nw">${esc(key)}</b></div>
