@@ -3792,3 +3792,21 @@ body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !
 .page .bxtrack .bt + .bt::before { top: 5px; height: 2px; }
 .page .bxtrack .bt.now i { width: 15px; height: 15px; margin-top: -1.5px; box-shadow: 0 0 0 3px rgba(18, 48, 107, .12); }
 .page .bxcards b { font-size: 9.5pt; }
+/* 3.99.65: one box: one text size for every card; words are never cut in the middle (only between words) */
+.bxcards b, .bxtrack .bt small, .bxr-facts b { overflow-wrap: break-word; word-break: normal; hyphens: manual; }
+.page .bxcards > div { padding: 4px 8px 5px; }
+.page .bxcards small { font-size: 6.5pt; }
+.page .bxcards b { font-size: 10pt; line-height: 1.25; }
+.page .bxcards em { font-size: 6.5pt; line-height: 1.2; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.page .bx1-band small, .page .bxp-sum.money small { white-space: nowrap; }
+.page .bxtrack .bt b { font-size: 7pt; letter-spacing: .03em; }
+.page .bxtrack .bt small, .page .bxtrack .bt small .nw { font-size: 7pt; }
+.bx1 .bxr-facts em { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bxtrack .bt small .dt { white-space: nowrap; }
+@media screen and (max-width: 600px) {
+  .bx1-card .bxtrack .bt b { font-size: 9px; letter-spacing: .02em; }
+  .bx1-card .bxtrack .bt small { font-size: 9.5px; }
+  .bx1-card .bxtrack .bt small .dt { white-space: normal; }
+  .bx1-card .bxtrack .bt small .nw { font-size: 8.5px; }
+  .bx1 .bxr-facts em { white-space: normal; overflow: visible; }
+}

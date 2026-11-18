@@ -2240,7 +2240,7 @@
       const avgOf = (l) => { const q = l.reduce((a, x) => a + (num(x.qty) || 1), 0); return q ? l.reduce((a, x) => a + num(x.price) * (num(x.qty) || 1), 0) / q : 0; };
       const others = same.filter((x) => x.serial_no !== r.serial_no), sameBrand = others.filter((x) => String(x.brand || "") === br);
       const sugFrom = sameBrand.length ? sameBrand : others, suggest = Math.round(avgOf(sugFrom) * 100) / 100;
-      const sugNote = suggest ? `a guide only, not counted · from ${qtyText(sugFrom.length)} box${sugFrom.length === 1 ? "" : "es"} of ${[pr, sameBrand.length ? br : ""].filter(Boolean).join(" · ")}` : "";
+      const sugNote = suggest ? `guide only · ${qtyText(sugFrom.length)} box${sugFrom.length === 1 ? "" : "es"} of ${sameBrand.length && br ? br : pr}` : "";
       const ret = rets.find((m) => m.is_return);
       const sold1 = r.st === "sold";
       // the tracking: every step up to the last one with data is done (a step with no date shows —)
@@ -2249,7 +2249,7 @@
         ...(ret ? [["Returned", [day(ret.memo_date), ret.memo_no]]] : [])].map(([k, v]) => [k, v.filter(Boolean)]);
       let lastDone = -1; steps.forEach(([, v], i) => { if (v.length) lastDone = i; });
       if (lastDone < 0 && r.st === "stock") lastDone = 2; // in stock: it has arrived
-      const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="nw">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
+      const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="${/^[A-Z]{3} \d{2} \d{4}$/.test(x) ? "dt" : "nw"}">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
       const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
         ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Cost per Box (₱)", peso(boxCost)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
         ["Suggested Price per Pc (₱)", !r.price && suggest ? peso(suggest) : "", sugNote], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
