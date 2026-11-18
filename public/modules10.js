@@ -53,6 +53,46 @@
   // ======================================================================
   // The list (EO-Office › Customer Order)
   // ======================================================================
+  // 3.99.33: SOLD BOXES (box_sales, 099): the boxes of the invoiced orders with their price; search; Download CSV
+  V.soldboxes = async () => {
+    E.shell("soldboxes", "Sold Boxes", `${E.eoTabs("custorders")}<div id="sbBody">${busy()}</div>`);
+    if (!E.hasModule("eooffice") || !E.isStaff()) { location.hash = "eooffice"; return; }
+    const here = E.stillHere();
+    const [sold, stock] = await Promise.all([E.allRows(() => sb.from("box_sales").select("*").order("sold_at", { ascending: false }).order("serial_no")),
+      E.allRows(() => sb.from("box_stock").select("serial_no, product, brand, style, batch"))]);
+    if (!here() || !$("#sbBody")) return;
+    if (sold.error) { $("#sbBody").innerHTML = `<div class="empty">${/box_sales|schema cache|PGRST20/.test(sold.error.message || "") ? "Sold Boxes needs the database update <b>099</b> (RUN_050_BOXES_AND_099.sql)." : esc(sold.error.message)}</div>`; return; }
+    const info = new Map((stock.data || []).map((b) => [b.serial_no, b]));
+    const all = (sold.data || []).map((r) => { const b = info.get(r.serial_no) || {}; return { ...r, product: [b.product, b.brand && b.brand !== "-" ? b.brand : ""].filter(Boolean).join(" · "), code: b.style || "", batch: b.batch || "" }; });
+    const cols = [{ label: "Date", get: (r) => mdy(r.sold_at) }, { label: "Serial No", html: (r) => `<b class="mono">${esc(r.serial_no)}</b>` }, { label: "Product", wrap: true, get: (r) => r.product },
+      { label: "Code", phone: false, get: (r) => r.code }, { label: "Batch", phone: false, get: (r) => r.batch }, { label: "Pcs", num: true, get: (r) => qtyText(r.pcs) },
+      { label: "Price (₱)", num: true, get: (r) => peso(r.price) }, { label: "Total (₱)", num: true, get: (r) => peso(r.total) },
+      { label: "Invoice", html: (r) => (r.invoice_id && E.canOpen("invoice") ? `<a href="#invoice/${esc(r.invoice_id)}">${esc(r.invoice_no || "")}</a>` : esc(r.invoice_no || "")) },
+      { label: "Order", phone: false, html: (r) => `<a href="#custorder/${esc(r.order_id)}">${esc(r.order_no || "")}</a>` }, { label: "Customer", wrap: true, get: (r) => r.customer_name || "" }];
+    $("#sbBody").innerHTML = `<div class="window"><div class="wtitle">Sold Boxes</div><div class="wbody">
+      <p class="muted" style="margin-top:0">Every box of an invoiced (completed) order, with the price per pc, the pcs, the total and the invoice no.</p>
+      <div class="btnrow"><input type="search" id="sbQ" placeholder="Search serial no, product, invoice, order or customer" style="flex:1;min-width:220px">
+        <button type="button" class="btn primary" id="sbCsv">${ic("download")} Download (Excel / CSV)</button></div>
+      <div class="rec-tiles" id="sbTiles"></div><div id="sbGrid"></div></div></div>`;
+    let rows = all;
+    const show = () => {
+      const q = $("#sbQ").value.trim().toUpperCase();
+      rows = q ? all.filter((r) => [r.serial_no, r.product, r.code, r.batch, r.invoice_no, r.order_no, r.customer_name].some((v) => String(v || "").toUpperCase().includes(q))) : all;
+      const pcs = rows.reduce((s, r) => s + num(r.pcs), 0), tot = rows.reduce((s, r) => s + num(r.total), 0);
+      $("#sbTiles").innerHTML = `<div class="rec-tile"><small>Boxes</small><b>${qtyText(rows.length)}</b></div><div class="rec-tile"><small>Pcs</small><b>${qtyText(pcs)}</b></div><div class="rec-tile ok"><small>Total</small><b>₱ ${peso(tot)}</b></div>`;
+      $("#sbGrid").innerHTML = E.grid({ cols, rows, empty: all.length ? "No sold box matches." : "No sold box yet: boxes become SOLD when their order is completed and invoiced." });
+    };
+    $("#sbQ").oninput = show;
+    $("#sbCsv").onclick = () => {
+      const cell = (v) => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+      const head = ["Date", "Serial No", "Product", "Code", "Batch", "Pcs", "Price", "Total", "Invoice No", "Order No", "Customer"];
+      const lines = [head, ...rows.map((r) => [mdy(r.sold_at), r.serial_no, r.product, r.code, r.batch, num(r.pcs), num(r.price).toFixed(2), num(r.total).toFixed(2), r.invoice_no || "", r.order_no || "", r.customer_name || ""])];
+      const blob = new Blob(["\ufeff" + lines.map((l) => l.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `Sold-Boxes-${isoToday()}.csv`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    };
+    show();
+  };
+
   V.custorders = async () => {
     E.shell("custorders", "Customer Order", `${E.eoTabs("custorders")}<div id="coBody">${busy()}</div>`);
     if (!E.hasModule("eooffice") || !E.isStaff()) { location.hash = "eooffice"; return; }
@@ -76,7 +116,7 @@
     let month = "";
     $("#coBody").innerHTML = `
       <div class="co-top-search"><input type="search" id="coFind" class="co-find" placeholder="Search every order: order no, customer, account no, batch no" aria-label="Search orders" autocomplete="off">
-        <button type="button" class="btn" id="coScan">${ic("scan")} Scan</button>${canW() ? `<a class="btn primary" href="#newcustorder">${ic("plus")} New Customer Order</a>` : ""}</div>
+        <button type="button" class="btn" id="coScan">${ic("scan")} Scan</button><a class="btn" href="#soldboxes">${ic("box")} Sold Boxes</a>${canW() ? `<a class="btn primary" href="#newcustorder">${ic("plus")} New Customer Order</a>` : ""}</div>
       <div class="tiles co-tiles">
         <div class="tile ${count(["pending"]) ? "warn" : ""}"><span class="tile-ic">${ic("clock")}</span><div class="k">Waiting for Approval</div><div class="v">${count(["pending"])}</div></div>
         <div class="tile"><span class="tile-ic">${ic("box")}</span><div class="k">Confirmed · To Deliver</div><div class="v">${count(["approved"])}</div></div>
