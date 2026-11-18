@@ -3723,3 +3723,6 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxp1-shipped > div:nth-child(2) b { color: #1f5fbf; } .bxp1-order > div:nth-child(2) b { color: #b26a00; }
 /* 3.99.45: the one-box print band: the serial no box is wider */
 .bx1-band > .w2 { flex: 2 1 0; }
+/* 3.99.46: a SOLD box stands out in green (print and screen) */
+.ptl tr.bxrow-sold td { background: #e3f4e6 !important; color: #14632b; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+#fbGrid table.grid tr:has(.pill.bx-sold) td { background: #e3f4e6; font-weight: 700; }

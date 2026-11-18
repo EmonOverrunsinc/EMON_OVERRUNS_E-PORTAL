@@ -2275,7 +2275,7 @@
       const room = few ? soldRows.length + 4 : 0;
       let pages = E.pagedDoc({ head, contHead: cont, top: sumHtml + E.box("Details", `<div class="pgrid2">${det.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`),
         boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>CTN</th><th class="num">Pcs</th><th>Status</th></tr>`,
-        rows, rowHtml: (r, i) => `<tr><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · "))}</td><td>${esc(r.ctn || "")}</td>
+        rows, rowHtml: (r, i) => `<tr${r.st === "sold" ? ' class="bxrow-sold"' : ""}><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · "))}</td><td>${esc(r.ctn || "")}</td>
           <td class="num">${qtyText(r.qty)}</td><td class="bxp-${r.st} nw">${LBL[r.st]}</td></tr>`,
         totalRow: `<tr class="ptl-tot"><td colspan="4">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"}</td><td class="num">${qtyText(pcs)}</td><td></td></tr>`,
         bottom: soldBox, caps: { single: 22 - room, first: 26, next: 34, last: 32 - room } });
