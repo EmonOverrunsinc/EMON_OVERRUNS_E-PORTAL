@@ -3739,3 +3739,25 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxr-counts .cost { grid-column: span 2; } .bxr-counts b { white-space: nowrap; }
 /* 3.99.53: the link from EVA AI to EVA Records */
 .ai-more { display: block; margin-top: 14px; } .ai-more .ic { width: 16px; height: 16px; color: #c9a227; vertical-align: -3px; margin-right: 4px; }
+/* 3.99.56: the TRACKING of one box (screen and print): courier-style steps */
+.bx1-card { background: var(--card, #fff); border: 1px solid #dfe5ef; border-radius: 14px; padding: 10px 14px 12px; margin-bottom: 10px; }
+.bx1-card > small { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #5b6577; margin-bottom: 6px; }
+.bxtrack { display: flex; align-items: flex-start; }
+.bxtrack .bt { flex: 1 1 0; min-width: 0; position: relative; text-align: center; padding: 0 2px; }
+.bxtrack .bt i { display: block; width: 16px; height: 16px; margin: 0 auto 4px; border-radius: 50%; border: 2px solid #c3cbd8; background: #fff; position: relative; z-index: 1; }
+.bxtrack .bt + .bt::before { content: ""; position: absolute; top: 7px; right: 50%; width: 100%; height: 3px; background: #dfe5ef; }
+.bxtrack .bt.done i { background: #12306b; border-color: #12306b; }
+.bxtrack .bt.done + .bt.done::before { background: #12306b; }
+.bxtrack .bt b { display: block; font-size: 10.5px; letter-spacing: .04em; color: #8a94a6; }
+.bxtrack .bt.done b { color: #12306b; }
+.bxtrack .bt small { display: block; font-size: 10.5px; color: #1b2433; line-height: 1.25; overflow-wrap: anywhere; }
+.bxtrack .bt.now i { width: 20px; height: 20px; margin-top: -2px; box-shadow: 0 0 0 4px rgba(18, 48, 107, .15); }
+.bxtrack .bt.now.bt-sold i { background: #1e8e3e; border-color: #1e8e3e; box-shadow: 0 0 0 4px rgba(30, 142, 62, .18); } .bxtrack .bt.now.bt-sold b { color: #1e8e3e; }
+.bxtrack .bt.now.bt-returned i { background: #c41e3a; border-color: #c41e3a; box-shadow: 0 0 0 4px rgba(196, 30, 58, .18); } .bxtrack .bt.now.bt-returned b { color: #c41e3a; }
+.bxtrack .bt.now.bt-arrived i { background: #c41e3a; border-color: #c41e3a; } .bxtrack .bt.now.bt-arrived b { color: #c41e3a; }
+.bxtrack .bt.now.bt-on i { background: #b26a00; border-color: #b26a00; } .bxtrack .bt.now.bt-on b { color: #b26a00; }
+.pbox .bxtrack { padding: 8px 6px 6px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.pbox .bxtrack .bt b, .pbox .bxtrack .bt small { font-size: 7.5pt; }
+.bxp-sum.money .amt.sug { border-color: #c9a227; background: #fff8e1; } .bxp-sum.money .amt.sug small, .bxp-sum.money .amt.sug b { color: #8a5a00; }
+.bxr-amt.sug b { color: #8a5a00; }
+.pbox .bxtrack .bt small .nw { font-size: 7pt; }

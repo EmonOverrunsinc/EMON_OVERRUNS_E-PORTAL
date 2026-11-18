@@ -172,8 +172,9 @@
         ${o?.status === "completed" ? `<div class="banner warn">This order is COMPLETED. Saving it changes its invoice too (boxes, pcs, amount, terms, date). The customer stays the same.</div>` : ""}
         <fieldset class="opt of-step"><legend><i>1</i> Customer</legend><div id="coCust"></div></fieldset>
         <fieldset class="opt of-step"><legend><i>2</i> Boxes</legend>
-          <p class="of-say">Scan each box sticker: each box becomes <b>its own line with its price</b> (the sheet's price, else the last price of the same code, else the price below). No sticker? Skip this step and type the lines.</p>
+          <p class="of-say">Scan each box sticker: each box becomes <b>its own line</b>. The sheet's price fills in by itself; otherwise the price box shows a <b>suggested price</b> in grey (from your past prices of the same product) and you write the price. No sticker? Skip this step and type the lines.</p>
           <div class="fields wide of-price"><label for="cfAllPrice">Price per pc for all boxes (optional)</label><input type="number" id="cfAllPrice" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 40.00"></div>
+          <div class="btnrow"><button type="button" class="btn" id="cfSuggest">${ic("check")} Use the Suggested Prices</button></div>
           <div class="btnrow cf-scan"><button type="button" class="btn primary" id="cfScan">${ic("scan")} Scan Boxes</button>
             <label class="btn" for="cfPhoto">${ic("image")} Box Label Photo</label><input type="file" id="cfPhoto" accept="image/*" multiple hidden>
             <span class="cf-type"><input type="text" id="cfSer" maxlength="60" placeholder="or type a serial no, e.g. U20261238" aria-label="Box serial no"><button type="button" class="btn" id="cfAdd">${ic("plus")} Add</button></span></div>
@@ -205,6 +206,18 @@
     sb.from("customer_orders").select("lines").neq("status", "cancelled").order("created_at", { ascending: false }).limit(300).then(({ data }) => {
       for (const r of data || []) for (const l of r.lines || []) { const k = String(l.code || "").toUpperCase(); if (k && num(l.price) > 0 && !LAST_PRICE.has(k)) LAST_PRICE.set(k, num(l.price)); }
     }, () => {});
+    // 3.99.56: the suggested price of a box: the average price (by pcs) of the boxes of the same product + brand in the sheet,
+    // else of the same product, else the last price of the same code
+    const SUG = new Map();
+    E.allRows(() => sb.from("box_stock").select("product, brand, qty, price").gt("price", 0)).then(({ data }) => {
+      const add = (k, b) => { const x = SUG.get(k) || { a: 0, q: 0 }; const q = num(b.qty) || 1; x.a += num(b.price) * q; x.q += q; SUG.set(k, x); };
+      for (const b of data || []) { const p = String(b.product || "").toUpperCase(), br = String(b.brand || "").toUpperCase(); if (p) { add(p + "|" + br, b); add(p + "|*", b); } }
+    }, () => {});
+    const suggestOf = (b) => {
+      const p = String(b.product || "").toUpperCase(), br = String(b.brand || "").toUpperCase(), x = SUG.get(p + "|" + br) || SUG.get(p + "|*");
+      return x && x.q ? Math.round((x.a / x.q) * 100) / 100 : LAST_PRICE.get(String(b.style || "").toUpperCase()) || 0;
+    };
+    $("#cfSuggest").onclick = () => { const n = ed.useHints(); toast(n ? `${n} suggested price${n === 1 ? "" : "s"} written.` : "No box line is waiting for a price.", !n); };
     $("#cfAllPrice").onchange = () => ed.fillPrice(num($("#cfAllPrice").value));
     // a box line removed by its × also comes off the scanned list
     $("#coLines").addEventListener("lineoff", (e) => { const i = picked.findIndex((b) => b.serial_no === e.detail); if (i >= 0) { picked.splice(i, 1); listBoxes(); } });
@@ -229,9 +242,9 @@
       const other = (on.data || []).find((x) => x.customer_orders && x.customer_orders.status !== "cancelled" && x.order_id !== o?.id);
       if (other) return `✖ Box ${ser} is on order ${other.customer_orders.order_no} already.`;
       const b = st.data;
-      // 3.99.32: the box's price: the sheet's (column H), else the last price of the same code, else the price for all boxes
-      const price = num(b.price) || LAST_PRICE.get(String(b.style || "").toUpperCase()) || num($("#cfAllPrice").value);
-      if (!ed.addBox(b, 1, price)) return `✖ The order has up to ${MAX_LINES} lines.`;
+      // 3.99.56: the box's price: the sheet's (column H), else the price for all boxes; otherwise only a SUGGESTED price
+      const price = num(b.price) || num($("#cfAllPrice").value);
+      if (!ed.addBox(b, 1, price, suggestOf(b))) return `✖ The order has up to ${MAX_LINES} lines.`;
       picked.push(b); listBoxes(); // (3.99.32: the batch no is not filled in by itself)
       return `✔ Box ${ser}: ${[b.product, b.brand && b.brand !== "-" ? b.brand : "", b.qty ? `${qtyText(b.qty)} pcs` : "", b.batch].filter(Boolean).join(" · ")} · ${boxesText(picked.length)}`;
     };
@@ -343,7 +356,7 @@
     draw(lines);
     // d = 1: the box goes on its line; d = -1: it comes off (an empty line goes); false when there is no room for a new line
     // 3.99.32: each box is its own line (with its serial no and its price); d = -1 takes its line off; false when there is no room
-    const addBox = (b, d = 1, price = 0) => {
+    const addBox = (b, d = 1, price = 0, hint = 0) => {
       const ser = String(b.serial_no || "").toUpperCase();
       if (d < 0) {
         const tr = $$(".co-line", box).find((r) => r.dataset.serial === ser);
@@ -359,11 +372,15 @@
       $(".cB", row).value = 1; $(".cC", row).value = String(b.style || "").toUpperCase(); $(".cP", row).value = num(b.qty) || ""; $(".cL", row).value = String(b.batch || "").toUpperCase();
       $(".cN", row).value = [b.product, b.brand && b.brand !== "-" ? b.brand : ""].filter(Boolean).join(" · ").toUpperCase();
       $(".cR", row).value = price > 0 ? price : "";
+      $(".cR", row).placeholder = !(price > 0) && hint > 0 ? `≈ ${hint.toFixed(2)}` : ""; $(".cR", row).dataset.hint = hint > 0 ? hint : "";
+      $(".cR", row).title = hint > 0 ? `Suggested price ₱ ${hint.toFixed(2)} (from your past prices)` : "";
       sum(); return true;
     };
+    // 3.99.56: the suggested prices written in the box lines that have no price yet
+    const useHints = () => { let n = 0; box.querySelectorAll(".co-line .cR").forEach((x) => { if (!num(x.value) && num(x.dataset.hint) > 0) { x.value = x.dataset.hint; n++; } }); sum(); return n; };
     // the price for every box line that has none yet
     const fillPrice = (price) => { if (!(price > 0)) return; $$(".co-line", box).forEach((r) => { if (r.dataset.serial && !num($(".cR", r).value)) $(".cR", r).value = price; }); sum(); };
-    return { read: () => ({ lines: all().filter((l) => !blank(l)), cols }), addBox, fillPrice };
+    return { read: () => ({ lines: all().filter((l) => !blank(l)), cols }), addBox, fillPrice, useHints };
   }
   // the name of a new column (in capitals, once, not a column the order has already)
   function addColumn(done) {

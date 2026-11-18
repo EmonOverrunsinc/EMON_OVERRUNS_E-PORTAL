@@ -2222,31 +2222,54 @@
     // 3.99.43: ONE box (a serial no): its own clean card, no counts and no table (screen and print)
     if (kind === "serial") {
       const r = rows[0];
-      const det = [["Serial No", r.serial_no, "hl"], ["Status", LBL[r.st]], ["Product", r.product], ["Brand", r.brand && r.brand !== "-" ? r.brand : ""], ["Batch No", r.batch], ["CTN", r.ctn],
-        ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""], ["Cost per Box (₱)", peso(boxCost)],
-        ["Invoice No", r.st === "sold" ? r.invoice : ""], ["Date Sold", r.st === "sold" ? day(r.soldOn) : ""], ["Order No", r.order?.order_no || ""],
-        ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Shipping Date", day(r.ship_date)], ["Released Date", day(r.release_date)], ["Arrival Date", day(r.arrival_date)],
-        ...exTable.map((k) => [k, r.extra?.[k] || ""])].filter(([, v], i) => i < 2 || v);
-      const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>` : esc(v));
+      // 3.99.56: ONE box: a PDF417 of its serial no, its TRACKING (shipped, released, arrived, on order, sold, returned),
+      // its details and a SUGGESTED price (the average price, by pcs, of the boxes of the same product + brand in the sheet)
+      const ser = r.serial_no.replace(/[%_,()*\\]/g, "");
+      const pr = String(r.product || ""), br = r.brand && r.brand !== "-" ? String(r.brand) : "";
+      const [rets, same] = await Promise.all([
+        sb.from("credit_memos").select("id, memo_no, memo_date, status, is_return, qty, serial_no").ilike("serial_no", `%${ser}%`).order("memo_date", { ascending: false }).limit(20)
+          .then((x) => (x.data || []).filter((m) => String(m.serial_no || "").toUpperCase().split(/[^A-Z0-9-]+/).includes(r.serial_no.toUpperCase())), () => []), // the exact serial no only
+        pr ? sb.from("box_stock").select("serial_no, brand, qty, price").eq("product", pr).gt("price", 0).limit(1000).then((x) => x.data || [], () => []) : []]);
+      if (!here()) return true;
+      const avgOf = (l) => { const q = l.reduce((a, x) => a + (num(x.qty) || 1), 0); return q ? l.reduce((a, x) => a + num(x.price) * (num(x.qty) || 1), 0) / q : 0; };
+      const others = same.filter((x) => x.serial_no !== r.serial_no), sameBrand = others.filter((x) => String(x.brand || "") === br);
+      const sugFrom = sameBrand.length ? sameBrand : others, suggest = Math.round(avgOf(sugFrom) * 100) / 100;
+      const sugTxt = suggest ? `${peso(suggest)} (from ${qtyText(sugFrom.length)} box${sugFrom.length === 1 ? "" : "es"} of ${[pr, sameBrand.length ? br : ""].filter(Boolean).join(" · ")})` : "";
+      const ret = rets.find((m) => m.is_return);
+      const sold1 = r.st === "sold";
+      // the tracking: every step up to the last one with data is done (a step with no date shows —)
+      const steps = [["Shipped", [day(r.ship_date)]], ["Released", [day(r.release_date)]], ["Arrived", [day(r.arrival_date)]],
+        ["On Order", [r.order ? r.order.order_no : ""]], ["Sold", sold1 ? [day(r.soldOn), r.invoice].filter(Boolean).concat(r.soldOn || r.invoice ? [] : ["✔"]) : []],
+        ...(ret ? [["Returned", [day(ret.memo_date), ret.memo_no]]] : [])].map(([k, v]) => [k, v.filter(Boolean)]);
+      let lastDone = -1; steps.forEach(([, v], i) => { if (v.length) lastDone = i; });
+      if (lastDone < 0 && r.st === "stock") lastDone = 2; // in stock: it has arrived
+      const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="nw">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
+      const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
+        ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""], ["Cost per Box (₱)", peso(boxCost)], ["Price per Pc (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
+        ["Suggested Price per Pc (₱)", !r.price ? sugTxt : ""], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
+        ...exTable.map((k) => [k, r.extra?.[k] || ""])].filter(([, v]) => v);
+      const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>`
+        : k === "Return" && ret ? `<a class="nw" href="#creditmemo/${esc(ret.id)}">${esc(v)}</a>` : esc(v));
+      const big = r.amount > 0 ? ["Amount Sold", `₱ ${peso(r.amount)}`] : suggest && !r.price ? ["Suggested Price", `₱ ${peso(suggest)}`] : ["Pcs", qtyText(r.qty)];
       E.shell("find", `Search: ${t}`, "");
       $("#main").innerHTML = `<div class="bxr bx1">
         <div class="bxr-head bx1-${r.st}"><div>${ic("box")} <span>Box</span> <b class="mono nw">${esc(r.serial_no)}</b> ${stPill(r.st)}</div>
-          <div class="bxr-amt"><small>${r.amount > 0 ? "Amount Sold" : "Pcs"}</small><b>${r.amount > 0 ? `₱ ${peso(r.amount)}` : qtyText(r.qty)}</b></div></div>
-        <div class="bxr-facts">${det.slice(1).filter(([k]) => k !== "Status").map(([k, v]) => `<div><small>${esc(k)}</small><b>${link(k, v)}</b></div>`).join("")}</div>
+          <div class="bxr-amt${big[0] === "Suggested Price" ? " sug" : ""}"><small>${big[0]}</small><b>${big[1]}</b></div></div>
+        <div class="bx1-card"><small>Tracking</small>${track}</div>
+        <div class="bxr-facts">${det.map(([k, v]) => `<div><small>${esc(k)}</small><b>${link(k, v)}</b></div>`).join("")}</div>
         <div class="btnrow"><button type="button" class="btn primary" id="fbPrint">${ic("print")} Print / Download</button>
           <a class="btn" href="#find/${encodeURIComponent(t)}" id="fbAll">${ic("search")} Search all records</a></div></div>`;
       $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
-      // 3.99.45: the print of one box: a status band, then the box, its dates and its sale, each in its own box
       $("#fbPrint").onclick = () => {
-        const sec = (name, list) => { const l = list.filter(([, v]) => v); return l.length ? E.box(name, `<div class="pgrid2">${l.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`) : ""; };
-        const sold1 = r.st === "sold";
-        E.openPreview(title, [`${printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`)}
+        const cells = (list) => `<div class="pgrid2">${list.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`;
+        const money = r.price ? [["Price per Pc (₱)", peso(r.price)], [sold1 ? "Amount Sold (₱)" : "Amount (₱)", peso(r.amount || r.price * num(r.qty))]]
+          : suggest ? [["Suggested Price per Pc (₱)", peso(suggest)], ["Expected Amount (₱)", peso(suggest * num(r.qty))]] : [];
+        E.openPreview(title, [`${printHead("SEARCH RESULT", `<img src="${E.pdf417DataUrl("EMONBOX|" + r.serial_no)}" alt="" class="ph-bar"><div class="mono">${esc(r.serial_no)}</div>`)}
           <div class="bx1-band bxp1-${r.st}"><div class="w2"><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div><div><small>Pcs</small><b>${qtyText(r.qty)}</b></div></div>
-          ${sold1 && r.amount > 0 ? `<div class="bxp-sum money"><div><small>Price per Pc (₱)</small><b>${peso(r.price)}</b></div><div class="amt"><small>Amount Sold (₱)</small><b>${peso(r.amount)}</b></div></div>` : ""}
-          ${sec("Box", [["Cost per Box (₱)", peso(boxCost), "hl"], ["Product", r.product], ["Brand", r.brand && r.brand !== "-" ? r.brand : ""], ["Batch No", r.batch], ["CTN", r.ctn], ["Style / Code", r.style && r.style !== "-" ? r.style : ""], ["Company", r.extra?.COMPANY || r.extra?.SUPPLIER || ""]])}
-          ${sec("Dates", [["Shipping Date", day(r.ship_date)], ["Released Date", day(r.release_date)], ["Arrival Date", day(r.arrival_date)], ["Date Sold", sold1 ? day(r.soldOn) : ""]])}
-          ${sec(sold1 ? "Sale" : "Order", [["Invoice No", sold1 ? r.invoice : "", "hl"], ["Order No", r.order?.order_no || ""], ["Price per Pc (₱)", !sold1 && r.price ? peso(r.price) : ""]])}
-          ${sec("Other Details", exTable.map((k) => [k, r.extra?.[k] || ""]))}`]);
+          ${money.length ? `<div class="bxp-sum money"><div><small>${esc(money[0][0])}</small><b>${money[0][1]}</b></div><div class="amt${sold1 ? "" : " sug"}"><small>${esc(money[1][0])}</small><b>${money[1][1]}</b></div></div>` : ""}
+          ${E.box("Tracking", track)}
+          ${E.box("Box", cells(det.filter(([k]) => !["Pcs", "Price per Pc (₱)", "Amount (₱)", "Suggested Price per Pc (₱)"].includes(k) && !exTable.includes(k))))}
+          ${exTable.some((k) => r.extra?.[k]) ? E.box("Other Details", cells(exTable.map((k) => [k, r.extra?.[k] || ""]).filter(([, v]) => v))) : ""}`]);
       };
       E.setRecords("Boxes: 1");
       return true;
