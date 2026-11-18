@@ -2155,7 +2155,8 @@
   // Global search (top bar)
   // ======================================================================
   // 3.99.35: the box database (the Google Sheet) in the top search: a box SERIAL NO shows only that box; a BATCH NO shows
-  // every box of that batch; each box with its state (IN STOCK / ON ORDER / SOLD) and price; Print the result
+  // every box of that batch. 3.99.39: a summary on top (sold boxes, total amount sold, shipping, released, arrival and
+  // sold dates, company) and a clean table; the print shows only the invoice no and the date sold of each sold box
   async function findBoxes(t, here) {
     const key = t.toUpperCase().replace(/\s+/g, " ").slice(0, 60);
     const one = await sb.from("box_stock").select("*").eq("serial_no", key).limit(1).then((r) => r, () => ({ error: true }));
@@ -2169,7 +2170,7 @@
     const BX = E.boxStatus, arr = BX ? await BX.hasArrival() : false;
     const got = await Promise.all(parts.map((ch) => Promise.all([
       sb.from("customer_order_boxes").select("serial_no, customer_orders(id, order_no, status)").in("serial_no", ch).then((r) => r.data || [], () => []),
-      sb.from("box_sales").select("serial_no, invoice_id, invoice_no, price, total, customer_name").in("serial_no", ch).then((r) => r.data || [], () => [])])));
+      sb.from("box_sales").select("serial_no, invoice_id, invoice_no, price, total, sold_at").in("serial_no", ch).then((r) => r.data || [], () => [])])));
     if (!here()) return false;
     const onOrder = new Map(), sold = new Map();
     for (const [on, sd] of got) {
@@ -2179,39 +2180,58 @@
     const rows = boxes.map((b) => {
       const o = onOrder.get(b.serial_no), sl = sold.get(b.serial_no);
       const st = BX ? BX.key(b, o, sl, arr) : sl || o?.status === "completed" ? "sold" : o ? "order" : "stock";
-      return { ...b, st, order: o, sale: sl, price: num(sl?.price) || num(b.price), total: num(sl?.total) || num(b.price) * num(b.qty) };
+      const price = num(sl?.price) || num(b.price);
+      return { ...b, st, order: o, sale: sl, price, amount: st === "sold" ? num(sl?.total) || price * num(b.qty) : 0,
+        invoice: sl?.invoice_no || b.sheet_invoice || "", soldOn: sl?.sold_at ? String(sl.sold_at).slice(0, 10) : b.sold_date || "" };
     });
-    const cnt = (k) => rows.filter((r) => r.st === k).length, pcs = rows.reduce((s, r) => s + num(r.qty), 0);
-    const shortDay = (d) => { const [y, m, dd] = String(d).split("-"); return `${["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][+m - 1] || ""} ${dd} ${y}`; };
     const LBL = { sold: "SOLD", order: "ON ORDER", shipped: "SHIPPED", stock: "IN STOCK" };
     const stPill = (k) => (BX ? BX.pill(k) : pill(k, LBL[k]));
-    const ex = [...new Set(rows.flatMap((r) => Object.keys(r.extra || {})))]; // the other columns of the sheet (by their titles)
+    const sum = (list, f) => list.reduce((s, r) => s + num(f(r)), 0);
+    const of = (k) => rows.filter((r) => r.st === k);
+    const pcs = sum(rows, (r) => r.qty), soldRows = of("sold"), soldAmt = sum(soldRows, (r) => r.amount);
+    const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+    const day = (d) => { const [y, m, dd] = String(d || "").split("-"); return y && m ? `${MON[+m - 1]} ${dd} ${y}` : ""; };
+    // one date, or the first to the last date of the boxes
+    const span = (f) => { const ds = [...new Set(rows.map(f).filter(Boolean))].sort(); return !ds.length ? "" : ds.length === 1 ? day(ds[0]) : `${day(ds[0])} – ${day(ds[ds.length - 1])}`; };
+    const words = (f) => { const v = [...new Set(rows.map(f).filter(Boolean))]; return v.length > 3 ? `${v.slice(0, 3).join(", ")} +${v.length - 3}` : v.join(", "); };
+    const ex = [...new Set(rows.flatMap((r) => Object.keys(r.extra || {})))];
+    const company = words((r) => r.extra?.COMPANY || r.extra?.SUPPLIER || "");
+    const exTable = ex.filter((k) => !["COMPANY", "SUPPLIER"].includes(k)); // company is in the summary
     const title = kind === "serial" ? `Box ${key}` : `Batch ${key}`;
-    const cols = [{ label: "#", num: true, get: (r) => String(rows.indexOf(r) + 1) }, { label: "Serial No", html: (r) => `<b class="mono">${esc(r.serial_no)}</b>` },
-      { label: "Product", wrap: true, get: (r) => r.product || "" }, { label: "Brand", get: (r) => r.brand || "" }, { label: "CTN", phone: false, get: (r) => r.ctn || "" },
-      { label: "Style", phone: false, get: (r) => r.style || "" }, { label: "Batch", get: (r) => r.batch || "" }, { label: "Pcs", num: true, get: (r) => qtyText(r.qty) },
-      { label: "Price (₱)", num: true, get: (r) => (r.price ? peso(r.price) : "") }, { label: "Arrival", get: (r) => (r.arrival_date ? mdy(r.arrival_date) : "") },
-      ...ex.map((k) => ({ label: k, phone: false, get: (r) => r.extra?.[k] || "" })), { label: "Status", html: (r) => stPill(r.st) },
-      { label: "Order / Invoice", phone: false, html: (r) => [r.order ? `<a href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : "", r.sale?.invoice_id ? `<a href="#invoice/${esc(r.sale.invoice_id)}">${esc(r.sale.invoice_no || "")}</a>` : ""].filter(Boolean).join(" · ") }];
+    // the details of the search (screen and print): only those the sheet has
+    const facts = [[kind === "serial" ? "Serial No" : "Batch No", key, "hl"], ["Product", words((r) => r.product)], ["Brand", words((r) => (r.brand && r.brand !== "-" ? r.brand : ""))], ["Company", company],
+      ["Shipping Date", span((r) => r.ship_date)], ["Released Date", span((r) => r.release_date)], ["Arrival Date", span((r) => r.arrival_date)], ["Date Sold", span((r) => (r.st === "sold" ? r.soldOn : ""))]]
+      .filter(([, v], i) => i === 0 || v);
+    const counts = [["Boxes", qtyText(rows.length)], ["Pcs", qtyText(pcs)], ["Sold", `${qtyText(soldRows.length)} box${soldRows.length === 1 ? "" : "es"} · ${qtyText(sum(soldRows, (r) => r.qty))} pcs`, "ok"],
+      ["In Stock", qtyText(of("stock").length), "bad"], ["On Order", qtyText(of("order").length)], ...(arr ? [["Shipped", qtyText(of("shipped").length)]] : [])];
+    const cols = [{ label: "#", num: true, get: (r) => String(rows.indexOf(r) + 1) }, { label: "Serial No", html: (r) => `<b class="mono nw">${esc(r.serial_no)}</b>` },
+      { label: "Product", wrap: true, get: (r) => [r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · ") }, { label: "CTN", phone: false, get: (r) => r.ctn || "" },
+      { label: "Pcs", num: true, get: (r) => qtyText(r.qty) }, { label: "Price (₱)", num: true, get: (r) => (r.price ? peso(r.price) : "") }, { label: "Amount (₱)", num: true, get: (r) => (r.amount ? peso(r.amount) : "") },
+      { label: "Status", html: (r) => stPill(r.st) },
+      { label: "Invoice No", html: (r) => (r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(r.invoice)}</a>` : r.order && r.st !== "sold" ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : `<span class="nw">${esc(r.invoice)}</span>`) },
+      { label: "Date Sold", get: (r) => (r.st === "sold" ? day(r.soldOn) : "") }, { label: "Arrival", phone: false, get: (r) => day(r.arrival_date) },
+      ...exTable.map((k) => ({ label: k, phone: false, get: (r) => r.extra?.[k] || "" }))];
     E.shell("find", `Search: ${t}`, "");
-    $("#main").innerHTML = `<div class="find-sum">${ic("box")} ${kind === "serial" ? `Box <b class="mono">${esc(key)}</b>` : `Batch <b>${esc(key)}</b> · ${qtyText(rows.length)} box${rows.length === 1 ? "" : "es"}`}</div>
-      <div class="rec-tiles"><div class="rec-tile"><small>Boxes</small><b>${qtyText(rows.length)}</b></div><div class="rec-tile"><small>Pcs</small><b>${qtyText(pcs)}</b></div>
-        <div class="rec-tile ok"><small>Sold</small><b>${qtyText(cnt("sold"))}</b></div><div class="rec-tile bad"><small>In Stock</small><b>${qtyText(cnt("stock"))}</b></div>
-        <div class="rec-tile"><small>On Order</small><b>${qtyText(cnt("order"))}</b></div>${arr ? `<div class="rec-tile"><small>Shipped</small><b>${qtyText(cnt("shipped"))}</b></div>` : ""}</div>
+    $("#main").innerHTML = `<div class="bxr">
+      <div class="bxr-head"><div>${ic("box")} <span>${kind === "serial" ? "Box" : "Batch"}</span> <b class="mono nw">${esc(key)}</b></div>
+        <div class="bxr-amt"><small>Total Amount Sold</small><b>₱ ${peso(soldAmt)}</b></div></div>
+      <div class="bxr-counts">${counts.map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div>
+      ${facts.length > 1 ? `<div class="bxr-facts">${facts.slice(1).map(([k, v]) => `<div><small>${esc(k)}</small><b>${/ – /.test(v) ? v.split(" – ").map((x) => `<span class="nw">${esc(x)}</span>`).join(" – ") : esc(v)}</b></div>`).join("")}</div>` : ""}
       <div class="btnrow"><button type="button" class="btn primary" id="fbPrint">${ic("print")} Print / Download</button>
         <a class="btn" href="#find/${encodeURIComponent(t)}" id="fbAll">${ic("search")} Search all records</a></div>
-      <div id="fbGrid"></div>`;
+      <div id="fbGrid"></div></div>`;
     $("#fbGrid").innerHTML = E.grid({ cols, rows, empty: "No box." });
     $("#fbAll").onclick = (e) => { e.preventDefault(); findAll = t; V.find(t); };
     $("#fbPrint").onclick = () => E.openPreview(title, E.pagedDoc({
       head: printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), contHead: printHead(`SEARCH RESULT ${key} (CONTINUED)`, ""),
-      top: E.box(kind === "serial" ? "Box" : "Batch", `<div class="pgrid2">${E.cell(kind === "serial" ? "Serial No" : "Batch No", key, "hl")}${E.cell("Boxes", qtyText(rows.length))}${E.cell("Pcs", qtyText(pcs))}
-        ${E.cell("Sold / In Stock / On Order" + (arr ? " / Shipped" : ""), `${qtyText(cnt("sold"))} / ${qtyText(cnt("stock"))} / ${qtyText(cnt("order"))}${arr ? ` / ${qtyText(cnt("shipped"))}` : ""}`)}</div>`),
-      boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>Brand</th><th>CTN</th><th>Style</th><th>Batch</th><th class="num">Pcs</th><th class="num">Price</th><th>Arrival</th>${ex.slice(0, 3).map((k) => `<th>${esc(k)}</th>`).join("")}<th>Status</th></tr>`,
-      rows, rowHtml: (r, i) => `<tr><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc(r.product || "")}</td><td>${esc(r.brand || "")}</td><td>${esc(r.ctn || "")}</td><td>${esc(r.style || "")}</td>
-        <td>${esc(r.batch || "")}</td><td class="num">${qtyText(r.qty)}</td><td class="num">${r.price ? peso(r.price) : ""}</td><td class="nw">${r.arrival_date ? esc(shortDay(r.arrival_date)) : ""}</td>${ex.slice(0, 3).map((k) => `<td>${esc(r.extra?.[k] || "")}</td>`).join("")}<td class="bxp-${r.st}">${LBL[r.st]}${r.sale?.invoice_no ? `<br><span class="nw">${esc(r.sale.invoice_no)}</span>` : r.order ? `<br><span class="nw">${esc(r.order.order_no)}</span>` : ""}</td></tr>`,
-      totalRow: `<tr class="ptl-tot"><td colspan="7">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"}</td><td class="num">${qtyText(pcs)}</td><td colspan="${3 + Math.min(ex.length, 3)}"></td></tr>`,
-      bottom: "", caps: { single: 22, first: 26, next: 32, last: 28 } }));
+      top: `<div class="bxp-sum">${counts.map(([k, v, c]) => (k === "Sold" ? ["Sold Boxes", qtyText(soldRows.length), c] : [k, v, c])).map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}<div class="amt"><small>Total Amount Sold (₱)</small><b>${peso(soldAmt)}</b></div></div>`
+        + E.box("Details", `<div class="pgrid2">${facts.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`),
+      boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>CTN</th><th class="num">Pcs</th><th class="num">Price</th><th class="num">Amount</th><th>Status</th><th>Invoice No</th><th>Date Sold</th></tr>`,
+      rows, rowHtml: (r, i) => `<tr><td class="num">${i + 1}</td><td class="nw">${esc(r.serial_no)}</td><td>${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · "))}</td><td>${esc(r.ctn || "")}</td>
+        <td class="num">${qtyText(r.qty)}</td><td class="num">${r.price ? peso(r.price) : ""}</td><td class="num">${r.amount ? peso(r.amount) : ""}</td><td class="bxp-${r.st} nw">${LBL[r.st]}</td>
+        <td class="nw">${r.st === "sold" ? esc(r.invoice) : ""}</td><td class="nw">${r.st === "sold" ? esc(day(r.soldOn)) : ""}</td></tr>`,
+      totalRow: `<tr class="ptl-tot"><td colspan="4">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"} · ${qtyText(soldRows.length)} SOLD</td><td class="num">${qtyText(pcs)}</td><td></td><td class="num">${peso(soldAmt)}</td><td colspan="3"></td></tr>`,
+      bottom: "", caps: { single: 20, first: 24, next: 32, last: 28 } }));
     E.setRecords(`Boxes: ${rows.length}`);
     return true;
   }
