@@ -1214,13 +1214,13 @@
           out.innerHTML = (await verify()) ? `<div class="addr-msg ok">✔ VERIFICATION SUCCESSFUL — no matching record found.</div>` : "";
         } else if (data.some((r) => r.blocked)) {
           out.innerHTML = personCheckHtml(data);
-          E.bindGrid(out, data, (r) => window.open("#customer/" + r.id, "_blank"));
+          E.bindGrid(out, data, (r) => (location.hash = "customer/" + r.id));
           approveOpen(false, "BLOCKED: this person cannot open an account (see the check above).");
         } else {
           out.innerHTML = `<div class="addr-msg warn">⚠ ${data.length} account(s) with the same name, Facebook name or phone. Check that it is not the same person:</div>` +
             E.grid({ cols: [{ label: "Account No", get: (r) => r.account_no }, { label: "Name", get: fullName }, { label: "Phone", get: (r) => r.phone || "" }, { label: "Status", html: (r) => pill(r.status) }, { label: "Matched On", get: (r) => (r.matched_on || "").replace(/\b\w/g, (x) => x.toUpperCase()) }], rows: data, onRow: true })
             + `<div class="btnrow"><button type="button" class="btn" id="rvAnyway">Not the same person — Verify anyway</button></div>`;
-          E.bindGrid(out, data, (r) => window.open("#customer/" + r.id, "_blank"));
+          E.bindGrid(out, data, (r) => (location.hash = "customer/" + r.id));
           $("#rvAnyway").onclick = async (e) => {
             e.currentTarget.disabled = true;
             if (await verify()) { $("#rvAnyway")?.closest(".btnrow").remove(); out.insertAdjacentHTML("beforeend", `<div class="addr-msg ok">✔ Verified by EMON HASAN.</div>`); }
