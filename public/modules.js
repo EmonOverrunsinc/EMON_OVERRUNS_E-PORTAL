@@ -2194,8 +2194,8 @@
     const avgPrice = pricedPcs ? sum(priced, (r) => r.price * num(r.qty)) / pricedPcs : 0;
     const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
     const day = (d) => { const [y, m, dd] = String(d || "").split("-"); return y && m ? `${MON[+m - 1]} ${dd} ${y}` : ""; };
-    // one date, or the first to the last date of the boxes
-    const span = (f) => { const ds = [...new Set(rows.map(f).filter(Boolean))].sort(); return !ds.length ? "" : ds.length === 1 ? day(ds[0]) : `${day(ds[0])} – ${day(ds[ds.length - 1])}`; };
+    // the first date of the boxes
+    const span = (f) => { const ds = rows.map(f).filter(Boolean).sort(); return ds.length ? day(ds[0]) : ""; }; // 3.99.44: one date (the first), no range
     const words = (f) => { const v = [...new Set(rows.map(f).filter(Boolean))]; return v.length > 3 ? `${v.slice(0, 3).join(", ")} +${v.length - 3}` : v.join(", "); };
     const ex = [...new Set(rows.flatMap((r) => Object.keys(r.extra || {})))];
     const company = words((r) => r.extra?.COMPANY || r.extra?.SUPPLIER || "");
