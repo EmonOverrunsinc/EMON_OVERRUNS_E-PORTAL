@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.94"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.95"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.94"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.95"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -729,15 +729,18 @@
     const run = (pkRun = { quiet, onFail });
     run.done = (async () => {
       let res;
-      try { res = await sb.auth.signInWithPasskey(); } catch (e) { res = { error: e }; }
+      // 3.99.95: never waits for ever (a window that never shows ends after 60 s)
+      const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 60000);
+      try { res = await sb.auth.signInWithPasskey({ options: { signal: ac.signal } }); } catch (e) { res = { error: e }; }
+      clearTimeout(timer);
       const { data, error } = res || {};
       if (!error && data?.session) { pkMem.set("eoPasskey", "1"); toast("Signed in with your passkey. Welcome!"); return true; }
-      if (run.quiet || /abort/i.test(String(error?.name || "") + String(error?.message || ""))) return false;
+      if (run.quiet) return false;
       // 3.99.81: a pressed button always says why it did not sign in
       const w = error ? pkWhy(error) : "";
       // 3.99.93: short words saying what to do (the technical reason only in the console)
       if (error) console.warn("passkey:", error.name || error.code, error.message);
-      run.onFail(w || "Passkey not used. Try again, or sign in with your password. No passkey on this device yet? After signing in, add one in My Profile › Passkeys.", true);
+      run.onFail(w, true);
       return false;
     })().finally(() => { if (pkRun === run) pkRun = null; });
     return run.done;
@@ -787,12 +790,12 @@
         const ok = await p;
         if (!ok && pkBtn.isConnected) pkBtn.innerHTML = pkIdle;
       };
+      // 3.99.95: no passkey used (none on this device, the window closed): a short grey line, the password form stays
+      const pkNone = (w) => (w ? lgFail(w, true) : lgSay("info", "No passkey used. Sign in with your email and password."));
       pkBtn.onclick = () => {
-        if (pkRun) { pkSignIn(false, lgFail); return toast(window.EOApp?.windows ? "The Windows Security window is open: enter your PIN there (or use your face or fingerprint). If you cannot see it, look on the taskbar." : "The passkey window is open: use your face, fingerprint or PIN there."); }
-        $("#lgProblem")?.remove(); pkWait(pkSignIn(false, lgFail));
+        if (pkRun) return toast(window.EOApp?.windows ? "Enter your PIN in the Windows Security window." : "Use your face, fingerprint or PIN in the passkey window.");
+        $("#lgProblem")?.remove(); pkWait(pkSignIn(false, pkNone));
       };
-      // 3.99.75: a device with a saved passkey asks for it by itself
-      if (pkMem.get("eoPasskey") === "1" && !preset) setTimeout(() => { if (pkBtn.isConnected && !pkRun) pkWait(pkSignIn(true)); }, 600);
     }
     // 3.90: ONE scan for both: the employee ID card (then the password) or the customer's Public ID (then the Private PIN)
     $("#lgScanId").onclick = () => scanDialog((t) => {
