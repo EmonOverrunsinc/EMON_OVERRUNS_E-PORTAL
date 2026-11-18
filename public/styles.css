@@ -3848,3 +3848,8 @@ html.eo-overlay .modal { padding-top: 12px; }
 html.eo-overlay .modal .window { max-height: calc(100vh - env(titlebar-area-height, 54px) - 32px); }
 html.eo-overlay body:has(:is(.modal, .legal-ov, .dev-ov)) .topbar > * { pointer-events: none; }
 html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-height, 54px) + 5px); }
+/* 3.99.89: the 1-box print: the band (Serial No · Status · Pcs) and the money row (Price · Amount Sold) on ONE 4-column
+   grid with the same gap: Amount Sold starts exactly under Status and ends with Pcs, Price is as wide as Serial No */
+.bx1-band, .bxp-sum.money { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.bx1-band > .w2, .bxp-sum.money > div { grid-column: span 2; }
+.page .bx1-band, .page .bxp-sum.money { gap: 5px; }
