@@ -3777,3 +3777,5 @@ img.bw-css { filter: grayscale(1) contrast(1.25); }
 .bxp-sum em { font-size: 7pt; margin-top: 1px; }
 .bxsec-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 7pt; color: #12306b; border-top: 1px dashed #9fb0cc; padding-top: 4px; margin-top: 6px; }
 .bxsec-foot b { letter-spacing: .08em; }
+/* 3.99.61: while the EVA chat is open the floating Back button hides (it covered the Send button) */
+body.eva-open .band-back, body:has(.eva-panel.open) .band-back { display: none !important; }
