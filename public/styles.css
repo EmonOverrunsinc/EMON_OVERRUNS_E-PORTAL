@@ -4073,3 +4073,6 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .idc-note { top: 60.6mm; }
 .idc-miniseal .eos .eos-ref .eos-printed { display: none; }
 .idc-sign small.idc-dtitle { font-size: 1.75mm; font-weight: 800; letter-spacing: .15mm; color: #a87a22; margin-top: .2mm; } /* 3.99.124 */
+/* 3.99.125: the ID card's mini seal smaller, without the card no line */
+.idc-miniseal { width: 28.5mm; height: 12.4mm; }
+.idc-miniseal .eos { transform: scale(.46); }
