@@ -69,3 +69,5 @@
   Cache-Control: public, max-age=31536000, immutable
 /modules16.js
   Cache-Control: public, max-age=31536000, immutable
+/modules17.js
+  Cache-Control: public, max-age=31536000, immutable
