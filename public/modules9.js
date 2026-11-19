@@ -120,7 +120,7 @@
           <small>CARD NO</small><b class="mono">${esc(d.card.card_no)}</b><small>ISSUED</small><b>${esc(mdy(d.card.issued_at))}</b>
           <small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b>${d.appNo ? `<small>APPLICATION NO</small><b class="mono">${esc(d.appNo)}</b>` : ""}</div></div>
       <div class="idc-sign"><img class="idc-stamp" src="${STAMP}" alt="Company stamp"><div class="idc-sigpic">${d.dirSig ? `<img src="${esc(d.dirSig)}" alt="">` : ""}</div><i></i>
-        <b>${esc(C.company.name)}</b><small>${esc(C.company.email)}${site ? ` · ${esc(site)}` : ""}</small></div>
+        <b>${esc(d.dirName || "")}</b><small class="idc-dtitle">${esc(d.dirTitle || "REGIONAL DIRECTOR")}</small></div>
       <p class="idc-note">Property of ${esc(C.company.name)} · not transferable · if found, please return it.<br><b>Verify this card: ${esc(site || "emonoverruns.online")}/verify</b></p>
       <div class="idc-bsec">${d.photo ? `<div class="idc-ghost b2"><img src="${esc(d.photo)}" alt=""><span>${esc(`${em.employee_no} `.repeat(14))}</span></div>` : ""}
         <div class="idc-miniseal">${E.secSeal ? E.secSeal(d.card.card_no, { code: d.seal || "" }) : ""}</div></div>
@@ -135,14 +135,17 @@
 
   // Everything the card shows: the photo, the holder's signature, the signature of the Director who issued it, the blood type.
   async function cardData(em, card) {
-    const [photo, prof, app] = await Promise.all([
+    const [photo, prof, app, , dirEmp] = await Promise.all([
       em.photo_path ? E.signedUrl(em.photo_path, 3600) : "",
       em.profile_id ? sb.from("profiles").select("signature_path, signature_status").eq("id", em.profile_id).maybeSingle() : { data: null },
       em.job_application_id ? sb.from("job_applications").select("blood_group, application_no").eq("id", em.job_application_id).maybeSingle() : { data: null },
-      E.loadSignatures()
+      E.loadSignatures(),
+      // 3.99.124: the title of the Director who approved (issued) the card, for its back
+      card.issued_by ? sb.from("employees").select("position").eq("profile_id", card.issued_by).maybeSingle().then((r) => r.data, () => null) : null
     ]);
     const sig = prof.data?.signature_status === "approved" ? await E.signaturePic(prof.data.signature_path) : "";
-    return { em, card, photo, holderSig: sig, dirSig: E.approvedBy(card.issued_by, card.issued_by_name, card.issued_at)?.pic || "", blood: app.data?.blood_group || em.blood_group || "", appNo: app.data?.application_no || "" };
+    return { em, card, photo, holderSig: sig, dirSig: E.approvedBy(card.issued_by, card.issued_by_name, card.issued_at)?.pic || "", blood: app.data?.blood_group || em.blood_group || "", appNo: app.data?.application_no || "",
+      dirName: String(card.issued_by_name || "").toUpperCase(), dirTitle: String(dirEmp?.position || "REGIONAL DIRECTOR").toUpperCase() };
   }
 
   // ---------- the Director's ID Card tab on the employee profile ----------
