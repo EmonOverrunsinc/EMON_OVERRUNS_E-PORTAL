@@ -61,11 +61,32 @@
       ${copyTint(k, "#b9c9e6")}
       ${waves("#8fb0e6", 20, 82, 16, 1.6, 19, 0.3)}${waves("#e3a3c8", 22, 84, 14, 1.2, 13, 2.1, 0.06)}
       ${front ? rosette(27, 32.8, 15.5, 2.3, 9, 14, "#7fa2e0") + rosette(27, 32.8, 11.2, 1.3, 13, 10, "#d9a441", 0.05) : rosette(27, 43, 20, 2, 11, 12, "#9fbbe9")}
+      ${edgeWave("#c9a227")}
     </svg>`;
   const band = (k) => `<svg class="idc-bandbg" viewBox="0 0 ${W} 15" preserveAspectRatio="none" aria-hidden="true">
       <defs><linearGradient id="bd${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0a2463"/><stop offset=".6" stop-color="#1f4fa3"/><stop offset="1" stop-color="#2f6fd6"/></linearGradient></defs>
       <rect width="${W}" height="15" fill="url(#bd${k})"/>
       <g opacity=".22">${waves("#ffffff", 1, 14, 8, 0.9, 11, 0.8, 0.06)}</g></svg>`;
+
+  // 3.99.122: a wavy gold guilloche line round the card (1.3 mm in), and a microtext frame round the photo
+  function edgeWave(color, inset = 1.3, amp = 0.35, step = 2.6) {
+    const pts = [], x0 = inset, y0 = inset, x1 = W - inset, y1 = H - inset;
+    const run = (ax, ay, bx, by, nx, ny) => { const len = Math.hypot(bx - ax, by - ay), n = Math.max(2, Math.round(len / 0.5));
+      for (let i = 0; i <= n; i++) { const t = i / n, w = amp * Math.sin((t * len / step) * 2 * Math.PI); pts.push(`${n2(ax + (bx - ax) * t + nx * w)} ${n2(ay + (by - ay) * t + ny * w)}`); } };
+    run(x0, y0, x1, y0, 0, 1); run(x1, y0, x1, y1, -1, 0); run(x1, y1, x0, y1, 0, -1); run(x0, y1, x0, y0, 1, 0);
+    return `<path d="M${pts.join("L")}Z" fill="none" stroke="${color}" stroke-width=".12"/><path d="M${pts.join("L")}Z" fill="none" stroke="#1f4fa3" stroke-width=".05" transform="translate(.35 .35)" opacity=".7"/>`;
+  }
+  function photoFrame(k, words) {
+    // each side its own line of whole words (never cut at a corner)
+    const w = 26.8, h = 30.8, p = 0.55, unit = words.join(" · "), uw = unit.length * 0.37 + 1.1;
+    const side = (id, d, len) => { const n = Math.max(1, Math.floor((len + 1.1) / uw)); const t = Array(n).fill(unit).join(" · ");
+      return `<path id="${id}" d="${d}"/><text font-family="Arial, sans-serif" font-size=".62" font-weight="700" fill="#1f4fa3"><textPath href="#${id}" textLength="${n2(len)}" lengthAdjust="spacing">${esc(t)}</textPath></text>`; };
+    const lx = w - 2 * p - 2.4, ly = h - 2 * p - 2.4;
+    return `<svg class="idc-pframe" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+      <rect x=".12" y=".12" width="${w - .24}" height="${h - .24}" rx="1.4" fill="none" stroke="#c9a227" stroke-width=".18"/>
+      ${side(`pft${k}`, `M${p + 1.2} ${p + .2}H${w - p - 1.2}`, lx)}${side(`pfb${k}`, `M${w - p - 1.2} ${h - p - .2}H${p + 1.2}`, lx)}
+      ${side(`pfr${k}`, `M${w - p - .2} ${p + 1.2}V${h - p - 1.2}`, ly)}${side(`pfl${k}`, `M${p + .2} ${h - p - 1.2}V${p + 1.2}`, ly)}</svg>`;
+  }
 
   // ---------- the card ----------
   const nameSize = (n) => (n.length <= 16 ? 3.8 : n.length <= 22 ? 3.2 : n.length <= 30 ? 2.7 : 2.3);
@@ -76,8 +97,9 @@
     return `<div class="idc-face idc-front">${bg(k, true)}
       <div class="idc-top">${band(k)}${E.logoHtml("idc-logo")}<div class="idc-co"><b>${esc(C.company.name)}</b><small>EMPLOYEE IDENTIFICATION CARD</small></div></div>
       <div class="idc-gold"></div>
+      ${photoFrame(k, [C.company.name, d.em.employee_no])}
       <div class="idc-photo">${d.photo ? `<img class="idc-pic" src="${esc(d.photo)}" alt="">` : `<span>PHOTO</span>`}<img class="idc-seal" src="${STAMP}" alt=""></div>
-      ${d.photo ? `<div class="idc-ghost"><img src="${esc(d.photo)}" alt=""></div>` : ""}
+      ${d.photo ? `<div class="idc-ghost"><img src="${esc(d.photo)}" alt=""><span>${esc(`${d.em.employee_no} `.repeat(14))}</span></div>` : ""}
       <div class="idc-name" style="font-size:${nameSize(name)}mm">${esc(name)}</div>
       <div class="idc-pos"><span>${esc((d.em.position || "EMPLOYEE").toUpperCase())}</span></div>
       <div class="idc-rows${d.blood ? " three" : ""}"><div><small>ID NO</small><b>${esc(d.em.employee_no)}</b></div>
@@ -91,16 +113,15 @@
     const k = ++uid, em = d.em, site = String(C.company.website || "").replace(/^https?:\/\//, "").replace(/\/$/, "");
     const row = (l, v) => `<div class="idc-er"><small>${l}</small><b>${val(v)}</b></div>`;
     return `<div class="idc-face idc-back">${bg(k, false)}
-      <div class="idc-bhead">IN CASE OF EMERGENCY, PLEASE NOTIFY</div><div class="idc-gold b"></div>
+      <div class="idc-bhead">${band(k)}<span>IN CASE OF EMERGENCY, PLEASE NOTIFY</span></div><div class="idc-gold b"></div>
       <div class="idc-emg">${row("NAME", em.emergency_name)}${row("CONTACT NO", em.emergency_phone)}${row("ADDRESS", em.emergency_address)}</div>
       <div class="idc-qrrow"><div class="idc-qr">${d.qr ? `<img src="${esc(d.qr)}" alt="QR code">` : `<span>${ic("key")}<br>QR CODE<br>ON THE<br>PRINTED CARD</span>`}</div>
         <div class="idc-qrtxt"><b class="idc-scan">SCAN TO SIGN IN</b>
           <small>CARD NO</small><b class="mono">${esc(d.card.card_no)}</b><small>ISSUED</small><b>${esc(mdy(d.card.issued_at))}</b>
-          <small>APPLICATION NO</small><b class="mono">${val(d.appNo)}</b></div></div>
-      ${d.photo ? `<div class="idc-ghost b"><img src="${esc(d.photo)}" alt=""></div>` : ""}
+          <small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b>${d.appNo ? `<small>APPLICATION NO</small><b class="mono">${esc(d.appNo)}</b>` : ""}</div></div>
       <div class="idc-sign"><img class="idc-stamp" src="${STAMP}" alt="Company stamp"><div class="idc-sigpic">${d.dirSig ? `<img src="${esc(d.dirSig)}" alt="">` : ""}</div><i></i>
         <b>${esc(C.company.name)}</b><small>${esc(C.company.address.join(", "))}</small><small>${esc(C.company.email)}${site ? ` · ${esc(site)}` : ""}</small></div>
-      <p class="idc-note">This card is the property of ${esc(C.company.name)} and is not transferable. If found, please return it to the address above.</p>
+      <p class="idc-note">This card is the property of ${esc(C.company.name)} and is not transferable. If found, please return it to the address above.<br><b>Verify this card: ${esc(site || "emonoverruns.online")}/verify</b></p>
       <div class="idc-foot"><span class="idc-micro">${micro(8)}</span><b>${esc(em.employee_no)}</b></div>
     </div>`;
   }

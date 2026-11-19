@@ -4020,3 +4020,32 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .c2-topbar img { display: block; height: 9mm; max-width: 62mm; margin: 0 auto; image-rendering: pixelated; }
 .c2-topbar b { display: block; font-size: 8.5pt; letter-spacing: .08em; color: var(--nv, #12306b); margin-top: .6mm; }
 .c2-title .c2-topbar b, .page .c2-title .c2-topbar b { font-size: 8.5pt; line-height: 1.2; letter-spacing: .08em; font-weight: 700; } .c2-title .c2-topbar { line-height: 1; }
+/* ===================== 3.99.122: the employee ID card: new layout, more security ===================== */
+/* the rainbow (iridescent) strip under the header */
+.idc-gold { height: 1mm; background: linear-gradient(90deg, #a87a22, #f3d27a 16%, #9fd8ff 34%, #f4b6e4 50%, #c6f1c1 66%, #f3d27a 84%, #a87a22); box-shadow: 0 .15mm 0 rgba(10, 36, 99, .25); }
+.idc-gold.b { top: 8mm; }
+/* the photo with its microtext frame; the seal over its corner, smaller */
+.idc-pframe { position: absolute; left: 13.6mm; top: 16.7mm; width: 26.8mm; height: 30.8mm; display: block; }
+.idc-photo { left: 15.2mm; top: 18.3mm; width: 23.6mm; height: 27.6mm; }
+.idc-seal { right: -3.4mm; bottom: -3.4mm; width: 9.6mm; height: 9.6mm; }
+/* the ghost photo: top right, the ID no printed over it */
+.idc-ghost { right: 2.6mm; left: auto; top: 18.6mm; width: 8.4mm; height: 10.2mm; opacity: .3; border: .15mm solid #8fb0e6; }
+.idc-ghost span { position: absolute; left: -6mm; right: -6mm; top: 50%; transform: translateY(-50%) rotate(-30deg); font: 700 .7mm/1.05 Arial, sans-serif; color: #0a2463;
+  white-space: normal; word-break: break-all; text-align: center; opacity: .9; }
+/* the name, the position and the rows: a little more room */
+.idc-name { top: 49.8mm; }
+.idc-pos { top: 56.4mm; }
+.idc-rows { top: 60.4mm; }
+.idc-bar { top: 65.8mm; }
+.idc-bar img { width: 42mm; height: 7.2mm; }
+.idc-hsig { top: 74.2mm; }
+/* the back: the header band like the front */
+.idc-bhead { overflow: hidden; background: #0a2463; }
+.idc-bhead > .idc-bandbg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.idc-bhead > span { position: relative; }
+.idc-emg { top: 10.4mm; }
+.idc-qrrow { top: 30.2mm; }
+.idc-qrtxt b { margin-bottom: .8mm; }
+.idc-sign { top: 54.6mm; }
+.idc-note { top: 73.4mm; font-style: normal; font-size: 1.32mm; line-height: 1.35; }
+.idc-note b { display: block; margin-top: .4mm; font-size: 1.45mm; color: #0a2463; letter-spacing: .05mm; }
