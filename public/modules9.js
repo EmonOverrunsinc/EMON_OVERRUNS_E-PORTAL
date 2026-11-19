@@ -102,8 +102,8 @@
       ${d.photo ? `<div class="idc-ghost"><img src="${esc(d.photo)}" alt=""><span>${esc(`${d.em.employee_no} `.repeat(14))}</span></div>` : ""}
       <div class="idc-name" style="font-size:${nameSize(name)}mm">${esc(name)}</div>
       <div class="idc-pos"><span>${esc((d.em.position || "EMPLOYEE").toUpperCase())}</span></div>
-      <div class="idc-rows${d.blood ? " three" : ""}"><div><small>ID NO</small><b>${esc(d.em.employee_no)}</b></div>
-        <div><small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b></div>${d.blood ? `<div><small>BLOOD TYPE</small><b>${esc(d.blood)}</b></div>` : ""}</div>
+      <div class="idc-rows"><div><small>ID NO</small><b>${esc(d.em.employee_no)}</b></div>
+        <div><small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b></div></div>
       <div class="idc-bar"><img src="${esc(E.pdf417DataUrl("EMONEMP|" + d.em.employee_no))}" alt="PDF417 barcode ${esc(d.em.employee_no)}"></div>
       <div class="idc-hsig">${d.holderSig ? `<img src="${esc(d.holderSig)}" alt="">` : ""}<i></i><small>HOLDER'S SIGNATURE</small></div>
       <div class="idc-foot"><span class="idc-micro">${micro(8)}</span><b>${esc(d.card.card_no)}</b></div>
@@ -111,17 +111,19 @@
   }
   function back(d) {
     const k = ++uid, em = d.em, site = String(C.company.website || "").replace(/^https?:\/\//, "").replace(/\/$/, "");
-    const row = (l, v) => `<div class="idc-er"><small>${l}</small><b>${val(v)}</b></div>`;
+    const row = (l, v, cls = "") => `<div class="idc-er ${cls}"><small>${l}</small><b>${val(v)}</b></div>`;
     return `<div class="idc-face idc-back">${bg(k, false)}
       <div class="idc-bhead">${band(k)}<span>IN CASE OF EMERGENCY, PLEASE NOTIFY</span></div><div class="idc-gold b"></div>
-      <div class="idc-emg">${row("NAME", em.emergency_name)}${row("CONTACT NO", em.emergency_phone)}${row("ADDRESS", em.emergency_address)}</div>
+      <div class="idc-emg">${row("NAME", em.emergency_name)}${row("CONTACT NO", em.emergency_phone)}${row("ADDRESS", em.emergency_address, "two")}</div>
       <div class="idc-qrrow"><div class="idc-qr">${d.qr ? `<img src="${esc(d.qr)}" alt="QR code">` : `<span>${ic("key")}<br>QR CODE<br>ON THE<br>PRINTED CARD</span>`}</div>
         <div class="idc-qrtxt"><b class="idc-scan">SCAN TO SIGN IN</b>
           <small>CARD NO</small><b class="mono">${esc(d.card.card_no)}</b><small>ISSUED</small><b>${esc(mdy(d.card.issued_at))}</b>
           <small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b>${d.appNo ? `<small>APPLICATION NO</small><b class="mono">${esc(d.appNo)}</b>` : ""}</div></div>
       <div class="idc-sign"><img class="idc-stamp" src="${STAMP}" alt="Company stamp"><div class="idc-sigpic">${d.dirSig ? `<img src="${esc(d.dirSig)}" alt="">` : ""}</div><i></i>
-        <b>${esc(C.company.name)}</b><small>${esc(C.company.address.join(", "))}</small><small>${esc(C.company.email)}${site ? ` · ${esc(site)}` : ""}</small></div>
-      <p class="idc-note">This card is the property of ${esc(C.company.name)} and is not transferable. If found, please return it to the address above.<br><b>Verify this card: ${esc(site || "emonoverruns.online")}/verify</b></p>
+        <b>${esc(C.company.name)}</b><small>${esc(C.company.email)}${site ? ` · ${esc(site)}` : ""}</small></div>
+      <p class="idc-note">Property of ${esc(C.company.name)} · not transferable · if found, please return it.<br><b>Verify this card: ${esc(site || "emonoverruns.online")}/verify</b></p>
+      <div class="idc-bsec">${d.photo ? `<div class="idc-ghost b2"><img src="${esc(d.photo)}" alt=""><span>${esc(`${em.employee_no} `.repeat(14))}</span></div>` : ""}
+        <div class="idc-miniseal">${E.secSeal ? E.secSeal(d.card.card_no, { code: d.seal || "" }) : ""}</div></div>
       <div class="idc-foot"><span class="idc-micro">${micro(8)}</span><b>${esc(em.employee_no)}</b></div>
     </div>`;
   }
@@ -144,7 +146,7 @@
   }
 
   // ---------- the Director's ID Card tab on the employee profile ----------
-  const STATE = { active: "ACTIVE", replaced: "REPLACED", revoked: "ENDED" };
+  const STATE = { active: "ACTIVE", replaced: "REPLACED", revoked: "ENDED", blocked: "BLOCKED" };
   async function idCardTab(em, el, reload) {
     if (!isAdmin() || !el) return;
     if (em.approval_status === "pending") { el.innerHTML = `<div class="hint warn">The employee ID card is made when the employee is approved: press <b>Approve Employee</b> at the top of this page.</div>`; return; }
@@ -169,6 +171,7 @@
           <div class="btnrow">
             ${card ? `<button type="button" class="btn primary" id="idcPrint">${ic("print")} Print / Download ID Card</button>` : ""}
             ${em.status !== "terminated" ? `<button type="button" class="btn" id="idcNew">${ic("plus")} ${card ? "Issue New Card" : "Issue ID Card"}</button>` : ""}
+            ${card ? `<button type="button" class="btn" id="idcExp">${ic("edit")} Edit Expiration Date</button><button type="button" class="btn danger" id="idcBlock">${ic("x")} Block Card</button>` : ""}
           </div>
           <p class="muted small">Only EMON HASAN sees and prints the ID card. A new card stops the old one at once (lost or damaged card). The first time, the employee scans the card and makes a password there (no email needed); after that the employee scans the card and types that password. Give the card only to its employee: its first scan makes the password.</p>
         </div></div>
@@ -177,8 +180,28 @@
     if ($("#idcPrint", el)) $("#idcPrint", el).onclick = async () => {
       const { data: code, error } = await sb.rpc("employee_card_code", { p_card: card.id });
       if (error) return fail(error, "Could not print the ID card");
-      E.openPreview(`ID Card ${card.card_no} ${fullName(em)}`, [sheet({ ...d, qr: E.qrDataUrl(code) })], { bare: true });
+      const seal = E.sealCode ? await E.sealCode("idcard", card.card_no) : ""; // 3.99.123: the card's unique seal no
+      E.openPreview(`ID Card ${card.card_no} ${fullName(em)}`, [sheet({ ...d, seal, qr: E.qrDataUrl(code) })], { bare: true });
       idCardTab(em, el, reload);
+    };
+    // 3.99.123: block a lost or stolen card (it stops at once; then Issue ID Card), change the expiration date
+    if ($("#idcBlock", el)) $("#idcBlock", el).onclick = async () => {
+      if (!(await E.confirmBox(`Block ID card <b>${esc(card.card_no)}</b> of <b>${esc(fullName(em))}</b>?<br><br>It stops signing in at once and shows <b>BLOCKED</b> when scanned. Then press <b>Issue ID Card</b> for a new card.`, { title: "Block Card", ok: "Block Card", danger: true }))) return;
+      const { error } = await sb.rpc("block_employee_card", { p_card: card.id });
+      if (error) return fail(error, /function|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 111 first" : "Could not block the card");
+      toast(`Card ${card.card_no} blocked.`); idCardTab(em, el, reload);
+    };
+    if ($("#idcExp", el)) $("#idcExp", el).onclick = () => {
+      const m = E.modal("Edit Expiration Date", `<label for="idcExpD">Valid Until</label><input id="idcExpD" type="date" min="${E.isoToday()}" value="${esc(card.valid_until)}">`,
+        `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="idcExpS">${ic("check")} Save</button>`);
+      $("[data-x]", m.el).onclick = () => m.close();
+      $("#idcExpS", m.el).onclick = async () => {
+        const v = $("#idcExpD", m.el).value;
+        if (!v) return toast("Choose the date.", true);
+        const { error } = await sb.rpc("set_card_expiry", { p_card: card.id, p_date: v });
+        if (error) return fail(error, /function|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 111 first" : "Could not change the date");
+        m.close(); toast(`Card ${card.card_no} is valid until ${mdy(v)}. Print the card again.`); idCardTab(em, el, reload);
+      };
     };
     if ($("#idcNew", el)) $("#idcNew", el).onclick = async () => {
       if (!(await E.confirmBox(card ? `Issue a new ID card for <b>${esc(fullName(em))}</b>?<br><br>Card <b>${esc(card.card_no)}</b> stops working at once (it cannot sign in any more). Print and give the new card.` : `Issue an ID card for <b>${esc(fullName(em))}</b>?`, { ok: card ? "Issue New Card" : "Issue ID Card" }))) return;
@@ -205,7 +228,7 @@
     if (!data?.found) return { html: `<div class="vf-bad"><div class="vf-seal">✖</div><div class="vf-title">NOT A VALID ID CARD</div><div class="vf-sub">This card is not an ${esc(C.company.name)} employee ID card. It may be fake or damaged.</div></div>` };
     const ok = data.state === "VALID";
     return { data, html: `<div class="${ok ? "vf-ok" : "vf-bad"}"><div class="vf-seal">${ok ? ic("check") : "✖"}</div>
-      <div class="vf-title">EMPLOYEE ID CARD · ${esc(data.state)}</div><div class="vf-sub">${ok ? `VERIFIED BY ${esc(C.company.name)}` : data.state === "REPLACED" ? "This card was replaced by a newer card." : data.state === "EXPIRED" ? "This card has expired." : "This card is no longer valid."}</div>
+      <div class="vf-title">EMPLOYEE ID CARD · ${esc(data.state)}</div><div class="vf-sub">${ok ? `VERIFIED BY ${esc(C.company.name)}` : data.state === "REPLACED" ? "This card was replaced by a newer card." : data.state === "BLOCKED" ? "This card is BLOCKED (lost or stolen). Do not accept it." : data.state === "EXPIRED" ? "This card has expired." : "This card is no longer valid."}</div>
       <table class="vf-fields"><tbody>${[["Name", data.name], ["Position", data.position], ["Employee No", data.employee_no], ["Card No", data.card_no], ["Issued", mdy(data.issued_at)], ["Valid Until", mdy(data.valid_until)]]
         .map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v || "—")}</td></tr>`).join("")}</tbody></table>
       <div class="vf-when">Checked ${esc(E.dateTime(new Date().toISOString()))}</div></div>` };

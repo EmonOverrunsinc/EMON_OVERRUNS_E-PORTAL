@@ -421,12 +421,12 @@
         }
         $(".verify-hero").hidden = true; window.scrollTo(0, 0);
         const box = sv.kind === "box";
-        const KIND = { box: "Box Serial No", coverage: "Coverage Certificate", qc: "QC Test", invoice: "Invoice", receipt: "Acknowledgment Receipt" };
+        const KIND = { box: "Box Serial No", coverage: "Coverage Certificate", qc: "QC Test", invoice: "Invoice", receipt: "Acknowledgment Receipt", idcard: "Employee ID Card" };
         const rows = [["Seal No", E.sealFmt(sealNo)], [KIND[sv.kind] || "Record", sv.ref], ["Seal Issued", E.dateTime(sv.issued_at)],
           ...(box ? [["Product", sv.product], ["Brand", sv.brand], ["Batch No", sv.batch], ["Pcs", sv.pcs]] : [])].filter(([, v]) => v != null && v !== "");
         out.innerHTML = `<div class="vf-ok"><div class="vf-seal">${ic("check")}</div><div class="vf-title">GENUINE SEAL</div><div class="vf-sub">ISSUED BY ${esc(C.company.name)}</div>
           <table class="vf-fields"><tbody>${rows.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</tbody></table>
-          ${box || sv.kind === "qc" ? "" : `<div class="btnrow center"><a class="btn primary" href="#verify/${encodeURIComponent(sv.ref)}">${ic("shield")} Check the ${sv.kind === "coverage" ? "Certificate" : "Record"}</a></div>`}</div>`;
+          ${box || sv.kind === "qc" || sv.kind === "idcard" ? "" : `<div class="btnrow center"><a class="btn primary" href="#verify/${encodeURIComponent(sv.ref)}">${ic("shield")} Check the ${sv.kind === "coverage" ? "Certificate" : "Record"}</a></div>`}</div>`;
         return;
       }
       $("#vfResult").innerHTML = `<div class="vf-wait">${busy("Searching the records")}</div>`;
