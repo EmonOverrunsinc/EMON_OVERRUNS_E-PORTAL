@@ -2263,7 +2263,10 @@
       if (lastDone < 0 && r.st === "stock") lastDone = 2; // in stock: it has arrived
       const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="${/^[A-Z]{3} \d{2} \d{4}$/.test(x) ? "dt" : "nw"}">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
       const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
-        ["Company", coName(r)], ["Cost per Box (₱)", peso(boxCost)], ["Price (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
+        ["Company", coName(r)], ["Cost per Box (₱)", peso(boxCost)],
+        // 3.99.118: a sold box: what is left after the cost of the box; a box not sold: when it arrived
+        ["Net Sales (₱)", sold1 && r.amount ? peso(r.amount - boxCost) : ""], ["Arrived Date", sold1 ? "" : day(r.arrival_date) || "—"],
+        ["Price (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
         ["Suggested Price", !r.price && suggest ? peso(suggest) : ""], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
         ].filter(([, v]) => v); // 3.99.72: no other sheet columns
       const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>`
