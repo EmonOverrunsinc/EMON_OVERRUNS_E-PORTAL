@@ -492,7 +492,7 @@
       <div class="ph-left"><span class="ph-logo-ring">${E.logoHtml("ph-logo")}</span><div><div class="ph-co">${esc(C.company.name)}</div>
         ${C.company.tagline ? `<div class="ph-tag">${esc(C.company.tagline)}</div>` : ""}
         <div class="ph-addr">${esc(C.company.letterhead || C.company.address.join(", "))} &nbsp;·&nbsp; ${esc(C.company.email)}${E.siteText()}</div></div></div>
-      <div class="ph-mid"><div class="ph-title">${esc(title)}</div><i class="ph-gl"></i></div>
+      <div class="ph-mid${String(title).length > 16 ? " long" : ""}"><div class="ph-title">${esc(title)}</div><i class="ph-gl"></i></div>
       ${rightHtml ? `<div class="ph-right">${rightHtml}</div>` : ""}</div><div class="ph2-gold"></div>`;
   }
   const val = (v) => (v === "" || v == null ? "&nbsp;" : esc(v)); // an empty value keeps its line on paper
@@ -1916,7 +1916,7 @@
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(p.amount))}</div></div>`)}
       <p class="pdecl">This acknowledges that ${esc(C.company.name)} has received the payment above. Receipt No ${esc(p.receipt_no)}.</p>
       <div class="soa-sys">This is a system-generated receipt. No signature is required.</div>
-      <div class="doc-seal">${E.secSeal(p.receipt_no, { code: E.sealCached("receipt", p.receipt_no) })}</div>`;
+      <div class="doc-seal mid">${E.secSeal(p.receipt_no, { code: E.sealCached("receipt", p.receipt_no) })}</div>`;
   }
 
   // ======================================================================
