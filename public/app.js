@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.109"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.110"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.109"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.110"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -593,7 +593,7 @@
         <text font-family="Arial, sans-serif" font-size="7.6" font-weight="700" fill="#12306b"><textPath href="#${id}" textLength="252" lengthAdjust="spacing">${ring}</textPath></text></svg>
         <div class="eos-logo-in">${logoHtml("eos-img")}</div></div>
       <div class="eos-mid"><div class="eos-no">${esc(no)}</div>
-        <div class="eos-ref">${code ? esc(ref) : "REFERENCE NO"}<small>${esc(site.toLowerCase())}/verify</small><em class="eos-printed"><span>PRINTED ${esc(dateTime(new Date().toISOString()))}</span>${S.profile?.full_name ? `<span>BY ${esc(String(S.profile.full_name).toUpperCase())}</span>` : ""}</em></div></div></div>`;
+        <div class="eos-ref">${code ? esc(ref) : "REFERENCE NO"}<small>${esc(site.toLowerCase())}/verify</small><em class="eos-printed"><span>${esc(dateTime(new Date().toISOString()))}</span>${S.profile?.full_name ? `<span>${esc(String(S.profile.full_name).toUpperCase())}</span>` : ""}</em></div></div></div>`;
   }
 
   // ---------- new versions ----------
