@@ -81,14 +81,14 @@
     $("#olBody").innerHTML = `
       <div class="ol-kpis">${kpi("Today's Sales", act.reduce((s, r) => s + r.today, 0))}${kpi(`Net Sales · ${E.monthText(m)}`, act.reduce((s, r) => s + r.net, 0))}
         ${kpi("Expenses", act.reduce((s, r) => s + r.out, 0))}${kpi("Stock Payments", act.reduce((s, r) => s + r.paid, 0))}${kpi("Balance", act.reduce((s, r) => s + r.bal, 0), "bal")}</div>
-      ${canEdit() ? `<div class="btnrow"><button type="button" class="btn primary" id="olNew">${ic("plus")} New Outlet</button></div>` : ""}
+      ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn primary" id="olNew">${ic("plus")} New Outlet</button></div>` : ""}
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}">
           <div class="ol-card-h">${ic("building")}<div><b>${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", `RENT ${rs.label}`)}</div>
           <div class="ol-card-a">${esc(r.o.address || "")}${r.o.opens || r.o.closes ? ` · ${esc(r.o.opens || "")}–${esc(r.o.closes || "")}` : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses + Payments</small><b>₱ ${peso(r.out + r.paid)}</b></div><div class="${r.bal < 0 ? "neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
-      }).join("") : `<div class="empty">No outlet yet.${canEdit() ? " Press <b>New Outlet</b> to add SHOP-1." : ""}</div>`}</div>`;
+      }).join("") : `<div class="empty">${isAdmin() ? "No outlet yet. Press <b>New Outlet</b> to add SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
     if ($("#olNew")) $("#olNew").onclick = () => editOutlet(null, outlets.length);
     E.setRecords(`Outlets: ${outlets.length}`);
   };
@@ -107,6 +107,7 @@
         <div><label for="olDay">Rental Due Day (1–31)</label><input id="olDay" type="number" min="1" max="31" value="${v("rent_day")}"></div>
         <div class="span2"><label>Customer Account (the shop's stock: orders, invoices, payments)</label><div id="olCust"></div></div>
         <div class="span2"><label for="olNote">Notes</label><textarea id="olNote" rows="2" maxlength="1000">${v("notes")}</textarea></div>
+        ${o ? "" : `<div class="span2"><label for="olLease">Contract of Lease (photos of its pages or a PDF; the pages are saved as one document)</label><input id="olLease" type="file" accept="image/*,application/pdf" multiple></div>`}
         ${o ? `<div><label for="olSt">Status</label><select id="olSt"><option value="active"${o.status === "active" ? " selected" : ""}>Open</option><option value="closed"${o.status === "closed" ? " selected" : ""}>Closed</option></select></div>` : ""}
       </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="olSave">${ic("check")} Save</button>`, { wide: true });
     let cust = o?.customer_id || null;
@@ -121,7 +122,9 @@
       const r = o ? await sb.from("outlets").update(row).eq("id", o.id).select().single() : await sb.from("outlets").insert(row).select().single();
       e.target.disabled = false;
       if (r.error) return fail(r.error, /duplicate|unique/i.test(r.error.message) ? `The code ${row.code} is already used.` : "Could not save the outlet");
+      const lease = o ? [] : Array.from($("#olLease", m.el)?.files || []);
       m.close(); toast(o ? "Outlet saved." : `${row.code} added.`);
+      if (lease.length) await saveLease(r.data, lease);
       location.hash = "outlet/" + r.data.id; if (o) E.route();
     };
   }
@@ -147,6 +150,7 @@
       o.customer_id ? E.allRows(() => sb.from("payments_received").select("amount").eq("customer_id", o.customer_id).gte("paid_date", start)).then((r) => r.data || []) : []]);
     if (!here()) return;
     const ids = [...sales.map((r) => r.id), ...exps.map((r) => r.id)];
+    const docs = await E.attachmentsOf("outlet", id).catch(() => []); // 3.99.119: the shop's documents
     const files = ids.length ? ((await sb.from("attachments").select("*").in("owner_type", ["outlet_sales", "outlet_expense"]).in("owner_id", ids).order("created_at", { ascending: false })).data || []) : [];
     if (!here()) return;
     const net = sum(sales, "total"), out = sum(exps, "amount"), paid = sum(pays, "amount"), bal = net - out - paid;
@@ -163,15 +167,17 @@
         <div class="ol-month"><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, -1)}">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, 1)}">${ic("next")}</a></div></div>
       <div class="ol-kpis">${kpi("Net Sales", net)}${kpi("Expenses", out)}${kpi("Stock Payments", paid)}${kpi("Balance This Month", bal, "bal")}${kpi("Balance In All", allBal, "bal")}</div>
       <div class="btnrow">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button><button type="button" class="btn" id="olExp">${ic("plus")} Expense / Bill</button>` : ""}
-        <button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>${edit ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
+        <button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
       <div class="ol-grid2">
         ${E.box("Outlet Details", `<div class="pgrid2">${E.cell("Outlet Code", o.code)}${E.cell("Status", o.status === "closed" ? "CLOSED" : "OPEN")}</div>
           <div class="pgrid2">${E.cell("Opening Hours", o.opens || "—")}${E.cell("Closing Hours", o.closes || "—")}</div>
           <div class="pgrid2">${E.cell("Monthly Rental (₱)", peso(o.monthly_rent))}${E.cell("Rental", rs.label)}</div>
           ${o.notes ? `<div class="pcell"><div class="pl">Notes</div><div class="pv">${esc(o.notes)}</div></div>` : ""}`)}
-        ${E.box("Assigned Employees", `${st.length ? `<div class="ol-staff">${st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${edit ? `<button type="button" class="btn small" data-unassign="${esc(x.employee_id)}" title="Remove from this outlet">${ic("x")}</button>` : ""}</div>`).join("")}</div>` : `<div class="empty small">No employee assigned.</div>`}
-          ${edit ? `<div class="btnrow"><button type="button" class="btn small" id="olAssign">${ic("plus")} Assign Employee</button></div>` : ""}`)}
+        ${E.box("Assigned Employees", `${st.length ? `<div class="ol-staff">${st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${isAdmin() ? `<button type="button" class="btn small" data-unassign="${esc(x.employee_id)}" title="Remove from this outlet">${ic("x")}</button>` : ""}</div>`).join("")}</div>` : `<div class="empty small">No employee assigned.</div>`}
+          ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small" id="olAssign">${ic("plus")} Assign Employee</button></div>` : ""}`)}
       </div>
+      ${E.box("Documents", `${docs.length ? E.filesHtml(docs) : `<div class="empty small">No document yet.${isAdmin() ? " Add the <b>Contract of Lease</b>: scan its pages or add their photos; they are saved as one document." : ""}</div>`}
+        ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn" for="olDocUp">${ic("upload")} Upload Document</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}`)}
       ${E.box(`Daily Sales · ${E.monthText(m)}`, `${byPay.length ? `<div class="ol-break">${byPay.map(([l, v]) => `<span>${esc(l)} <b>₱ ${peso(v)}</b></span>`).join("")}<span class="tot">Total Net Sales <b>₱ ${peso(net)}</b></span></div>` : ""}
         ${grid([{ label: "Date", get: (r) => mdy(r.sale_date) }, ...PAY.map(([k, l]) => ({ label: l, num: true, get: (r) => (num(r[k]) ? peso(r[k]) : "") })),
           { label: "Net Sales (₱)", num: true, html: (r) => `<b>${peso(r.total)}</b>` }, { label: "Report", html: (r) => photoBtn(r.id) },
@@ -186,6 +192,12 @@
         : `<div class="empty small">No customer account linked. ${edit ? "Press <b>Edit Outlet</b> and choose the account that receives this outlet's stock: its orders and invoices show here, and every payment is taken off the balance." : ""}</div>`)}`;
 
     if ($("#olEdit")) $("#olEdit").onclick = () => editOutlet(o);
+    if ($("#olLeaseBtn")) $("#olLeaseBtn").onclick = () => leaseForm(o);
+    if ($("#olDocUp")) $("#olDocUp").onchange = async (e) => {
+      const f = await E.uploadRecords("outlet", o.id, "other", Array.from(e.target.files || []));
+      toast(f ? `${f} file(s) could not be uploaded.` : "Document saved.", !!f); E.route();
+    };
+    E.bindFiles($("#olBody"));
     if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales);
     $$("[data-esale]").forEach((b) => (b.onclick = () => saleForm(o, sales.find((r) => r.id === b.dataset.esale), sales)));
     if ($("#olExp")) $("#olExp").onclick = () => expenseForm(o);
@@ -263,6 +275,63 @@
       const failed = pics.length ? await E.uploadRecords("outlet_expense", r.data.id, "receipt", pics) : 0;
       m.close(); toast(failed ? `Saved; ${failed} photo(s) could not be uploaded.` : `${KIND[data.kind]} saved: ₱ ${peso(data.amount)}.`, !!failed); E.route();
     };
+  }
+
+  // ---------- the Contract of Lease: its pages saved as ONE document ----------
+  // photos of the pages (or scanned pages) become one PDF, a page each; a PDF is kept as it is
+  async function pagesToPdf(images, name) {
+    const lib = await E.needLib("jspdf");
+    const pdf = new lib.jsPDF({ unit: "mm", format: "a4", compress: true });
+    for (let i = 0; i < images.length; i++) {
+      const url = URL.createObjectURL(images[i]);
+      try {
+        const img = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = url; });
+        const k = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        if (i) pdf.addPage("a4", "portrait");
+        const pw = 210, ph = 297, m = 6, s = Math.min((pw - 2 * m) / c.width, (ph - 2 * m) / c.height);
+        pdf.addImage(c.toDataURL("image/jpeg", 0.85), "JPEG", (pw - c.width * s) / 2, (ph - c.height * s) / 2, c.width * s, c.height * s, undefined, "FAST");
+      } finally { URL.revokeObjectURL(url); }
+    }
+    return new File([pdf.output("blob")], `${name}.pdf`, { type: "application/pdf" });
+  }
+  async function saveLease(o, files) {
+    const imgs = files.filter((f) => /^image\//.test(f.type)), pdfs = files.filter((f) => f.type === "application/pdf");
+    const list = [...pdfs];
+    try { if (imgs.length) list.unshift(await pagesToPdf(imgs, `${o.code} Contract of Lease`)); }
+    catch (e) { console.error(e); return toast("The pages could not be joined into one document. Try again.", true); }
+    const failed = await E.uploadRecords("outlet", o.id, "contract", list);
+    toast(failed ? "The Contract of Lease could not be saved. Try again." : `Contract of Lease saved${imgs.length > 1 ? ` (${imgs.length} pages in one document)` : ""}.`, !!failed);
+    E.route();
+  }
+  function leaseForm(o) {
+    const pages = [];
+    const m = E.modal(`${o.code} · Contract of Lease`, `<p class="muted" style="margin-top:0">Add every page of the contract (photos, scanned pages or a PDF). The pages are saved as <b>one document</b>, in this order.</p>
+        <div class="btnrow"><label class="btn" for="lfAdd">${ic("image")} Add Pages</label><input id="lfAdd" type="file" accept="image/*,application/pdf" multiple hidden>
+          <label class="btn" for="lfCam">${ic("camera")} Take Photo</label><input id="lfCam" type="file" accept="image/*" capture="environment" hidden>
+          ${window.EOApp?.scan ? `<button type="button" class="btn" id="lfScan">${ic("scan")} Scan Page</button>` : ""}</div>
+        <div class="lf-pages" id="lfPages"></div>`,
+      `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="lfSave" disabled>${ic("check")} Save as One Document</button>`, { wide: true });
+    const draw = () => {
+      $("#lfPages", m.el).innerHTML = pages.length ? pages.map((f, i) => `<div class="lf-page">${/^image\//.test(f.type) ? `<img src="${f._url || (f._url = URL.createObjectURL(f))}" alt="Page ${i + 1}">` : `<span class="lf-pdf">${ic("doc")} PDF</span>`}
+        <small>Page ${i + 1}</small><button type="button" class="btn small danger" data-rmp="${i}" title="Remove">${ic("x")}</button></div>`).join("") : `<div class="empty small">No page yet.</div>`;
+      $$("[data-rmp]", m.el).forEach((b) => (b.onclick = () => { pages.splice(Number(b.dataset.rmp), 1); draw(); }));
+      $("#lfSave", m.el).disabled = !pages.length;
+    };
+    const add = (e) => { pages.push(...Array.from(e.target.files || [])); e.target.value = ""; draw(); };
+    $("#lfAdd", m.el).onchange = add; $("#lfCam", m.el).onchange = add;
+    if ($("#lfScan", m.el)) $("#lfScan", m.el).onclick = async (e) => {
+      e.target.disabled = true;
+      try {
+        const r = await window.EOApp.scan({ dialog: true });
+        if (r?.ok) { const blob = await (await fetch(`data:${r.type || "image/jpeg"};base64,${r.data}`)).blob(); pages.push(new File([blob], r.name || `Scan_${Date.now()}.jpg`, { type: r.type || "image/jpeg" })); draw(); }
+        else if (!r?.cancelled) toast(r?.error || "The scan did not work.", true);
+      } finally { e.target.disabled = false; }
+    };
+    $("[data-x]", m.el).onclick = () => m.close();
+    $("#lfSave", m.el).onclick = async (e) => { e.target.disabled = true; e.target.innerHTML = `<span class="spin sm light"></span> Saving…`; const list = pages.slice(); m.close(); await saveLease(o, list); };
+    draw();
   }
 
   // ---------- assign an employee ----------
