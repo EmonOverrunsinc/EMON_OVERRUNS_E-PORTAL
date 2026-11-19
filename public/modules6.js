@@ -181,15 +181,17 @@
   };
   // The result sticker: the logo, the barcode with the QC number, the date, the Qty of the goods (empty to write by hand when it was
   // not written), the result (3.33: PASS in green, FAIL in red) and who checked it.
-  const qcCard = (t, res) => `<div class="qc-card"><div class="qc-card-h">${E.logoHtml("qc-card-logo")}<b>QC TEST RESULT</b></div>
+  const qcCard = (t, res, code = null) => `<div class="qc-card"><div class="qc-card-h">${E.logoHtml("qc-card-logo")}<b>QC TEST RESULT</b></div>
     <div class="qc-card-code"><img src="${E.pdf417DataUrl("EMONQC|" + t.qc_no)}" alt="" class="ph-bar"><div class="mono">${esc(t.qc_no)}</div></div>
     <div class="qc-card-row"><span>Checked Date</span><b>${res ? esc(mdy(res.when)) : ""}</b></div>
     <div class="qc-card-row"><span>Qty Found</span><b>${res && t.qty != null ? esc(E.qtyText(t.qty)) : ""}</b></div>
     <div class="qc-card-row"><span>Result</span><b class="qc-res">${res ? `Pass ${res.pass} · Fail ${res.fail}` : ""}</b><b class="qc-verdict${res ? " " + res.verdict.toLowerCase() : ""}">${res ? res.verdict : ""}</b></div>
-    <div class="qc-card-row"><span>Check By</span><b>${res ? esc(res.by) : ""}</b></div></div>`;
+    <div class="qc-card-row"><span>Check By</span><b>${res ? esc(res.by) : ""}</b></div>
+    ${code != null ? `<div class="qc-card-seal">${E.secSeal(t.qc_no, { code })}</div>` : ""}</div>`;
   // The 2 stickers on plain paper: nothing else on the page (no heading, no footer, no date).
-  const stickerPage = (t, res) => `<div class="qc-cards qc-sticker">${qcCard(t, res)}${qcCard(t, res)}</div>`;
-  const openStickers = (t, r) => E.openPreview(`QC Stickers ${t.qc_no}`, [stickerPage(t, resultOf(t, r))], { bare: true });
+  // 3.99.106: each sticker carries the security seal of the QC test (its unique seal no)
+  const stickerPage = (t, res, code = "") => `<div class="qc-cards qc-sticker">${qcCard(t, res, code)}${qcCard(t, res, code)}</div>`;
+  const openStickers = async (t, r) => { const code = await E.sealCode("qc", t.qc_no); E.openPreview(`QC Stickers ${t.qc_no}`, [stickerPage(t, resultOf(t, r), code)], { bare: true }); };
 
   // The plain QC TEST form (Download Forms): no barcode and no number, filled in by hand; the result sticker goes in its box.
   function qcPaper() {

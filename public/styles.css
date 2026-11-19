@@ -3931,3 +3931,6 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 /* 3.99.103: the 1-box print: Serial No · Status · Batch No · Pcs in one line (4 equal boxes) */
 .bx1-band > div { grid-column: span 1; }
 .eos-mid { justify-content: center; padding: 1.6mm 0 3.6mm; } .c2-sealsig .eos-mid { padding: 1.8mm 0 3.6mm; } /* 3.99.104: the number block higher */
+/* 3.99.106: the seal on the invoice and the receipt (bottom right) and on each QC sticker (bottom, centred) */
+.doc-seal { display: flex; justify-content: flex-end; margin-top: 4mm; break-inside: avoid; }
+.qc-card-seal { display: flex; justify-content: center; padding: 2mm 2mm 2.5mm; border-top: 1px solid #12306b; }
