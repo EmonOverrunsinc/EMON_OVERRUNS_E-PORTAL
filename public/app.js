@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.103"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.104"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.103"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.104"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2405,7 +2405,14 @@
     // 3.0: no watermark (company seal) on printed pages
     document.body.classList.toggle("print-a5l", size === "a5l");
     const desk = $("#pvDesk", pv);
-    $("#pvPrint", pv).onclick = () => window.print();
+    // 3.99.104: the Windows app (1.8.7) opens the print as a PDF in the Windows PDF viewer: a full preview, and the printer,
+    // copies, pages and size can be changed there
+    $("#pvPrint", pv).onclick = async () => {
+      if (!window.EOApp?.printPdf) return window.print();
+      toast("Opening the print preview…");
+      const r = await window.EOApp.printPdf(title).catch((e) => ({ error: String(e) }));
+      if (r?.error) window.print();
+    };
     $("#pvPdf", pv).onclick = (e) => savePdf(pv, desk, title, e.currentTarget);
     $("#pvClose", pv).onclick = closePreview;
     // 3.29: every document keeps its A4 layout; on a screen narrower than the page (a phone), Fit shows the whole A4
