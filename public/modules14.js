@@ -434,6 +434,7 @@
             <div class="c2-eqb tot"><b>${td == null ? "—" : td + DUE}</b><small>DAYS TO PAY</small></div>
           </div>
           <div class="c2-eqdue"><small>DUE DATE</small><b>${esc(i._due ? mdy(i._due.ext) : "COUNTED FROM THE INVOICE DATE")}</b></div>
+          <div class="c2-insbar"><small>CERTIFICATE NO. · SCAN TO VERIFY THE COVERAGE</small><img src="${E.pdf417DataUrl("EMONINS|" + i.ins_no)}" alt="PDF417 barcode: ${esc(i.ins_no)}"><b class="mono">${esc(i.ins_no)}</b></div>
         </div></div>
       </div>
       <div class="c2-decl">${sec("CERTIFICATION")}
