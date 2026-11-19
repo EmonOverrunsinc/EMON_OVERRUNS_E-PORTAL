@@ -11,7 +11,7 @@
   const V = (window.EO_VIEWS = window.EO_VIEWS || {});
   const { sb, S, esc, $, $$, isAdmin, toast, fail, ic, busy, peso, num, mdy } = E;
 
-  const PAY = [["cash", "Cash"], ["gcash", "GCash"], ["maya", "Maya"], ["bank", "Bank Transfer"], ["card", "Card"], ["other", "Other"]];
+  const PAY = [["cash", "Cash"], ["gcash", "GCash"]]; // 3.99.117: only Cash and GCash (the server keeps the other columns at 0)
   const KIND = { rent: "Monthly Rental", supplier: "Supplier Payment", bills: "Bills / Utilities", salary: "Salary", other: "Other Expense" };
   const missing = (e) => /outlet|does not exist|schema cache|PGRST20[25]|42P01/.test(`${e?.message || ""} ${e?.code || ""}`);
   const needSql = `<div class="empty">The Outlets need the database update <b>109</b>. Run it on the updates page, then open this page again.</div>`;
