@@ -2171,6 +2171,12 @@
       if (toks.length) boxes = (await sb.from("box_stock").select("*").in("serial_no", toks).limit(1).then((r) => r.data || [], () => []));
       if (boxes.length) key = boxes[0].serial_no;
     }
+    // 3.99.116: the serial no typed without its letter(s): 2026001 finds A2026001 (and B2026001… when there are more)
+    if (!boxes.length && /^\d{4,}$/.test(key)) {
+      boxes = (await sb.from("box_stock").select("*").ilike("serial_no", `%${key}`).order("serial_no").limit(200).then((r) => r.data || [], () => []))
+        .filter((b) => String(b.serial_no).toUpperCase().replace(/^[A-Z]+-?/, "") === key);
+      if (boxes.length === 1) key = boxes[0].serial_no; else if (boxes.length) kind = "match";
+    }
     if (!boxes.length) { boxes = (await E.allRows(() => sb.from("box_stock").select("*").eq("batch", key).order("serial_no"))).data || []; kind = "batch"; }
     if (!boxes.length || !here()) return false;
     // where each box is: on an order, sold (invoiced) or in stock
@@ -2214,9 +2220,9 @@
     const coName = (r) => [r.extra?.COMPANY, r.extra?.SUPPLIER].find((v) => /[A-Z]/i.test(v || "")) || ""; // 3.99.74: a number is never a company
     const company = words(coName);
     const exTable = ex.filter((k) => !["COMPANY", "SUPPLIER"].includes(k)); // company is in the summary
-    const title = kind === "serial" ? key : `Batch ${key}`; // 3.99.102: the PDF of a box is named by its serial no
+    const title = kind === "serial" ? key : kind === "match" ? `Boxes ${key}` : `Batch ${key}`; // 3.99.102: the PDF of a box is named by its serial no
     // the details of the search (screen and print): only those the sheet has
-    const facts = [[kind === "serial" ? "Serial No" : "Batch No", key, "hl"], ["Product", words((r) => r.product)], ["Brand", words((r) => (r.brand && r.brand !== "-" ? r.brand : ""))], ["Company", company],
+    const facts = [[kind === "batch" ? "Batch No" : "Serial No", key, "hl"], ["Product", words((r) => r.product)], ["Brand", words((r) => (r.brand && r.brand !== "-" ? r.brand : ""))], ["Company", company],
       ["Shipping Date", span((r) => r.ship_date)], ["Released Date", span((r) => r.release_date)], ["Arrival Date", span((r) => r.arrival_date)], ["Date Sold", span((r) => (r.st === "sold" ? r.soldOn : ""))]]
       .filter(([, v], i) => i === 0 || v);
     const counts = [["Boxes", qtyText(rows.length)], ["Pcs", qtyText(pcs)], ["Sold Boxes", qtyText(soldRows.length), "ok"],
@@ -2292,7 +2298,7 @@
     }
     E.shell("find", `Search: ${t}`, "");
     $("#main").innerHTML = `<div class="bxr">
-      <div class="bxr-head"><div>${ic("box")} <span>${kind === "serial" ? "Box" : "Batch"}</span> <b class="mono nw">${esc(key)}</b></div>
+      <div class="bxr-head"><div>${ic("box")} <span>${kind === "serial" ? "Box" : kind === "match" ? "Boxes" : "Batch"}</span> <b class="mono nw">${esc(key)}</b></div>
         <div class="bxr-amt"><small>Total Amount Sold</small><b>₱ ${peso(soldAmt)}</b></div></div>
       <div class="bxr-counts">${counts.map(([k, v, c]) => `<div class="${c || ""}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join("")}</div>
       ${facts.length > 1 ? `<div class="bxr-facts">${facts.slice(1).filter(([k]) => !["Product", "Brand"].includes(k)).map(([k, v]) => `<div><small>${esc(k)}</small><b>${/ – /.test(v) ? v.split(" – ").map((x) => `<span class="nw">${esc(x)}</span>`).join(" – ") : esc(v)}</b></div>`).join("")}</div>` : ""}
