@@ -4015,3 +4015,8 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .c2-insbar img { display: block; margin: 0 auto; height: 11mm; max-width: 100%; image-rendering: pixelated; }
 .c2-insbar b { display: block; font-size: 9pt; letter-spacing: .08em; color: var(--nv, #12306b); margin-top: .8mm; }
 .page:not(.a4l) .c2-sigs, .c2-sigs { margin-top: 5mm; }
+/* 3.99.121: the certificate no's PDF417 at the top (in place of CERT. NO. and ORIGINAL): scan it to verify the coverage */
+.c2-topbar { margin-top: 1.6mm; border: 1.2px solid var(--nv2, #8ea6d8); border-radius: 1.6mm; padding: 1.2mm 2.4mm 1mm; text-align: center; display: inline-block; }
+.c2-topbar img { display: block; height: 9mm; max-width: 62mm; margin: 0 auto; image-rendering: pixelated; }
+.c2-topbar b { display: block; font-size: 8.5pt; letter-spacing: .08em; color: var(--nv, #12306b); margin-top: .6mm; }
+.c2-title .c2-topbar b, .page .c2-title .c2-topbar b { font-size: 8.5pt; line-height: 1.2; letter-spacing: .08em; font-weight: 700; } .c2-title .c2-topbar { line-height: 1; }
