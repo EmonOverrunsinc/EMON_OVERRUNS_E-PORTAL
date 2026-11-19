@@ -2273,12 +2273,12 @@
         const code = await E.sealCode("box", r.serial_no); // 3.99.93: the box's unique seal no
         const money = r.price ? [["Price (₱)", peso(r.price)], [sold1 ? "Amount Sold (₱)" : "Amount (₱)", peso(r.amount || r.price * num(r.qty))]]
           : []; // 3.99.62: the suggested price is only a card (a guide, no amount counted)
-        const cards = det.filter(([k]) => !["Pcs", "Price (₱)", "Amount (₱)"].includes(k) && !(k === "Suggested Price" && money.length));
+        const cards = det.filter(([k]) => !["Pcs", "Price (₱)", "Amount (₱)", "Batch No", "Suggested Price"].includes(k)); // 3.99.103
         const micro = `EMON OVERRUNS · ${r.serial_no} · `.repeat(24); // 3.99.70: no BX- number, no ORIGINAL
         E.openPreview(title, [`${printHead("SEARCH RESULT", `<img src="${E.pdf417DataUrl("EMONBOX|" + r.serial_no)}" alt="" class="ph-bar"><div class="mono">${esc(r.serial_no)}</div>`)}
           <div class="bxsec">
           <div class="bxsec-micro">${esc(micro)}</div>
-          <div class="bx1-band bxp1-${r.st}"><div class="w2"><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div><div><small>Pcs</small><b>${qtyText(r.qty)}</b></div></div>
+          <div class="bx1-band bxp1-${r.st}"><div><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div><div><small>Batch No</small><b>${esc(r.batch || "—")}</b></div><div><small>Pcs</small><b>${qtyText(r.qty)}</b></div></div>
           ${money.length ? `<div class="bxp-sum money"><div><small>${esc(money[0][0])}</small><b>${money[0][1]}</b></div><div class="amt${sold1 ? "" : " sug"}"><small>${esc(money[1][0])}</small><b>${money[1][1]}</b></div></div>` : ""}
           ${E.box("Tracking", track)}
           <div class="bxcards"><div class="bxseal-cell">${E.secSeal(r.serial_no, { code })}</div>

@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.102"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.103"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.102"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.103"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -583,8 +583,8 @@
   function secSeal(ref, { code = "", cls = "", doc = "" } = {}) {
     const site = siteName() || "emonoverruns.online", no = code ? sealFmt(code) : ref, id = "eosr" + ++sealIds;
     // a microtext line of whole words: the words that do not fit go to a hidden 2nd line (never cut in the middle)
-    const line = (k, n = 6) => `<div class="eos-micro ${k}">${Array.from({ length: n }, () => (doc ? [C.company.name, no, doc] : [C.company.name, no])).flat().map((t) => `<span>${esc(t)}</span>`).join("")}</div>`;
-    const ring = esc(`${C.company.name} · ${no} · ${C.company.name} · `);
+    const line = (k, n = 6) => `<div class="eos-micro ${k}">${Array.from({ length: n }, () => [C.company.name, no]).flat().map((t) => `<span>${esc(t)}</span>`).join("")}</div>`;
+    const ring = esc(`${site.toUpperCase()}/VERIFY · ${C.company.name} · `); // 3.99.103: the ring carries the verify address
     return `<div class="eos ${cls}" role="img" aria-label="Security seal ${esc(no)}">
       ${line("t", 8)}${line("b", 8)}${line("l", 3)}${line("r", 3)}
       <div class="eos-logo"><svg class="eos-ring" viewBox="0 0 100 100" aria-hidden="true"><defs><path id="${id}" d="M50,50 m-40.4,0 a40.4,40.4 0 1,1 80.8,0 a40.4,40.4 0 1,1 -80.8,0"/></defs>
