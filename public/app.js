@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.115"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.116"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.115"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.116"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1352,7 +1352,8 @@
     { k: "purchase", icon: "order", label: "Purchase Order" },
     { k: "eooffice", icon: "shield", label: "EO-Office" },
     { k: "billing", icon: "building", label: "Billing" },
-    { k: "inventory", icon: "box", label: "E-Bill" }
+    { k: "inventory", icon: "box", label: "E-Bill" },
+    { k: "outlets", icon: "building", label: "Outlets" } // 3.99.116: the shops
   ];
   // 3.2: EO-Office holds QC Test, Collection Voucher, Job Applications, Job Positions, Credit Memo and Project: it opens for anyone who may open one of them
   const EO_MODULES = ["eooffice", "creditmemos", "projects", "employees"];
@@ -1367,6 +1368,7 @@
     projects: "projects", newproject: "projects", project: "projects",
     billing: "billing", newpaycompany: "billing", paycompany: "billing", newvoucher: "billing", voucher: "billing", ebill: ["billing", "inventory"],
     inventory: "inventory", newstockbill: "inventory", stockbill: "inventory",
+    outlets: "outlets", outlet: "outlets", // 3.99.116: its own access "14 Outlets"
     eooffice: EO_MODULES, newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice",
     purchase: "purchase", newpurchase: "purchase", po: "purchase", editpo: "purchase", // 3.31: its own menu access
     custorders: "eooffice", soldboxes: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: ["eooffice", "customers"], insurance: "eooffice" // 3.37; 3.72 insurance: Customer Order (an order opens from the customer's profile too)

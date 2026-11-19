@@ -1,0 +1,299 @@
+/* EMON OVERRUNS E-PORTAL - 3.99.116: OUTLETS (the shops: SHOP-1, SHOP-2 …)
+   Outlets (menu) lists the shops with today's sales, this month's net sales and the balance; the totals of all shops are
+   on top (and on the Dashboard). A shop's profile: address, opening / closing hours, monthly rental and its due day, the
+   employees assigned to it, its customer account (its stock comes as orders and invoices like a customer; every payment of
+   that account is taken off the shop's money), the DAILY SALES with the cash breakdown (cash, GCash, Maya, bank, card,
+   other) and a photo of the sales report, the EXPENSES (rental, supplier, bills, salary, other) and the BALANCE:
+   net sales − expenses − payments, for the month and in all. The monthly statement (SOA) prints as a ledger.
+   109_outlets.sql must be run first. */
+(() => {
+  const E = window.EO;
+  const V = (window.EO_VIEWS = window.EO_VIEWS || {});
+  const { sb, S, esc, $, $$, isAdmin, toast, fail, ic, busy, peso, num, mdy } = E;
+
+  const PAY = [["cash", "Cash"], ["gcash", "GCash"], ["maya", "Maya"], ["bank", "Bank Transfer"], ["card", "Card"], ["other", "Other"]];
+  const KIND = { rent: "Monthly Rental", supplier: "Supplier Payment", bills: "Bills / Utilities", salary: "Salary", other: "Other Expense" };
+  const missing = (e) => /outlet|does not exist|schema cache|PGRST20[25]|42P01/.test(`${e?.message || ""} ${e?.code || ""}`);
+  const needSql = `<div class="empty">The Outlets need the database update <b>109</b>. Run it on the updates page, then open this page again.</div>`;
+  const today = () => E.isoToday();
+  const monthNow = () => today().slice(0, 7);
+  const monthEnd = (m) => { const [y, mo] = m.split("-").map(Number); return `${m}-${String(new Date(y, mo, 0).getDate()).padStart(2, "0")}`; };
+  const shiftMonth = (m, d) => { const [y, mo] = m.split("-").map(Number); const t = new Date(y, mo - 1 + d, 1); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`; };
+  const canEdit = () => E.canWrite("outlets");
+  const sum = (list, f) => list.reduce((s, r) => s + num(typeof f === "function" ? f(r) : r[f]), 0);
+  const me = () => String(S.profile?.full_name || "").toUpperCase();
+  const empName = (e) => [e?.first_name, e?.middle_name, e?.last_name].filter(Boolean).join(" ").toUpperCase();
+  // the rental of a month: paid (a rental expense in the month) or its due date
+  const rentState = (o, exps, m) => {
+    const paid = exps.find((x) => x.kind === "rent");
+    if (paid) return { k: "paid", label: `PAID ${mdy(paid.exp_date)}` };
+    if (!num(o.monthly_rent)) return { k: "none", label: "NO RENTAL" };
+    const day = Math.min(Number(o.rent_day) || 1, Number(monthEnd(m).slice(8)));
+    const due = `${m}-${String(day).padStart(2, "0")}`;
+    return due < today() ? { k: "overdue", label: `DUE ${mdy(due)} · OVERDUE` } : { k: "unpaid", label: `DUE ${mdy(due)}` };
+  };
+
+  // the money of the shops for a month (and today): sales, expenses, payments of their customer accounts
+  async function monthMoney(outlets, m) {
+    const ids = outlets.map((o) => o.id), custs = outlets.map((o) => o.customer_id).filter(Boolean);
+    if (!ids.length) return { sales: [], exps: [], pays: [] };
+    const [s, x, p] = await Promise.all([
+      E.allRows(() => sb.from("outlet_sales").select("outlet_id, sale_date, total").in("outlet_id", ids).gte("sale_date", `${m}-01`).lte("sale_date", monthEnd(m))),
+      E.allRows(() => sb.from("outlet_expenses").select("outlet_id, exp_date, kind, amount").in("outlet_id", ids).gte("exp_date", `${m}-01`).lte("exp_date", monthEnd(m))),
+      custs.length ? E.allRows(() => sb.from("payments_received").select("customer_id, paid_date, amount").in("customer_id", custs).gte("paid_date", `${m}-01`).lte("paid_date", monthEnd(m))) : { data: [] }]);
+    if (s.error) throw s.error;
+    return { sales: s.data || [], exps: x.data || [], pays: p.data || [] };
+  }
+  const shopMoney = (o, mm) => {
+    const sales = mm.sales.filter((r) => r.outlet_id === o.id), exps = mm.exps.filter((r) => r.outlet_id === o.id);
+    const pays = o.customer_id ? mm.pays.filter((r) => r.customer_id === o.customer_id) : [];
+    const net = sum(sales, "total"), out = sum(exps, "amount"), paid = sum(pays, "amount");
+    return { today: sum(sales.filter((r) => r.sale_date === today()), "total"), net, out, paid, bal: net - out - paid, exps };
+  };
+
+  // ---------- the Dashboard box: all the shops ----------
+  E.outletsBox = async (holder) => {
+    const gone = () => holder?.closest(".box")?.remove();
+    if (!holder || !E.hasModule("outlets")) return gone();
+    const { data: outlets, error } = await sb.from("outlets").select("*").eq("status", "active").order("code");
+    if (error || !outlets?.length) return gone();
+    let mm; try { mm = await monthMoney(outlets, monthNow()); } catch (_) { return gone(); }
+    const rows = outlets.map((o) => ({ o, ...shopMoney(o, mm) }));
+    holder.innerHTML = `<div class="ol-dash">
+      <div class="ol-kpis">${kpi("Today · All Outlets", rows.reduce((s, r) => s + r.today, 0))}${kpi(`Net Sales · ${E.monthText(monthNow())}`, rows.reduce((s, r) => s + r.net, 0))}${kpi("Balance This Month", rows.reduce((s, r) => s + r.bal, 0), "bal")}</div>
+      ${rows.map((r) => `<a class="ol-row" href="#outlet/${esc(r.o.id)}"><b>${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : r.o.address || "")}</span><em>₱ ${peso(r.net)}</em><small class="${r.bal < 0 ? "neg" : ""}">Balance ₱ ${peso(r.bal)}</small></a>`).join("")}</div>`;
+  };
+  const kpi = (k, v, cls = "") => `<div class="ol-kpi ${cls}${num(v) < 0 ? " neg" : ""}"><small>${esc(k)}</small><b>₱ ${peso(v)}</b></div>`;
+
+  // ---------- Outlets: the list of the shops ----------
+  V.outlets = async () => {
+    E.shell("outlets", "Outlets", `<div id="olBody">${busy()}</div>`, "The shops: daily sales, expenses and the money left after them.");
+    const here = E.stillHere();
+    const { data: outlets, error } = await sb.from("outlets").select("*").order("code");
+    if (!here()) return;
+    if (error) { $("#olBody").innerHTML = missing(error) ? needSql : `<div class="empty">${esc(error.message)}</div>`; return; }
+    const m = monthNow();
+    let mm = { sales: [], exps: [], pays: [] };
+    try { mm = await monthMoney(outlets.filter((o) => o.status === "active"), m); } catch (e) { console.warn(e); }
+    if (!here()) return;
+    const rows = outlets.map((o) => ({ o, ...shopMoney(o, mm) }));
+    const act = rows.filter((r) => r.o.status === "active");
+    $("#olBody").innerHTML = `
+      <div class="ol-kpis">${kpi("Today's Sales", act.reduce((s, r) => s + r.today, 0))}${kpi(`Net Sales · ${E.monthText(m)}`, act.reduce((s, r) => s + r.net, 0))}
+        ${kpi("Expenses", act.reduce((s, r) => s + r.out, 0))}${kpi("Stock Payments", act.reduce((s, r) => s + r.paid, 0))}${kpi("Balance", act.reduce((s, r) => s + r.bal, 0), "bal")}</div>
+      ${canEdit() ? `<div class="btnrow"><button type="button" class="btn primary" id="olNew">${ic("plus")} New Outlet</button></div>` : ""}
+      <div class="ol-cards">${rows.length ? rows.map((r) => {
+        const rs = rentState(r.o, r.exps, m);
+        return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}">
+          <div class="ol-card-h">${ic("building")}<div><b>${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", `RENT ${rs.label}`)}</div>
+          <div class="ol-card-a">${esc(r.o.address || "")}${r.o.opens || r.o.closes ? ` · ${esc(r.o.opens || "")}–${esc(r.o.closes || "")}` : ""}</div>
+          <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses + Payments</small><b>₱ ${peso(r.out + r.paid)}</b></div><div class="${r.bal < 0 ? "neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
+      }).join("") : `<div class="empty">No outlet yet.${canEdit() ? " Press <b>New Outlet</b> to add SHOP-1." : ""}</div>`}</div>`;
+    if ($("#olNew")) $("#olNew").onclick = () => editOutlet(null, outlets.length);
+    E.setRecords(`Outlets: ${outlets.length}`);
+  };
+
+  // ---------- add or change a shop ----------
+  async function editOutlet(o, count = 0) {
+    const preset = o?.customer_id ? await E.getCustomer(o.customer_id).catch(() => null) : null;
+    const v = (k, d = "") => esc(o?.[k] ?? d);
+    const m = E.modal(o ? `Edit ${o.code}` : "New Outlet", `<div class="formgrid ol-form">
+        <div><label for="olCode">Outlet Code *</label><input id="olCode" maxlength="30" value="${v("code", `SHOP-${count + 1}`)}" required></div>
+        <div><label for="olName">Name *</label><input id="olName" maxlength="120" value="${v("name", `SHOP-${count + 1}`)}" required></div>
+        <div class="span2"><label for="olAddr">Address</label><input id="olAddr" maxlength="300" value="${v("address")}"></div>
+        <div><label for="olOpen">Opening Hours</label><input id="olOpen" maxlength="20" placeholder="9:00 AM" value="${v("opens")}"></div>
+        <div><label for="olClose">Closing Hours</label><input id="olClose" maxlength="20" placeholder="9:00 PM" value="${v("closes")}"></div>
+        <div><label for="olRent">Monthly Rental (₱)</label><input id="olRent" type="number" min="0" step="0.01" value="${v("monthly_rent", "0")}"></div>
+        <div><label for="olDay">Rental Due Day (1–31)</label><input id="olDay" type="number" min="1" max="31" value="${v("rent_day")}"></div>
+        <div class="span2"><label>Customer Account (the shop's stock: orders, invoices, payments)</label><div id="olCust"></div></div>
+        <div class="span2"><label for="olNote">Notes</label><textarea id="olNote" rows="2" maxlength="1000">${v("notes")}</textarea></div>
+        ${o ? `<div><label for="olSt">Status</label><select id="olSt"><option value="active"${o.status === "active" ? " selected" : ""}>Open</option><option value="closed"${o.status === "closed" ? " selected" : ""}>Closed</option></select></div>` : ""}
+      </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="olSave">${ic("check")} Save</button>`, { wide: true });
+    let cust = o?.customer_id || null;
+    E.customerPicker($("#olCust", m.el), { statuses: ["active", "suspended"], preset: preset || undefined, onPick: (c) => (cust = c?.id || null) });
+    $("[data-x]", m.el).onclick = () => m.close();
+    $("#olSave", m.el).onclick = async (e) => {
+      const row = { code: $("#olCode", m.el).value.trim().toUpperCase(), name: $("#olName", m.el).value.trim().toUpperCase(), address: $("#olAddr", m.el).value.trim().toUpperCase() || null,
+        opens: $("#olOpen", m.el).value.trim().toUpperCase() || null, closes: $("#olClose", m.el).value.trim().toUpperCase() || null, monthly_rent: num($("#olRent", m.el).value),
+        rent_day: Number($("#olDay", m.el).value) || null, customer_id: cust, notes: $("#olNote", m.el).value.trim() || null, ...(o ? { status: $("#olSt", m.el).value } : {}) };
+      if (!row.code || !row.name) return toast("Type the outlet code and name.", true);
+      e.target.disabled = true;
+      const r = o ? await sb.from("outlets").update(row).eq("id", o.id).select().single() : await sb.from("outlets").insert(row).select().single();
+      e.target.disabled = false;
+      if (r.error) return fail(r.error, /duplicate|unique/i.test(r.error.message) ? `The code ${row.code} is already used.` : "Could not save the outlet");
+      m.close(); toast(o ? "Outlet saved." : `${row.code} added.`);
+      location.hash = "outlet/" + r.data.id; if (o) E.route();
+    };
+  }
+
+  // ---------- a shop's profile ----------
+  V.outlet = async (id, month) => {
+    E.shell("outlets", "Outlet", `<div id="olBody">${busy()}</div>`);
+    const here = E.stillHere();
+    const m = /^\d{4}-\d{2}$/.test(month || "") ? month : monthNow();
+    const { data: o, error } = await sb.from("outlets").select("*").eq("id", id).maybeSingle();
+    if (!here()) return;
+    if (error || !o) { $("#olBody").innerHTML = error && missing(error) ? needSql : `<div class="empty">This outlet was not found. <a href="#outlets">Back to Outlets</a></div>`; return; }
+    const first = `${m}-01`, last = monthEnd(m), start = String(o.created_at).slice(0, 10);
+    const [st, sales, exps, pays, invs, cust, allS, allX, allP] = await Promise.all([
+      sb.from("outlet_staff").select("employee_id, employees(id, first_name, middle_name, last_name, employee_no, position)").eq("outlet_id", id).then((r) => r.data || []),
+      sb.from("outlet_sales").select("*").eq("outlet_id", id).gte("sale_date", first).lte("sale_date", last).order("sale_date", { ascending: false }).then((r) => r.data || []),
+      sb.from("outlet_expenses").select("*").eq("outlet_id", id).gte("exp_date", first).lte("exp_date", last).order("exp_date", { ascending: false }).then((r) => r.data || []),
+      o.customer_id ? sb.from("payments_received").select("id, receipt_no, paid_date, amount, method").eq("customer_id", o.customer_id).gte("paid_date", first).lte("paid_date", last).order("paid_date", { ascending: false }).then((r) => r.data || []) : [],
+      o.customer_id ? sb.from("invoice_balances").select("id, invoice_no, invoice_date, due_date, total_amount, balance, pay_status").eq("customer_id", o.customer_id).gt("balance", 0).order("invoice_date").then((r) => r.data || []) : [],
+      o.customer_id ? sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").eq("id", o.customer_id).maybeSingle().then((r) => r.data) : null,
+      E.allRows(() => sb.from("outlet_sales").select("total").eq("outlet_id", id)).then((r) => r.data || []),
+      E.allRows(() => sb.from("outlet_expenses").select("amount").eq("outlet_id", id)).then((r) => r.data || []),
+      o.customer_id ? E.allRows(() => sb.from("payments_received").select("amount").eq("customer_id", o.customer_id).gte("paid_date", start)).then((r) => r.data || []) : []]);
+    if (!here()) return;
+    const ids = [...sales.map((r) => r.id), ...exps.map((r) => r.id)];
+    const files = ids.length ? ((await sb.from("attachments").select("*").in("owner_type", ["outlet_sales", "outlet_expense"]).in("owner_id", ids).order("created_at", { ascending: false })).data || []) : [];
+    if (!here()) return;
+    const net = sum(sales, "total"), out = sum(exps, "amount"), paid = sum(pays, "amount"), bal = net - out - paid;
+    const allBal = sum(allS, "total") - sum(allX, "amount") - sum(allP, "amount");
+    const owed = sum(invs, "balance"), rs = rentState(o, exps, m), edit = canEdit();
+    const byPay = PAY.map(([k, l]) => [l, sum(sales, k)]).filter(([, v]) => v > 0);
+    const filesOf = (oid) => files.filter((f) => f.owner_id === oid);
+    const photoBtn = (oid) => { const n = filesOf(oid).length; return n ? `<button type="button" class="btn small" data-files="${esc(oid)}">${ic("image")} ${n}</button>` : ""; };
+    const grid = (cols, rows, empty) => E.grid({ cols, rows, empty });
+    const del = (tbl, rid) => (isAdmin() ? `<button type="button" class="btn small danger" data-del="${tbl}:${esc(rid)}" title="Remove">${ic("trash")}</button>` : "");
+
+    $("#olBody").innerHTML = `
+      <div class="ol-head"><div>${ic("building")}<div><h2>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</h2><span>${esc(o.address || "")}</span></div></div>
+        <div class="ol-month"><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, -1)}">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, 1)}">${ic("next")}</a></div></div>
+      <div class="ol-kpis">${kpi("Net Sales", net)}${kpi("Expenses", out)}${kpi("Stock Payments", paid)}${kpi("Balance This Month", bal, "bal")}${kpi("Balance In All", allBal, "bal")}</div>
+      <div class="btnrow">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button><button type="button" class="btn" id="olExp">${ic("plus")} Expense / Bill</button>` : ""}
+        <button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>${edit ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
+      <div class="ol-grid2">
+        ${E.box("Outlet Details", `<div class="pgrid2">${E.cell("Outlet Code", o.code)}${E.cell("Status", o.status === "closed" ? "CLOSED" : "OPEN")}</div>
+          <div class="pgrid2">${E.cell("Opening Hours", o.opens || "—")}${E.cell("Closing Hours", o.closes || "—")}</div>
+          <div class="pgrid2">${E.cell("Monthly Rental (₱)", peso(o.monthly_rent))}${E.cell("Rental", rs.label)}</div>
+          ${o.notes ? `<div class="pcell"><div class="pl">Notes</div><div class="pv">${esc(o.notes)}</div></div>` : ""}`)}
+        ${E.box("Assigned Employees", `${st.length ? `<div class="ol-staff">${st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${edit ? `<button type="button" class="btn small" data-unassign="${esc(x.employee_id)}" title="Remove from this outlet">${ic("x")}</button>` : ""}</div>`).join("")}</div>` : `<div class="empty small">No employee assigned.</div>`}
+          ${edit ? `<div class="btnrow"><button type="button" class="btn small" id="olAssign">${ic("plus")} Assign Employee</button></div>` : ""}`)}
+      </div>
+      ${E.box(`Daily Sales · ${E.monthText(m)}`, `${byPay.length ? `<div class="ol-break">${byPay.map(([l, v]) => `<span>${esc(l)} <b>₱ ${peso(v)}</b></span>`).join("")}<span class="tot">Total Net Sales <b>₱ ${peso(net)}</b></span></div>` : ""}
+        ${grid([{ label: "Date", get: (r) => mdy(r.sale_date) }, ...PAY.map(([k, l]) => ({ label: l, num: true, get: (r) => (num(r[k]) ? peso(r[k]) : "") })),
+          { label: "Net Sales (₱)", num: true, html: (r) => `<b>${peso(r.total)}</b>` }, { label: "Report", html: (r) => photoBtn(r.id) },
+          { label: "", html: (r) => `${edit ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : ""}${del("outlet_sales", r.id)}` }], sales, "No sales recorded this month.")}`)}
+      ${E.box(`Expenses & Bills · ${E.monthText(m)}`, grid([{ label: "Date", get: (r) => mdy(r.exp_date) }, { label: "Type", get: (r) => KIND[r.kind] || r.kind }, { label: "Paid To", get: (r) => r.payee || "" },
+          { label: "Note", get: (r) => r.note || "" }, { label: "Amount (₱)", num: true, html: (r) => `<b>${peso(r.amount)}</b>` }, { label: "Receipt", html: (r) => photoBtn(r.id) }, { label: "", html: (r) => del("outlet_expenses", r.id) }], exps, "No expense this month."))}
+      ${E.box("Stock Account (Orders · Invoices · Payments)", cust ? `<div class="pgrid2">${E.cell("Customer Account", `${E.fullName(cust)} · ${cust.account_no || ""}`)}${E.cell("Stock Still To Pay (₱)", peso(owed))}</div>
+          ${invs.length ? grid([{ label: "Invoice", html: (r) => `<a href="#invoice/${esc(r.id)}">${esc(r.invoice_no)}</a>` }, { label: "Date", get: (r) => mdy(r.invoice_date) }, { label: "Due", get: (r) => mdy(r.due_date) }, { label: "Balance (₱)", num: true, get: (r) => peso(r.balance) }], invs) : `<div class="empty small">No unpaid invoice.</div>`}
+          <div class="ol-sub">Payments ${esc(E.monthText(m))} <small>(taken off this outlet's balance)</small></div>
+          ${grid([{ label: "Receipt", html: (r) => `<a href="#payment/${esc(r.id)}">${esc(r.receipt_no)}</a>` }, { label: "Date", get: (r) => mdy(r.paid_date) }, { label: "Amount (₱)", num: true, get: (r) => peso(r.amount) }], pays, "No payment this month.")}
+          <div class="btnrow"><a class="btn" href="#customer/${esc(cust.id)}">${ic("user")} Open Account</a>${E.canWrite("payments") || E.canWrite("invoices") ? `<a class="btn primary" href="#newpayment/${esc(cust.id)}">${ic("wallet")} Record Payment</a>` : ""}</div>`
+        : `<div class="empty small">No customer account linked. ${edit ? "Press <b>Edit Outlet</b> and choose the account that receives this outlet's stock: its orders and invoices show here, and every payment is taken off the balance." : ""}</div>`)}`;
+
+    if ($("#olEdit")) $("#olEdit").onclick = () => editOutlet(o);
+    if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales);
+    $$("[data-esale]").forEach((b) => (b.onclick = () => saleForm(o, sales.find((r) => r.id === b.dataset.esale), sales)));
+    if ($("#olExp")) $("#olExp").onclick = () => expenseForm(o);
+    if ($("#olAssign")) $("#olAssign").onclick = () => assignForm(o, st.map((x) => x.employee_id));
+    $$("[data-unassign]").forEach((b) => (b.onclick = async () => {
+      if (!(await E.confirmBox("Remove this employee from the outlet?", { title: "Assigned Employee", ok: "Remove" }))) return;
+      const r = await sb.from("outlet_staff").delete().eq("outlet_id", id).eq("employee_id", b.dataset.unassign);
+      if (r.error) return fail(r.error, "Could not remove"); E.route();
+    }));
+    $$("[data-del]").forEach((b) => (b.onclick = async () => {
+      const [tbl, rid] = b.dataset.del.split(":");
+      if (!(await E.confirmBox("Remove this record? This cannot be undone.", { title: "Remove", ok: "Remove", danger: true }))) return;
+      const r = await sb.from(tbl).delete().eq("id", rid);
+      if (r.error) return fail(r.error, "Could not remove"); toast("Removed."); E.route();
+    }));
+    $$("[data-files]").forEach((b) => (b.onclick = () => {
+      const list = filesOf(b.dataset.files);
+      const mm = E.modal("Files", `<div id="olFiles">${E.filesHtml(list)}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
+      $("[data-x]", mm.el).onclick = () => mm.close(); E.bindFiles(mm.el);
+    }));
+    $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, paid, bal });
+    E.setRecords(`Outlet: ${o.code}`);
+  };
+
+  // ---------- daily sales: the cash breakdown and the report photo ----------
+  function saleForm(o, row, existing) {
+    const m = E.modal(`${o.code} · Daily Sales`, `<div class="formgrid ol-form">
+        <div><label for="osDate">Date *</label><input id="osDate" type="date" value="${esc(row?.sale_date || today())}" ${row ? "disabled" : ""}></div><div></div>
+        ${PAY.map(([k, l]) => `<div><label for="os_${k}">${esc(l)} (₱)</label><input id="os_${k}" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row[k]) ? esc(row[k]) : ""}" placeholder="0.00"></div>`).join("")}
+        <div class="span2 ol-total">Total Net Sales <b id="osTot">₱ 0.00</b></div>
+        <div class="span2"><label for="osNote">Note</label><input id="osNote" maxlength="500" value="${esc(row?.note || "")}"></div>
+        <div class="span2"><label for="osPic">Sales Report Photo</label><input id="osPic" type="file" accept="image/*,application/pdf" multiple></div>
+      </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="osSave">${ic("check")} Save</button>`, { wide: true });
+    const total = () => PAY.reduce((s, [k]) => s + num($(`#os_${k}`, m.el).value), 0);
+    const show = () => ($("#osTot", m.el).textContent = `₱ ${peso(total())}`);
+    $$(".os-amt", m.el).forEach((i) => (i.oninput = show)); show();
+    $("[data-x]", m.el).onclick = () => m.close();
+    $("#osSave", m.el).onclick = async (e) => {
+      const date = $("#osDate", m.el).value;
+      if (!date) return toast("Choose the date.", true);
+      if (!total()) return toast("Type the sales amounts.", true);
+      if (!row && existing.some((r) => r.sale_date === date)) return toast(`${mdy(date)} has its sales already: press its Edit button.`, true);
+      const data = { outlet_id: o.id, sale_date: date, note: $("#osNote", m.el).value.trim() || null, created_by_name: me() };
+      PAY.forEach(([k]) => (data[k] = num($(`#os_${k}`, m.el).value)));
+      e.target.disabled = true;
+      const r = row ? await sb.from("outlet_sales").update(data).eq("id", row.id).select().single() : await sb.from("outlet_sales").insert(data).select().single();
+      if (r.error) { e.target.disabled = false; return fail(r.error, /duplicate|unique/i.test(r.error.message) ? `${mdy(date)} has its sales already.` : "Could not save the sales"); }
+      const pics = Array.from($("#osPic", m.el).files || []);
+      const failed = pics.length ? await E.uploadRecords("outlet_sales", r.data.id, "sales_report", pics) : 0;
+      m.close(); toast(failed ? `Sales saved; ${failed} photo(s) could not be uploaded.` : `Sales saved: ₱ ${peso(r.data.total)}.`, !!failed); E.route();
+    };
+  }
+
+  // ---------- an expense, bill, supplier payment or the rental ----------
+  function expenseForm(o) {
+    const m = E.modal(`${o.code} · Expense / Bill`, `<div class="formgrid ol-form">
+        <div><label for="oxDate">Date *</label><input id="oxDate" type="date" value="${today()}"></div>
+        <div><label for="oxKind">Type *</label><select id="oxKind">${Object.entries(KIND).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("")}</select></div>
+        <div><label for="oxPayee">Paid To</label><input id="oxPayee" maxlength="120" placeholder="Supplier / landlord / company"></div>
+        <div><label for="oxAmt">Amount (₱) *</label><input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal"></div>
+        <div class="span2"><label for="oxNote">Note</label><input id="oxNote" maxlength="500"></div>
+        <div class="span2"><label for="oxPic">Receipt Photo</label><input id="oxPic" type="file" accept="image/*,application/pdf" multiple></div>
+      </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="oxSave">${ic("check")} Save</button>`, { wide: true });
+    $("#oxKind", m.el).onchange = (e) => { if (e.target.value === "rent" && !$("#oxAmt", m.el).value && num(o.monthly_rent)) $("#oxAmt", m.el).value = num(o.monthly_rent).toFixed(2); };
+    $("[data-x]", m.el).onclick = () => m.close();
+    $("#oxSave", m.el).onclick = async (e) => {
+      const data = { outlet_id: o.id, exp_date: $("#oxDate", m.el).value, kind: $("#oxKind", m.el).value, payee: $("#oxPayee", m.el).value.trim().toUpperCase() || null,
+        amount: num($("#oxAmt", m.el).value), note: $("#oxNote", m.el).value.trim() || null, created_by_name: me() };
+      if (!data.exp_date) return toast("Choose the date.", true);
+      if (!(data.amount > 0)) return toast("Type the amount.", true);
+      e.target.disabled = true;
+      const r = await sb.from("outlet_expenses").insert(data).select().single();
+      if (r.error) { e.target.disabled = false; return fail(r.error, "Could not save the expense"); }
+      const pics = Array.from($("#oxPic", m.el).files || []);
+      const failed = pics.length ? await E.uploadRecords("outlet_expense", r.data.id, "receipt", pics) : 0;
+      m.close(); toast(failed ? `Saved; ${failed} photo(s) could not be uploaded.` : `${KIND[data.kind]} saved: ₱ ${peso(data.amount)}.`, !!failed); E.route();
+    };
+  }
+
+  // ---------- assign an employee ----------
+  async function assignForm(o, have) {
+    const { data, error } = await sb.from("employees").select("id, first_name, middle_name, last_name, employee_no, position, status").order("first_name");
+    if (error) return fail(error, "Could not load the employees");
+    const list = (data || []).filter((x) => !have.includes(x.id) && !["closed", "suspended", "rejected"].includes(x.status));
+    if (!list.length) return toast("Every employee is assigned already (or there is none).");
+    const m = E.modal(`${o.code} · Assign Employee`, `<label for="oaEmp">Employee</label><select id="oaEmp">${list.map((x) => `<option value="${esc(x.id)}">${esc(empName(x))}${x.employee_no ? ` · ${esc(x.employee_no)}` : ""}${x.position ? ` · ${esc(x.position)}` : ""}</option>`).join("")}</select>`,
+      `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="oaSave">${ic("check")} Assign</button>`);
+    $("[data-x]", m.el).onclick = () => m.close();
+    $("#oaSave", m.el).onclick = async (e) => {
+      e.target.disabled = true;
+      const r = await sb.from("outlet_staff").insert({ outlet_id: o.id, employee_id: $("#oaEmp", m.el).value });
+      if (r.error) { e.target.disabled = false; return fail(r.error, "Could not assign"); }
+      m.close(); toast("Employee assigned."); E.route();
+    };
+  }
+
+  // ---------- the monthly statement (SOA): a ledger of the month ----------
+  function printSoa(o, m, d) {
+    const lines = [
+      ...d.sales.map((r) => ({ date: r.sale_date, type: "SALES", ref: PAY.filter(([k]) => num(r[k])).map(([k, l]) => `${l} ${peso(r[k])}`).join(" · "), inn: num(r.total), out: 0 })),
+      ...d.exps.map((r) => ({ date: r.exp_date, type: (KIND[r.kind] || r.kind).toUpperCase(), ref: [r.payee, r.note].filter(Boolean).join(" · "), inn: 0, out: num(r.amount) })),
+      ...d.pays.map((r) => ({ date: r.paid_date, type: "STOCK PAYMENT", ref: r.receipt_no, inn: 0, out: num(r.amount) }))].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : b.inn - a.inn));
+    let run = 0; lines.forEach((l) => (run += l.inn - l.out, l.bal = run));
+    const pages = E.listingPages({ title: `OUTLET STATEMENT · ${o.code}${o.name !== o.code ? " · " + o.name : ""}`, range: `${esc(E.monthText(m))}${o.address ? ` · ${esc(o.address)}` : ""}`, logo: true,
+      cols: [{ label: "Date", get: (r) => mdy(r.date) }, { label: "Type", get: (r) => r.type }, { label: "Details", get: (r) => r.ref || "" },
+        { label: "Sales (₱)", num: true, get: (r) => (r.inn ? peso(r.inn) : "") }, { label: "Deducted (₱)", num: true, get: (r) => (r.out ? peso(r.out) : "") }, { label: "Balance (₱)", num: true, get: (r) => peso(r.bal) }],
+      rows: lines,
+      summary: { title: "SUMMARY", cols: ["", "Amount (₱)"], rows: [["Net Sales", peso(d.net)], ["Expenses & Bills", peso(d.out)], ["Stock Payments", peso(d.paid)]], total: ["Balance", peso(d.bal)] } });
+    E.openPreview(`Outlet Statement ${o.code} ${E.monthText(m)}`, pages);
+  }
+})();

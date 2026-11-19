@@ -36,7 +36,8 @@
     supplier: ["suppliers", "supplier_no"], supplier_payment: ["supplier_payments", "payment_no"], statement: ["statements", "statement_no"],
     job_application: ["job_applications", "application_no"], payslip: ["payslips", "payslip_no"], order_letter: ["order_letters", "order_no"],
     pay_company: ["pay_companies", "name"], pay_account: ["pay_accounts", "account_name"], pay_voucher: ["pay_vouchers", "voucher_no"],
-    stock_bill: ["stock_bills", "bill_no"]
+    stock_bill: ["stock_bills", "bill_no"],
+    outlet: ["outlets", "code"], outlet_sales: ["outlet_sales", "sale_date"], outlet_expense: ["outlet_expenses", "exp_date"] // 3.99.116
   };
   async function ownerNo(ownerType, ownerId) {
     // a sales report line's file: the e-bill number and the receipt number, e.g. "MF-2026-0001 PN-55"
@@ -549,12 +550,14 @@
       ${H("customers") ? `<div class="tiles" id="dTiles">${tiles.map(tile).join("")}</div>` : ""}
       <h3 class="home-h">Quick Actions</h3>
       <div class="quick">${quick.map((q) => `<a class="qa qa-${q[4]}" href="${q[1]}"><span class="qa-ic">${ic(q[3])}</span><span class="qa-l">${esc(q[2])}</span></a>`).join("")}</div>
+      ${H("outlets") ? `<div class="box ol-dash-box"><h3>${ic("building")} Outlets<a href="#outlets" class="box-link">View all ${ic("next")}</a></h3><div class="in" id="dOutlets">${busy()}</div></div>` : ""}
       <div class="dash-grid">
         ${H("invoices") ? box("dInv", "Latest Invoices", "invoices") : ""}
         ${H("payments") ? box("dPay", "Latest Payments", "payments") : ""}
         ${H("customers") ? box("dApps", "Applications to Review", "", ` id="dAppsBox" hidden`) : ""}
         ${isStaff() && H("purchase") ? box("dComm", "Purchase Orders", "purchase") : ""}
       </div>`);
+    E.outletsBox?.($("#dOutlets")); // 3.99.116: the shops' sales on the Dashboard
     const ym = isoToday().slice(0, 7);
     let soaDone = false; try { soaDone = sessionStorage.getItem("eoSoa") === ym; } catch (_) {}
     if (!soaDone) sb.rpc("generate_statements", {}).then(({ error }) => { if (!error) { try { sessionStorage.setItem("eoSoa", ym); } catch (_) {} } }, () => {});
