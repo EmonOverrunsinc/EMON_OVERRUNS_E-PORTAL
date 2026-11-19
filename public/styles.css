@@ -4009,3 +4009,9 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .lf-page small { display: block; margin-top: 4px; color: #5b6577; font-weight: 600; }
 .lf-page .btn { position: absolute; top: 4px; right: 4px; }
 .lf-pdf { display: grid; place-items: center; height: 140px; background: #f5f7fb; border-radius: 6px; color: #12306b; font-weight: 700; }
+/* 3.99.120: the Coverage Certificate: the certificate no's PDF417 under the due date (scan to verify); no empty gap above the bottom row */
+.c2-insbar { margin-top: 2.4mm; border: 1.2px dashed var(--nv2, #8ea6d8); border-radius: 1.6mm; padding: 1.6mm 3mm 1.4mm; text-align: center; }
+.c2-insbar small { display: block; font-size: 6.2pt; font-weight: 800; letter-spacing: .06em; color: var(--nv, #12306b); margin-bottom: 1mm; }
+.c2-insbar img { display: block; margin: 0 auto; height: 11mm; max-width: 100%; image-rendering: pixelated; }
+.c2-insbar b { display: block; font-size: 9pt; letter-spacing: .08em; color: var(--nv, #12306b); margin-top: .8mm; }
+.page:not(.a4l) .c2-sigs, .c2-sigs { margin-top: 5mm; }
