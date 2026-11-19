@@ -3947,3 +3947,8 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .qc-micro span { font: 600 2.7pt/3.4pt Arial, Helvetica, sans-serif; letter-spacing: .03em; white-space: nowrap; }
 .qc-micro span:nth-child(3n+2) { color: #8a6a12; }
 .eos-micro > span, .qc-micro > span { flex: none; } /* 3.99.108: a word never squeezes (so it is never cut): it moves out of sight whole */
+/* 3.99.109: the date printed and who printed it go INSIDE the seal (no separate date box on a page with a seal) */
+.eos .eos-ref .eos-printed, .page .eos .eos-ref .eos-printed { display: block; font-style: normal; font-size: 3.6pt; font-weight: 700; letter-spacing: .02em; color: #33415c; text-transform: none; white-space: nowrap; margin-top: .3mm; }
+.page:has(.eos) .pg-date { display: none; }
+.eos .eos-printed > span { display: block; line-height: 1.25; overflow: hidden; text-overflow: clip; } /* 3.99.109: the date and the name on 2 short lines */
+.eos-mid { padding-top: 1.2mm; padding-bottom: 2.6mm; }
