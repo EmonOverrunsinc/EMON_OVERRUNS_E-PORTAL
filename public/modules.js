@@ -55,7 +55,7 @@
   const KIND = {
     photo: "Profile Photo", requirement: "Requirement", signed_form: "Signed Copy", receipt: "Payment Receipt", delivery_receipt: "Delivery Receipt",
     purchase_order: "Purchase Order", proof: "Proof", application: "Application Form", signature: "Signature Form", report: "Report", approval: "Approved Document", other: "Other",
-    bill: "E-Bill Copy", shipping_bill: "Shipping Fee Receipt", sales_report: "Sales Report"
+    bill: "E-Bill Copy", shipping_bill: "Shipping Fee Receipt", sales_report: "Sales Report", contract: "Contract of Lease"
   };
   async function autoName(ownerType, ownerId, kind, extraIndex = 0) {
     const [no, existing] = await Promise.all([

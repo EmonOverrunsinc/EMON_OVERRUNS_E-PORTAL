@@ -4002,3 +4002,10 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .ol-form input, .ol-form select, .ol-form textarea { width: 100%; box-sizing: border-box; }
 @media (max-width: 600px) { .ol-form { grid-template-columns: 1fr; } }
 .ol-row small.neg { color: #c41e3a; }
+/* 3.99.119: the Contract of Lease pages */
+.lf-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 10px; }
+.lf-page { position: relative; border: 1px solid #dfe5ef; border-radius: 10px; padding: 6px; text-align: center; background: #fff; }
+.lf-page img { width: 100%; height: 140px; object-fit: contain; background: #f5f7fb; border-radius: 6px; }
+.lf-page small { display: block; margin-top: 4px; color: #5b6577; font-weight: 600; }
+.lf-page .btn { position: absolute; top: 4px; right: 4px; }
+.lf-pdf { display: grid; place-items: center; height: 140px; background: #f5f7fb; border-radius: 6px; color: #12306b; font-weight: 700; }
