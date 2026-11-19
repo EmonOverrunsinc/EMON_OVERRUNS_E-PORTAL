@@ -4076,3 +4076,8 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 /* 3.99.125: the ID card's mini seal smaller, without the card no line */
 .idc-miniseal { width: 28.5mm; height: 12.4mm; }
 .idc-miniseal .eos { transform: scale(.46); }
+/* 3.99.126: the ID card sticker carries the employee: name, employee no and position */
+.eos .eos-ref .eos-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 5pt; letter-spacing: .04em; color: #33415c; line-height: 1.25; }
+.eos .eos-ref .eos-line.main { font-size: 7pt; font-weight: 800; color: #12306b; letter-spacing: .06em; }
+.idc-miniseal .eos .eos-mid { gap: .8mm; }
+.idc-miniseal .eos .eos-mid { gap: .5mm; padding-top: 1.4mm; padding-bottom: 1.6mm; } .idc-miniseal .eos .eos-ref .eos-line { font-size: 4.6pt; line-height: 1.2; } .idc-miniseal .eos .eos-ref .eos-line.main { font-size: 6.6pt; } .idc-miniseal .eos .eos-ref small { font-size: 3.8pt; }
