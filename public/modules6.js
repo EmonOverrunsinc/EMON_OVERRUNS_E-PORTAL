@@ -181,13 +181,15 @@
   };
   // The result sticker: the logo, the barcode with the QC number, the date, the Qty of the goods (empty to write by hand when it was
   // not written), the result (3.33: PASS in green, FAIL in red) and who checked it.
-  const qcCard = (t, res, code = null) => `<div class="qc-card"><div class="qc-card-h">${E.logoHtml("qc-card-logo")}<b>QC TEST RESULT</b></div>
+  // 3.99.108: the sticker in the security layout: microtext lines "EMON OVERRUNS · QC TEST RESULT · QC no" (whole words)
+  const qcMicro = (t) => `<div class="qc-micro">${Array.from({ length: 5 }, () => [C.company.name, "QC TEST RESULT", t.qc_no]).flat().map((w) => `<span>${esc(w)}</span>`).join("")}</div>`;
+  const qcCard = (t, res, code = null) => `<div class="qc-card${code != null ? " qc-sec" : ""}">${code != null ? qcMicro(t) : ""}<div class="qc-card-h">${E.logoHtml("qc-card-logo")}<b>QC TEST RESULT</b></div>
     <div class="qc-card-code"><img src="${E.pdf417DataUrl("EMONQC|" + t.qc_no)}" alt="" class="ph-bar"><div class="mono">${esc(t.qc_no)}</div></div>
     <div class="qc-card-row"><span>Checked Date</span><b>${res ? esc(mdy(res.when)) : ""}</b></div>
     <div class="qc-card-row"><span>Qty Found</span><b>${res && t.qty != null ? esc(E.qtyText(t.qty)) : ""}</b></div>
     <div class="qc-card-row"><span>Result</span><b class="qc-res">${res ? `Pass ${res.pass} · Fail ${res.fail}` : ""}</b><b class="qc-verdict${res ? " " + res.verdict.toLowerCase() : ""}">${res ? res.verdict : ""}</b></div>
     <div class="qc-card-row"><span>Check By</span><b>${res ? esc(res.by) : ""}</b></div>
-    ${code != null ? `<div class="qc-card-seal">${E.secSeal(t.qc_no, { code })}</div>` : ""}</div>`;
+    ${code != null ? `<div class="qc-card-seal">${E.secSeal(t.qc_no, { code })}</div>${qcMicro(t)}` : ""}</div>`;
   // The 2 stickers on plain paper: nothing else on the page (no heading, no footer, no date).
   // 3.99.106: each sticker carries the security seal of the QC test (its unique seal no)
   const stickerPage = (t, res, code = "") => `<div class="qc-cards qc-sticker">${qcCard(t, res, code)}${qcCard(t, res, code)}</div>`;
