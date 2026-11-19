@@ -407,7 +407,7 @@
       ["UNSOLD BOXES", "Sealed boxes not sold", "Exchanged for new items of the same value"],
       ["PAYMENT DUE EXTENSION", "Extra days to pay the invoice of this order", `+${DUE} days after the terms`]];
     const front = `<div class="c2 ${st.k}"><div class="c2-wm">${ic("shield")}</div>
-      ${band("COVERAGE CERTIFICATE", `<div class="c2-no"><small>CERT. NO.</small><span>${esc(i.ins_no)}</span></div><div class="c2-orig">ORIGINAL</div>`)}
+      ${band("COVERAGE CERTIFICATE", `<div class="c2-topbar"><img src="${E.pdf417DataUrl("EMONINS|" + i.ins_no)}" alt="PDF417 barcode: ${esc(i.ins_no)}"><b class="mono">${esc(i.ins_no)}</b></div>`)}
       <div class="c2-fields">
         ${fld("CUSTOMER", name, "w2")}${fld("ACCOUNT NO.", c.account_no || "")}${fld("DATE ISSUED", i.issued_at ? mdy(i.issued_at) : "")}
         ${fld("ORDER NO.", i.order_no || "")}${fld("INVOICE NO.", invoice?.invoice_no || (o?.status === "completed" ? "" : "AFTER DELIVERY"))}${fld("BOXES COVERED", boxes)}${fld("COVERED VALUE", `PHP ${peso(covered)}`)}
@@ -434,7 +434,6 @@
             <div class="c2-eqb tot"><b>${td == null ? "—" : td + DUE}</b><small>DAYS TO PAY</small></div>
           </div>
           <div class="c2-eqdue"><small>DUE DATE</small><b>${esc(i._due ? mdy(i._due.ext) : "COUNTED FROM THE INVOICE DATE")}</b></div>
-          <div class="c2-insbar"><small>CERTIFICATE NO. · SCAN TO VERIFY THE COVERAGE</small><img src="${E.pdf417DataUrl("EMONINS|" + i.ins_no)}" alt="PDF417 barcode: ${esc(i.ins_no)}"><b class="mono">${esc(i.ins_no)}</b></div>
         </div></div>
       </div>
       <div class="c2-decl">${sec("CERTIFICATION")}
