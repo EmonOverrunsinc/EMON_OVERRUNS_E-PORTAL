@@ -1915,8 +1915,8 @@
         <div class="prow3">${cell("Bank", p.bank_name)}${cell("Deposit Account", p.bank_account)}${cell("Description", "PAYMENT RECEIVED")}</div>
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(p.amount))}</div></div>`)}
       <p class="pdecl">This acknowledges that ${esc(C.company.name)} has received the payment above. Receipt No ${esc(p.receipt_no)}.</p>
-      <div class="soa-sys">This is a system-generated receipt. No signature is required.</div>
-      <div class="doc-seal mid">${E.secSeal(p.receipt_no, { code: E.sealCached("receipt", p.receipt_no) })}</div>`;
+      <div class="doc-seal mid">${E.secSeal(p.receipt_no, { code: E.sealCached("receipt", p.receipt_no) })}</div>
+      <div class="soa-sys">This is a system-generated receipt. No signature is required.</div>`; // 3.99.113: the note under the seal
   }
 
   // ======================================================================
