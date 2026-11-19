@@ -426,7 +426,7 @@
           ${sec("PREMIUM")}
           ${kv([["CALCULATION", `${boxes} × PHP ${peso(i.box_price)} + ${num(i.rate_pct)}%`], ["PREMIUM", `PHP ${peso(i.amount)}`, "tot"], ["IN WORDS", E.words(i.amount, "PESOS")],
             // 3.99.99: the receipt numbers in place of PAID BY
-            ["RECEIPT NO.", (i.pay_method === "account" ? "" : i.pay_ref) || "—"], ["COLLECTION RECEIPT NO.", cv?.cv_no || (i.pay_method === "account" ? i.pay_ref : "") || "—"]])}
+            ["COLLECTION RECEIPT NO.", cv?.cv_no || (i.pay_method === "account" ? i.pay_ref : "") || "—"]])}
           </div><div>${sec("PAYMENT DUE")}
           <div class="c2-eq">
             <div class="c2-eqb"><b>${td == null ? esc(terms || "—") : `${td}`}</b><small>${td == null ? "TERMS" : "DAYS · TERMS"}</small></div><i>+</i>
@@ -444,7 +444,7 @@
         ${codeBox("INVOICE NO.", invoice?.invoice_no ? "EMONINV|" + invoice.invoice_no : "", invoice?.invoice_no || "AFTER DELIVERY")}
         ${sig("ISSUED BY", { name: who.approver, note: `Authorized Signatory · ${i.approved_at ? mdy(i.approved_at) : ""}` }, sign.pic)}
       </div>
-      <div class="c2-foot"><span>This certificate is valid only when its seal number is verified at ${esc(E.siteName?.() || "emonoverruns.online")}/verify. The terms of the EO-OFFICE COVERAGE in the E-Portal form part of this certificate.</span><span>${esc(C.company.name)} &nbsp;|&nbsp; Pasay City, Metro Manila</span></div></div>`;
+      </div>`; // 3.99.100: no footer words
     E.openPreview(`Coverage Certificate ${i.ins_no}`, [front], { bare: true }); // 3.78.3: 1 page, A4 portrait
   }
 

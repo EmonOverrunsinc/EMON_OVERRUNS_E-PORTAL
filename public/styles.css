@@ -3921,3 +3921,9 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .c2-sealsig { display: flex; align-items: stretch; }
 .c2-sealsig .eos { height: auto; min-height: 22mm; flex: 1; max-width: none; }
 .c2-sealsig .eos-mid { padding: 3mm 0; gap: 1.4mm; }
+/* 3.99.100: the seal's microtext never peeks out cut (a phone enlarges very small words: no enlarging, and the hidden
+   2nd row far away) */
+.eos { -webkit-text-size-adjust: none; text-size-adjust: none; }
+.eos-micro { row-gap: 20pt; }
+.eos-micro span:nth-child(3n+3) { color: inherit; }
+.eos .eos-no, .page .eos .eos-no { display: flex; align-items: center; justify-content: center; height: 6.4mm; padding: 0 .6mm; line-height: 1; box-sizing: border-box; } /* 3.99.100: the number in the middle of its box */
