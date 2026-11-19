@@ -423,6 +423,23 @@ function scanPercent(stage, ms, expected) {
 }
 
 // 1.8: the E-Portal page opens the app menu (its profile menu has "App Menu")
+// 1.8.7: PRINT opens the page as a PDF in the Windows PDF viewer (Edge or the one set in Windows): a full preview, and
+// the printer, copies, pages, size and scale can all be changed there (the print window of the app had no preview)
+async function printAsPdf(wc, name) {
+  const pdf = await wc.printToPDF({ printBackground: true, preferCSSPageSize: true, margins: { top: 0, bottom: 0, left: 0, right: 0 }, pageSize: "A4" });
+  const dir = path.join(app.getPath("temp"), "EMON-OVERRUNS-Print");
+  fs.mkdirSync(dir, { recursive: true });
+  const safe = String(name || "Document").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80) || "Document";
+  const file = path.join(dir, `${safe}.pdf`);
+  fs.writeFileSync(file, pdf);
+  const err = await shell.openPath(file);
+  return err ? { error: err } : { ok: true };
+}
+ipcMain.handle("eo-print-pdf", async (e, opts) => {
+  if (!inApp(e.senderFrame ? e.senderFrame.url : "")) return { error: "not allowed" };
+  try { return await printAsPdf(e.sender, opts && opts.name); } catch (err) { return { error: String((err && err.message) || err) }; }
+});
+
 ipcMain.handle("eo-menu", (e) => {
   if (!inApp(e.senderFrame ? e.senderFrame.url : "")) return false;
   const win = BrowserWindow.fromWebContents(e.sender), m = Menu.getApplicationMenu();
@@ -552,7 +569,7 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: "E-Portal", submenu: [
       { label: "Dashboard", accelerator: "Alt+Home", click: () => current() && current().loadURL(HOME) },
-      { label: "Print…", accelerator: "CmdOrCtrl+P", click: () => current() && current().webContents.print() },
+      { label: "Print…", accelerator: "CmdOrCtrl+P", click: () => { const w = current(); if (w) printAsPdf(w.webContents, w.getTitle()).then((r) => { if (r.error) w.webContents.print(); }, () => w.webContents.print()); } },
       { label: "Reload", accelerator: "F5", click: () => current() && current().webContents.reload() },
       { label: "Reload", accelerator: "CmdOrCtrl+R", visible: false, click: () => current() && current().webContents.reload() },
       { type: "separator" },
