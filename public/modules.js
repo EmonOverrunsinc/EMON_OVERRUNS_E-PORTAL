@@ -2212,7 +2212,7 @@
     const coName = (r) => [r.extra?.COMPANY, r.extra?.SUPPLIER].find((v) => /[A-Z]/i.test(v || "")) || ""; // 3.99.74: a number is never a company
     const company = words(coName);
     const exTable = ex.filter((k) => !["COMPANY", "SUPPLIER"].includes(k)); // company is in the summary
-    const title = kind === "serial" ? `Box ${key}` : `Batch ${key}`;
+    const title = kind === "serial" ? key : `Batch ${key}`; // 3.99.102: the PDF of a box is named by its serial no
     // the details of the search (screen and print): only those the sheet has
     const facts = [[kind === "serial" ? "Serial No" : "Batch No", key, "hl"], ["Product", words((r) => r.product)], ["Brand", words((r) => (r.brand && r.brand !== "-" ? r.brand : ""))], ["Company", company],
       ["Shipping Date", span((r) => r.ship_date)], ["Released Date", span((r) => r.release_date)], ["Arrival Date", span((r) => r.arrival_date)], ["Date Sold", span((r) => (r.st === "sold" ? r.soldOn : ""))]]
