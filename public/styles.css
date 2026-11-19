@@ -4049,3 +4049,26 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .idc-sign { top: 54.6mm; }
 .idc-note { top: 73.4mm; font-style: normal; font-size: 1.32mm; line-height: 1.35; }
 .idc-note b { display: block; margin-top: .4mm; font-size: 1.45mm; color: #0a2463; letter-spacing: .05mm; }
+/* 3.99.123: the ID card back: the address on 2 lines, the bottom row: a second ghost photo and the mini security seal */
+.idc-face .idc-rows { grid-template-columns: 1fr 1fr; }
+.idc-emg { top: 9.6mm; }
+.idc-er { padding: .45mm 0 .5mm; min-height: 4.3mm; }
+.idc-er.two b { white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; font-size: 2mm; }
+.idc-qrrow { top: 27.6mm; }
+.idc-qr { width: 19mm; height: 19mm; }
+.idc-sign { top: 47.2mm; }
+.idc-sign .idc-stamp { width: 12.6mm; height: 12.6mm; top: -1.4mm; }
+.idc-sigpic { height: 7mm; }
+.idc-sigpic img { max-height: 6.8mm; }
+.idc-note { top: 59.8mm; }
+.idc-bsec { position: absolute; left: 3mm; right: 3mm; top: 66.2mm; height: 14.9mm; display: flex; align-items: center; justify-content: center; gap: 2.4mm; }
+.idc-ghost.b2 { position: relative; right: auto; top: auto; flex: none; width: 8mm; height: 9.8mm; }
+.idc-miniseal { width: 34.1mm; height: 14.85mm; flex: none; position: relative; }
+.idc-miniseal .eos { position: absolute; left: 0; top: 0; width: 62mm; height: 27mm; transform: scale(.55); transform-origin: 0 0; }
+.idc-miniseal .eos .eos-printed { display: none; }
+.idc-qrrow { top: 29.2mm; }
+.idc-qr { width: 17.6mm; height: 17.6mm; }
+.idc-sign { top: 47.6mm; }
+.idc-sigpic { height: 6mm; } .idc-sigpic img { max-height: 5.8mm; }
+.idc-note { top: 60.6mm; }
+.idc-miniseal .eos .eos-ref .eos-printed { display: none; }
