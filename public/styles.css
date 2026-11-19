@@ -3934,3 +3934,7 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 /* 3.99.106: the seal on the invoice and the receipt (bottom right) and on each QC sticker (bottom, centred) */
 .doc-seal { display: flex; justify-content: flex-end; margin-top: 4mm; break-inside: avoid; }
 .qc-card-seal { display: flex; justify-content: center; padding: 2mm 2mm 2.5mm; border-top: 1px solid #12306b; }
+/* 3.99.107: the invoice / receipt seal centred under the right signature (Prepared by), a little bigger */
+.doc-seal { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; margin: 3mm 0 2mm; }
+.doc-seal .eos { grid-column: 2; justify-self: center; width: 74mm; height: 30mm; }
+.doc-seal .eos .eos-no { font-size: 10pt; }
