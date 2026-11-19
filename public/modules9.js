@@ -123,7 +123,7 @@
         <b>${esc(d.dirName || "")}</b><small class="idc-dtitle">${esc(d.dirTitle || "REGIONAL DIRECTOR")}</small></div>
       <p class="idc-note">Property of ${esc(C.company.name)} · not transferable · if found, please return it.<br><b>Verify this card: ${esc(site || "emonoverruns.online")}/verify</b></p>
       <div class="idc-bsec">${d.photo ? `<div class="idc-ghost b2"><img src="${esc(d.photo)}" alt=""><span>${esc(`${em.employee_no} `.repeat(14))}</span></div>` : ""}
-        <div class="idc-miniseal">${E.secSeal ? E.secSeal(d.card.card_no, { code: d.seal || "" }) : ""}</div></div>
+        <div class="idc-miniseal">${E.secSeal ? E.secSeal(d.card.card_no, { code: d.seal || "", noRef: true }) : ""}</div></div>
       <div class="idc-foot"><span class="idc-micro">${micro(8)}</span><b>${esc(em.employee_no)}</b></div>
     </div>`;
   }
