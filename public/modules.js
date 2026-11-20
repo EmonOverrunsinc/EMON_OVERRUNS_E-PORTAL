@@ -1603,16 +1603,19 @@
     const here = E.stillHere();
     // 2.9: everything the page needs is asked for at once. Returns (2.8, update 020) and payment links (update 022) are
     // empty lists on a database without those updates.
-    const [ib, att, rt, lk, ins] = await Promise.all([
+    let [ib, att, rt, lk, ins, ord] = await Promise.all([
       sb.from("invoice_balances").select("*").eq("id", id).maybeSingle(),
       attachmentsOf("invoice", id),
       sb.from("credit_memos").select("*").eq("invoice_id", id).order("memo_date"),
       sb.from("payment_links").select("*, payments_received(receipt_no, paid_date, amount)").eq("invoice_id", id).order("linked_at"),
-      E.insForInvoice ? E.insForInvoice(id).catch(() => null) : null // 3.73.4: the order's insurance coverage (information)
+      E.insForInvoice ? E.insForInvoice(id).catch(() => null) : null, // 3.73.4: the order's insurance coverage (information)
+      invOrder(id) // 3.99.141: the linked order's items
     ]);
     if (!here()) return;
     const inv = ib.data;
     if (!inv) { $("#main").innerHTML = `<div class="empty">Invoice not found. <a href="#invoices">Back to Invoices</a></div>`; return; }
+    // an older invoice without the order's link: the order is found by its Order No
+    if (!ord && /^(CO|OR)-\d{6}-\d+$/.test(inv.po_number || "")) { ord = await invOrder(null, inv.po_number); if (!here()) return; }
     const rets = (rt.data || []).filter((m) => m.is_return);
     // 3.14: what was taken off this invoice: approved returns and credit / discount memos of this invoice
     const deds = (rt.data || []).filter((m) => ["approved", "paid"].includes(m.status) && offBalance(m));
@@ -1637,6 +1640,7 @@
       <div class="fields wide"><span>Total Boxes</span><b>${qtyText(inv.total_boxes)}</b><span>Total Pcs</span><b>${qtyText(inv.total_pcs)}</b>
         ${returned > 0 ? `<span>Returned</span><b>− ₱ ${peso(returned)}</b>` : ""}
         <span>Payment Status</span><span>${payPill(inv)}${isOverdue(inv) ? ` <small class="muted">${daysOver(inv)} day(s) overdue</small>` : ""}${bal < 0 ? ` <small class="muted">overpaid ₱ ${peso(-bal)}</small>` : ""}</span></div></div>
+      ${ord ? `<div class="linked-pays"><div class="lp-head"><b>Order Items · ${esc(ord.order_no)}</b></div>${orderItems(ord, false)}</div>` : ""}
       <small class="muted">A linked payment pays this invoice first. Other payments, discounts and orders pay the customer's oldest invoices first.${bal < 0 ? " A negative balance means the customer has paid more than everything owed." : ""}</small>
       <div class="linked-pays"><div class="lp-head"><b>Returns</b>${canReturn ? `<button type="button" class="btn small" id="ivReturn">${ic("back")} Record Return</button>` : ""}</div>
         ${rets.length ? rets.map((r) => `<div class="lp-row lp-ret"><a href="#creditmemo/${r.id}"><b>${esc(r.memo_no || "")}</b></a><span>${mdy(r.memo_date)} · ${esc(r.serial_no || "")}${r.qty ? ` · ${r.qty} pcs` : ""}</span><b>− ₱ ${peso(r.request_amount)}</b>
@@ -1651,7 +1655,7 @@
           : `<div class="empty small">No payment is linked to this invoice.</div>`}
         ${linksOn && active.length ? `<div class="lp-sum"><span>Linked to this invoice</span><b>₱ ${peso(active.reduce((s, l) => s + num(l.amount), 0))}</b>${need > 0.004 ? `<span>Still needed from a payment</span><b>₱ ${peso(need)}</b>` : ""}</div>` : ""}</div>
       ${ins && E.insBox ? E.insBox(ins) : ""}
-      <div class="docgrid">${docCard({ key: "inv", title: `Invoice ${inv.invoice_no}`, tag: "System Generated", sub: `Made by the E-Portal · ₱ ${peso(inv.total_amount)} · ${mdy(inv.invoice_date)}${deds.length ? ` · CORRECTED: ₱ ${peso(num(inv.total_amount) - deds.reduce((t, m) => t + num(m.request_amount), 0))}` : ""}`, ownerType: "invoice", ownerId: inv.id, att, kind: "__system", canUpload: false, print: () => gatePrint("invoice", inv.id, `Invoice ${inv.invoice_no}`, async () => { await E.sealCode("invoice", inv.invoice_no); E.openPreview(`Invoice ${inv.invoice_no}`, [invoicePage(inv, active, deds, ins)]); }) })}
+      <div class="docgrid">${docCard({ key: "inv", title: `Invoice ${inv.invoice_no}`, tag: "System Generated", sub: `Made by the E-Portal · ₱ ${peso(inv.total_amount)} · ${mdy(inv.invoice_date)}${deds.length ? ` · CORRECTED: ₱ ${peso(num(inv.total_amount) - deds.reduce((t, m) => t + num(m.request_amount), 0))}` : ""}`, ownerType: "invoice", ownerId: inv.id, att, kind: "__system", canUpload: false, print: () => gatePrint("invoice", inv.id, `Invoice ${inv.invoice_no}`, async () => { await E.sealCode("invoice", inv.invoice_no); E.openPreview(`Invoice ${inv.invoice_no}`, [invoicePage(inv, active, deds, ins, ord)]); }) })}
         ${copyCard({ key: "invcopy", title: `Invoice ${inv.invoice_no}`, tag: "Upload", sub: "Upload the invoice", ownerType: "invoice", ownerId: inv.id, att, kind: "signed_form" })}</div>
       <div><b>Other Files</b>${filesHtml(att.filter((a) => a.kind !== "signed_form"), "No other files.")}</div>
       </div>
@@ -1751,7 +1755,24 @@
     E.setRecords(`Invoice: ${inv.invoice_no}`);
   };
   // The invoice print. links: the payments linked to it (2.9), listed with the amount each one paid.
-  function invoicePage(inv, links = [], deds = [], ins = null) {
+  // 3.99.141: the customer order an invoice was made from (its items show on the invoice page and the printed invoice)
+  async function invOrder(invId, orderNo) {
+    const f = "order_no, lines, extra_columns, total_boxes, total_pcs, total_amount";
+    try {
+      const { data } = await sb.from("customer_orders").select(f).eq(invId ? "invoice_id" : "order_no", invId || orderNo).neq("status", "cancelled").order("created_at", { ascending: false }).limit(1);
+      const o = (data || [])[0];
+      return o && (o.lines || []).length ? o : null;
+    } catch { return null; }
+  }
+  function orderItems(o, print) {
+    const cols = o.extra_columns || [];
+    return `${print ? "" : `<div class="grid-wrap co-wrap">`}<table class="${print ? "ptl" : "grid co-lines"}"><thead><tr><th>#</th><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price (₱)</th><th class="num">Amount (₱)</th></tr></thead>
+      <tbody>${(o.lines || []).map((l, i) => `<tr><td>${i + 1}</td><td class="num">${l.boxes ? qtyText(l.boxes) : ""}</td><td class="num">${qtyText(l.qty)}</td><td>${esc(l.code || "-")}</td><td>${esc(l.lot || "")}</td><td>${esc(l.product || "")}</td>
+        ${cols.map((x) => `<td>${esc(l.extra?.[x] || "")}</td>`).join("")}<td class="num">${peso(l.price)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody>
+      <tfoot><tr><td></td><td class="num"><b>${qtyText(o.total_boxes)}</b></td><td class="num"><b>${qtyText(o.total_pcs)}</b></td><td colspan="${4 + cols.length}"><b>TOTAL AMOUNT</b></td><td class="num"><b>${peso(o.total_amount)}</b></td></tr></tfoot></table>${print ? "" : "</div>"}`;
+  }
+
+  function invoicePage(inv, links = [], deds = [], ins = null, ord = null) {
     const bal = num(inv.balance);
     const off = deds.reduce((t, m) => t + num(m.request_amount), 0), corrected = Math.max(0, num(inv.total_amount) - off);
     // 3.14: a return or credit memo taken off this invoice: the invoice shows what was taken off and the corrected amount
@@ -1766,6 +1787,7 @@
         <div class="prow3">${cell("Total Pcs", qtyText(inv.total_pcs))}${cell("Terms of Payment", inv.payment_terms || "—")}${cell("Due Date", (mdy(inv.due_date) || "—") + (ins?.status === "active" && inv.due_date ? " (EXTENDED BY COVERAGE)" : ""))}</div>
         ${inv.po_number ? `<div class="pcell"><div class="pl">Order No</div><div class="pv">${esc(inv.po_number)}</div></div>` : ""}
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(inv.total_amount))}</div></div>`)}
+      ${ord ? box(`Order Items · ${esc(ord.order_no)}`, orderItems(ord, true)) : ""}
       ${fix}
       ${ins && E.insPrintBox ? E.insPrintBox(ins) : ""}
       ${box("Payment", `<div class="pgrid2">${cell("Payment Status", ({ paid: "PAID", partial: "PARTIAL PAYMENT", unpaid: "UNPAID" }[inv.pay_status] || String(inv.pay_status || "").toUpperCase()) + (isOverdue(inv) ? ` · OVERDUE ${daysOver(inv)} DAY(S)` : "") + (bal < 0 ? " (OVERPAID)" : ""))}${cell("Total Amount (₱)", peso(inv.total_amount))}${num(inv.amount_returned) > 0 ? cell("Returned (₱)", peso(inv.amount_returned)) : ""}${cell("Paid (₱)", peso(inv.amount_paid))}${cell("Balance (₱)", peso(bal))}</div>
