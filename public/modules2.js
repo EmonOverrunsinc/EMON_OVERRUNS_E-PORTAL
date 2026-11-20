@@ -1175,7 +1175,7 @@
     rows.forEach((r, i) => { r._no = i + 1; r._last = lastV.get(r.id); r._month = monthN.get(r.id) || 0; });
     $("#blRes").innerHTML = E.grid({ cols: [
       { label: "No.", num: true, get: (r) => r._no },
-      { label: "Company", get: (r) => r.name }, { label: "Contact Person", get: (r) => r.contact_person || "" }, { label: "Status", html: (r) => pill(r.status || "active") },
+      { label: "Company", get: (r) => r.name }, { label: "Status", html: (r) => pill(r.status || "active") },
       { label: "Currency", get: (r) => CUR[curOf(r)] }, { label: "Accounts", num: true, get: (r) => r.accounts_count }, { label: "Vouchers", num: true, get: (r) => r.vouchers_count },
       { label: "This Month", html: (r) => (r.status === "suspended" ? "—" : r._month ? pill("paid", `PAID · ${r._month} VOUCHER${r._month === 1 ? "" : "S"}`) : pill("unpaid", "NOT PAID YET")) },
       { label: "Last Voucher", html: (r) => (r._last ? `<b class="mono nw">${esc(r._last.voucher_no || "")}</b><br><small>${esc(mdy(r._last.pay_date))}</small>` : "—") }],
@@ -1194,7 +1194,7 @@
       <form class="window" id="pcForm" novalidate><div class="wtitle">Company</div><div class="wbody">
         <div class="formgrid"><div class="fields wide">
           <label for="pcName">Company Name *</label><input type="text" id="pcName" required placeholder="e.g. Modina Apparels Pvt Ltd">
-          <label for="pcPerson">Contact Person</label><input type="text" id="pcPerson" placeholder="e.g. Mr. Abdur Rahman">
+          <input type="hidden" id="pcPerson" value="">
           <label for="pcContact">Phone / Email</label><input type="text" id="pcContact" placeholder="e.g. 01711000000">
           <label for="pcAddr">Address</label><input type="text" id="pcAddr" placeholder="e.g. Gulshan 1, Dhaka, Bangladesh">
           <label for="pcNotes">Notes</label><input type="text" id="pcNotes"></div>
@@ -1262,8 +1262,8 @@
       ${suspended ? `<div class="banner warn">⚠ SUSPENDED — new payments are blocked until the company is reactivated by an approved order.${c.status_note ? " " + esc(c.status_note) : ""}</div>` : ""}
       <section class="cust-hero">${photoBox(photo, E.initials(c.name))}
         <div class="ch-main"><div class="ch-name"><h2>${esc(c.name)}</h2>${pill(c.status || "active")}</div>
-          <div class="ch-sub">${c.contact_person ? `<b>${esc(c.contact_person)}</b> · ` : ""}${esc([c.address || c.country, c.contact].filter(Boolean).join(" · ") || "—")}</div>
-          <div class="ch-ids">${E.idBox("Contact Person", c.contact_person || "—")}${E.idBox("Currency", CUR[cur])}${E.idBox("Accounts", String(accounts.length))}${E.idBox("Vouchers", String(vouchers.length))}${E.idBox("Last Paid", mdy(c.last_paid))}${E.idBox("Added By", c.created_by_name)}</div>
+          <div class="ch-sub">${esc([c.address || c.country, c.contact].filter(Boolean).join(" · ") || "—")}</div>
+          <div class="ch-ids">${E.idBox("Currency", CUR[cur])}${E.idBox("Accounts", String(accounts.length))}${E.idBox("Vouchers", String(vouchers.length))}${E.idBox("Last Paid", mdy(c.last_paid))}${E.idBox("Added By", c.created_by_name)}</div>
           ${w ? `<div class="btnrow"><label class="btn small" for="pcPhoto">${ic("camera")} ${photo ? "Change Photo" : "Add Photo"}</label><input type="file" id="pcPhoto" accept="image/*" hidden></div>` : ""}</div></section>
       <div class="tiles">${tiles.map(([k, l, v]) => `<div class="tile ${k}"><div class="k">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
       <div class="actionbar">${w && !suspended ? `<a class="btn primary" href="#newvoucher/${c.id}">${ic("plus")} New Payment</a>` : ""}<button type="button" class="btn" id="pcRecord">${ic("download")} Download Payment Record</button>
@@ -1333,7 +1333,7 @@
       summary: { title: "Monthly Totals", cols: ["Month", "Vouchers", ...(showPhp(cur) ? ["PHP"] : []), ...(showBdt(cur) ? ["BDT"] : [])],
         rows: [...byMonth].map(([m, t]) => [monthText(m + "-01"), String(t[0]), ...pick(t[1], t[2])]),
         total: ["Total:", String(rows.length), ...pick(rows.reduce((s, v) => s + num(v.amount_php), 0), rows.reduce((s, v) => s + num(v.amount_bdt), 0))] },
-      criteria: `Company: ${c.name}${c.contact_person ? "\nContact Person: " + c.contact_person : ""}\nCurrency: ${CUR[cur]}\nRange: ${range}`, logo: true
+      criteria: `Company: ${c.name}\nCurrency: ${CUR[cur]}\nRange: ${range}`, logo: true
     }));
   }
 
@@ -1437,7 +1437,7 @@
     const a = v.pay_accounts || {}, co = v.pay_companies || {};
     return `${E.printHead("PAYMENT VOUCHER", `<img src="${E.pdf417DataUrl("EMONBD|" + v.voucher_no)}" alt="" class="ph-bar"><div class="mono">${esc(v.voucher_no)}</div>`)}
       <div class="vno-row"><span>Voucher No: <b>${esc(v.voucher_no)}</b></span><span>Issued By: <b>${esc(v.created_by_name || "")}</b></span><span>Date: <b>${esc(E.mdy(v.pay_date))}</b></span></div>
-      ${E.box("Paid To", `<div class="pgrid2">${E.cell("Company", co.name, "hl")}${E.cell("Contact Person", co.contact_person)}${E.cell("Account Name", a.account_name)}${E.cell("Account Number", a.account_number)}
+      ${E.box("Paid To", `<div class="pgrid2">${E.cell("Company", co.name, "hl")}${E.cell("Account Name", a.account_name)}${E.cell("Account Number", a.account_number)}
         ${E.cell("Bank / Branch", [a.bank_name, a.branch_name].filter(Boolean).join(" — "))}${E.cell("Address", co.address || co.country)}</div>`)}
       ${E.box("Payment", `<div class="prow3">${E.cell("Method", v.method)}${E.cell("Reference No", v.reference_no)}</div>
         ${v.stock_bills ? E.cell("For E-Bill", v.stock_bills.bill_no, "hl") : ""}
@@ -1496,7 +1496,7 @@
     $(".band h1").textContent = `Payment Voucher — ${v.voucher_no}`;
     $("#main").innerHTML = `<div class="window"><div class="wtitle">${esc(v.voucher_no)} · ${esc(v.pay_companies?.name || "")}</div><div class="wbody">
       <div class="formgrid"><div class="fields wide">
-        <span>Paid To</span><span><a href="#paycompany/${v.company_id}"><b>${esc(v.pay_companies?.name || "")}</b></a>${v.pay_companies?.contact_person ? " · " + esc(v.pay_companies.contact_person) : ""}</span>
+        <span>Paid To</span><span><a href="#paycompany/${v.company_id}"><b>${esc(v.pay_companies?.name || "")}</b></a></span>
         <span>Account</span><span>${esc([a.account_name, a.account_number, a.bank_name, a.branch_name].filter(Boolean).join(" · ") || "—")}${E.canWrite("billing") ? ` <button type="button" class="btn small" id="vAcc">${ic("edit")} ${v.account_id ? "Change Account" : "Add Account"}</button>` : ""}</span>
         <span>Date</span><span>${mdy(v.pay_date)}</span>
         <span>Method</span><span>${esc(v.method || "—")}${v.reference_no ? " · Ref " + esc(v.reference_no) : ""}</span><span>Issued By</span><span>${esc(v.created_by_name || "")}</span>
