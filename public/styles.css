@@ -4085,3 +4085,43 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .grid-foot > span:first-child { display: none; }
 .grid-wrap.wide .grid-group::after, .grid-wrap.wide:not(:has(.grid-group)) .grid-foot > span:first-child::after { content: none; }
 .grid-foot { justify-content: flex-end; }
+/* ===================== 3.99.130: OUTLETS clean and clear ===================== */
+.ol-hero { display: grid; grid-template-columns: 1fr auto; gap: 8px 14px; align-items: center; background: linear-gradient(135deg, #0f3a8c, #1d4fb0); color: #fff; border-radius: 16px; padding: 14px 16px; margin: 0 0 12px; border-bottom: 3px solid #f2b705; }
+.ol-hero-t { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ol-hero-t > .ic { width: 42px; height: 42px; padding: 9px; border-radius: 12px; background: rgba(255,255,255,.14); color: #f2b705; flex: none; }
+.ol-hero-t h2 { margin: 0; font-size: 20px; color: #fff; line-height: 1.2; } .ol-hero-t h2 small { font-size: 12px; font-weight: 600; opacity: .8; }
+.ol-hero-t span { font-size: 13px; color: #dbe6ff; }
+.ol-chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.ol-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: #fff; }
+.ol-chip .ic { width: 14px; height: 14px; } .ol-chip.paid { background: rgba(46, 204, 113, .28); } .ol-chip.overdue { background: rgba(231, 76, 60, .4); } .ol-chip.unpaid { background: rgba(242, 183, 5, .3); }
+.ol-hero .ol-month { grid-column: 2; grid-row: 1; } .ol-hero .ol-month b { color: #fff; min-width: 120px; font-size: 14px; }
+.ol-hero .ol-month .btn { background: rgba(255,255,255,.16); color: #fff; border: 0; }
+.ol-kpis.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ol-kpi-sub { display: block; font-size: 11.5px; font-weight: 700; color: #1e8e3e; margin-top: 2px; } .ol-kpi-sub.neg { color: #c41e3a; }
+.ol-actions { margin: 0 0 12px; }
+.ol-cols { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.ol-col { display: grid; gap: 12px; min-width: 0; }
+.ol-sec { background: #fff; border: 1px solid #e3e8f1; border-radius: 14px; box-shadow: 0 2px 8px rgba(15, 58, 140, .05); overflow: hidden; }
+.ol-sec > header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #eef1f6; }
+.ol-sec > header .ic { width: 18px; height: 18px; color: #c9a227; }
+.ol-sec > header h3 { margin: 0; font-size: 14px; color: #12306b; flex: 1; }
+.ol-sec-r { font-weight: 700; color: #12306b; font-size: 13.5px; white-space: nowrap; }
+.ol-sec-b { padding: 8px 14px 12px; }
+.ol-li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f0f2f7; color: inherit; text-decoration: none; }
+.ol-li:last-of-type { border-bottom: 0; } .ol-li.link:hover { background: #f7f9fd; }
+.ol-li-m { flex: 1; min-width: 0; } .ol-li-m b { display: block; font-size: 13.5px; color: #12306b; } .ol-li-m small { display: block; font-size: 12px; color: #6b7487; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ol-amt { font-style: normal; font-weight: 800; font-size: 14px; white-space: nowrap; } .ol-amt.in { color: #1e8e3e; } .ol-amt.out { color: #12306b; }
+.ol-tools { display: inline-flex; gap: 4px; flex: none; } .ol-tools .btn { padding: 4px 8px; min-height: 30px; }
+.ol-empty { color: #8a93a6; font-size: 13px; padding: 10px 0; text-align: center; }
+.ol-acct { display: flex; align-items: center; gap: 10px; background: #f5f8fd; border-radius: 10px; padding: 8px 10px; color: inherit; text-decoration: none; margin-bottom: 4px; }
+.ol-acct > .ic { width: 20px; height: 20px; color: #1d4fb0; } .ol-acct b { display: block; color: #12306b; font-size: 13.5px; } .ol-acct small { color: #6b7487; font-size: 12px; }
+.ol-sec .ol-sub { margin: 10px 0 2px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #6b7487; }
+.ol-sec .ol-sub small { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.ol-sec .ol-break { margin: 2px 0 6px; }
+.ol-notes { margin: 0; font-size: 13px; color: #33415c; white-space: pre-wrap; }
+@media (max-width: 900px) {
+  .ol-cols { grid-template-columns: 1fr; }
+  .ol-kpis.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ol-hero { grid-template-columns: 1fr; } .ol-hero .ol-month { grid-column: 1; grid-row: auto; justify-content: space-between; }
+}
+.ol-li-m small { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35; } /* 3.99.130: never cut */

@@ -67,7 +67,7 @@
 
   // ---------- Outlets: the list of the shops ----------
   V.outlets = async () => {
-    E.shell("outlets", "Outlets", `<div id="olBody">${busy()}</div>`, "The shops: daily sales, expenses and the money left after them.");
+    E.shell("outlets", "Outlets", `<div id="olBody">${busy()}</div>`);
     const here = E.stillHere();
     const { data: outlets, error } = await sb.from("outlets").select("*").order("code");
     if (!here()) return;
@@ -131,7 +131,7 @@
 
   // ---------- a shop's profile ----------
   V.outlet = async (id, month) => {
-    E.shell("outlets", "Outlet", `<div id="olBody">${busy()}</div>`);
+    E.shell("outlets", "Outlets", `<div id="olBody">${busy()}</div>`);
     const here = E.stillHere();
     const m = /^\d{4}-\d{2}$/.test(month || "") ? month : monthNow();
     const { data: o, error } = await sb.from("outlets").select("*").eq("id", id).maybeSingle();
@@ -162,35 +162,42 @@
     const grid = (cols, rows, empty) => E.grid({ cols, rows, empty });
     const del = (tbl, rid) => (isAdmin() ? `<button type="button" class="btn small danger" data-del="${tbl}:${esc(rid)}" title="Remove">${ic("trash")}</button>` : "");
 
+    const sec = (icon, title, right, body, cls = "") => `<section class="ol-sec ${cls}"><header>${ic(icon)}<h3>${title}</h3>${right ? `<span class="ol-sec-r">${right}</span>` : ""}</header><div class="ol-sec-b">${body}</div></section>`;
+    const empty = (t) => `<div class="ol-empty">${t}</div>`;
+    const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" && edit ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
+    const saleRows = sales.map((r) => `<div class="ol-li"><div class="ol-li-m"><b>${esc(mdy(r.sale_date))}</b><small>${PAY.filter(([k]) => num(r[k])).map(([k, l]) => `${l} ₱ ${peso(r[k])}`).join(" · ") || "—"}</small></div><em class="ol-amt in">₱ ${peso(r.total)}</em>${tools("outlet_sales", r)}</div>`).join("");
+    const expRows = exps.map((r) => `<div class="ol-li"><div class="ol-li-m"><b>${esc(KIND[r.kind] || r.kind)}</b><small>${esc([mdy(r.exp_date), r.payee, r.note].filter(Boolean).join(" · "))}</small></div><em class="ol-amt out">₱ ${peso(r.amount)}</em>${tools("outlet_expenses", r)}</div>`).join("");
+    const invRows = invs.map((r) => `<a class="ol-li link" href="#invoice/${esc(r.id)}"><div class="ol-li-m"><b class="mono">${esc(r.invoice_no)}</b><small>${esc(mdy(r.invoice_date))} · due ${esc(mdy(r.due_date))}</small></div><em class="ol-amt out">₱ ${peso(r.balance)}</em></a>`).join("");
+    const payRows = pays.map((r) => `<a class="ol-li link" href="#payment/${esc(r.id)}"><div class="ol-li-m"><b class="mono">${esc(r.receipt_no)}</b><small>${esc(mdy(r.paid_date))}</small></div><em class="ol-amt out">₱ ${peso(r.amount)}</em></a>`).join("");
     $("#olBody").innerHTML = `
-      <div class="ol-head"><div>${ic("building")}<div><h2>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</h2><span>${esc(o.address || "")}</span></div></div>
-        <div class="ol-month"><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, -1)}">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, 1)}">${ic("next")}</a></div></div>
-      <div class="ol-kpis">${kpi("Net Sales", net)}${kpi("Expenses", out)}${kpi("Stock Payments", paid)}${kpi("Balance This Month", bal, "bal")}${kpi("Balance In All", allBal, "bal")}</div>
-      <div class="btnrow">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button><button type="button" class="btn" id="olExp">${ic("plus")} Expense / Bill</button>` : ""}
-        <button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
-      <div class="ol-grid2">
-        ${E.box("Outlet Details", `<div class="pgrid2">${E.cell("Outlet Code", o.code)}${E.cell("Status", o.status === "closed" ? "CLOSED" : "OPEN")}</div>
-          <div class="pgrid2">${E.cell("Opening Hours", o.opens || "—")}${E.cell("Closing Hours", o.closes || "—")}</div>
-          <div class="pgrid2">${E.cell("Monthly Rental (₱)", peso(o.monthly_rent))}${E.cell("Rental", rs.label)}</div>
-          ${o.notes ? `<div class="pcell"><div class="pl">Notes</div><div class="pv">${esc(o.notes)}</div></div>` : ""}`)}
-        ${E.box("Assigned Employees", `${st.length ? `<div class="ol-staff">${st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${isAdmin() ? `<button type="button" class="btn small" data-unassign="${esc(x.employee_id)}" title="Remove from this outlet">${ic("x")}</button>` : ""}</div>`).join("")}</div>` : `<div class="empty small">No employee assigned.</div>`}
-          ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small" id="olAssign">${ic("plus")} Assign Employee</button></div>` : ""}`)}
+      <div class="ol-hero">
+        <div class="ol-hero-t">${ic("building")}<div><h2>${esc(o.name)}${o.name !== o.code ? ` <small>${esc(o.code)}</small>` : ""}</h2><span>${esc(o.address || "No address")}</span></div></div>
+        <div class="ol-chips"><span class="ol-chip">${ic("clock")} ${esc(o.opens || "—")} – ${esc(o.closes || "—")}</span>
+          <span class="ol-chip ${rs.k}">${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)} · ${esc(rs.label)}</span>${o.status === "closed" ? `<span class="ol-chip overdue">CLOSED</span>` : ""}</div>
+        <div class="ol-month"><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </div>
-      ${E.box("Documents", `${docs.length ? E.filesHtml(docs) : `<div class="empty small">No document yet.${isAdmin() ? " Add the <b>Contract of Lease</b>: scan its pages or add their photos; they are saved as one document." : ""}</div>`}
-        ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn" for="olDocUp">${ic("upload")} Upload Document</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}`)}
-      ${E.box(`Daily Sales · ${E.monthText(m)}`, `${byPay.length ? `<div class="ol-break">${byPay.map(([l, v]) => `<span>${esc(l)} <b>₱ ${peso(v)}</b></span>`).join("")}<span class="tot">Total Net Sales <b>₱ ${peso(net)}</b></span></div>` : ""}
-        ${grid([{ label: "Date", get: (r) => mdy(r.sale_date) }, ...PAY.map(([k, l]) => ({ label: l, num: true, get: (r) => (num(r[k]) ? peso(r[k]) : "") })),
-          { label: "Net Sales (₱)", num: true, html: (r) => `<b>${peso(r.total)}</b>` }, { label: "Report", html: (r) => photoBtn(r.id) },
-          { label: "", html: (r) => `${edit ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : ""}${del("outlet_sales", r.id)}` }], sales, "No sales recorded this month.")}`)}
-      ${E.box(`Expenses & Bills · ${E.monthText(m)}`, grid([{ label: "Date", get: (r) => mdy(r.exp_date) }, { label: "Type", get: (r) => KIND[r.kind] || r.kind }, { label: "Paid To", get: (r) => r.payee || "" },
-          { label: "Note", get: (r) => r.note || "" }, { label: "Amount (₱)", num: true, html: (r) => `<b>${peso(r.amount)}</b>` }, { label: "Receipt", html: (r) => photoBtn(r.id) }, { label: "", html: (r) => del("outlet_expenses", r.id) }], exps, "No expense this month."))}
-      ${E.box("Stock Account (Orders · Invoices · Payments)", cust ? `<div class="pgrid2">${E.cell("Customer Account", `${E.fullName(cust)} · ${cust.account_no || ""}`)}${E.cell("Stock Still To Pay (₱)", peso(owed))}</div>
-          ${invs.length ? grid([{ label: "Invoice", html: (r) => `<a href="#invoice/${esc(r.id)}">${esc(r.invoice_no)}</a>` }, { label: "Date", get: (r) => mdy(r.invoice_date) }, { label: "Due", get: (r) => mdy(r.due_date) }, { label: "Balance (₱)", num: true, get: (r) => peso(r.balance) }], invs) : `<div class="empty small">No unpaid invoice.</div>`}
-          <div class="ol-sub">Payments ${esc(E.monthText(m))} <small>(taken off this outlet's balance)</small></div>
-          ${grid([{ label: "Receipt", html: (r) => `<a href="#payment/${esc(r.id)}">${esc(r.receipt_no)}</a>` }, { label: "Date", get: (r) => mdy(r.paid_date) }, { label: "Amount (₱)", num: true, get: (r) => peso(r.amount) }], pays, "No payment this month.")}
-          <div class="btnrow"><a class="btn" href="#customer/${esc(cust.id)}">${ic("user")} Open Account</a>${E.canWrite("payments") || E.canWrite("invoices") ? `<a class="btn primary" href="#newpayment/${esc(cust.id)}">${ic("wallet")} Record Payment</a>` : ""}</div>`
-        : `<div class="empty small">No customer account linked. ${edit ? "Press <b>Edit Outlet</b> and choose the account that receives this outlet's stock: its orders and invoices show here, and every payment is taken off the balance." : ""}</div>`)}`;
-
+      <div class="ol-kpis four">${kpi("Net Sales", net)}${kpi("Expenses", out)}${kpi("Stock Payments", paid)}
+        <div class="ol-kpi bal${bal < 0 ? " neg" : ""}"><small>Balance This Month</small><b>₱ ${peso(bal)}</b><span class="ol-kpi-sub${allBal < 0 ? " neg" : ""}">In all ₱ ${peso(allBal)}</span></div></div>
+      <div class="btnrow ol-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button><button type="button" class="btn" id="olExp">${ic("plus")} Expense / Bill</button>` : ""}
+        <button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
+      <div class="ol-cols">
+        <div class="ol-col">
+          ${sec("wallet", "Daily Sales", `₱ ${peso(net)}`, `${byPay.length ? `<div class="ol-break">${byPay.map(([l, v]) => `<span>${esc(l)} <b>₱ ${peso(v)}</b></span>`).join("")}</div>` : ""}${saleRows || empty("No sales recorded this month.")}`)}
+          ${sec("receipt", "Expenses & Bills", `₱ ${peso(out)}`, expRows || empty("No expense this month."))}
+          ${sec("box", "Stock Account", cust ? `To pay ₱ ${peso(owed)}` : "", cust ? `<a class="ol-acct" href="#customer/${esc(cust.id)}">${ic("user")}<div><b>${esc(E.fullName(cust))}</b><small>${esc(cust.account_no || "")}</small></div></a>
+              <div class="ol-sub">Unpaid Invoices</div>${invRows || empty("No unpaid invoice.")}
+              <div class="ol-sub">Payments ${esc(E.monthText(m))} <small>taken off the balance</small></div>${payRows || empty("No payment this month.")}
+              ${E.canWrite("payments") || E.canWrite("invoices") ? `<div class="btnrow"><a class="btn primary small" href="#newpayment/${esc(cust.id)}">${ic("wallet")} Record Payment</a></div>` : ""}`
+            : empty(`No customer account linked.${isAdmin() ? " Press <b>Edit Outlet</b> and choose the account that receives this outlet's stock." : ""}`))}
+        </div>
+        <div class="ol-col side">
+          ${sec("users", "Assigned Employees", st.length ? String(st.length) : "", `${st.length ? st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${isAdmin() ? `<button type="button" class="btn small" data-unassign="${esc(x.employee_id)}" title="Remove from this outlet">${ic("x")}</button>` : ""}</div>`).join("") : empty("No employee assigned.")}
+            ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small" id="olAssign">${ic("plus")} Assign Employee</button></div>` : ""}`)}
+          ${sec("folder", "Documents", docs.length ? String(docs.length) : "", `${docs.length ? E.filesHtml(docs) : empty(`No document yet.${isAdmin() ? " Add the <b>Contract of Lease</b>." : ""}`)}
+            ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn small" for="olDocUp">${ic("upload")} Upload</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}`)}
+          ${o.notes ? sec("doc", "Notes", "", `<p class="ol-notes">${esc(o.notes)}</p>`) : ""}
+        </div>
+      </div>`;
     if ($("#olEdit")) $("#olEdit").onclick = () => editOutlet(o);
     if ($("#olLeaseBtn")) $("#olLeaseBtn").onclick = () => leaseForm(o);
     if ($("#olDocUp")) $("#olDocUp").onchange = async (e) => {
