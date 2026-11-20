@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.130"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.131"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.130"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.131"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -157,7 +157,7 @@
   const pill = (s, label) => `<span class="pill ${esc(s)}">${esc(label || PILL_LABEL[s] || String(s || "").replace(/_/g, " ").toUpperCase())}</span>`;
   // The steps of an e-bill: 1 SHIP, 2 RELEASED, 3 SALES, 4 PAID (saved as shipped, released, sold, paid; an e-bill
   // marked "arrived" before Update 2.0 is still at SHIP).
-  const EBILL_STEP = { shipped: "SHIP", arrived: "SHIP", released: "RELEASED", sold: "SALES", paid: "PAID" };
+  const EBILL_STEP = { shipped: "SHIP", arrived: "SHIP", released: "RELEASED", sold: "SOLD", paid: "PAID" };
   const ebillStep = (s) => EBILL_STEP[s] || String(s || "").toUpperCase();
   const ebillPill = (s) => pill(s, ebillStep(s));
   // The top role is called Director in the portal (stored as "admin"); everyone else is shown with their job position.
