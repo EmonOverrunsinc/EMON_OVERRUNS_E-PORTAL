@@ -139,7 +139,7 @@
     if (error || !o) { $("#olBody").innerHTML = error && missing(error) ? needSql : `<div class="empty">This outlet was not found. <a href="#outlets">Back to Outlets</a></div>`; return; }
     const first = `${m}-01`, last = monthEnd(m), start = String(o.created_at).slice(0, 10);
     const [st, sales, exps, pays, invs, cust, allS, allX, allP] = await Promise.all([
-      sb.from("outlet_staff").select("employee_id, employees(id, first_name, middle_name, last_name, employee_no, position)").eq("outlet_id", id).then((r) => r.data || []),
+      sb.from("outlet_staff").select("employee_id, employees(id, first_name, last_name, employee_no, position)").eq("outlet_id", id).then((r) => r.data || []),
       sb.from("outlet_sales").select("*").eq("outlet_id", id).gte("sale_date", first).lte("sale_date", last).order("sale_date", { ascending: false }).then((r) => r.data || []),
       sb.from("outlet_expenses").select("*").eq("outlet_id", id).gte("exp_date", first).lte("exp_date", last).order("exp_date", { ascending: false }).then((r) => r.data || []),
       o.customer_id ? sb.from("payments_received").select("id, receipt_no, paid_date, amount, method").eq("customer_id", o.customer_id).gte("paid_date", first).lte("paid_date", last).order("paid_date", { ascending: false }).then((r) => r.data || []) : [],
@@ -343,7 +343,7 @@
 
   // ---------- assign an employee ----------
   async function assignForm(o, have) {
-    const { data, error } = await sb.from("employees").select("id, first_name, middle_name, last_name, employee_no, position, status").order("first_name");
+    const { data, error } = await sb.from("employees").select("id, first_name, last_name, employee_no, position, status").order("first_name");
     if (error) return fail(error, "Could not load the employees");
     const list = (data || []).filter((x) => !have.includes(x.id) && !["closed", "suspended", "rejected"].includes(x.status));
     if (!list.length) return toast("Every employee is assigned already (or there is none).");
