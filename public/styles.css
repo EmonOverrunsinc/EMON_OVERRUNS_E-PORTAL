@@ -4197,3 +4197,4 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .mv-odd-r .odd-price { width: 110px; }
 @media (max-width: 640px) { .mv-tiles { grid-template-columns: 1fr; } }
 .mv-t td.num, .mv-t th.num { white-space: nowrap; }
+.mv-t td small.mv-fix { color: #1d4ed8; font-weight: 600; }
