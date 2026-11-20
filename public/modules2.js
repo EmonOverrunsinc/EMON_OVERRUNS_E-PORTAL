@@ -1157,20 +1157,31 @@
       <div id="blRes">${busy()}</div>`,
       "Add a company and choose its currency: PHP, BDT, or both. <b>New Payment</b> records the amount in that currency (for both: PHP × rate = BDT) and creates a payment voucher. E-bills are paid with a memo in EMON HASAN Portal.");
     const here = E.stillHere();
-    const { data, error } = await sb.from("pay_company_totals").select("*").order("name");
+    // 3.99.127: the vouchers too: this month's (PAID / NOT PAID YET) and the last voucher of each company
+    const ym = E.isoToday().slice(0, 7);
+    const [{ data, error }, vq] = await Promise.all([sb.from("pay_company_totals").select("*").order("name"),
+      E.allRows(() => sb.from("pay_vouchers").select("company_id, voucher_no, pay_date, created_at").order("pay_date", { ascending: false }).order("created_at", { ascending: false }))]);
     if (!here()) return; // 3.35: another page was opened while the list loaded
+    const lastV = new Map(), monthN = new Map();
+    for (const v of vq.data || []) {
+      if (!lastV.has(v.company_id)) lastV.set(v.company_id, v);
+      if (String(v.pay_date || "").slice(0, 7) === ym) monthN.set(v.company_id, (monthN.get(v.company_id) || 0) + 1);
+    }
     if (error) return fail(error, "Could not load billing (run the 1.3 database update)");
     const rows = data || [];
     const sum = (k) => rows.reduce((s, r) => s + num(r[k]), 0);
     const tiles = [["", rows.length], ["", "₱ " + peso(sum("total_php"))], ["ok", bdt(sum("total_bdt"))], ["ok", bdt(sum("month_bdt"))]];
     $$("#blTiles .tile").forEach((t, i) => { t.className = "tile " + tiles[i][0]; $(".v", t).textContent = tiles[i][1]; });
     const php = (r, k) => (showPhp(curOf(r)) ? peso(r[k]) : "—"), tk = (r, k) => (showBdt(curOf(r)) ? `<b class="bdt">${peso(r[k])}</b>` : "—");
+    rows.forEach((r, i) => { r._no = i + 1; r._last = lastV.get(r.id); r._month = monthN.get(r.id) || 0; });
     $("#blRes").innerHTML = E.grid({ cols: [
+      { label: "No.", num: true, get: (r) => r._no },
       { label: "Company", get: (r) => r.name }, { label: "Contact Person", get: (r) => r.contact_person || "" }, { label: "Status", html: (r) => pill(r.status || "active") },
       { label: "Currency", get: (r) => CUR[curOf(r)] }, { label: "Accounts", num: true, get: (r) => r.accounts_count }, { label: "Vouchers", num: true, get: (r) => r.vouchers_count },
       { label: "Total (PHP)", key: "total_php", num: true, get: (r) => php(r, "total_php") }, { label: "Total (BDT)", key: "total_bdt", num: true, html: (r) => tk(r, "total_bdt") },
       { label: "This Month (PHP)", key: "month_php", num: true, get: (r) => php(r, "month_php") }, { label: "This Month (BDT)", key: "month_bdt", num: true, html: (r) => tk(r, "month_bdt") },
-      { label: "Last Paid", get: (r) => mdy(r.last_paid) }],
+      { label: "This Month", html: (r) => (r.status === "suspended" ? "—" : r._month ? pill("paid", `PAID · ${r._month} VOUCHER${r._month === 1 ? "" : "S"}`) : pill("unpaid", "NOT PAID YET")) },
+      { label: "Last Voucher", html: (r) => (r._last ? `<b class="mono nw">${esc(r._last.voucher_no || "")}</b><br><small>${esc(mdy(r._last.pay_date))}</small>` : "—") }],
       rows, onRow: true, foot: { total_php: peso(sum("total_php")), total_bdt: peso(sum("total_bdt")), month_php: peso(sum("month_php")), month_bdt: peso(sum("month_bdt")) }, empty: "No companies yet. Press Add Company." });
     E.bindGrid($("#blRes"), rows, (r) => (location.hash = "paycompany/" + r.id));
     E.setRecords(`Companies: ${rows.length}`);
