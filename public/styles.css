@@ -4151,3 +4151,5 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .page .sb-heads .sb-no small { display: block; font-size: 6.5pt; letter-spacing: .06em; color: #5b6577; text-transform: uppercase; }
 .page .sb-heads .sb-no:first-child b { font-size: 12pt; color: #12306b; }
 .page .ph2:has(.sb-heads) .ph-title { word-spacing: 100vw; text-align: center; line-height: 1.15; white-space: normal; } /* 3.99.137: E-BILL / LL-17 on 2 whole lines */
+.ol-left { display: flex; justify-content: space-between; align-items: center; background: #f1f5fc; border: 1px solid #dbe4f3; border-radius: 10px; padding: 8px 12px; font-weight: 700; color: #12306b; } .ol-left b { font-size: 17px; } /* 3.99.140 */
+.ol-kpi-sub.out { color: #b45309; }
