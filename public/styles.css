@@ -4081,3 +4081,7 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .eos .eos-ref .eos-line.main { font-size: 7pt; font-weight: 800; color: #12306b; letter-spacing: .06em; }
 .idc-miniseal .eos .eos-mid { gap: .8mm; }
 .idc-miniseal .eos .eos-mid { gap: .5mm; padding-top: 1.4mm; padding-bottom: 1.6mm; } .idc-miniseal .eos .eos-ref .eos-line { font-size: 4.6pt; line-height: 1.2; } .idc-miniseal .eos .eos-ref .eos-line.main { font-size: 6.6pt; } .idc-miniseal .eos .eos-ref small { font-size: 3.8pt; }
+/* 3.99.129: no "Record 1 of N" and no "Swipe sideways" line under a list (the count "N record(s)" stays) */
+.grid-foot > span:first-child { display: none; }
+.grid-wrap.wide .grid-group::after, .grid-wrap.wide:not(:has(.grid-group)) .grid-foot > span:first-child::after { content: none; }
+.grid-foot { justify-content: flex-end; }
