@@ -12,7 +12,7 @@
   const { sb, S, esc, $, $$, isAdmin, toast, fail, ic, busy, peso, num, mdy } = E;
 
   const PAY = [["cash", "Cash"], ["gcash", "GCash"]]; // 3.99.117: only Cash and GCash (the server keeps the other columns at 0)
-  const KIND = { rent: "Monthly Rental", supplier: "Supplier Payment", bills: "Bills / Utilities", salary: "Salary", other: "Other Expense" };
+  const KIND = { daily: "Daily Expense", rent: "Monthly Rental", supplier: "Supplier Payment", bills: "Bills / Utilities", salary: "Salary", other: "Other Expense", cashout: "Cash Out" };
   const missing = (e) => /outlet|does not exist|schema cache|PGRST20[25]|42P01/.test(`${e?.message || ""} ${e?.code || ""}`);
   const needSql = `<div class="empty">The Outlets need the database update <b>109</b>. Run it on the updates page, then open this page again.</div>`;
   const today = () => E.isoToday();
@@ -153,7 +153,8 @@
     const docs = await E.attachmentsOf("outlet", id).catch(() => []); // 3.99.119: the shop's documents
     const files = ids.length ? ((await sb.from("attachments").select("*").in("owner_type", ["outlet_sales", "outlet_expense"]).in("owner_id", ids).order("created_at", { ascending: false })).data || []) : [];
     if (!here()) return;
-    const net = sum(sales, "total"), out = sum(exps, "amount"), paid = sum(pays, "amount"), bal = net - out - paid;
+    const cash = sum(exps.filter((x) => x.kind === "cashout"), "amount"); // 3.99.140: the cash taken out of the shop
+    const net = sum(sales, "total"), out = sum(exps, "amount") - cash, paid = sum(pays, "amount"), bal = net - out - cash - paid;
     const allBal = sum(allS, "total") - sum(allX, "amount") - sum(allP, "amount");
     const owed = sum(invs, "balance"), rs = rentState(o, exps, m), edit = canEdit();
     const byPay = PAY.map(([k, l]) => [l, sum(sales, k)]).filter(([, v]) => v > 0);
@@ -176,14 +177,14 @@
           <span class="ol-chip ${rs.k}">${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)} · ${esc(rs.label)}</span>${o.status === "closed" ? `<span class="ol-chip overdue">CLOSED</span>` : ""}</div>
         <div class="ol-month"><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a class="btn small" href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </div>
-      <div class="ol-kpis four">${kpi("Net Sales", net)}${kpi("Expenses", out)}${kpi("Stock Payments", paid)}
+      <div class="ol-kpis four">${kpi("Net Sales", net)}<div class="ol-kpi"><small>Expenses</small><b>₱ ${peso(out)}</b>${cash ? `<span class="ol-kpi-sub out">Cash out ₱ ${peso(cash)}</span>` : ""}</div>${kpi("Stock Payments", paid)}
         <div class="ol-kpi bal${bal < 0 ? " neg" : ""}"><small>Balance This Month</small><b>₱ ${peso(bal)}</b><span class="ol-kpi-sub${allBal < 0 ? " neg" : ""}">In all ₱ ${peso(allBal)}</span></div></div>
       <div class="btnrow ol-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button><button type="button" class="btn" id="olExp">${ic("plus")} Expense / Bill</button>` : ""}
         <button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
       <div class="ol-cols">
         <div class="ol-col">
           ${sec("wallet", "Daily Sales", `₱ ${peso(net)}`, `${byPay.length ? `<div class="ol-break">${byPay.map(([l, v]) => `<span>${esc(l)} <b>₱ ${peso(v)}</b></span>`).join("")}</div>` : ""}${saleRows || empty("No sales recorded this month.")}`)}
-          ${sec("receipt", "Expenses & Bills", `₱ ${peso(out)}`, expRows || empty("No expense this month."))}
+          ${sec("receipt", "Expenses & Cash Out", `₱ ${peso(out + cash)}`, expRows || empty("No expense or cash out this month."))}
           ${sec("box", "Stock Account", cust ? `To pay ₱ ${peso(owed)}` : "", cust ? `<a class="ol-acct" href="#customer/${esc(cust.id)}">${ic("user")}<div><b>${esc(E.fullName(cust))}</b><small>${esc(cust.account_no || "")}</small></div></a>
               <div class="ol-sub">Unpaid Invoices</div>${invRows || empty("No unpaid invoice.")}
               <div class="ol-sub">Payments ${esc(E.monthText(m))} <small>taken off the balance</small></div>${payRows || empty("No payment this month.")}
@@ -235,11 +236,17 @@
         <div><label for="osDate">Date *</label><input id="osDate" type="date" value="${esc(row?.sale_date || today())}" ${row ? "disabled" : ""}></div><div></div>
         ${PAY.map(([k, l]) => `<div><label for="os_${k}">${esc(l)} (₱)</label><input id="os_${k}" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row[k]) ? esc(row[k]) : ""}" placeholder="0.00"></div>`).join("")}
         <div class="span2 ol-total">Total Net Sales <b id="osTot">₱ 0.00</b></div>
+        ${row ? "" : `<div><label for="osExp">Daily Expenses (₱)</label><input id="osExp" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        <div><label for="osExpN">Expenses For</label><input id="osExpN" maxlength="300" placeholder="e.g. Snacks, transport, plastic bags"></div>
+        <div><label for="osOut">Cash Out (₱)</label><input id="osOut" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        <div><label for="osOutN">Cash Out To</label><input id="osOutN" maxlength="120" placeholder="e.g. EMON HASAN / bank deposit"></div>
+        <div class="span2 ol-left">Cash Left in the Shop <b id="osLeft">₱ 0.00</b></div>`}
         <div class="span2"><label for="osNote">Note</label><input id="osNote" maxlength="500" value="${esc(row?.note || "")}"></div>
         <div class="span2"><label for="osPic">Sales Report Photo</label><input id="osPic" type="file" accept="image/*,application/pdf" multiple></div>
       </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="osSave">${ic("check")} Save</button>`, { wide: true });
     const total = () => PAY.reduce((s, [k]) => s + num($(`#os_${k}`, m.el).value), 0);
-    const show = () => ($("#osTot", m.el).textContent = `₱ ${peso(total())}`);
+    const val = (id) => num($("#" + id, m.el)?.value);
+    const show = () => { $("#osTot", m.el).textContent = `₱ ${peso(total())}`; if ($("#osLeft", m.el)) $("#osLeft", m.el).textContent = `₱ ${peso(total() - val("osExp") - val("osOut"))}`; };
     $$(".os-amt", m.el).forEach((i) => (i.oninput = show)); show();
     $("[data-x]", m.el).onclick = () => m.close();
     $("#osSave", m.el).onclick = async (e) => {
@@ -252,9 +259,18 @@
       e.target.disabled = true;
       const r = row ? await sb.from("outlet_sales").update(data).eq("id", row.id).select().single() : await sb.from("outlet_sales").insert(data).select().single();
       if (r.error) { e.target.disabled = false; return fail(r.error, /duplicate|unique/i.test(r.error.message) ? `${mdy(date)} has its sales already.` : "Could not save the sales"); }
+      // 3.99.140: the day's expenses and the cash taken out, saved with the sales
+      const outs = row ? [] : [["daily", val("osExp"), null, $("#osExpN", m.el).value.trim() || null], ["cashout", val("osOut"), $("#osOutN", m.el).value.trim().toUpperCase() || null, null]].filter((x) => x[1] > 0);
+      let bad = 0;
+      for (const [kind, amount, payee, note] of outs) {
+        const x = await sb.from("outlet_expenses").insert({ outlet_id: o.id, exp_date: date, kind, amount, payee, note, created_by_name: me() });
+        if (x.error) { bad++; console.warn(x.error.message); }
+      }
       const pics = Array.from($("#osPic", m.el).files || []);
       const failed = pics.length ? await E.uploadRecords("outlet_sales", r.data.id, "sales_report", pics) : 0;
-      m.close(); toast(failed ? `Sales saved; ${failed} photo(s) could not be uploaded.` : `Sales saved: ₱ ${peso(r.data.total)}.`, !!failed); E.route();
+      m.close();
+      toast(bad ? `Sales saved, but the expenses / cash out could not be saved (run the database update 113).` : failed ? `Sales saved; ${failed} photo(s) could not be uploaded.` : `Sales saved: ₱ ${peso(r.data.total)}${outs.length ? ` · out ₱ ${peso(outs.reduce((t, x) => t + x[1], 0))}` : ""}.`, !!(bad || failed));
+      E.route();
     };
   }
 
