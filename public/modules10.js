@@ -490,6 +490,16 @@
     <div class="plate-row"><label class="plate-in"><small>CAR PLATE NO</small><input type="text" id="${p}Plate" maxlength="30" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="e.g. NBC 1234" value="${esc(plate || "")}"></label>
       <label class="plate-in"><small>TYPE OF CAR</small><input type="text" id="${p}Type" maxlength="40" autocapitalize="characters" autocomplete="off" list="carTypes" placeholder="e.g. VAN, TRUCK" value="${esc(type || "")}"></label>${CAR_LIST}
       <button type="button" class="btn primary" id="${p}PlateSave">${ic("check")} ${plate || type ? "Change" : "Save"}</button>${plate || type ? `<span class="plate-ok">${ic("check")} SAVED</span>` : ""}</div>`;
+  // 3.99.148: Complete Delivery saves the car typed (no need to press Save first). false: it could not be saved.
+  async function carFirst(p, plate0, type0, save, saveOld) {
+    if (!$(`#${p}Plate`)) return true;
+    const plate = $(`#${p}Plate`).value.trim(), type = $(`#${p}Type`).value.trim();
+    if ((!plate && !type) || (plate.toUpperCase() === String(plate0 || "").toUpperCase() && type.toUpperCase() === String(type0 || "").toUpperCase())) return true;
+    let { error } = await save(plate, type);
+    if (error && noPlate(error) && plate) ({ error } = await saveOld(plate));
+    if (error) { fail(error, "Could not save the car plate no / type of car"); return false; }
+    return true;
+  }
   async function savePlate(e, p, save, saveOld, reload) {
     const plate = $(`#${p}Plate`).value.trim(), type = $(`#${p}Type`).value.trim(), btn = e.currentTarget;
     if (!plate && !type) return toast("Write the car plate no or the type of car.", true);
@@ -1028,6 +1038,7 @@
         + (short ? `<br><br><b>Note:</b> ${nBoxes(boxes)} box(es) were scanned, the order has ${qtyText(o.total_boxes)}.` : "") + "<br><br>This cannot be undone.";
       if (!(await E.confirmBox(msg, { title: "Complete Delivery", ok: "Complete Delivery" }))) return;
       e.target.disabled = true;
+      if (!(await carFirst("dv", o.plate_no, o.vehicle_type, (plate, type) => sb.rpc("set_order_car", { p_id: o.id, p_plate: plate, p_type: type }), (plate) => sb.rpc("set_order_plate", { p_id: o.id, p_plate: plate })))) { e.target.disabled = false; return; }
       const { error } = await sb.rpc("complete_customer_order", { p_id: o.id });
       if (error) { e.target.disabled = false; return fail(error, "Could not complete the order"); }
       toast(`Order ${o.order_no} completed. The invoice was made and billed to ${custName(o)}.`); reload();
@@ -1309,6 +1320,7 @@
       const title = submitOnly ? "Submit Delivery" : "Complete Delivery";
       if (!(await E.confirmBox(msg, { title, ok: title }))) return;
       e.target.disabled = true;
+      if (!(await carFirst("pd", d.plate_no, d.vehicle_type, (plate, type) => rpc("delivery_car", { p_plate: plate, p_type: type }), (plate) => rpc("delivery_plate", { p_plate: plate })))) { e.target.disabled = false; return; }
       const { data: res, error } = await rpc("delivery_complete");
       if (error) { e.target.disabled = false; return fail(error, "Could not complete the delivery"); }
       if (res === "submitted") { toast(`Order ${d.order_no}: delivery SUBMITTED. EMON HASAN approves it. Thank you!`); reload(); return; }
