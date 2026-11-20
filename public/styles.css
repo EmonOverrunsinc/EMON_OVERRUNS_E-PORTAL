@@ -4153,3 +4153,15 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .page .ph2:has(.sb-heads) .ph-title { word-spacing: 100vw; text-align: center; line-height: 1.15; white-space: normal; } /* 3.99.137: E-BILL / LL-17 on 2 whole lines */
 .ol-left { display: flex; justify-content: space-between; align-items: center; background: #f1f5fc; border: 1px solid #dbe4f3; border-radius: 10px; padding: 8px 12px; font-weight: 700; color: #12306b; } .ol-left b { font-size: 17px; } /* 3.99.140 */
 .ol-kpi-sub.out { color: #b45309; }
+/* 3.99.142: the invoice: the seal on the left (no customer signature), Prepared by on the right */
+.inv-sealsig { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; align-items: end; margin: 8mm 0 2mm; break-inside: avoid; font-size: 10px; text-align: center; }
+.inv-sealsig .eos { justify-self: center; width: 74mm; height: 30mm; }
+.inv-sealsig .eos .eos-no { font-size: 10pt; }
+.inv-sealsig .line { border-top: 1px solid #000; margin-bottom: 3px; }
+.page .inv-sealsig { color: var(--nv); font-size: 9.5px; letter-spacing: .02em; } .page .inv-sealsig .line { border-top-color: #10203f; }
+.inv-sealsig > div:last-child { padding-bottom: 6mm; }
+/* 3.99.142: assigned employees: Transfer + Remove; the company's Employees tab */
+.ol-emp-btns { display: flex; gap: 6px; flex: none; }
+.pc-staff { background: #fff; border: 1px solid var(--line, #e3e7ef); border-radius: 14px; padding: 10px 14px; max-width: 720px; }
+.ol-from { margin-bottom: 8px; color: var(--ink-soft); }
+.pc-staff { display: grid; gap: 8px; }

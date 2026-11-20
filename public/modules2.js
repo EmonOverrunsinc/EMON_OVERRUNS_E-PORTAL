@@ -1231,18 +1231,20 @@
   V.paycompany = async (id) => {
     E.shell("paycompany", "Billing — Company", busy());
     const here = E.stillHere();
-    const [co, accs, vs, ebs] = await Promise.all([
+    const [co, accs, vs, ebs, stf] = await Promise.all([
       sb.from("pay_company_totals").select("*").eq("id", id).maybeSingle(),
       sb.from("pay_accounts").select("*").eq("company_id", id).order("account_name"),
       sb.from("pay_vouchers").select("*, pay_accounts(account_name,account_number,bank_name,branch_name)").eq("company_id", id).order("pay_date", { ascending: false }).order("voucher_no", { ascending: false }),
       // 3.99.131: the company's e-bills: bill amount, shipping bill, total, net sales, profit
-      E.canOpen("inventory") || E.canOpen("ebill") ? sb.from("stock_bill_totals").select("id, bill_no, batch_no, total_boxes, total_cost, release_bdt, shipping_cost, bill_total, net_sales, total_expenses, profit, status, shipment_date").eq("company_id", id).order("created_at", { ascending: false }).then((r) => r, () => ({ data: [] })) : { data: [] }
+      E.canOpen("inventory") || E.canOpen("ebill") ? sb.from("stock_bill_totals").select("id, bill_no, batch_no, total_boxes, total_cost, release_bdt, shipping_cost, bill_total, net_sales, total_expenses, profit, status, shipment_date").eq("company_id", id).order("created_at", { ascending: false }).then((r) => r, () => ({ data: [] })) : { data: [] },
+      // 3.99.142: the employees assigned to this company (114)
+      sb.from("pay_company_staff").select(E.STAFF_SEL || "employee_id").eq("company_id", id).then((r) => r, () => ({ error: true }))
     ]);
     const c = co.data;
     const photo = c?.photo_path ? await E.signedUrl(c.photo_path) : "";
     if (!here()) return; // another page was opened while this one loaded
     if (!c) { $("#main").innerHTML = `<div class="empty">Company not found. <a href="#billing">Back</a></div>`; return; }
-    const ebills = ebs?.data || [];
+    const ebills = ebs?.data || [], staffOn = !stf?.error && !!E.staffHtml, staff = stf?.data || [];
     const accounts = accs.data || [], vouchers = vs.data || [];
     const w = E.canWrite("billing");
     const suspended = c.status === "suspended";
@@ -1266,7 +1268,7 @@
       <div class="tiles">${tiles.map(([k, l, v]) => `<div class="tile ${k}"><div class="k">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
       <div class="actionbar">${w && !suspended ? `<a class="btn primary" href="#newvoucher/${c.id}">${ic("plus")} New Payment</a>` : ""}<button type="button" class="btn" id="pcRecord">${ic("download")} Download Payment Record</button>
         <span class="grow"></span>${tools("pay_companies", c, c.name, { reload: () => V.paycompany(id), afterDelete: () => (location.hash = "billing") })}</div>
-      <div class="tabs" id="pcTabs"><button type="button" class="on" data-t="0">Payment Vouchers (${vouchers.length})</button><button type="button" data-t="1">Monthly Records (${months.length})</button><button type="button" data-t="2">Accounts (${accounts.length})</button>${ebills.length ? `<button type="button" data-t="3">E-Bills (${ebills.length})</button>` : ""}</div>
+      <div class="tabs" id="pcTabs"><button type="button" class="on" data-t="0">Payment Vouchers (${vouchers.length})</button><button type="button" data-t="1">Monthly Records (${months.length})</button><button type="button" data-t="2">Accounts (${accounts.length})</button>${ebills.length ? `<button type="button" data-t="3">E-Bills (${ebills.length})</button>` : ""}${staffOn ? `<button type="button" data-t="4">Employees (${staff.length})</button>` : ""}</div>
       <div class="tabpanes" id="pcPanes">
         <div data-p="0"><div id="pcVouchers">${E.grid({ cols: voucherCols(cur), rows: vouchers, onRow: true, foot: { amount_php: peso(c.total_php), amount_bdt: `<b class="bdt">${peso(c.total_bdt)}</b>` }, empty: "No payments yet." })}</div></div>
         <div data-p="1" hidden><div id="pcMonths">${E.grid({ cols: [{ label: "Month", get: (r) => monthText(r.month) }, { label: "Vouchers", num: true, get: (r) => r.count },
@@ -1288,7 +1290,9 @@
           { label: "Profit / Loss", num: true, html: (r) => (r.status === "paid" && r.profit != null ? `<b class="${num(r.profit) < 0 ? "loss" : "gain"}">${num(r.profit) < 0 ? "−" : ""}${peso(Math.abs(num(r.profit)))}</b>` : `<small class="muted">After PAID</small>`) },
           { label: "Status", html: (r) => E.ebillPill(r.status) }], rows: ebills, onRow: true,
           foot: { a: peso(ebills.reduce((t, r) => t + num(r.total_cost), 0)), s: peso(ebills.reduce((t, r) => t + num(r.release_bdt) + num(r.shipping_cost), 0)), t: `<b class="bdt">${peso(ebills.reduce((t, r) => t + num(r.bill_total), 0))}</b>`, n: peso(ebills.reduce((t, r) => t + num(r.net_sales), 0)) } })}</div></div>` : ""}
+        ${staffOn ? `<div data-p="4" hidden><div class="pc-staff" id="pcStaff">${E.staffHtml(staff)}</div></div>` : ""}
       </div>`;
+    if ($("#pcStaff")) E.bindStaff($("#pcStaff"), "company", { id: c.id, label: c.name }, staff);
     if ($("#pcEbills")) E.bindGrid($("#pcEbills"), ebills, (r) => (location.hash = "stockbill/" + r.id));
     $$("#pcTabs button").forEach((t) => (t.onclick = () => { $$("#pcTabs button").forEach((x) => x.classList.toggle("on", x === t)); $$("#pcPanes > div").forEach((p) => (p.hidden = p.dataset.p !== t.dataset.t)); }));
     E.keepTab("#pcTabs", "paycompany:" + id);
