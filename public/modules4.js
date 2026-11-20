@@ -317,7 +317,7 @@
       <div class="actionbar">${acts.join("")}<span class="grow"></span>${tools("stock_bills", b, `E-Bill ${b.bill_no}`, { reload, afterDelete: () => (location.hash = "inventory") })}</div>
       <div class="docgrid">${E.docCard({ key: "sb", title: `E-Bill ${b.batch_no || b.bill_no}`, ownerType: "stock_bill", ownerId: b.id, att: [], print: () => printEbill(b.id), canUpload: false,
         sub: `${b.bill_no} · every record, like a statement of account · total cost ${bdt(totalCost(b))} · ${balText}${st === "paid" ? " · with the profit or loss and the secret code" : ""}` })}</div>
-      <div class="tabs" id="sbTabs">${[`Bill`, `Sales Report (${entries.length})`, `Released Notice (${orders.length})`, `Payments (${payRows.length})`, `Files (${files.length})`, `History (${events.length})`, ...(sb2.serial_from ? [`Boxes (${boxRows.length})`] : [])]
+      <div class="tabs" id="sbTabs">${[`Bill`, `Sales Report (${entries.length})`, `Released Notice (${orders.length})`, `Payments (${payRows.length})`, `Files (${files.length})`, ...(sb2.serial_from ? [`Boxes (${boxRows.length})`] : []), `History (${events.length})`]
         .map((l, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}">${l}</button>`).join("")}</div>
       <div class="tabpanes" id="sbPanes">
         <div data-p="0">${(b.items || []).length === 1 && /^TOTAL BILL AMOUNT$/.test(String((b.items[0] || [])[0])) ? `<div class="sb-sum"><div class="ok"><small>Total Bill Amount (BDT)</small><b>${peso(b.total_cost)}</b></div><div><small>Total Boxes</small><b>${esc(b.total_boxes ?? 0)}</b></div><div><small>Serials</small><b class="mono">${esc(sb2.serial_from || "—")}${sb2.serial_to ? ` – ${esc(sb2.serial_to)}` : ""}</b></div></div>` : itemsGrid(b)}${b.notes ? `<p class="muted"><b>Notes:</b> ${esc(b.notes)}</p>` : ""}</div>
@@ -332,8 +332,8 @@
         <div data-p="4" hidden>${E.filesHtml(files, "No files uploaded.")}
           ${w ? `<div class="sb-up"><label for="sbUpKind">Add File</label><select id="sbUpKind">${[["bill", "E-Bill Copy"], ["shipping_bill", "Shipping Fee Receipt"], ["sales_report", "Sales Report"], ["receipt", "Receipt"], ["other", "Other"]].map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select>
             <label class="btn" for="sbUpFile">${ic("upload")} Choose File</label><input type="file" id="sbUpFile" hidden multiple accept="image/*,application/pdf" data-save-now></div>` : ""}</div>
-        <div data-p="5" hidden>${E.grid({ cols: evCols, rows: events, empty: "No history yet." })}</div>
-        ${sb2.serial_from ? `<div data-p="6" hidden>
+        <div data-p="${sb2.serial_from ? 6 : 5}" hidden>${E.grid({ cols: evCols, rows: events, empty: "No history yet." })}</div>
+        ${sb2.serial_from ? `<div data-p="5" hidden>
           <div class="sb-sum"><div><small>Boxes</small><b>${boxRows.length} of ${esc(b.total_boxes ?? 0)}</b></div><div><small>In Stock</small><b>${boxRows.filter((x) => !x._sold).length}</b></div><div class="ok"><small>Sold</small><b>${autoBoxes}</b></div><div class="ok"><small>Net Sales</small><b>${peso(autoSales)}</b></div></div>
           ${w && autoGap > 0.004 && !isOpen(st) ? `<div class="btnrow"><button type="button" class="btn primary" id="sbAutoAdd">${ic("plus")} Add Net Sales ${esc(bdt(autoGap))}</button></div>` : ""}
           <div id="sbBoxes">${E.grid({ cols: [{ label: "Serial", html: (x) => `<b class="mono nw">${esc(x.serial_no)}</b>` }, { label: "Product", get: (x) => x.product || "" }, { label: "Brand", get: (x) => x.brand || "" },
@@ -403,7 +403,7 @@
         <span>Total Boxes</span><b>${boxes}</b><span>Bill Cost (BDT)</span><b>${peso(b.total_cost)}</b></div></div>
       <div class="fields wide" style="margin-top:10px">
         <label for="rnDate">Released Date *</label><input type="date" id="rnDate" value="${isoToday()}">
-        <label for="rnPrice">Shipping Bill per Box (PHP) *</label><input type="number" id="rnPrice" min="0" step="0.01" inputmode="decimal" value="${esc(b._boxCost || 3200)}">
+        <label for="rnPrice">Price per Box (PHP) *</label><input type="number" id="rnPrice" min="0" step="0.01" inputmode="decimal">
         <label for="rnRate">Exchange Rate (BDT for 1 PHP) *</label><input type="number" id="rnRate" min="0" step="0.0001" inputmode="decimal">
         <label for="rnShip">Shipping Fee (BDT) *</label><input type="number" id="rnShip" min="0" step="0.01" inputmode="decimal" placeholder="0 if none">
         <label for="rnBill">Shipping Bill No</label><input type="text" id="rnBill" maxlength="60" placeholder="Optional"></div>
