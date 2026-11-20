@@ -666,7 +666,6 @@
         ${b.release_bdt != null ? `<tr><td>Released Charge (${esc(chargeText(b))})</td><td class="num">BDT ${peso(b.release_bdt)}</td></tr>` : ""}
         ${b.shipping_cost != null ? `<tr><td>Shipping Fee${b.shipping_bill_no ? ` (Shipping Bill ${esc(b.shipping_bill_no)})` : ""}</td><td class="num">BDT ${peso(b.shipping_cost)}</td></tr>` : ""}
         <tr class="v-bdt"><td>Total Cost</td><td class="num">BDT ${peso(total)}</td></tr>
-        <tr><td>Paid (${payRows.length} payment(s))</td><td class="num">BDT ${peso(paid)}</td></tr>
         <tr class="v-bdt"><td>Balance</td><td class="num">BDT ${peso(bal)}</td></tr></tbody></table>
         <div class="pcell"><div class="pl">Balance in Words</div><div class="pv words">${esc(words2(bal))}</div></div>`)}
       ${isPaid ? `${E.box("Profit and Loss (BDT)", `<table class="rp sb-pl"><tbody>
@@ -681,7 +680,7 @@
     const later = [];
     if (b.release_bdt != null) later.push({ date: b.release_date, what: `Released charge (${chargeText(b)})`, ref: b.release_order_no || "", chg: num(b.release_bdt), pay: 0 });
     if (b.shipping_cost != null) later.push({ date: b.release_date, what: "Shipping fee", ref: b.shipping_bill_no || b.release_order_no || "", chg: num(b.shipping_cost), pay: 0 });
-    payRows.forEach((r) => later.push({ date: r.date, what: r.php != null ? `Payment by memo — PHP ${peso(r.php)} × ${rate(r.rate)}` : r.what, ref: r.no, chg: 0, pay: r.bdt }));
+    // 3.99.135: the statement lists the charges only (no payments column)
     later.sort((x, y) => String(x.date || "").localeCompare(String(y.date || "")) || y.chg - x.chg);
     const lines = [{ date: b.bill_date, what: "Bill cost (items)", ref: b.supplier_bill_no ? `Bill No ${b.supplier_bill_no}` : b.bill_no, chg: num(b.total_cost), pay: 0 }, ...later];
     let run = 0;
@@ -691,19 +690,14 @@
       { title: "ITEMS", cols: itemCols, rows: (b.items || []).map((r, i) => [i + 1, ...r]), tight: cols.length > 7, widths: itemWidths(cols),
         foot: itemCols.map((c, i) => (cols[i - 1]?.type === "qty" ? qtyText(b.total_qty) : cols[i - 1]?.type === "total" ? peso(b.total_cost)
           : i === cols.findIndex((x) => !isNum(x)) + 1 ? "TOTAL" : "")) },
-      { title: "STATEMENT (BDT)", rows: lines, widths: [11, 37, 16, 12, 12, 12],
+      { title: "STATEMENT (BDT)", rows: lines, widths: [12, 42, 16, 15, 15],
         cols: [{ label: "Date", get: (r) => mdy(r.date) }, { label: "Particulars", get: (r) => r.what }, { label: "Reference", get: (r) => r.ref || "" },
-          { label: "Charges", num: true, get: (r) => (r.chg ? peso(r.chg) : "") }, { label: "Payments", num: true, get: (r) => (r.pay ? peso(r.pay) : "") }, { label: "Balance", num: true, get: (r) => peso(r.bal) }],
-        foot: ["", "TOTAL", "", peso(total), peso(paid), peso(bal)] },
+          { label: "Charges", num: true, get: (r) => (r.chg ? peso(r.chg) : "") }, { label: "Balance", num: true, get: (r) => peso(r.bal) }],
+        foot: ["", "TOTAL", "", peso(total), peso(total)] },
       { title: "SALES REPORT (BDT)", rows: d.entries, empty: "No sales report yet.", widths: [12, 11, 12, 34, 16, 15],
         cols: [{ label: "Date", get: (r) => mdy(r.entry_date) }, { label: "Type", get: (r) => ENTRY[r.entry_type] || r.entry_type }, { label: "Receipt No", get: (r) => r.receipt_no || "" },
           { label: "Description", get: (r) => r.description || "" }, { label: "Added By", get: (r) => r.created_by_name || "" }, { label: "Amount", num: true, get: (r) => peso(r.amount) }],
         foot: ["", "", "", `Net Sales ${peso(sumType("sales"))} · Fees and Penalties ${peso(sumType("eoo_fee") + sumType("fee") + sumType("penalty"))}`, "", ""] },
-      { title: "RELEASED NOTICE", rows: d.orders, empty: "Not released yet.", widths: [17, 11, 11, 11, 16, 17, 17],
-        cols: [{ label: "Order No", get: (r) => r.order_no }, { label: "Order Date", get: (r) => mdy(r.order_date) }, { label: "Released Date", get: (r) => mdy(r.release_date) },
-          { label: "Status", get: (r) => String(r.status).toUpperCase() }, { label: "Approved By", get: (r) => r.approved_by_name || "" },
-          { label: "Released Charge (BDT)", num: true, get: (r) => (r.release_bdt == null ? "" : peso(r.release_bdt)) },
-          { label: "Shipping Fee (BDT)", num: true, get: (r) => (r.shipping_cost == null ? "" : peso(r.shipping_cost)) }] },
       { title: "PAYMENTS (MEMOS IN THE DIRECTOR PORTAL)", rows: payRows, empty: "No payments yet.", widths: [11, 17, 25, 13, 8, 13, 13],
         cols: [{ label: "Date", get: (r) => mdy(r.date) }, { label: "Memo No", get: (r) => r.no }, { label: "Subject", get: (r) => r.what },
           { label: "Amount (PHP)", num: true, get: (r) => (r.php == null ? "" : peso(r.php)) }, { label: "Rate", num: true, get: (r) => (r.rate == null ? "" : rate(r.rate)) },
