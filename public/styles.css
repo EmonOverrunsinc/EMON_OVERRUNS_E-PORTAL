@@ -4172,3 +4172,28 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .page .inv-sealsig .inv-dir .line { border-top: 1px solid #000; margin: 0 6mm 1.2mm; }
 .inv-dir b { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; color: #000; }
 .inv-dir small { display: block; font-size: 8.5px; font-weight: 700; letter-spacing: .08em; color: #000; margin-top: .4mm; }
+/* 3.99.145: the ORDER CHECK card */
+.mv { background: #fff; border: 1px solid #e3e8f1; border-radius: 16px; padding: 14px; margin: 0 0 12px; box-shadow: var(--shadow-1); }
+.mv-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.mv-head b { color: #12306b; font-size: 15px; letter-spacing: .06em; } .mv-head small { color: #6b7487; }
+.mv-st { margin-left: auto; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: .05em; }
+.mv-st.ok { background: #e7f6ec; color: #1b7a3d; } .mv-st.warn { background: #fff3dc; color: #a15c00; } .mv-st.bad { background: #fde8e8; color: #b42318; }
+.mv-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.mv-tile { background: #f6f8fc; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.mv-tile small { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #6b7487; }
+.mv-ab { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.mv-ab span { color: #6b7487; font-size: 14px; } .mv-ab i { color: #a0a8b8; font-style: normal; } .mv-ab b { color: #12306b; font-size: 17px; }
+.mv-chip { display: inline-block; align-self: flex-start; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 800; white-space: nowrap; }
+.mv-chip.ok { background: #e7f6ec; color: #1b7a3d; } .mv-chip.bad { background: #fde8e8; color: #b42318; } .mv-chip.plus { background: #e8effd; color: #1d4ed8; }
+.mv-t { width: 100%; border-collapse: collapse; font-size: 14px; }
+.mv-t th { font-size: 11px; letter-spacing: .07em; color: #6b7487; text-align: left; padding: 6px 8px; border-bottom: 1px solid #e3e8f1; white-space: nowrap; }
+.mv-t td { padding: 8px; border-bottom: 1px solid #f0f2f7; vertical-align: middle; font-variant-numeric: tabular-nums; }
+.mv-t .num { text-align: right; } .mv-t td small { display: block; color: #6b7487; font-size: 11.5px; margin-top: 2px; }
+.mv-t tfoot td { font-weight: 800; border-bottom: 0; color: #12306b; }
+.mv-odd { margin-top: 12px; border-radius: 12px; background: #fff5f5; border: 1px solid #f6d3d3; padding: 10px 12px; }
+.mv-odd-h { font-size: 12.5px; font-weight: 700; color: #b42318; margin-bottom: 8px; }
+.mv-odd-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid #f6d3d3; }
+.mv-odd-r > div { flex: 1; min-width: 180px; } .mv-odd-r small { display: block; color: #6b7487; font-size: 11.5px; }
+.mv-odd-r .odd-price { width: 110px; }
+@media (max-width: 640px) { .mv-tiles { grid-template-columns: 1fr; } }
+.mv-t td.num, .mv-t th.num { white-space: nowrap; }
