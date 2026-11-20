@@ -1793,8 +1793,7 @@
       ${box("Payment", `<div class="pgrid2">${cell("Payment Status", ({ paid: "PAID", partial: "PARTIAL PAYMENT", unpaid: "UNPAID" }[inv.pay_status] || String(inv.pay_status || "").toUpperCase()) + (isOverdue(inv) ? ` · OVERDUE ${daysOver(inv)} DAY(S)` : "") + (bal < 0 ? " (OVERPAID)" : ""))}${cell("Total Amount (₱)", peso(inv.total_amount))}${num(inv.amount_returned) > 0 ? cell("Returned (₱)", peso(inv.amount_returned)) : ""}${cell("Paid (₱)", peso(inv.amount_paid))}${cell("Balance (₱)", peso(bal))}</div>
         ${links.length ? `<table class="ptl"><thead><tr><th>Linked Payment (Receipt No)</th><th>Date Paid</th><th class="num">Amount Linked (₱)</th></tr></thead><tbody>
           ${links.map((l) => `<tr><td>${esc(l.payments_received?.receipt_no || "")}</td><td>${mdy(l.payments_received?.paid_date)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody></table>` : ""}`)}
-      ${sigs("Received by (Customer Signature) / Date", `Prepared by: ${esc(inv.created_by_name || "")}`)}
-      <div class="doc-seal">${E.secSeal(inv.invoice_no, { code: E.sealCached("invoice", inv.invoice_no) })}</div>`;
+      <div class="inv-sealsig">${E.secSeal(inv.invoice_no, { code: E.sealCached("invoice", inv.invoice_no) })}${sigCol(`Prepared by: ${esc(inv.created_by_name || "")}`)}</div>`; // 3.99.142: the seal in place of the customer signature
   }
 
   // ======================================================================

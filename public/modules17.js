@@ -139,7 +139,7 @@
     if (error || !o) { $("#olBody").innerHTML = error && missing(error) ? needSql : `<div class="empty">This outlet was not found. <a href="#outlets">Back to Outlets</a></div>`; return; }
     const first = `${m}-01`, last = monthEnd(m), start = String(o.created_at).slice(0, 10);
     const [st, sales, exps, pays, invs, cust, allS, allX, allP] = await Promise.all([
-      sb.from("outlet_staff").select("employee_id, employees(id, first_name, last_name, employee_no, position)").eq("outlet_id", id).then((r) => r.data || []),
+      sb.from("outlet_staff").select(STAFF_SEL).eq("outlet_id", id).then((r) => r.data || []),
       sb.from("outlet_sales").select("*").eq("outlet_id", id).gte("sale_date", first).lte("sale_date", last).order("sale_date", { ascending: false }).then((r) => r.data || []),
       sb.from("outlet_expenses").select("*").eq("outlet_id", id).gte("exp_date", first).lte("exp_date", last).order("exp_date", { ascending: false }).then((r) => r.data || []),
       o.customer_id ? sb.from("payments_received").select("id, receipt_no, paid_date, amount, method").eq("customer_id", o.customer_id).gte("paid_date", first).lte("paid_date", last).order("paid_date", { ascending: false }).then((r) => r.data || []) : [],
@@ -192,8 +192,7 @@
             : empty(`No customer account linked.${isAdmin() ? " Press <b>Edit Outlet</b> and choose the account that receives this outlet's stock." : ""}`))}
         </div>
         <div class="ol-col side">
-          ${sec("users", "Assigned Employees", st.length ? String(st.length) : "", `${st.length ? st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${isAdmin() ? `<button type="button" class="btn small" data-unassign="${esc(x.employee_id)}" title="Remove from this outlet">${ic("x")}</button>` : ""}</div>`).join("") : empty("No employee assigned.")}
-            ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small" id="olAssign">${ic("plus")} Assign Employee</button></div>` : ""}`)}
+          ${sec("users", "Assigned Employees", st.length ? String(st.length) : "", staffHtml(st))}
           ${sec("folder", "Documents", docs.length ? String(docs.length) : "", `${docs.length ? E.filesHtml(docs) : empty(`No document yet.${isAdmin() ? " Add the <b>Contract of Lease</b>." : ""}`)}
             ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn small" for="olDocUp">${ic("upload")} Upload</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}`)}
           ${o.notes ? sec("doc", "Notes", "", `<p class="ol-notes">${esc(o.notes)}</p>`) : ""}
@@ -209,12 +208,7 @@
     if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales);
     $$("[data-esale]").forEach((b) => (b.onclick = () => saleForm(o, sales.find((r) => r.id === b.dataset.esale), sales)));
     if ($("#olExp")) $("#olExp").onclick = () => expenseForm(o);
-    if ($("#olAssign")) $("#olAssign").onclick = () => assignForm(o, st.map((x) => x.employee_id));
-    $$("[data-unassign]").forEach((b) => (b.onclick = async () => {
-      if (!(await E.confirmBox("Remove this employee from the outlet?", { title: "Assigned Employee", ok: "Remove" }))) return;
-      const r = await sb.from("outlet_staff").delete().eq("outlet_id", id).eq("employee_id", b.dataset.unassign);
-      if (r.error) return fail(r.error, "Could not remove"); E.route();
-    }));
+    bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
     $$("[data-del]").forEach((b) => (b.onclick = async () => {
       const [tbl, rid] = b.dataset.del.split(":");
       if (!(await E.confirmBox("Remove this record? This cannot be undone.", { title: "Remove", ok: "Remove", danger: true }))) return;
@@ -357,22 +351,65 @@
     draw();
   }
 
-  // ---------- assign an employee ----------
-  async function assignForm(o, have) {
+  // ---------- 3.99.142: assigned employees (a shop, or a company in Billing): assign, transfer, remove ----------
+  // The employee gets a notification each time (the server sends it: 114_staff_assign_notify.sql).
+  const STAFF = { outlet: { tbl: "outlet_staff", col: "outlet_id" }, company: { tbl: "pay_company_staff", col: "company_id" } };
+  const STAFF_SEL = "employee_id, employees(id, first_name, last_name, employee_no, position)";
+  const need114 = (er, word) => (new RegExp(word).test((er && er.message) || "") ? "Run the database update 114 first" : null);
+  function staffHtml(st) {
+    return `${st.length ? st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${isAdmin() ? `<span class="ol-emp-btns"><button type="button" class="btn small" data-stmove="${esc(x.employee_id)}">${ic("next")} Transfer</button><button type="button" class="btn small" data-stdel="${esc(x.employee_id)}" title="Remove">${ic("x")}</button></span>` : ""}</div>`).join("") : empty("No employee assigned.")}
+      ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small" data-stadd>${ic("plus")} Assign Employee</button></div>` : ""}`;
+  }
+  function bindStaff(root, kind, place, st) {
+    const k = STAFF[kind];
+    $$("[data-stadd]", root).forEach((b) => (b.onclick = () => assignForm(kind, place, st.map((x) => x.employee_id))));
+    $$("[data-stdel]", root).forEach((b) => (b.onclick = async () => {
+      if (!(await E.confirmBox(`Remove this employee from ${place.label}? The employee gets a notification.`, { title: "Assigned Employee", ok: "Remove" }))) return;
+      const r = await sb.from(k.tbl).delete().eq(k.col, place.id).eq("employee_id", b.dataset.stdel);
+      if (r.error) return fail(r.error, "Could not remove");
+      toast("Removed. The employee is notified."); E.route();
+    }));
+    $$("[data-stmove]", root).forEach((b) => (b.onclick = () => transferForm(kind, place, st.find((x) => x.employee_id === b.dataset.stmove))));
+  }
+  async function assignForm(kind, place, have) {
     const { data, error } = await sb.from("employees").select("id, first_name, last_name, employee_no, position, status").order("first_name");
     if (error) return fail(error, "Could not load the employees");
-    const list = (data || []).filter((x) => !have.includes(x.id) && !["closed", "suspended", "rejected"].includes(x.status));
+    const list = (data || []).filter((x) => !have.includes(x.id) && !["closed", "suspended", "rejected", "terminated"].includes(x.status));
     if (!list.length) return toast("Every employee is assigned already (or there is none).");
-    const m = E.modal(`${o.code} · Assign Employee`, `<label for="oaEmp">Employee</label><select id="oaEmp">${list.map((x) => `<option value="${esc(x.id)}">${esc(empName(x))}${x.employee_no ? ` · ${esc(x.employee_no)}` : ""}${x.position ? ` · ${esc(x.position)}` : ""}</option>`).join("")}</select>`,
+    const m = E.modal(`${place.label} · Assign Employee`, `<label for="oaEmp">Employee</label><select id="oaEmp">${list.map((x) => `<option value="${esc(x.id)}">${esc(empName(x))}${x.employee_no ? ` · ${esc(x.employee_no)}` : ""}${x.position ? ` · ${esc(x.position)}` : ""}</option>`).join("")}</select>
+      <small class="muted">The employee gets a notification.</small>`,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="oaSave">${ic("check")} Assign</button>`);
     $("[data-x]", m.el).onclick = () => m.close();
     $("#oaSave", m.el).onclick = async (e) => {
       e.target.disabled = true;
-      const r = await sb.from("outlet_staff").insert({ outlet_id: o.id, employee_id: $("#oaEmp", m.el).value });
-      if (r.error) { e.target.disabled = false; return fail(r.error, "Could not assign"); }
-      m.close(); toast("Employee assigned."); E.route();
+      const k = STAFF[kind];
+      const r = await sb.from(k.tbl).insert({ [k.col]: place.id, employee_id: $("#oaEmp", m.el).value });
+      if (r.error) { e.target.disabled = false; return fail(r.error, need114(r.error, "pay_company_staff") || "Could not assign"); }
+      m.close(); toast("Employee assigned. The employee is notified."); E.route();
     };
   }
+  async function transferForm(kind, place, x) {
+    if (!x) return;
+    const [os, cs] = await Promise.all([
+      sb.from("outlets").select("id, code, name, status").order("code").then((r) => r.data || [], () => []),
+      sb.from("pay_companies").select("id, name, status").order("name").then((r) => r.data || [], () => [])]);
+    const opt = (k, r, label) => (k === kind && r.id === place.id ? "" : `<option value="${k}:${esc(r.id)}">${esc(label)}</option>`);
+    const shops = os.filter((r) => r.status !== "closed").map((r) => opt("outlet", r, r.name && r.name.toUpperCase() !== r.code.toUpperCase() ? `${r.code} · ${r.name}` : r.code)).join("");
+    const cos = cs.filter((r) => r.status !== "closed").map((r) => opt("company", r, r.name)).join("");
+    const m = E.modal(`Transfer ${empName(x.employees)}`, `<div class="ol-from">From <b>${esc(place.label)}</b></div>
+      <label for="otTo">Transfer To</label><select id="otTo"><option value="office:">EO OFFICE</option>${shops ? `<optgroup label="Shops">${shops}</optgroup>` : ""}${cos ? `<optgroup label="Companies">${cos}</optgroup>` : ""}</select>
+      <small class="muted">The employee gets a notification, and the Assigned Location changes.</small>`,
+      `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="otSave">${ic("check")} Transfer</button>`);
+    $("[data-x]", m.el).onclick = () => m.close();
+    $("#otSave", m.el).onclick = async (e) => {
+      e.target.disabled = true;
+      const [tk, tid] = $("#otTo", m.el).value.split(":");
+      const r = await sb.rpc("employee_transfer", { p_employee: x.employee_id, p_from_kind: kind, p_from: place.id, p_to_kind: tk, p_to: tid || null });
+      if (r.error) { e.target.disabled = false; return fail(r.error, need114(r.error, "employee_transfer") || "Could not transfer"); }
+      m.close(); toast(`Transferred to ${String(r.data || "").split(" · ")[0]}. The employee is notified.`); E.route();
+    };
+  }
+  E.staffHtml = staffHtml; E.bindStaff = bindStaff; E.STAFF_SEL = STAFF_SEL;
 
   // ---------- the monthly statement (SOA): a ledger of the month ----------
   function printSoa(o, m, d) {
