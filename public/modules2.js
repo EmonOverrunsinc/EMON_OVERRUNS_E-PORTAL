@@ -1172,17 +1172,14 @@
     const sum = (k) => rows.reduce((s, r) => s + num(r[k]), 0);
     const tiles = [["", rows.length], ["", "₱ " + peso(sum("total_php"))], ["ok", bdt(sum("total_bdt"))], ["ok", bdt(sum("month_bdt"))]];
     $$("#blTiles .tile").forEach((t, i) => { t.className = "tile " + tiles[i][0]; $(".v", t).textContent = tiles[i][1]; });
-    const php = (r, k) => (showPhp(curOf(r)) ? peso(r[k]) : "—"), tk = (r, k) => (showBdt(curOf(r)) ? `<b class="bdt">${peso(r[k])}</b>` : "—");
     rows.forEach((r, i) => { r._no = i + 1; r._last = lastV.get(r.id); r._month = monthN.get(r.id) || 0; });
     $("#blRes").innerHTML = E.grid({ cols: [
       { label: "No.", num: true, get: (r) => r._no },
       { label: "Company", get: (r) => r.name }, { label: "Contact Person", get: (r) => r.contact_person || "" }, { label: "Status", html: (r) => pill(r.status || "active") },
       { label: "Currency", get: (r) => CUR[curOf(r)] }, { label: "Accounts", num: true, get: (r) => r.accounts_count }, { label: "Vouchers", num: true, get: (r) => r.vouchers_count },
-      { label: "Total (PHP)", key: "total_php", num: true, get: (r) => php(r, "total_php") }, { label: "Total (BDT)", key: "total_bdt", num: true, html: (r) => tk(r, "total_bdt") },
-      { label: "This Month (PHP)", key: "month_php", num: true, get: (r) => php(r, "month_php") }, { label: "This Month (BDT)", key: "month_bdt", num: true, html: (r) => tk(r, "month_bdt") },
       { label: "This Month", html: (r) => (r.status === "suspended" ? "—" : r._month ? pill("paid", `PAID · ${r._month} VOUCHER${r._month === 1 ? "" : "S"}`) : pill("unpaid", "NOT PAID YET")) },
       { label: "Last Voucher", html: (r) => (r._last ? `<b class="mono nw">${esc(r._last.voucher_no || "")}</b><br><small>${esc(mdy(r._last.pay_date))}</small>` : "—") }],
-      rows, onRow: true, foot: { total_php: peso(sum("total_php")), total_bdt: peso(sum("total_bdt")), month_php: peso(sum("month_php")), month_bdt: peso(sum("month_bdt")) }, empty: "No companies yet. Press Add Company." });
+      rows, onRow: true, empty: "No companies yet. Press Add Company." }); // 3.99.128: no amount columns (the totals are in the tiles)
     E.bindGrid($("#blRes"), rows, (r) => (location.hash = "paycompany/" + r.id));
     E.setRecords(`Companies: ${rows.length}`);
   };
