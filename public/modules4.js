@@ -263,8 +263,7 @@
     const profitTile = st === "paid"
       ? [profitOf(b) < 0 ? "bad" : "ok", profitOf(b) < 0 ? "Net Loss (BDT)" : "Net Profit (BDT)", peso(Math.abs(profitOf(b)))]
       : ["muted", "Net Profit / Loss", "Shown after PAID"];
-    const tiles = [["", "Bill Cost (BDT)", peso(b.total_cost)], ["", "Released Charge (BDT)", b.release_bdt == null ? "—" : peso(b.release_bdt)],
-      ["", "Shipping Fee (BDT)", b.shipping_cost == null ? "—" : peso(b.shipping_cost)], ["", "Total Cost (BDT)", peso(totalCost(b))],
+    const tiles = [["", "Bill Cost (BDT)", peso(b.total_cost)], ["", "Shipping Fee (BDT)", b.release_bdt == null && b.shipping_cost == null ? "—" : peso(num(b.release_bdt) + num(b.shipping_cost))], ["", "Total Cost (BDT)", peso(totalCost(b))],
       ["ok", "Paid (BDT)", peso(paid)], [balance > 0 ? "warn" : "ok", "Balance (BDT)", peso(balance)],
       ["warn", "Fees and Penalties (BDT)", peso(feesOf(b))], ["ok", "Net Sales (BDT)", peso(b.net_sales)], profitTile];
     const acts = [];
@@ -306,15 +305,14 @@
         <table><tbody>
           <tr class="in"><th>Total Net Sales</th><td>${bdt(b.net_sales)}</td></tr>
           <tr><th>Bill Amount</th><td>${bdt(b.total_cost)}</td></tr>
-          <tr><th>Shipping Bill (Released)</th><td>${bdt(b.release_bdt)}</td></tr>
-          <tr><th>Shipping Fee</th><td>${bdt(b.shipping_cost)}</td></tr>
+          <tr><th>Shipping Fee</th><td>${bdt(num(b.release_bdt) + num(b.shipping_cost))}</td></tr>
           <tr><th>Operational Cost</th><td>${bdt(opCost)}</td></tr>
           <tr><th>EOO Fees · Other Fees · Penalties</th><td>${bdt(num(b.eoo_fees) + num(b.other_fees) - opCost + num(b.penalties))}</td></tr>
           <tr class="sub"><th>Sub Total · All Costs</th><td>${bdt(expensesOf(b))}</td></tr>
           <tr class="${profitOf(b) < 0 ? "loss" : "gain"}"><th>${profitOf(b) < 0 ? "Net Loss" : "Net Profit"}</th><td>${profitOf(b) < 0 ? "− " : ""}${bdt(Math.abs(profitOf(b)))}</td></tr>
         </tbody></table></section>` : ""}
       <div class="tiles sb-tiles">${tiles.map(([k, l, v]) => `<div class="tile ${k}"><div class="k">${l}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>
-      ${b.release_bdt != null ? `<div class="due-info">Released charge: <b>${esc(chargeText(b))} = ${bdt(b.release_bdt)}</b> · Shipping fee: <b>${bdt(b.shipping_cost)}</b> · Released by <b>${esc(b.release_order_no || "")}</b></div>` : ""}
+      ${b.release_bdt != null ? `<div class="due-info">Shipping fee: <b>${esc(chargeText(b))}${num(b.shipping_cost) ? ` + BDT ${peso(b.shipping_cost)}` : ""} = ${bdt(num(b.release_bdt) + num(b.shipping_cost))}</b></div>` : ""}
       <div class="actionbar">${acts.join("")}<span class="grow"></span>${tools("stock_bills", b, `E-Bill ${b.bill_no}`, { reload, afterDelete: () => (location.hash = "inventory") })}</div>
       <div class="docgrid">${E.docCard({ key: "sb", title: `E-Bill ${b.batch_no || b.bill_no}`, ownerType: "stock_bill", ownerId: b.id, att: [], print: () => printEbill(b.id), canUpload: false,
         sub: `${b.bill_no} · every record, like a statement of account · total cost ${bdt(totalCost(b))} · ${balText}${st === "paid" ? " · with the profit or loss and the secret code" : ""}` })}</div>
@@ -667,14 +665,13 @@
       ${E.box("Status", `<div class="sb-psteps">${STATUS.map((s) => `<div><b>${STATUS_NAME[s].toUpperCase()}</b><span>${esc(mdy(b[STATUS_AT[s]]) || "—")}</span></div>`).join("")}</div>`)}
       ${E.box("Account Summary (BDT)", `<table class="rp v-amt"><tbody>
         <tr><td>Bill Cost (items)</td><td class="num">BDT ${peso(b.total_cost)}</td></tr>
-        ${b.release_bdt != null ? `<tr><td>Released Charge (${esc(chargeText(b))})</td><td class="num">BDT ${peso(b.release_bdt)}</td></tr>` : ""}
-        ${b.shipping_cost != null ? `<tr><td>Shipping Fee${b.shipping_bill_no ? ` (Shipping Bill ${esc(b.shipping_bill_no)})` : ""}</td><td class="num">BDT ${peso(b.shipping_cost)}</td></tr>` : ""}
+        ${b.release_bdt != null || b.shipping_cost != null ? `<tr><td>Shipping Fee${b.release_bdt != null ? ` (${esc(chargeText(b))}${num(b.shipping_cost) ? ` + BDT ${peso(b.shipping_cost)}` : ""})` : ""}</td><td class="num">BDT ${peso(num(b.release_bdt) + num(b.shipping_cost))}</td></tr>` : ""}
         <tr class="v-bdt"><td>Total Cost</td><td class="num">BDT ${peso(total)}</td></tr>
         <tr class="v-bdt"><td>Balance</td><td class="num">BDT ${peso(bal)}</td></tr></tbody></table>
         <div class="pcell"><div class="pl">Balance in Words</div><div class="pv words">${esc(words2(bal))}</div></div>`)}
       ${isPaid ? `${E.box("Profit and Loss (BDT)", `<table class="rp sb-pl"><tbody>
           <tr class="sub"><td>Net Sales</td><td class="num">${peso(b.net_sales)}</td></tr>
-          <tr><td>Total Cost (bill + released charge + shipping fee)</td><td class="num">${peso(total)}</td></tr>
+          <tr><td>Total Cost (bill + shipping fee)</td><td class="num">${peso(total)}</td></tr>
           <tr><td>EOO Fees, Other Fees and Penalties</td><td class="num">${peso(feesOf(b))}</td></tr>
           <tr class="grand ${loss ? "loss" : "gain"}"><td>${loss ? "NET LOSS" : "NET PROFIT"}</td><td class="num">BDT ${peso(Math.abs(profit))}</td></tr></tbody></table>
         <div class="sb-formula">Net Sales ${peso(b.net_sales)} − Total Expenses ${peso(expensesOf(b))} = ${loss ? "−" : ""}${peso(Math.abs(profit))} · ${esc(words(Math.abs(profit), "TAKA"))}</div>`)}
@@ -682,8 +679,8 @@
     // The statement: the bill cost first, then the released charge, the shipping fee and the payments by date (charges
     // before payments on the same day), with the running balance.
     const later = [];
-    if (b.release_bdt != null) later.push({ date: b.release_date, what: `Released charge (${chargeText(b)})`, ref: b.batch_no || "", chg: num(b.release_bdt), pay: 0 });
-    if (b.shipping_cost != null) later.push({ date: b.release_date, what: "Shipping fee", ref: b.batch_no || "", chg: num(b.shipping_cost), pay: 0 });
+    // 3.99.138: the released charge and the shipping fee are ONE line: Shipping fee
+    if (b.release_bdt != null || b.shipping_cost != null) later.push({ date: b.release_date, what: `Shipping fee${b.release_bdt != null ? ` (${chargeText(b)}${num(b.shipping_cost) ? ` + BDT ${peso(b.shipping_cost)}` : ""})` : ""}`, ref: b.batch_no || "", chg: num(b.release_bdt) + num(b.shipping_cost), pay: 0 });
     // 3.99.135: the statement lists the charges only (no payments column)
     later.sort((x, y) => String(x.date || "").localeCompare(String(y.date || "")) || y.chg - x.chg);
     const lines = [{ date: b.bill_date, what: "Bill cost (items)", ref: b.supplier_bill_no ? `Bill No ${b.supplier_bill_no}` : b.bill_no, chg: num(b.total_cost), pay: 0 }, ...later];
