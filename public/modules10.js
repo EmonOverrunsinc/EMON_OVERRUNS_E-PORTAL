@@ -771,7 +771,7 @@
   // 3.56: the Director adds the price of NOT ORDERED boxes: a line of the order; the invoice follows
   function bindOddPrice(o, reload) {
     $$("#main .odd-add").forEach((b) => (b.onclick = async () => {
-      const tr = b.closest("tr"), g = (o._dl?.odd || [])[Number(tr.dataset.odd)], price = num($(".odd-price", tr).value);
+      const tr = b.closest("[data-odd]"), g = (o._dl?.odd || [])[Number(tr.dataset.odd)], price = num($(".odd-price", tr).value);
       if (!g) return;
       if (!(price > 0)) return toast("Enter the price.", true);
       if (!(await E.confirmBox(`Add <b>${esc(g.items || "these items")}</b> (${esc(qtyText(g.pcs))} pcs × ₱ ${esc(peso(price))} = <b>₱ ${esc(peso(num(g.pcs) * price))}</b>) to order <b>${esc(o.order_no)}</b>?${o.status === "completed" ? "<br><br>The invoice is charged too." : ""}`, { ok: "Add Price" }))) return;
@@ -790,8 +790,31 @@
     ? `<div class="co-warn0">⚠ NO BOX ADDED (0 boxes)<br><small>If you go on, the invoice is the ORDER AMOUNT: ₱ ${peso(o.total_amount)}. Add the boxes first to charge the delivery list.</small></div>`
     : o._dl?.has_pcs ? `<div class="co-ok0">✅ ${esc(boxesText(nBoxes(boxes)))} with serial no: the invoice charges the delivery list — <b>₱ ${peso(o._dl.amount)}</b></div>` : "";
   const boxOpen = (o) => fixable(o) && !o.boxes_verified_at;
+  // 3.99.145: ONE clear ORDER CHECK card: boxes, pcs and amount (order → scanned), each line with the pcs to adjust,
+  // and the NOT ORDERED boxes (the Director adds their price). Without pcs on the boxes: the old box check.
+  function matchView(o, boxes) {
+    const dl = o._dl, done = o.status === "completed", got = done ? "DELIVERED" : "SCANNED";
+    const ls = (dl.lines || []).filter((l) => num(l.ordered) || num(l.delivered)), odd = dl.odd || [];
+    const dPcs = num(dl.pcs) - num(o.total_pcs), dAmt = num(dl.amount) - num(o.total_amount), dBox = nBoxes(boxes) - num(o.total_boxes);
+    const sg = (n) => (n > 0 ? "+" : n < 0 ? "−" : "");
+    const chip = (n, txt) => (Math.abs(n) < 0.005 ? `<span class="mv-chip ok">✓ MATCH</span>` : `<span class="mv-chip ${n < 0 ? "bad" : "plus"}">${txt}</span>`);
+    const tile = (k, a, b, n, txt) => `<div class="mv-tile"><small>${k}</small><div class="mv-ab"><span>${a}</span><i>→</i><b>${b}</b></div>${chip(n, txt)}</div>`;
+    const allOk = !odd.length && ls.every((l) => num(l.delivered) === num(l.ordered));
+    const st = allOk ? `<span class="mv-st ok">✓ ALL MATCH</span>` : odd.length ? `<span class="mv-st bad">${boxesText(odd.reduce((t, g) => t + num(g.boxes), 0))} NOT ORDERED</span>` : `<span class="mv-st warn">ADJUST PCS</span>`;
+    const lineSt = (l) => { const d = num(l.delivered) - num(l.ordered); return !num(l.boxes) && num(l.ordered) ? `<span class="mv-chip bad">MISSING</span>` : d ? `<span class="mv-chip ${d < 0 ? "bad" : "plus"}">${sg(d)}${qtyText(Math.abs(d))} PCS</span>` : `<span class="mv-chip ok">✓</span>`; };
+    const nb = (l) => num((o.lines || [])[l.i]?.boxes);
+    return `<section class="mv"><div class="mv-head"><b>ORDER CHECK</b><small>Order → ${got.toLowerCase()}</small>${st}</div>
+      <div class="mv-tiles">${tile("BOXES", qtyText(o.total_boxes), qtyText(nBoxes(boxes)), dBox, `${sg(dBox)}${qtyText(Math.abs(dBox))}`)}${tile("PCS", qtyText(o.total_pcs), qtyText(dl.pcs), dPcs, `${sg(dPcs)}${qtyText(Math.abs(dPcs))} PCS`)}${tile("AMOUNT", `₱ ${peso(o.total_amount)}`, `₱ ${peso(dl.amount)}`, dAmt, `${sg(dAmt)}₱ ${peso(Math.abs(dAmt))}`)}</div>
+      <div class="grid-scroll"><table class="mv-t"><thead><tr><th>PRODUCT</th><th class="num">PRICE</th><th class="num">BOXES</th><th class="num">ORDER PCS</th><th class="num">${got} PCS</th><th>CHECK</th><th class="num">AMOUNT (₱)</th></tr></thead><tbody>
+      ${ls.map((l) => `<tr><td><b>${esc(l.product || "")}</b><small>${esc([l.lot, l.code ? "CODE " + l.code : ""].filter(Boolean).join(" · "))}</small></td><td class="num">${peso(l.price)}</td><td class="num">${qtyText(l.boxes)} / ${qtyText(nb(l))}</td><td class="num">${qtyText(l.ordered)}</td><td class="num"><b>${qtyText(l.delivered)}</b></td><td>${lineSt(l)}</td><td class="num"><b>${peso(l.amount)}</b></td></tr>`).join("")}</tbody>
+      <tfoot><tr><td>TOTAL</td><td></td><td class="num">${qtyText(nBoxes(boxes))} / ${qtyText(o.total_boxes)}</td><td class="num">${qtyText(o.total_pcs)}</td><td class="num">${qtyText(dl.pcs)}</td><td>${dPcs ? `<span class="mv-chip ${dPcs < 0 ? "bad" : "plus"}">${sg(dPcs)}${qtyText(Math.abs(dPcs))} PCS</span>` : ""}</td><td class="num">₱ ${peso(dl.amount)}</td></tr></tfoot></table></div>
+      ${odd.length ? `<div class="mv-odd"><div class="mv-odd-h">NOT ORDERED — not charged yet. ${isAdmin() ? "Add the price: it is added to the order and charged." : "EMON HASAN adds the price."}</div>
+        ${odd.map((g, i) => `<div class="mv-odd-r" data-odd="${i}"><div><b>${esc(g.items || "—")}</b><small>${esc([g.lot, g.code ? "CODE " + g.code : "", `${qtyText(g.boxes || g.lines)} box`, `${qtyText(g.pcs)} pcs`].filter(Boolean).join(" · "))}</small><small class="mono">${esc(g.serials || "")}</small></div>
+          ${isAdmin() ? `<input type="number" class="odd-price" min="0" step="0.01" placeholder="Price ₱" aria-label="Price"><button type="button" class="btn small primary odd-add">${ic("check")} Add Price</button>` : ""}</div>`).join("")}</div>` : ""}
+      ${modifiedNote(o)}</section>`;
+  }
   function boxesHtml(o, boxes, sumPcs, w) {
-    return `${countMatch(o, boxes, sumPcs)}${boxCheck(o.lines || [], boxes)}${boxLock(o, boxes)}
+    return `${o._dl?.has_pcs ? matchView(o, boxes) : `${countMatch(o, boxes, sumPcs)}${boxCheck(o.lines || [], boxes)}`}${boxLock(o, boxes)}
       ${w && boxOpen(o) ? `<div class="btnrow"><button type="button" class="btn primary" id="cbScan">${ic("scan")} Scan Boxes</button><label class="btn" for="cbPhoto">${ic("image")} Box Label Photo</label><input type="file" id="cbPhoto" accept="image/*" multiple hidden>
         <button type="button" class="btn" id="cbType">📦 Add Box</button></div>
         <div class="box-find"><input type="text" id="cbFind" maxlength="60" placeholder="Serial no, e.g. U20261238" aria-label="Find a box by its serial no" autocomplete="off"><button type="button" class="btn primary" id="cbFindGo">${ic("search")} Find &amp; Add</button></div>
