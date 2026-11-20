@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.136"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.137"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.136"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.137"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1803,6 +1803,12 @@
     // 3.99.56: the PDF417 of a box (the box search print) opens that box
     const bx = /^EMONBOX\|(.{1,60})$/i.exec(t);
     if (bx && isStaff()) { location.hash = "find/" + encodeURIComponent(bx[1].trim()); return true; }
+    // 3.99.137: an e-bill's PDF417 opens that e-bill
+    const eb = /^EMONEB\|(.{1,60})$/i.exec(t);
+    if (eb && canOpen("stockbill")) {
+      const { data } = await sb.from("stock_bills").select("id").eq("bill_no", eb[1].trim()).maybeSingle();
+      if (data) { location.hash = "stockbill/" + data.id; return true; }
+    }
     // 3.1: a QC form barcode opens that QC form
     const qc = /^EMONQCK?\|(QC-\d{4}-\d+)/i.exec(t);
     if (qc && canOpen("qc")) {

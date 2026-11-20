@@ -4135,3 +4135,19 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .sb-final tr.in td { color: #1e8e3e; } .sb-final tr.sub th, .sb-final tr.sub td { background: #f5f8fd; font-weight: 800; }
 .sb-final tr.gain th, .sb-final tr.gain td { background: #eaf6ea; color: #1e8e3e; font-size: 15px; font-weight: 800; }
 .sb-final tr.loss th, .sb-final tr.loss td { background: #fdecea; color: #c41e3a; font-size: 15px; font-weight: 800; }
+/* 3.99.137: the e-bill print: the batch no and the e-bill no (with its PDF417) in separate boxes */
+.page .sb-heads { display: flex; gap: 2mm; align-items: stretch; }
+.page .sb-heads .sb-no { display: flex; flex-direction: column; justify-content: center; }
+.page .sb-heads .sb-no.eb { align-items: center; min-width: 46mm; }
+.page .sb-heads .sb-no.eb img { height: 8mm; max-width: 44mm; image-rendering: pixelated; margin: .6mm 0; }
+.page .sb-heads .sb-no.eb b { font-size: 8.5pt; letter-spacing: .04em; white-space: nowrap; }
+.page .ph2 .ph-right:has(.sb-heads) { max-width: 82mm; }
+.page .sb-heads .sb-no:first-child { min-width: 19mm; white-space: nowrap; text-align: center; }
+.page .sb-heads .sb-no:first-child b { white-space: nowrap; }
+.page .sb-heads .sb-no.eb { width: 50mm; min-width: 0; overflow: hidden; }
+.page .sb-heads .sb-no.eb img { width: 46mm; max-width: 100%; height: 8mm; object-fit: fill; }
+.page .ph2 .ph-right:has(.sb-heads) { border: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; }
+.page .sb-heads .sb-no { border: .3mm solid #8ea6d8; border-radius: 2mm; padding: 1.4mm 2.4mm; background: #fff; }
+.page .sb-heads .sb-no small { display: block; font-size: 6.5pt; letter-spacing: .06em; color: #5b6577; text-transform: uppercase; }
+.page .sb-heads .sb-no:first-child b { font-size: 12pt; color: #12306b; }
+.page .ph2:has(.sb-heads) .ph-title { word-spacing: 100vw; text-align: center; line-height: 1.15; white-space: normal; } /* 3.99.137: E-BILL / LL-17 on 2 whole lines */
