@@ -238,16 +238,18 @@
     // 3.99.131: the serial range, the box cost and the net sales of the boxes of the range that are sold
     const sb2 = (await sb.from("stock_bills").select("serial_code, serial_from, serial_to").eq("id", id).maybeSingle().then((r) => r.data, () => null)) || {};
     const boxCost = await sb.from("ai_settings").select("value").eq("key", "box_cost").maybeSingle().then((r) => num(r.data?.value?.amount) || 3200, () => 3200);
-    let autoSales = 0, autoBoxes = 0;
+    let autoSales = 0, autoBoxes = 0, boxRows = [];
     if (sb2.serial_from && sb2.serial_to) {
-      const bx = await E.allRows(() => sb.from("box_stock").select("serial_no, price, qty, sold_date, sheet_invoice").gte("serial_no", sb2.serial_from).lte("serial_no", sb2.serial_to)).then((r) => r.data || [], () => []);
+      const bx = await E.allRows(() => sb.from("box_stock").select("serial_no, product, brand, ctn, style, qty, batch, price, ship_date, arrival_date, sold_date, sheet_invoice, extra").gte("serial_no", sb2.serial_from).lte("serial_no", sb2.serial_to)).then((r) => r.data || [], () => []);
       const inRange = bx.filter((x) => x.serial_no.length === sb2.serial_from.length);
       const sales = inRange.length ? await sb.from("box_sales").select("serial_no, total").in("serial_no", inRange.slice(0, 900).map((x) => x.serial_no)).then((r) => r.data || [], () => []) : [];
       const sold = new Map(sales.map((x) => [x.serial_no, num(x.total)]));
       for (const x of inRange) {
         const amt = sold.get(x.serial_no) ?? (num(x.price) > 0 ? num(x.price) * num(x.qty) : 0);
         if (amt > 0) { autoSales += amt; autoBoxes++; }
+        boxRows.push({ ...x, _sold: amt > 0, _amt: amt });
       }
+      boxRows.sort((a, c) => a.serial_no.localeCompare(c.serial_no));
     }
     if (!here()) return;
     const w = E.canWrite("inventory"), admin = isAdmin(), st = b.status;
@@ -299,8 +301,6 @@
           <div class="ch-sub"><b>${esc(b.company_name || "")}</b>${b.supplier_bill_no ? ` · Bill No ${esc(b.supplier_bill_no)}` : ""} · Bill Date ${mdy(b.bill_date)}</div>
           <div class="ch-ids">${E.idBox("Batch No", b.batch_no)}${E.idBox("Total Boxes", b.total_boxes == null ? "" : String(b.total_boxes))}${E.idBox("Serials", sb2.serial_from ? `${sb2.serial_from}${sb2.serial_to ? " – " + sb2.serial_to : ""}` : "")}${E.idBox("Ship Date", mdy(b.shipment_date))}${E.idBox("Released Date", mdy(b.release_date))}${b.shipment_no ? E.idBox("System Record No", b.shipment_no) : ""}${b.shipping_company ? E.idBox("Shipping Company", b.shipping_company) : ""}</div></div></section>
       ${stepsHtml(b)}
-      ${sb2.serial_from ? `<div class="due-info">Box serials: <b class="mono">${esc(sb2.serial_from)}${sb2.serial_to ? ` – ${esc(sb2.serial_to)}` : ""}</b>${sb2.serial_code ? ` · code <b>${esc(sb2.serial_code)}</b>` : ""} · ${esc(b.total_boxes ?? 0)} boxes
-        · sold <b>${autoBoxes}</b> · net sales of the sold boxes <b>${bdt(autoSales)}</b>${w && autoGap > 0.004 && !isOpen(st) ? ` <button type="button" class="btn small primary" id="sbAutoAdd">${ic("plus")} Add Net Sales ${esc(bdt(autoGap))}</button>` : ""}</div>` : ""}
       ${st === "paid" ? `<section class="sb-final"><header>${ic("check")} <b>E-BILL SUMMARY · PAID</b><button type="button" class="btn small primary" id="sbFinalDl">${ic("download")} Download E-Bill</button></header>
         <table><tbody>
           <tr class="in"><th>Total Net Sales</th><td>${bdt(b.net_sales)}</td></tr>
@@ -317,7 +317,7 @@
       <div class="actionbar">${acts.join("")}<span class="grow"></span>${tools("stock_bills", b, `E-Bill ${b.bill_no}`, { reload, afterDelete: () => (location.hash = "inventory") })}</div>
       <div class="docgrid">${E.docCard({ key: "sb", title: `E-Bill ${b.batch_no || b.bill_no}`, ownerType: "stock_bill", ownerId: b.id, att: [], print: () => printEbill(b.id), canUpload: false,
         sub: `${b.bill_no} · every record, like a statement of account · total cost ${bdt(totalCost(b))} · ${balText}${st === "paid" ? " · with the profit or loss and the secret code" : ""}` })}</div>
-      <div class="tabs" id="sbTabs">${[`Bill`, `Sales Report (${entries.length})`, `Released Notice (${orders.length})`, `Payments (${payRows.length})`, `Files (${files.length})`, `History (${events.length})`]
+      <div class="tabs" id="sbTabs">${[`Bill`, `Sales Report (${entries.length})`, `Released Notice (${orders.length})`, `Payments (${payRows.length})`, `Files (${files.length})`, `History (${events.length})`, ...(sb2.serial_from ? [`Boxes (${boxRows.length})`] : [])]
         .map((l, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}">${l}</button>`).join("")}</div>
       <div class="tabpanes" id="sbPanes">
         <div data-p="0">${(b.items || []).length === 1 && /^TOTAL BILL AMOUNT$/.test(String((b.items[0] || [])[0])) ? `<div class="sb-sum"><div class="ok"><small>Total Bill Amount (BDT)</small><b>${peso(b.total_cost)}</b></div><div><small>Total Boxes</small><b>${esc(b.total_boxes ?? 0)}</b></div><div><small>Serials</small><b class="mono">${esc(sb2.serial_from || "—")}${sb2.serial_to ? ` – ${esc(sb2.serial_to)}` : ""}</b></div></div>` : itemsGrid(b)}${b.notes ? `<p class="muted"><b>Notes:</b> ${esc(b.notes)}</p>` : ""}</div>
@@ -333,12 +333,22 @@
           ${w ? `<div class="sb-up"><label for="sbUpKind">Add File</label><select id="sbUpKind">${[["bill", "E-Bill Copy"], ["shipping_bill", "Shipping Fee Receipt"], ["sales_report", "Sales Report"], ["receipt", "Receipt"], ["other", "Other"]].map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select>
             <label class="btn" for="sbUpFile">${ic("upload")} Choose File</label><input type="file" id="sbUpFile" hidden multiple accept="image/*,application/pdf" data-save-now></div>` : ""}</div>
         <div data-p="5" hidden>${E.grid({ cols: evCols, rows: events, empty: "No history yet." })}</div>
+        ${sb2.serial_from ? `<div data-p="6" hidden>
+          <div class="sb-sum"><div><small>Boxes on the Server</small><b>${boxRows.length} of ${esc(b.total_boxes ?? 0)}</b></div><div><small>In Stock</small><b>${boxRows.filter((x) => !x._sold).length}</b></div><div class="ok"><small>Sold</small><b>${autoBoxes}</b></div><div class="ok"><small>Net Sales of Sold Boxes (BDT)</small><b>${peso(autoSales)}</b></div></div>
+          ${w && autoGap > 0.004 && !isOpen(st) ? `<div class="btnrow"><button type="button" class="btn primary" id="sbAutoAdd">${ic("plus")} Add Net Sales ${esc(bdt(autoGap))}</button></div>` : ""}
+          <div id="sbBoxes">${E.grid({ cols: [{ label: "Serial", html: (x) => `<b class="mono nw">${esc(x.serial_no)}</b>` }, { label: "Product", get: (x) => x.product || "" }, { label: "Brand", get: (x) => x.brand || "" },
+            { label: "CTN", get: (x) => x.ctn || "" }, { label: "Style", get: (x) => (x.style && x.style !== "-" ? x.style : "") }, { label: "Qty", num: true, key: "q", get: (x) => qtyText(x.qty) },
+            { label: "Ship Date", get: (x) => mdy(x.ship_date || b.shipment_date) }, { label: "Company", get: (x) => x.extra?.COMPANY || b.company_name || "" },
+            { label: "Code", get: (x) => sb2.serial_code || (/^[A-Z]+/i.exec(x.serial_no) || [""])[0].toUpperCase() },
+            { label: "Status", html: (x) => (x._sold ? E.pill("paid", "SOLD") : E.pill("pending", "IN STOCK")) }], rows: boxRows, onRow: true,
+            foot: { q: qtyText(boxRows.reduce((t, x) => t + num(x.qty), 0)) }, empty: "No box of this serial range is on the server yet (EVA Records › Read Sheet)." })}</div></div>` : ""}
       </div>`;
     $$("#sbTabs button").forEach((t) => (t.onclick = () => { $$("#sbTabs button").forEach((x) => x.classList.toggle("on", x === t)); $$("#sbPanes > div").forEach((p) => (p.hidden = p.dataset.p !== t.dataset.t)); }));
     E.keepTab("#sbTabs", "ebill:" + id);
     E.bindGrid($("#sbPays"), payRows, (r) => {
       if (r.vid && E.canOpen("voucher")) location.hash = "voucher/" + r.vid;
     });
+    if ($("#sbBoxes")) E.bindGrid($("#sbBoxes"), boxRows, (x) => (location.hash = "find/" + encodeURIComponent(x.serial_no)));
     E.bindFiles($("#main"));
     E.bindDocCards($("#main"), reload);
     bindTools($("#main"));
