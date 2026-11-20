@@ -15,10 +15,10 @@
 
   // the steps: 1 SHIP, 2 RELEASED, 3 SALES, 4 PAID (an e-bill marked "arrived" before Update 2.0 is still at SHIP)
   const STATUS = ["shipped", "released", "sold", "paid"];
-  const STATUS_NAME = { shipped: "Ship", arrived: "Ship", released: "Released", sold: "Sales", paid: "Paid" };
+  const STATUS_NAME = { shipped: "Ship", arrived: "Ship", released: "Released", sold: "Sold", paid: "Paid" };
   const STATUS_AT = { shipped: "created_at", arrived: "arrived_at", released: "released_at", sold: "sold_at", paid: "paid_at" };
   const stepOf = (st) => (st === "arrived" ? 0 : STATUS.indexOf(st));
-  const ENTRY = { sales: "Net Sales", eoo_fee: "EOO Fee", fee: "Other Fee", penalty: "Penalty" };
+  const ENTRY = { sales: "Net Sales", eoo_fee: "EOO Fee", fee: "Other Fee", penalty: "Penalty", operational: "Operational Cost" };
   const MAX_COLS = 10;
   const isOpen = (st) => st === "shipped" || st === "arrived";
   // The Released Notice of an e-bill: older ones are order letters; since 3.7 it is written on the e-bill itself.
@@ -45,8 +45,8 @@
   // ======================================================================
   const LIST_COLS = [
     { label: "E-Bill No", get: (r) => r.bill_no }, { label: "Bill Date", get: (r) => mdy(r.bill_date) }, { label: "Company", get: (r) => r.company_name || "" },
-    { label: "Batch No", get: (r) => r.batch_no || "" }, { label: "System Record No", get: (r) => r.shipment_no || "" }, { label: "Shipment Date", get: (r) => mdy(r.shipment_date) },
-    { label: "Boxes", num: true, get: (r) => r.total_boxes ?? "" }, { label: "Total Qty", num: true, get: (r) => qtyText(r.total_qty) },
+    { label: "Batch No", get: (r) => r.batch_no || "" }, { label: "Serials", html: (r) => (r._ser ? `<span class="nw mono">${esc(r._ser)}</span>` : "") }, { label: "Ship Date", get: (r) => mdy(r.shipment_date) },
+    { label: "Boxes", num: true, get: (r) => r.total_boxes ?? "" },
     { label: "Total Cost (BDT)", key: "cost", num: true, html: (r) => `<b class="bdt">${peso(totalCost(r))}</b>` },
     { label: "Balance (BDT)", key: "bal", num: true, get: (r) => peso(totalCost(r) - num(r.paid_bdt)) },
     { label: "Profit / Loss (BDT)", num: true, html: profitHtml }, { label: "Status", html: (r) => ebillPill(r.status) }
@@ -68,6 +68,11 @@
     if (!here()) return; // another page was opened while the list loaded
     if (error) return fail(error, "Could not load the e-bills (run the 2.1 database update)");
     const all = data || [];
+    // 3.99.131: the serial range of each e-bill
+    const ser = await E.allRows(() => sb.from("stock_bills").select("id, serial_from, serial_to")).then((r) => r.data || [], () => []);
+    if (!here()) return;
+    const serOf = new Map(ser.map((x) => [x.id, x.serial_from ? `${x.serial_from}${x.serial_to ? ` – ${x.serial_to}` : ""}` : ""]));
+    all.forEach((r) => (r._ser = serOf.get(r.id) || ""));
     const paid = all.filter((r) => r.status === "paid"), profit = paid.reduce((s, r) => s + num(r.profit), 0);
     const due = all.reduce((s, r) => s + totalCost(r) - num(r.paid_bdt), 0);
     const tiles = [["", String(all.length)], ["warn", String(all.filter((r) => isOpen(r.status)).length)], ["", bdt(all.reduce((s, r) => s + totalCost(r), 0))],
@@ -104,33 +109,33 @@
       $("#main").innerHTML = `<div class="empty">Add the company in Billing first.${E.canWrite("billing") ? ` <a class="btn primary" href="#newpaycompany">Add Company</a>` : " Ask EMON HASAN to add it."}</div>`;
       return;
     }
+    const boxCost = await sb.from("ai_settings").select("value").eq("key", "box_cost").maybeSingle().then((r) => num(r.data?.value?.amount) || 3200, () => 3200);
+    if (!here()) return;
     $("#main").innerHTML = `
       <form class="window" id="sbForm" novalidate><div class="wtitle">E-Bill (BDT)</div><div class="wbody">
         <div class="summary-box"><div class="fields wide"><span>E-Bill No</span><b id="sbNoPrev"></b><span>Prepared By</span><b>${esc(S.profile.full_name || "")}</b></div></div>
-        <fieldset class="opt"><legend>Company and Shipment</legend><div class="formgrid">
+        <fieldset class="opt"><legend>E-Bill</legend><div class="formgrid">
           <div class="fields wide">
             <label for="sbCo">Company *</label><select id="sbCo"><option value="">— Choose company —</option>${cos.map((c) => `<option value="${c.id}">${esc(c.name)}${c.status === "suspended" ? " (SUSPENDED)" : ""}</option>`).join("")}</select>
+            <label for="sbAmt">Total Bill Amount (BDT) *</label><input type="number" id="sbAmt" min="0.01" step="0.01" inputmode="decimal" placeholder="e.g. 250000">
+            <label for="sbBatch">Batch No *</label><input type="text" id="sbBatch" placeholder="e.g. LL-17">
+            <label for="sbBoxes">Total Boxes *</label><input type="number" id="sbBoxes" min="1" step="1" placeholder="e.g. 50">
+          </div>
+          <div class="fields wide">
+            <label for="sbShipDate">Ship Date</label><input type="date" id="sbShipDate" value="${isoToday()}">
             <label for="sbDate">Bill Date</label><input type="date" id="sbDate" value="${isoToday()}">
             <label for="sbRef">Bill No</label><input type="text" id="sbRef" placeholder="Number on the company's bill (optional)">
-            <label for="sbBoxes">Total Boxes *</label><input type="number" id="sbBoxes" min="1" step="1" placeholder="e.g. 45">
-          </div>
-          <div class="fields wide">
-            <label for="sbBatch">Batch No *</label><input type="text" id="sbBatch" placeholder="e.g. I-17">
-            <label for="sbShip">System Record No</label><input type="text" id="sbShip" placeholder="e.g. SR-1029">
-            <label for="sbShipDate">Shipment Date</label><input type="date" id="sbShipDate">
-            <span>Total Qty</span><b id="sbQtyOut">0</b>
-          </div>
-          <div class="fields wide">
-            <label for="sbShipCo">Shipping Company</label><input type="text" id="sbShipCo" maxlength="120" placeholder="e.g. Sea Star Lines">
-            <label for="sbShipCode">Shipping Company Code</label><input type="text" id="sbShipCode" maxlength="40" placeholder="e.g. SSL-7">
           </div></div></fieldset>
-        <fieldset class="opt"><legend>Items (BDT)</legend>
-          <div class="hint small">Type the items as they are on the bill. <b>Add Column</b> adds a column (up to ${MAX_COLS}); you can rename any column or remove one with ×. <b>Add Row</b> adds an item. Qty × Price = Total is calculated for you.</div>
-          <div id="sbItems"></div>
-          <div class="btnrow"><button type="button" class="btn" id="sbAddRow">${ic("plus")} Add Row</button><button type="button" class="btn" id="sbAddCol">${ic("plus")} Add Column</button><small class="muted sb-coln" id="sbColN"></small></div>
-          <div class="bdt-calc"><small>Total Cost (BDT)</small><b id="sbTotal">BDT 0.00</b><span id="sbQtyLine">Total Qty: 0</span><small id="sbWords"></small></div></fieldset>
-        <fieldset class="opt"><legend>E-Bill Copy and Notes</legend><div class="fields wide">
+        <fieldset class="opt"><legend>Box Serial Numbers</legend><div class="formgrid">
+          <div class="fields wide">
+            <label for="sbCode">Code</label><input type="text" id="sbCode" maxlength="10" placeholder="e.g. A">
+            <label for="sbFrom">From Serial</label><input type="text" id="sbFrom" maxlength="40" placeholder="e.g. A2026001">
+            <label for="sbTo">To Serial</label><input type="text" id="sbTo" maxlength="40" placeholder="e.g. A2026050">
+          </div>
+          <div class="fields wide"><span>Boxes in the range</span><b id="sbRange">—</b><span>Shipping bill (at release)</span><b id="sbShipCalc">—</b></div></div></fieldset>
+        <fieldset class="opt"><legend>E-Bill Copy</legend><div class="fields wide">
           <label for="sbFile">Upload E-Bill (photo or PDF)</label><input type="file" id="sbFile" accept="image/*,application/pdf" multiple>
+          <span>Or</span><label class="btn" for="sbCam">${ic("camera")} Scan / Take Photo</label><input type="file" id="sbCam" accept="image/*" capture="environment" multiple hidden>
           <span></span><div id="sbPrev" class="rcpt-prev">No file chosen</div>
           <label for="sbNotes">Notes</label><input type="text" id="sbNotes"></div></fieldset>
       </div><div class="wfoot"><a class="btn" href="#inventory">Cancel</a><button type="submit" class="btn primary">Save E-Bill</button></div></form>`;
@@ -142,93 +147,51 @@
       if (!co) { $("#sbNoPrev").textContent = `Choose the company (for example MF-${($("#sbDate").value || isoToday()).slice(0, 4)}-0001)`; return; }
       $("#sbNoPrev").textContent = "…";
       const { data } = await sb.rpc("preview_ebill_no", { p_company: co, p_date: $("#sbDate").value || null });
-      if (!$("#sbNoPrev") || ask !== prevAsk) return; // the page was left, or another company was chosen meanwhile
+      if (!$("#sbNoPrev") || ask !== prevAsk) return;
       $("#sbNoPrev").textContent = data ? `${data} (preview)` : "Assigned on save";
     };
     $("#sbCo").addEventListener("change", showNo);
     $("#sbDate").addEventListener("change", showNo);
     showNo();
-
-    let seq = 0;
-    const T = { cols: [["Item", "text"], ["Brand", "text"], ["Qty", "qty"], ["Price", "price"], ["Total", "total"]].map(([name, type]) => ({ name, type, key: "c" + ++seq })), rows: [{}, {}, {}] };
-    const colOf = (type) => T.cols.find((c) => c.type === type);
-    const rowTotal = (r) => Math.round(num(r[colOf("qty").key]) * num(r[colOf("price").key]) * 100) / 100;
-    const totals = () => {
-      let q = 0, t = 0;
-      T.rows.forEach((r, ri) => {
-        const tot = rowTotal(r); q += num(r[colOf("qty").key]); t += tot;
-        const cell = $(`#sbItems [data-tot="${ri}"]`); if (cell) cell.textContent = peso(tot);
-      });
-      t = Math.round(t * 100) / 100;
-      $("#sbFootQty").textContent = qtyText(q); $("#sbFootTot").textContent = peso(t);
-      $("#sbTotal").textContent = bdt(t); $("#sbQtyLine").textContent = `Total Qty: ${qtyText(q)}`; $("#sbQtyOut").textContent = qtyText(q);
-      $("#sbWords").textContent = t ? words(t, "TAKA") : "";
+    // the serial range: A2026001 to A2026050 = 50 boxes (the code and the number of boxes fill each other in)
+    const numPart = (v) => { const m = /(\d+)\s*$/.exec(String(v || "")); return m ? m[1] : ""; };
+    const calc = () => {
+      const f = numPart($("#sbFrom").value), t = numPart($("#sbTo").value), boxes = Math.floor(num($("#sbBoxes").value));
+      const n = f && t ? Number(t) - Number(f) + 1 : 0;
+      $("#sbRange").textContent = n > 0 ? `${n} box${n === 1 ? "" : "es"}${boxes && boxes !== n ? ` · Total Boxes says ${boxes}` : ""}` : "—";
+      $("#sbShipCalc").textContent = boxes ? `${boxes} × PHP ${peso(boxCost)} = PHP ${peso(boxes * boxCost)}` : "—";
     };
-    const render = () => {
-      $("#sbItems").innerHTML = `<div class="sbt-wrap"><table class="sbt"><thead><tr><th class="sbt-no">No.</th>
-        ${T.cols.map((c, i) => `<th class="${isNum(c) ? "num" : ""}"><div class="sbt-h"><input type="text" value="${esc(c.name)}" data-col="${i}" maxlength="40" aria-label="Column name">${c.type === "text" ? `<button type="button" class="sbt-x" data-delcol="${i}" title="Remove this column" aria-label="Remove the column ${esc(c.name)}">×</button>` : ""}</div></th>`).join("")}<th class="sbt-act"></th></tr></thead>
-        <tbody>${T.rows.map((r, ri) => `<tr><td class="sbt-no">${ri + 1}</td>${T.cols.map((c) => c.type === "total"
-          ? `<td class="num sbt-tot" data-tot="${ri}">${peso(rowTotal(r))}</td>`
-          : `<td class="${isNum(c) ? "num" : ""}"><input type="${isNum(c) ? "number" : "text"}" ${isNum(c) ? 'min="0" step="any" inputmode="decimal"' : 'maxlength="200"'} value="${esc(r[c.key] ?? "")}" data-r="${ri}" data-k="${c.key}" aria-label="${esc(c.name)}, row ${ri + 1}"></td>`).join("")}
-          <td class="sbt-act"><button type="button" class="sbt-x" data-delrow="${ri}" title="Remove this row" aria-label="Remove row ${ri + 1}">×</button></td></tr>`).join("")}</tbody>
-        <tfoot><tr><td class="sbt-no"></td>${T.cols.map((c, i) => `<td class="${isNum(c) ? "num" : ""}">${c.type === "qty" ? `<b id="sbFootQty"></b>` : c.type === "total" ? `<b id="sbFootTot"></b>` : i === 0 ? "<b>TOTAL</b>" : ""}</td>`).join("")}<td class="sbt-act"></td></tr></tfoot></table></div>`;
-      $("#sbColN").textContent = `Columns: ${T.cols.length} of ${MAX_COLS}`;
-      $("#sbAddCol").disabled = T.cols.length >= MAX_COLS;
-      $$("#sbItems [data-col]").forEach((inp) => (inp.oninput = () => { T.cols[Number(inp.dataset.col)].name = inp.value; }));
-      $$("#sbItems [data-r]").forEach((inp) => (inp.oninput = () => { T.rows[Number(inp.dataset.r)][inp.dataset.k] = inp.value; totals(); }));
-      $$("#sbItems [data-delcol]").forEach((b) => (b.onclick = () => { T.cols.splice(Number(b.dataset.delcol), 1); render(); }));
-      $$("#sbItems [data-delrow]").forEach((b) => (b.onclick = () => { T.rows.splice(Number(b.dataset.delrow), 1); if (!T.rows.length) T.rows.push({}); render(); }));
-      totals();
-    };
-    const addRow = () => { T.rows.push({}); render(); const last = $$("#sbItems tbody tr").pop(); if (last) $("input", last).focus(); };
-    $("#sbAddRow").onclick = addRow;
-    $("#sbAddCol").onclick = () => {
-      if (T.cols.length >= MAX_COLS) return toast(`An e-bill can have up to ${MAX_COLS} columns.`, true);
-      const at = T.cols.findIndex((c) => c.type === "qty"); // a new column goes before Qty
-      T.cols.splice(at, 0, { name: `Column ${T.cols.length + 1}`, type: "text", key: "c" + ++seq });
-      render();
-      const inp = $(`#sbItems [data-col="${at}"]`); if (inp) { inp.focus(); inp.select(); }
-    };
-    // Enter moves down to the next row (and adds one at the end) instead of saving the form.
-    $("#sbItems").addEventListener("keydown", (e) => {
-      const t = e.target;
-      if (e.key !== "Enter" || !t.matches("input")) return;
-      e.preventDefault();
-      // 2.6.2: Enter in a column name goes down to the first row of that column
-      if (t.dataset.col !== undefined) { const k = T.cols[Number(t.dataset.col)]?.key; $(`#sbItems [data-r="0"][data-k="${k}"]`)?.focus(); return; }
-      if (!t.dataset.r) return;
-      const ri = Number(t.dataset.r), k = t.dataset.k;
-      if (ri === T.rows.length - 1) { addRow(); const next = $(`#sbItems [data-r="${ri + 1}"][data-k="${k}"]`); if (next) next.focus(); }
-      else $(`#sbItems [data-r="${ri + 1}"][data-k="${k}"]`)?.focus();
+    $("#sbFrom").addEventListener("input", () => {
+      const v = $("#sbFrom").value.trim().toUpperCase(), code = (/^[A-Z]+/.exec(v) || [""])[0];
+      if (code && !$("#sbCode").value.trim()) $("#sbCode").value = code;
+      const boxes = Math.floor(num($("#sbBoxes").value)), f = numPart(v);
+      if (f && boxes > 0 && !$("#sbTo").dataset.typed) $("#sbTo").value = (v.slice(0, v.length - f.length)) + String(Number(f) + boxes - 1).padStart(f.length, "0");
+      calc();
     });
-    render();
-    $("#sbFile").onchange = (e) => {
-      const fs = Array.from(e.target.files);
-      $("#sbPrev").innerHTML = !fs.length ? "No file chosen" : fs.map((f) => /^image\//.test(f.type) ? `<img src="${URL.createObjectURL(f)}" alt="${esc(f.name)}">` : `<span>${esc(f.name)}</span>`).join("");
-    };
+    $("#sbTo").addEventListener("input", () => { $("#sbTo").dataset.typed = "1"; calc(); });
+    $("#sbBoxes").addEventListener("input", () => { if ($("#sbFrom").value.trim()) $("#sbFrom").dispatchEvent(new Event("input")); else calc(); });
+    const pics = [];
+    const showFiles = () => { const fs = [...Array.from($("#sbFile").files || []), ...pics];
+      $("#sbPrev").innerHTML = !fs.length ? "No file chosen" : fs.map((f) => /^image\//.test(f.type) ? `<img src="${URL.createObjectURL(f)}" alt="${esc(f.name)}">` : `<span>${esc(f.name)}</span>`).join(""); };
+    $("#sbFile").onchange = showFiles;
+    $("#sbCam").onchange = (e) => { pics.push(...Array.from(e.target.files || [])); e.target.value = ""; showFiles(); };
     $("#sbForm").onsubmit = async (e) => {
       e.preventDefault();
-      const co = $("#sbCo").value;
+      const co = $("#sbCo").value, amt = Math.round(num($("#sbAmt").value) * 100) / 100, boxes = Math.floor(num($("#sbBoxes").value));
       if (!co) return toast("Choose the company.", true);
-      if (T.cols.some((c) => !c.name.trim())) return toast("Every column needs a name.", true);
-      const qk = colOf("qty").key, pk = colOf("price").key;
-      const rows = T.rows.filter((r) => T.cols.some((c) => (c.type === "text" ? String(r[c.key] || "").trim() !== "" : num(r[c.key]) !== 0)));
-      if (rows.some((r) => num(r[qk]) < 0 || num(r[pk]) < 0)) return toast("Qty and Price cannot be less than 0.", true);
-      if (!rows.some((r) => rowTotal(r) > 0)) return toast("Add at least one item with its Qty and Price.", true);
-      const boxes = Math.floor(num($("#sbBoxes").value));
+      if (!(amt > 0)) return toast("Enter the total bill amount.", true);
+      if (!$("#sbBatch").value.trim()) return toast("Enter the batch no.", true);
       if (boxes < 1) return toast("Enter the total boxes.", true);
-      if (!$("#sbBatch").value.trim()) return toast("Enter the batch no. The Released Notice finds the e-bill by it.", true);
       E.setBusy(e.target, true, "Saving");
-      const item_columns = T.cols.map((c) => ({ name: c.name.trim(), type: c.type }));
-      const items = rows.map((r) => T.cols.map((c) => (c.type === "text" ? String(r[c.key] || "").trim() : c.type === "total" ? rowTotal(r) : num(r[c.key]))));
+      const up = (v) => v.trim().toUpperCase() || null;
       const { data: b, error: err } = await sb.from("stock_bills").insert({
-        company_id: co, bill_date: $("#sbDate").value || isoToday(), supplier_bill_no: $("#sbRef").value.trim() || null, item_columns, items,
-        total_boxes: boxes, batch_no: $("#sbBatch").value.trim() || null, shipment_no: $("#sbShip").value.trim() || null,
-        shipment_date: $("#sbShipDate").value || null, notes: $("#sbNotes").value.trim() || null,
-        shipping_company: $("#sbShipCo").value.trim() || null, shipping_company_code: $("#sbShipCode").value.trim() || null
+        company_id: co, bill_date: $("#sbDate").value || isoToday(), supplier_bill_no: $("#sbRef").value.trim() || null,
+        item_columns: [{ name: "Item", type: "text" }, { name: "Qty", type: "qty" }, { name: "Price", type: "price" }, { name: "Total", type: "total" }],
+        items: [["TOTAL BILL AMOUNT", 1, amt, amt]], total_boxes: boxes, batch_no: $("#sbBatch").value.trim(), shipment_date: $("#sbShipDate").value || null,
+        notes: $("#sbNotes").value.trim() || null, serial_code: up($("#sbCode").value), serial_from: up($("#sbFrom").value), serial_to: up($("#sbTo").value)
       }).select("id, bill_no, total_cost").single();
-      if (err) { E.setBusy(e.target, false); return fail(err, "Could not save the e-bill"); }
-      const failed = await E.uploadRecords("stock_bill", b.id, "bill", E.filesOf("sbFile"));
+      if (err) { E.setBusy(e.target, false); return fail(err, /serial_/.test(err.message || "") ? "Run the database update 112 first" : "Could not save the e-bill"); }
+      const failed = await E.uploadRecords("stock_bill", b.id, "bill", [...E.filesOf("sbFile"), ...pics]);
       toast(`E-Bill ${b.bill_no} saved — ${bdt(b.total_cost)}.${failed ? " The e-bill copy failed to upload: upload it again on the Files tab." : ""}`, failed > 0);
       location.hash = "stockbill/" + b.id;
     };
@@ -272,9 +235,25 @@
     if (!b) { $("#main").innerHTML = `<div class="empty">E-bill not found. <a href="#inventory">Back</a></div>`; return; }
     const entries = eq.data || [], pays = pq.data || [], vouchers = vq.data || [], orders = noticesOf(b, oq.data || []), events = evq.data || [];
     const files = await billFiles(b, entries, orders.filter((o) => o.id !== "bill"), vouchers);
+    // 3.99.131: the serial range, the box cost and the net sales of the boxes of the range that are sold
+    const sb2 = (await sb.from("stock_bills").select("serial_code, serial_from, serial_to").eq("id", id).maybeSingle().then((r) => r.data, () => null)) || {};
+    const boxCost = await sb.from("ai_settings").select("value").eq("key", "box_cost").maybeSingle().then((r) => num(r.data?.value?.amount) || 3200, () => 3200);
+    let autoSales = 0, autoBoxes = 0;
+    if (sb2.serial_from && sb2.serial_to) {
+      const bx = await E.allRows(() => sb.from("box_stock").select("serial_no, price, qty, sold_date, sheet_invoice").gte("serial_no", sb2.serial_from).lte("serial_no", sb2.serial_to)).then((r) => r.data || [], () => []);
+      const inRange = bx.filter((x) => x.serial_no.length === sb2.serial_from.length);
+      const sales = inRange.length ? await sb.from("box_sales").select("serial_no, total").in("serial_no", inRange.slice(0, 900).map((x) => x.serial_no)).then((r) => r.data || [], () => []) : [];
+      const sold = new Map(sales.map((x) => [x.serial_no, num(x.total)]));
+      for (const x of inRange) {
+        const amt = sold.get(x.serial_no) ?? (num(x.price) > 0 ? num(x.price) * num(x.qty) : 0);
+        if (amt > 0) { autoSales += amt; autoBoxes++; }
+      }
+    }
     if (!here()) return;
     const w = E.canWrite("inventory"), admin = isAdmin(), st = b.status;
     const paid = num(b.paid_bdt), balance = totalCost(b) - paid;
+    const autoGap = Math.max(0, autoSales - num(b.net_sales));
+    const opCost = entries.filter((x) => x.entry_type === "operational").reduce((t, x) => t + num(x.amount), 0);
     const reload = () => V.stockbill(id);
     $(".band h1").textContent = `E-Bill ${b.bill_no}`;
     const banner = st === "paid" ? `<div class="banner ok">✔ PAID — marked by ${esc(b.paid_by_name || "")} on ${mdy(b.paid_at)}. The profit or loss and the secret code are on the E-Bill. More sales reports can still be added.</div>` : "";
@@ -290,8 +269,8 @@
     if (admin && st === "released" && !entries.some((x) => x.entry_type === "sales") && b.release_order_no) acts.push(`<button type="button" class="btn danger" id="sbUnrelease">${ic("back")} Undo Released Notice</button>`);
     // sales reports, fees and penalties can still be added after PAID
     if (w && !isOpen(st)) acts.push(`<button type="button" class="btn primary" id="sbSales">${ic("plus")} Add Sales Report</button>`);
-    if (w) acts.push(`<button type="button" class="btn" id="sbFee">${ic("plus")} Add Fee / Penalty</button>`);
-    if (w && st === "released") acts.push(`<button type="button" class="btn" id="sbSold">${ic("check")} Mark as SALES</button>`);
+    if (w) acts.push(`<button type="button" class="btn" id="sbFee">${ic("plus")} Add Cost / Fee</button>`);
+    if (w && st === "released") acts.push(`<button type="button" class="btn" id="sbSold">${ic("check")} Mark as SOLD</button>`);
     if (admin && st === "sold") acts.push(`<button type="button" class="btn ok" id="sbPaid">${ic("check")} Mark as PAID</button>`);
     const entryFile = (r) => files.find((a) => a.owner_type === "stock_bill_entry" && a.owner_id === r.id);
     const receiptCell = (r) => {
@@ -318,17 +297,30 @@
       <section class="cust-hero sb-hero st-${esc(st)}"><div class="ch-photo sb-ic">${ic("box")}</div>
         <div class="ch-main"><div class="ch-name"><h2>${esc(b.bill_no)}</h2>${ebillPill(st)}</div>
           <div class="ch-sub"><b>${esc(b.company_name || "")}</b>${b.supplier_bill_no ? ` · Bill No ${esc(b.supplier_bill_no)}` : ""} · Bill Date ${mdy(b.bill_date)}</div>
-          <div class="ch-ids">${E.idBox("Batch No", b.batch_no)}${E.idBox("System Record No", b.shipment_no)}${E.idBox("Shipment Date", mdy(b.shipment_date))}${E.idBox("Shipping Company", b.shipping_company)}${E.idBox("Shipping Company Code", b.shipping_company_code)}${E.idBox("Total Boxes", b.total_boxes == null ? "" : String(b.total_boxes))}${E.idBox("Total Qty", qtyText(b.total_qty))}${E.idBox("Released Date", mdy(b.release_date))}${E.idBox("Added By", b.created_by_name)}</div></div></section>
+          <div class="ch-ids">${E.idBox("Batch No", b.batch_no)}${E.idBox("Total Boxes", b.total_boxes == null ? "" : String(b.total_boxes))}${E.idBox("Serials", sb2.serial_from ? `${sb2.serial_from}${sb2.serial_to ? " – " + sb2.serial_to : ""}` : "")}${E.idBox("Ship Date", mdy(b.shipment_date))}${E.idBox("Released Date", mdy(b.release_date))}${b.shipment_no ? E.idBox("System Record No", b.shipment_no) : ""}${b.shipping_company ? E.idBox("Shipping Company", b.shipping_company) : ""}</div></div></section>
       ${stepsHtml(b)}
+      ${sb2.serial_from ? `<div class="due-info">Box serials: <b class="mono">${esc(sb2.serial_from)}${sb2.serial_to ? ` – ${esc(sb2.serial_to)}` : ""}</b>${sb2.serial_code ? ` · code <b>${esc(sb2.serial_code)}</b>` : ""} · ${esc(b.total_boxes ?? 0)} boxes
+        · sold <b>${autoBoxes}</b> · net sales of the sold boxes <b>${bdt(autoSales)}</b>${w && autoGap > 0.004 && !isOpen(st) ? ` <button type="button" class="btn small primary" id="sbAutoAdd">${ic("plus")} Add Net Sales ${esc(bdt(autoGap))}</button>` : ""}</div>` : ""}
+      ${st === "paid" ? `<section class="sb-final"><header>${ic("check")} <b>E-BILL SUMMARY · PAID</b><button type="button" class="btn small primary" id="sbFinalDl">${ic("download")} Download E-Bill</button></header>
+        <table><tbody>
+          <tr class="in"><th>Total Net Sales</th><td>${bdt(b.net_sales)}</td></tr>
+          <tr><th>Bill Amount</th><td>${bdt(b.total_cost)}</td></tr>
+          <tr><th>Shipping Bill (Released)</th><td>${bdt(b.release_bdt)}</td></tr>
+          <tr><th>Shipping Fee</th><td>${bdt(b.shipping_cost)}</td></tr>
+          <tr><th>Operational Cost</th><td>${bdt(opCost)}</td></tr>
+          <tr><th>EOO Fees · Other Fees · Penalties</th><td>${bdt(num(b.eoo_fees) + num(b.other_fees) - opCost + num(b.penalties))}</td></tr>
+          <tr class="sub"><th>Sub Total · All Costs</th><td>${bdt(expensesOf(b))}</td></tr>
+          <tr class="${profitOf(b) < 0 ? "loss" : "gain"}"><th>${profitOf(b) < 0 ? "Net Loss" : "Net Profit"}</th><td>${profitOf(b) < 0 ? "− " : ""}${bdt(Math.abs(profitOf(b)))}</td></tr>
+        </tbody></table></section>` : ""}
       <div class="tiles sb-tiles">${tiles.map(([k, l, v]) => `<div class="tile ${k}"><div class="k">${l}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>
       ${b.release_bdt != null ? `<div class="due-info">Released charge: <b>${esc(chargeText(b))} = ${bdt(b.release_bdt)}</b> · Shipping fee: <b>${bdt(b.shipping_cost)}</b> · Released by <b>${esc(b.release_order_no || "")}</b></div>` : ""}
       <div class="actionbar">${acts.join("")}<span class="grow"></span>${tools("stock_bills", b, `E-Bill ${b.bill_no}`, { reload, afterDelete: () => (location.hash = "inventory") })}</div>
       <div class="docgrid">${E.docCard({ key: "sb", title: `E-Bill ${b.batch_no || b.bill_no}`, ownerType: "stock_bill", ownerId: b.id, att: [], print: () => printEbill(b.id), canUpload: false,
         sub: `${b.bill_no} · every record, like a statement of account · total cost ${bdt(totalCost(b))} · ${balText}${st === "paid" ? " · with the profit or loss and the secret code" : ""}` })}</div>
-      <div class="tabs" id="sbTabs">${[`Items (${(b.items || []).length})`, `Sales Report (${entries.length})`, `Released Notice (${orders.length})`, `Payments (${payRows.length})`, `Files (${files.length})`, `History (${events.length})`]
+      <div class="tabs" id="sbTabs">${[`Bill`, `Sales Report (${entries.length})`, `Released Notice (${orders.length})`, `Payments (${payRows.length})`, `Files (${files.length})`, `History (${events.length})`]
         .map((l, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}">${l}</button>`).join("")}</div>
       <div class="tabpanes" id="sbPanes">
-        <div data-p="0">${itemsGrid(b)}${b.notes ? `<p class="muted"><b>Notes:</b> ${esc(b.notes)}</p>` : ""}</div>
+        <div data-p="0">${(b.items || []).length === 1 && /^TOTAL BILL AMOUNT$/.test(String((b.items[0] || [])[0])) ? `<div class="sb-sum"><div class="ok"><small>Total Bill Amount (BDT)</small><b>${peso(b.total_cost)}</b></div><div><small>Total Boxes</small><b>${esc(b.total_boxes ?? 0)}</b></div><div><small>Serials</small><b class="mono">${esc(sb2.serial_from || "—")}${sb2.serial_to ? ` – ${esc(sb2.serial_to)}` : ""}</b></div></div>` : itemsGrid(b)}${b.notes ? `<p class="muted"><b>Notes:</b> ${esc(b.notes)}</p>` : ""}</div>
         <div data-p="1" hidden><div class="sb-sum">${sum4.map(([k, v, c]) => `<div class="${c || ""}"><small>${k} (BDT)</small><b>${peso(v)}</b></div>`).join("")}</div>
           <div id="sbEntries">${E.grid({ cols: entryCols, rows: entries, empty: isOpen(st) ? "No sales report yet. Net sales can be added after the e-bill is released; EOO fees, other fees and penalties at any time." : "No sales report yet." })}</div></div>
         <div data-p="2" hidden><div id="sbOrders">${E.grid({ cols: [{ label: "Notice No", get: (r) => r.order_no }, { label: "Date", get: (r) => mdy(r.order_date) }, { label: "Released", get: (r) => mdy(r.release_date) },
@@ -350,13 +342,22 @@
     E.bindFiles($("#main"));
     E.bindDocCards($("#main"), reload);
     bindTools($("#main"));
-    $$("#sbRelease, [data-release]").forEach((x) => (x.onclick = () => releaseDialog(b, reload)));
+    $$("#sbRelease, [data-release]").forEach((x) => (x.onclick = () => releaseDialog({ ...b, _boxCost: boxCost }, reload)));
+    // 3.99.131: the net sales worked out from the sold boxes of the serial range: add the part not recorded yet
+    if ($("#sbAutoAdd")) $("#sbAutoAdd").onclick = async (e) => {
+      e.target.disabled = true;
+      const { error } = await sb.from("stock_bill_entries").insert({ stock_bill_id: b.id, entry_type: "sales", entry_date: isoToday(), amount: Math.round(autoGap * 100) / 100,
+        description: `NET SALES OF THE SOLD BOXES ${sb2.serial_from || ""}${sb2.serial_to ? " – " + sb2.serial_to : ""}`.trim() });
+      if (error) { e.target.disabled = false; return fail(error, "Could not add the net sales"); }
+      toast(`Net sales ${bdt(autoGap)} added.`); reload();
+    };
     if ($("#sbUnrelease")) $("#sbUnrelease").onclick = async () => {
       if (!(await E.confirmBox(`Undo the Released Notice <b>${esc(b.release_order_no)}</b> of <b>${esc(b.bill_no)}</b>? The e-bill goes back to SHIP and the released charge and shipping fee are taken off.`, { ok: "Undo", danger: true }))) return;
       const { error } = await sb.rpc("unrelease_stock_bill", { p_id: b.id });
       if (error) return fail(error, "Could not undo the Released Notice");
       toast("Released Notice undone. The e-bill is at SHIP again."); reload();
     };
+    if ($("#sbFinalDl")) $("#sbFinalDl").onclick = () => printEbill(b.id);
     if ($("#sbNoticePrint")) $("#sbNoticePrint").onclick = () => E.openPreview(`Released Notice ${orders[0]?.order_no || b.bill_no}`, [noticePage(b, orders[0])]);
     if ($("#sbSold")) $("#sbSold").onclick = () => statusDialog(b, "sold", reload);
     if ($("#sbPaid")) $("#sbPaid").onclick = () => statusDialog(b, "paid", reload);
@@ -392,7 +393,7 @@
         <span>Total Boxes</span><b>${boxes}</b><span>Bill Cost (BDT)</span><b>${peso(b.total_cost)}</b></div></div>
       <div class="fields wide" style="margin-top:10px">
         <label for="rnDate">Released Date *</label><input type="date" id="rnDate" value="${isoToday()}">
-        <label for="rnPrice">Price per Box (PHP) *</label><input type="number" id="rnPrice" min="0" step="0.01" inputmode="decimal">
+        <label for="rnPrice">Shipping Bill per Box (PHP) *</label><input type="number" id="rnPrice" min="0" step="0.01" inputmode="decimal" value="${esc(b._boxCost || 3200)}">
         <label for="rnRate">Exchange Rate (BDT for 1 PHP) *</label><input type="number" id="rnRate" min="0" step="0.0001" inputmode="decimal">
         <label for="rnShip">Shipping Fee (BDT) *</label><input type="number" id="rnShip" min="0" step="0.01" inputmode="decimal" placeholder="0 if none">
         <label for="rnBill">Shipping Bill No</label><input type="text" id="rnBill" maxlength="60" placeholder="Optional"></div>
@@ -492,7 +493,7 @@
   // EOO fee, other fee or penalty. A fee or penalty needs its receipt number and the receipt itself.
   function feeDialog(b, reload) {
     const m = E.modal(`Add Fee / Penalty — ${b.bill_no}`, `
-      <div class="subj-grid">${[["eoo_fee", "EOO Fee"], ["fee", "Other Fee"], ["penalty", "Penalty"]].map(([k, l], i) => `<label class="subj"><input type="radio" name="fpType" value="${k}" ${i ? "" : "checked"}><span>${l}</span></label>`).join("")}</div>
+      <div class="subj-grid">${[["operational", "Operational Cost"], ["eoo_fee", "EOO Fee"], ["fee", "Other Fee"], ["penalty", "Penalty"]].map(([k, l], i) => `<label class="subj"><input type="radio" name="fpType" value="${k}" ${i ? "" : "checked"}><span>${l}</span></label>`).join("")}</div>
       <div class="fields wide" style="margin-top:8px">
         <label for="fpDate">Date</label><input type="date" id="fpDate" value="${isoToday()}">
         <label for="fpAmt">Amount (BDT) *</label><input type="number" id="fpAmt" min="0.01" step="0.01">
@@ -503,7 +504,7 @@
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>Save</button>`);
     const type = () => $("input[name=fpType]:checked", m.el).value;
     const mode = () => {
-      const need = type() !== "eoo_fee";
+      const need = type() === "fee" || type() === "penalty";
       $("#fpRcptL", m.el).textContent = need ? "Receipt No *" : "Receipt No";
       $("#fpFileL", m.el).textContent = need ? "Receipt (photo or PDF) *" : "Receipt (photo or PDF)";
       $("#fpHint", m.el).textContent = need ? "A fee or penalty needs its receipt number and the receipt, so it can be checked." : "The receipt is optional for EOO fees.";
@@ -513,8 +514,8 @@
     $("[data-ok]", m.el).onclick = async () => {
       const t = type(), amt = num($("#fpAmt", m.el).value), rc = $("#fpRcpt", m.el).value.trim(), files = E.filesOf("fpFile");
       if (amt <= 0) return toast("Enter the amount.", true);
-      if (t !== "eoo_fee" && !rc) return toast("Enter the receipt number.", true);
-      if (t !== "eoo_fee" && !files.length) return toast("Upload the receipt (photo or PDF).", true);
+      if ((t === "fee" || t === "penalty") && !rc) return toast("Enter the receipt number.", true);
+      if ((t === "fee" || t === "penalty") && !files.length) return toast("Upload the receipt (photo or PDF).", true);
       const btn = $("[data-ok]", m.el); btn.disabled = true;
       const { data, error } = await sb.from("stock_bill_entries").insert({ stock_bill_id: b.id, entry_type: t, entry_date: $("#fpDate", m.el).value || isoToday(), amount: amt,
         receipt_no: rc || null, description: $("#fpDesc", m.el).value.trim() || null }).select("id").single();

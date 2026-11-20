@@ -4125,3 +4125,13 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
   .ol-hero { grid-template-columns: 1fr; } .ol-hero .ol-month { grid-column: 1; grid-row: auto; justify-content: space-between; }
 }
 .ol-li-m small { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35; } /* 3.99.130: never cut */
+/* 3.99.131: the e-bill summary when PAID */
+.sb-final { background: #fff; border: 1px solid #dfe5ef; border-top: 3px solid #1e8e3e; border-radius: 14px; margin: 10px 0 12px; overflow: hidden; }
+.sb-final header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #eef1f6; color: #12306b; }
+.sb-final header .ic { width: 18px; height: 18px; color: #1e8e3e; } .sb-final header b { flex: 1; letter-spacing: .04em; }
+.sb-final table { width: 100%; border-collapse: collapse; }
+.sb-final th, .sb-final td { padding: 7px 14px; border-bottom: 1px solid #f0f2f7; font-size: 13.5px; }
+.sb-final th { text-align: left; font-weight: 600; color: #33415c; } .sb-final td { text-align: right; font-weight: 700; color: #12306b; white-space: nowrap; }
+.sb-final tr.in td { color: #1e8e3e; } .sb-final tr.sub th, .sb-final tr.sub td { background: #f5f8fd; font-weight: 800; }
+.sb-final tr.gain th, .sb-final tr.gain td { background: #eaf6ea; color: #1e8e3e; font-size: 15px; font-weight: 800; }
+.sb-final tr.loss th, .sb-final tr.loss td { background: #fdecea; color: #c41e3a; font-size: 15px; font-weight: 800; }
