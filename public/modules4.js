@@ -11,6 +11,7 @@
   const tools = (...a) => (E.recordTools ? E.recordTools(...a) : "");
   const bindTools = (root) => E.bindRecordTools && E.bindRecordTools(root);
   const signed = (n) => (num(n) < 0 ? "−" : "") + peso(Math.abs(num(n)));
+  const sd = (d) => String(mdy(d) || "").replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1"); // 3.99.137: NOV 11 2026 in the print tables (never broken)
   const cap = (s) => String(s || "").replace(/^./, (x) => x.toUpperCase());
 
   // the steps: 1 SHIP, 2 RELEASED, 3 SALES, 4 PAID (an e-bill marked "arrived" before Update 2.0 is still at SHIP)
@@ -653,7 +654,10 @@
       : f.owner_type === "pay_voucher" ? (d.vouchers.find((v) => v.id === f.owner_id)?.voucher_no || "Payment") : "";
     const KINDS = { bill: "E-Bill Copy", shipping_bill: "Shipping Fee Receipt", sales_report: "Sales Report", receipt: "Receipt", signed_form: "Signed Copy", other: "Other" };
     // the top right: the batch no; after PAID the QR code of the secret code
-    const right = `<div class="sb-no"><small>Batch No</small><b>${esc(b.batch_no || "—")}</b><small>E-Bill No: ${esc(b.bill_no)}</small>${b.supplier_bill_no ? `<small>Bill No: ${esc(b.supplier_bill_no)}</small>` : ""}</div>`;
+    // 3.99.137: the batch no and the e-bill no in separate boxes; the e-bill no as company-batch-year-boxes (MF-QQ-13-2026-88) with its PDF417
+    const ebRef = [String(b.bill_no || "").split("-")[0], b.batch_no, String(b.bill_date || "").slice(0, 4), b.total_boxes].filter((x) => x != null && x !== "").join("-");
+    const right = `<div class="sb-heads"><div class="sb-no"><small>Batch No</small><b>${esc(b.batch_no || "—")}</b>${b.supplier_bill_no ? `<small>Bill No: ${esc(b.supplier_bill_no)}</small>` : ""}</div>
+      <div class="sb-no eb"><small>E-Bill No</small><img src="${E.pdf417DataUrl("EMONEB|" + b.bill_no)}" alt=""><b class="mono">${esc(ebRef)}</b></div></div>`;
     const words2 = (n) => (n < 0 ? `OVERPAID — ${words(-n, "TAKA")}` : words(n, "TAKA"));
     const first = `${E.printHead(`E-BILL${b.batch_no ? " " + b.batch_no : ""}`, right)}
       <div class="vno-row"><span>E-Bill No: <b>${esc(b.bill_no)}</b></span><span>Bill Date: <b>${esc(mdy(b.bill_date))}</b></span><span>Status: <b>${esc(ebillStep(b.status))}</b></span><span>Prepared By: <b>${esc(b.created_by_name || "")}</b></span></div>
@@ -691,15 +695,15 @@
         foot: itemCols.map((c, i) => (cols[i - 1]?.type === "qty" ? qtyText(b.total_qty) : cols[i - 1]?.type === "total" ? peso(b.total_cost)
           : i === cols.findIndex((x) => !isNum(x)) + 1 ? "TOTAL" : "")) },
       { title: "STATEMENT (BDT)", rows: lines, widths: [12, 42, 16, 15, 15],
-        cols: [{ label: "Date", get: (r) => mdy(r.date) }, { label: "Particulars", get: (r) => r.what }, { label: "Reference", get: (r) => r.ref || "" },
+        cols: [{ label: "Date", get: (r) => sd(r.date) }, { label: "Particulars", get: (r) => r.what }, { label: "Reference", get: (r) => r.ref || "" },
           { label: "Charges", num: true, get: (r) => (r.chg ? peso(r.chg) : "") }, { label: "Balance", num: true, get: (r) => peso(r.bal) }],
         foot: ["", "TOTAL", "", peso(total), peso(total)] },
       { title: "SALES REPORT (BDT)", rows: d.entries, empty: "No sales report yet.", widths: [12, 11, 12, 34, 16, 15],
-        cols: [{ label: "Date", get: (r) => mdy(r.entry_date) }, { label: "Type", get: (r) => ENTRY[r.entry_type] || r.entry_type }, { label: "Receipt No", get: (r) => r.receipt_no || "" },
+        cols: [{ label: "Date", get: (r) => sd(r.entry_date) }, { label: "Type", get: (r) => ENTRY[r.entry_type] || r.entry_type }, { label: "Receipt No", get: (r) => r.receipt_no || "" },
           { label: "Description", get: (r) => r.description || "" }, { label: "Added By", get: (r) => r.created_by_name || "" }, { label: "Amount", num: true, get: (r) => peso(r.amount) }],
         foot: ["", "", "", `Net Sales ${peso(sumType("sales"))} · Fees and Penalties ${peso(sumType("eoo_fee") + sumType("fee") + sumType("penalty"))}`, "", ""] },
       { title: "PAYMENTS (MEMOS IN THE DIRECTOR PORTAL)", rows: payRows, empty: "No payments yet.", widths: [11, 17, 25, 13, 8, 13, 13],
-        cols: [{ label: "Date", get: (r) => mdy(r.date) }, { label: "Memo No", get: (r) => r.no }, { label: "Subject", get: (r) => r.what },
+        cols: [{ label: "Date", get: (r) => sd(r.date) }, { label: "Memo No", get: (r) => r.no }, { label: "Subject", get: (r) => r.what },
           { label: "Amount (PHP)", num: true, get: (r) => (r.php == null ? "" : peso(r.php)) }, { label: "Rate", num: true, get: (r) => (r.rate == null ? "" : rate(r.rate)) },
           { label: "Amount (BDT)", num: true, get: (r) => peso(r.bdt) }, { label: "Approved By", get: (r) => r.by || "" }],
         foot: ["", "", "Total Paid", "", "", peso(paid), ""] },
