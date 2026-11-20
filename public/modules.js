@@ -1655,7 +1655,7 @@
           : `<div class="empty small">No payment is linked to this invoice.</div>`}
         ${linksOn && active.length ? `<div class="lp-sum"><span>Linked to this invoice</span><b>₱ ${peso(active.reduce((s, l) => s + num(l.amount), 0))}</b>${need > 0.004 ? `<span>Still needed from a payment</span><b>₱ ${peso(need)}</b>` : ""}</div>` : ""}</div>
       ${ins && E.insBox ? E.insBox(ins) : ""}
-      <div class="docgrid">${docCard({ key: "inv", title: `Invoice ${inv.invoice_no}`, tag: "System Generated", sub: `Made by the E-Portal · ₱ ${peso(inv.total_amount)} · ${mdy(inv.invoice_date)}${deds.length ? ` · CORRECTED: ₱ ${peso(num(inv.total_amount) - deds.reduce((t, m) => t + num(m.request_amount), 0))}` : ""}`, ownerType: "invoice", ownerId: inv.id, att, kind: "__system", canUpload: false, print: () => gatePrint("invoice", inv.id, `Invoice ${inv.invoice_no}`, async () => { await E.sealCode("invoice", inv.invoice_no); E.openPreview(`Invoice ${inv.invoice_no}`, [invoicePage(inv, active, deds, ins, ord)]); }) })}
+      <div class="docgrid">${docCard({ key: "inv", title: `Invoice ${inv.invoice_no}`, tag: "System Generated", sub: `Made by the E-Portal · ₱ ${peso(inv.total_amount)} · ${mdy(inv.invoice_date)}${deds.length ? ` · CORRECTED: ₱ ${peso(num(inv.total_amount) - deds.reduce((t, m) => t + num(m.request_amount), 0))}` : ""}`, ownerType: "invoice", ownerId: inv.id, att, kind: "__system", canUpload: false, print: () => gatePrint("invoice", inv.id, `Invoice ${inv.invoice_no}`, async () => { await Promise.all([E.sealCode("invoice", inv.invoice_no), loadSignatures()]); E.openPreview(`Invoice ${inv.invoice_no}`, [invoicePage(inv, active, deds, ins, ord)]); }) })}
         ${copyCard({ key: "invcopy", title: `Invoice ${inv.invoice_no}`, tag: "Upload", sub: "Upload the invoice", ownerType: "invoice", ownerId: inv.id, att, kind: "signed_form" })}</div>
       <div><b>Other Files</b>${filesHtml(att.filter((a) => a.kind !== "signed_form"), "No other files.")}</div>
       </div>
@@ -1772,6 +1772,12 @@
       <tfoot><tr><td></td><td class="num"><b>${qtyText(o.total_boxes)}</b></td><td class="num"><b>${qtyText(o.total_pcs)}</b></td><td colspan="${4 + cols.length}"><b>TOTAL AMOUNT</b></td><td class="num"><b>${peso(o.total_amount)}</b></td></tr></tfoot></table>${print ? "" : "</div>"}`;
   }
 
+  // 3.99.143: the invoice is signed like the ID card back: the Director's signature, EMON HASAN, OPERATIONAL DIRECTOR (all black)
+  function invDirector() {
+    const d = (SIG.list || []).find((x) => /EMON\s+HASAN/i.test(x.full_name || "")) || (SIG.list || [])[0];
+    const pic = d ? SIG.pics.get(d.signature_path) || "" : "";
+    return `<div class="inv-dir"><div class="inv-dir-sig">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div><div class="line"></div><b>EMON HASAN</b><small>OPERATIONAL DIRECTOR</small></div>`;
+  }
   function invoicePage(inv, links = [], deds = [], ins = null, ord = null) {
     const bal = num(inv.balance);
     const off = deds.reduce((t, m) => t + num(m.request_amount), 0), corrected = Math.max(0, num(inv.total_amount) - off);
@@ -1793,7 +1799,7 @@
       ${box("Payment", `<div class="pgrid2">${cell("Payment Status", ({ paid: "PAID", partial: "PARTIAL PAYMENT", unpaid: "UNPAID" }[inv.pay_status] || String(inv.pay_status || "").toUpperCase()) + (isOverdue(inv) ? ` · OVERDUE ${daysOver(inv)} DAY(S)` : "") + (bal < 0 ? " (OVERPAID)" : ""))}${cell("Total Amount (₱)", peso(inv.total_amount))}${num(inv.amount_returned) > 0 ? cell("Returned (₱)", peso(inv.amount_returned)) : ""}${cell("Paid (₱)", peso(inv.amount_paid))}${cell("Balance (₱)", peso(bal))}</div>
         ${links.length ? `<table class="ptl"><thead><tr><th>Linked Payment (Receipt No)</th><th>Date Paid</th><th class="num">Amount Linked (₱)</th></tr></thead><tbody>
           ${links.map((l) => `<tr><td>${esc(l.payments_received?.receipt_no || "")}</td><td>${mdy(l.payments_received?.paid_date)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody></table>` : ""}`)}
-      <div class="inv-sealsig">${E.secSeal(inv.invoice_no, { code: E.sealCached("invoice", inv.invoice_no) })}${sigCol(`Prepared by: ${esc(inv.created_by_name || "")}`)}</div>`; // 3.99.142: the seal in place of the customer signature
+      <div class="inv-sealsig">${E.secSeal(inv.invoice_no, { code: E.sealCached("invoice", inv.invoice_no), lines: [inv.invoice_no, fullName(inv), inv.account_no].filter(Boolean) })}${invDirector()}</div>`; // 3.99.142: the seal in place of the customer signature
   }
 
   // ======================================================================

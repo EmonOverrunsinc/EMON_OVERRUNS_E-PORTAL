@@ -4165,3 +4165,10 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .pc-staff { background: #fff; border: 1px solid var(--line, #e3e7ef); border-radius: 14px; padding: 10px 14px; max-width: 720px; }
 .ol-from { margin-bottom: 8px; color: var(--ink-soft); }
 .pc-staff { display: grid; gap: 8px; }
+/* 3.99.143: the invoice signed like the ID card back, all black */
+.page .inv-sealsig .inv-dir { color: #000; padding-bottom: 2mm; }
+.inv-dir-sig { height: 15mm; display: flex; align-items: flex-end; justify-content: center; }
+.inv-dir-sig img { max-height: 15mm; max-width: 80%; object-fit: contain; filter: grayscale(1) brightness(0); }
+.page .inv-sealsig .inv-dir .line { border-top: 1px solid #000; margin: 0 6mm 1.2mm; }
+.inv-dir b { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; color: #000; }
+.inv-dir small { display: block; font-size: 8.5px; font-weight: 700; letter-spacing: .08em; color: #000; margin-top: .4mm; }
