@@ -334,7 +334,7 @@
             <label class="btn" for="sbUpFile">${ic("upload")} Choose File</label><input type="file" id="sbUpFile" hidden multiple accept="image/*,application/pdf" data-save-now></div>` : ""}</div>
         <div data-p="5" hidden>${E.grid({ cols: evCols, rows: events, empty: "No history yet." })}</div>
         ${sb2.serial_from ? `<div data-p="6" hidden>
-          <div class="sb-sum"><div><small>Boxes on the Server</small><b>${boxRows.length} of ${esc(b.total_boxes ?? 0)}</b></div><div><small>In Stock</small><b>${boxRows.filter((x) => !x._sold).length}</b></div><div class="ok"><small>Sold</small><b>${autoBoxes}</b></div><div class="ok"><small>Net Sales of Sold Boxes (BDT)</small><b>${peso(autoSales)}</b></div></div>
+          <div class="sb-sum"><div><small>Boxes</small><b>${boxRows.length} of ${esc(b.total_boxes ?? 0)}</b></div><div><small>In Stock</small><b>${boxRows.filter((x) => !x._sold).length}</b></div><div class="ok"><small>Sold</small><b>${autoBoxes}</b></div><div class="ok"><small>Net Sales</small><b>${peso(autoSales)}</b></div></div>
           ${w && autoGap > 0.004 && !isOpen(st) ? `<div class="btnrow"><button type="button" class="btn primary" id="sbAutoAdd">${ic("plus")} Add Net Sales ${esc(bdt(autoGap))}</button></div>` : ""}
           <div id="sbBoxes">${E.grid({ cols: [{ label: "Serial", html: (x) => `<b class="mono nw">${esc(x.serial_no)}</b>` }, { label: "Product", get: (x) => x.product || "" }, { label: "Brand", get: (x) => x.brand || "" },
             { label: "CTN", get: (x) => x.ctn || "" }, { label: "Style", get: (x) => (x.style && x.style !== "-" ? x.style : "") }, { label: "Qty", num: true, key: "q", get: (x) => qtyText(x.qty) },
