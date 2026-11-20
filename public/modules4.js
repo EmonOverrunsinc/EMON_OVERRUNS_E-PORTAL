@@ -678,8 +678,8 @@
     // The statement: the bill cost first, then the released charge, the shipping fee and the payments by date (charges
     // before payments on the same day), with the running balance.
     const later = [];
-    if (b.release_bdt != null) later.push({ date: b.release_date, what: `Released charge (${chargeText(b)})`, ref: b.release_order_no || "", chg: num(b.release_bdt), pay: 0 });
-    if (b.shipping_cost != null) later.push({ date: b.release_date, what: "Shipping fee", ref: b.shipping_bill_no || b.release_order_no || "", chg: num(b.shipping_cost), pay: 0 });
+    if (b.release_bdt != null) later.push({ date: b.release_date, what: `Released charge (${chargeText(b)})`, ref: b.batch_no || "", chg: num(b.release_bdt), pay: 0 });
+    if (b.shipping_cost != null) later.push({ date: b.release_date, what: "Shipping fee", ref: b.batch_no || "", chg: num(b.shipping_cost), pay: 0 });
     // 3.99.135: the statement lists the charges only (no payments column)
     later.sort((x, y) => String(x.date || "").localeCompare(String(y.date || "")) || y.chg - x.chg);
     const lines = [{ date: b.bill_date, what: "Bill cost (items)", ref: b.supplier_bill_no ? `Bill No ${b.supplier_bill_no}` : b.bill_no, chg: num(b.total_cost), pay: 0 }, ...later];
