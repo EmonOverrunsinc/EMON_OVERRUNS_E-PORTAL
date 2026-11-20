@@ -55,7 +55,7 @@
   V.inventory = async () => {
     const w = E.canWrite("inventory");
     E.shell("inventory", "E-Bill", `
-      <div class="tiles" id="ivTiles">${["E-Bills", "At SHIP (Not Released)", "Total Cost (BDT)", "Balance (BDT)", "Net Profit / Loss — Paid (BDT)"].map((k) => `<div class="tile"><div class="k">${k}</div><div class="v"><span class="spin sm"></span></div></div>`).join("")}</div>
+      <div class="tiles" id="ivTiles">${["E-Bills", "At SHIP (Not Released)", "Total Cost (BDT)", "Balance (BDT)", "Net Balance (BDT)"].map((k) => `<div class="tile"><div class="k">${k}</div><div class="v"><span class="spin sm"></span></div></div>`).join("")}</div>
       <div class="btnrow">${w ? `<a class="btn primary" href="#newstockbill">${ic("plus")} Add E-Bill</a>` : ""}</div>
       <div class="tabs" id="ivF"><button type="button" class="on" data-f="">All</button>${STATUS.map((s) => `<button type="button" data-f="${s}">${STATUS_NAME[s].toUpperCase()}</button>`).join("")}</div>
       <div class="inv-find"><input type="search" id="ivQ" placeholder="Search by e-bill no, company, batch no, bill no, system record no or shipping company" aria-label="Search e-bills"></div>
