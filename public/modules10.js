@@ -682,8 +682,8 @@
       const code = up(l.code), batch = up(l.lot), name = l.product || "";
       // 3.59: lines with the same code + batch no but another product stay apart (e.g. MIX and TOMMY, both without a code)
       let r = rows.find((x) => x.code === code && x.batch === batch && up(x.name) === up(name));
-      if (!r) rows.push(r = { code, batch, name, want: 0, got: 0 });
-      r.want += n;
+      if (!r) rows.push(r = { code, batch, name, want: 0, got: 0, qty: 0 });
+      r.want += n; r.qty += num(l.qty);
     });
     // how well a box fits a line: the same code + batch no; the batch no or the code (the other one empty); the product.
     // Among equals the line of the same product first - the same rule as the invoice (co_delivered).
@@ -691,7 +691,9 @@
       const code = up(b.code), batch = up(b.batch_no), item = up(b.items), name = up(x.name);
       const same = !!item && item === name, near = !!item && !!name && (item.includes(name) || name.includes(item));
       const rank = x.code === code && x.batch === batch ? 0 : batch && x.batch === batch && (!x.code || !code) ? 1
-        : code && x.code === code && (!x.batch || !batch) ? 2 : same ? 3 : near ? 4 : 9;
+        : code && x.code === code && (!x.batch || !batch) ? 2 : same ? 3 : near ? 4
+        // 3.99.144: the same pcs per box, then the same batch no, then the same code (the same rule as the invoice, 115)
+        : num(b.pcs) > 0 && x.want > 0 && x.qty / x.want === num(b.pcs) ? 5 : batch && x.batch === batch ? 6 : code && x.code === code ? 7 : 9;
       return rank * 3 + (same ? 0 : near ? 1 : 2);
     };
     const best = (b, ok) => rows.reduce((p, x) => { if (!ok(x)) return p; const f = fit(x, b); return f < 27 && (!p || f < p.f) ? { x, f } : p; }, null);
