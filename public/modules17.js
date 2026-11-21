@@ -99,8 +99,14 @@
     const rows = outlets.map((o) => ({ o, ...shopMoney(o, mm) }));
     holder.innerHTML = `<div class="ol-dash">
       <div class="ol-kpis">${kpi("Today · All Outlets", rows.reduce((s, r) => s + r.today, 0))}${kpi(E.monthText(monthNow()), rows.reduce((s, r) => s + r.net, 0))}${kpi("Balance This Month", rows.reduce((s, r) => s + r.bal, 0), "bal")}</div>
-      ${rows.map((r) => `<a class="ol-row" href="#outlet/${esc(r.o.id)}"><b>${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : r.o.address || "")}</span><em>₱ ${peso(r.net)}</em><small class="${r.bal < 0 ? "neg" : ""}">Balance ₱ ${peso(r.bal)}</small></a>`).join("")}</div>`;
+      ${rows.map((r) => `<a class="ol-row" href="#outlet/${esc(r.o.id)}"><b>${esc(r.o.code)}<span class="ol-rk" data-oid="${esc(r.o.id)}"></span></b><span>${esc(r.o.name !== r.o.code ? r.o.name : r.o.address || "")}</span><em>₱ ${peso(r.net)}</em><small class="${r.bal < 0 ? "neg" : ""}">Balance ₱ ${peso(r.bal)}</small></a>`).join("")}</div>`;
+    rankCards(holder, monthNow());
   };
+  // 3.99.178: the month's rank (Top 10 by net sales) on each shop
+  const rankCards = (holder, m) => E.outletRanks(m).then((rk) => holder?.querySelectorAll(".ol-rk").forEach((el) => {
+    const r = rk.get(el.dataset.oid);
+    if (r) el.innerHTML = E.rankBadge(r.rank, "", "mini", `Rank ${r.rank} of ${r.shops} · net sales ${E.monthText(m)}`);
+  }));
   const kpi = (k, v, cls = "") => `<div class="ol-kpi ${cls}${num(v) < 0 ? " neg" : ""}"><small>${esc(k)}</small><b>₱ ${peso(v)}</b></div>`;
 
   // ---------- Outlets: the list of the shops ----------
@@ -123,11 +129,12 @@
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(r.o))}</span><span>AUTHENTIC OUTLET</span>`).join("")}</div>
-          <div class="ol-card-h">${storeLogo(r.o)}<div><b class="ol-code">${esc(r.o.code)}</b><small class="ol-bid">${esc(shopId(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
+          <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(shopId(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
           <div class="ol-card-a">${r.o.address ? `${ic("pin")} ${esc(r.o.address)}` : ""}${r.o.address && hoursOf(r.o) ? " · " : ""}${hoursOf(r.o) ? esc(hoursOf(r.o)) : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
       }).join("") : `<div class="empty">${isAdmin() ? "No store yet. Press <b>⋯</b> at the top right, then <b>Add Store</b>: it gets SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
+    rankCards($("#olBody"), m);
     if ($("#olMore")) {
       const list = $("#olMoreList"), close = () => { list.hidden = true; document.removeEventListener("click", away, true); };
       const away = (e) => { if (!e.target.closest(".pg-more")) close(); };
@@ -256,7 +263,7 @@
             <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">AUTHENTIC · EMON OVERRUNS</text></svg>`;
         })()}
         <div class="os-hero-top">${storeLogo(o, "big")}
-          <div class="os-hero-m"><span class="os-code">${esc(o.code)}</span><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
+          <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span><span id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}"></span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
         <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(shopId(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
@@ -283,6 +290,10 @@
     if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout");
     $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
+    E.outletRanks(m).then((rk) => { // 3.99.178: the shop's rank in the month shown (Top 10 by net sales)
+      const el = $("#osRank"), r = rk.get(o.id);
+      if (r && el && el.dataset.oid === o.id && el.dataset.m === m) el.outerHTML = E.rankBadge(r.rank, "TOP SALES", "", `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}${r.net != null ? ` · ₱ ${peso(r.net)}` : ""}`);
+    });
     $$("[data-del]").forEach((b) => (b.onclick = async () => {
       const [tbl, rid] = b.dataset.del.split(":");
       if (!(await E.confirmBox("Remove this record? This cannot be undone.", { title: "Remove", ok: "Remove", danger: true }))) return;

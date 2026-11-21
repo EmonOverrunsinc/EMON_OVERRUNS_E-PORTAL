@@ -4682,3 +4682,45 @@ input, textarea, select, [contenteditable="true"], .grid td, .os-t td, .page, .p
   button:disabled, .btn:disabled { cursor: not-allowed; }
   body { cursor: default; } input, textarea { cursor: text; }
 }
+/* 3.99.178: SALES RANK · TOP 10 — 1 gold that shines by itself, 2 gold, 3 dark gold, 4 platinum, 5 silver, 6 to 10 blue */
+.rank-badge { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; border-radius: 999px; border: 1px solid transparent; font-weight: 800; line-height: 1; white-space: nowrap; vertical-align: middle; overflow: hidden; isolation: isolate; }
+.rank-badge svg { width: 22px; height: 22px; flex: none; }
+.rank-badge .rk-rib { fill: #1e3a8a; } .rank-badge .rk-coin { fill: currentColor; opacity: .9; } .rank-badge .rk-star { fill: #fff; }
+.rank-badge b { font-size: 15px; letter-spacing: .02em; }
+.rank-badge small { font-size: 10px; font-weight: 800; letter-spacing: .08em; opacity: .85; }
+.rank-badge.rk1 { background: linear-gradient(135deg, #fff4b8, #f5c542 35%, #d89e1c 65%, #fbe38a); color: #4a3200; border-color: #f8dc7a; box-shadow: 0 0 0 2px rgba(245, 197, 66, .35), 0 4px 14px rgba(216, 158, 28, .45); }
+.rank-badge.rk1 .rk-coin { fill: #b07c0c; } .rank-badge.rk1 .rk-rib { fill: #c0392b; }
+.rank-badge.rk1::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .8) 48%, transparent 66%); transform: translateX(-120%); animation: rkShine 2.8s ease-in-out infinite; }
+.rank-badge.rk1 svg { animation: rkPulse 2.8s ease-in-out infinite; transform-origin: 50% 60%; }
+@keyframes rkShine { 0%, 35% { transform: translateX(-120%); } 75%, 100% { transform: translateX(120%); } }
+@keyframes rkPulse { 0%, 100% { transform: none; } 50% { transform: scale(1.14) rotate(-8deg); } }
+.rank-badge.rk2 { background: linear-gradient(135deg, #f9df86, #e3b53c 55%, #f3cf63); color: #4a3200; border-color: #f0d27a; }
+.rank-badge.rk2 .rk-coin { fill: #a87a12; }
+.rank-badge.rk3 { background: linear-gradient(135deg, #d6a24a, #a2701d 55%, #c08b33); color: #fff7e0; border-color: #c99a4a; }
+.rank-badge.rk3 .rk-coin { fill: #6f4a0e; } .rank-badge.rk3 .rk-rib { fill: #0f2a66; }
+.rank-badge.rk4 { background: linear-gradient(135deg, #f6f8fc, #cfd8e6 45%, #eef2f8 70%, #b6c2d6); color: #1f2a44; border-color: #e3e9f2; box-shadow: 0 2px 8px rgba(80, 100, 140, .25); }
+.rank-badge.rk4 .rk-coin { fill: #7d8aa3; }
+.rank-badge.rk5 { background: linear-gradient(135deg, #e4e6e9, #b3b7be 55%, #d4d7dc); color: #262b33; border-color: #c8cbd1; }
+.rank-badge.rk5 .rk-coin { fill: #868b94; }
+.rank-badge.rk6 { background: #eaf0fb; color: #1e3a8a; border-color: #c9d6f0; }
+.rank-badge.rk6 .rk-coin { fill: #2f56b0; }
+.rank-badge.mini { gap: 3px; padding: 2px 7px 2px 3px; margin-left: 6px; }
+.rank-badge.mini svg { width: 15px; height: 15px; } .rank-badge.mini b { font-size: 11.5px; }
+@media (prefers-reduced-motion: reduce) { .rank-badge.rk1::after, .rank-badge.rk1 svg { animation: none; } }
+.os-code-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.os-code-row .rank-badge { padding: 6px 14px 6px 8px; } .os-code-row .rank-badge svg { width: 26px; height: 26px; } .os-code-row .rank-badge b { font-size: 18px; }
+.ol-code-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; } .ol-code-row .rank-badge.mini { margin-left: 0; }
+.ol-row b .rank-badge { vertical-align: 2px; }
+.rank-badge > b, .rank-badge > small { display: inline; color: inherit !important; }
+.ch-name .rank-badge { margin-left: 2px; }
+.rank-note { margin: 0 0 10px; color: var(--muted, #5b6b8c); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.rank-note svg { width: 15px; height: 15px; }
+.rank-board { display: grid; gap: 8px; }
+.rank-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; border: 1px solid #dde5f3; background: #fff; color: inherit; text-decoration: none; }
+.rank-row:hover { border-color: #b7c7e6; background: #f7f9fe; }
+.rank-row > div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.rank-row > div b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rank-row > div small { color: #5b6b8c; font-size: 12px; }
+.rank-row em { font-style: normal; font-weight: 800; color: #0f2a66; white-space: nowrap; }
+.rank-row .rank-badge { min-width: 62px; justify-content: center; }
+.rank-row.rr1 { border-color: #f1d27a; background: linear-gradient(90deg, #fff8dc, #fff 60%); }
+.rank-row.rr2 { border-color: #f0dc9c; } .rank-row.rr3 { border-color: #dcc092; } .rank-row.rr4 { border-color: #d6dde9; } .rank-row.rr5 { border-color: #d3d6db; }

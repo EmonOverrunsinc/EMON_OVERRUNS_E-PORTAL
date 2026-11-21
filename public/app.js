@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.177"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.178"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.177"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.178"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -70,6 +70,24 @@
   const fullName = (r) => [r?.first_name, middleOf(r), r?.last_name].filter(Boolean).join(" ").trim();
   // 3.99.161: a long name made short for the lists (one line): FIRST M. LAST - the middle name as its initial; still long,
   // the words of the surname before its last one as initials too (DELA CRUZ SANTOS: D. C. SANTOS). Profiles and prints keep the full name.
+  // 3.99.178: SALES RANK · TOP 10 (SQL 125). The badge: 1 gold that shines by itself, 2 gold, 3 dark gold, 4 platinum,
+  // 5 silver, 6 to 10 blue. The ranks are kept for 2 minutes, so a page and its list make one call.
+  const MEDAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="rk-rib" d="M6.6 1.8h4l2.1 5.6-2.6 2.4zM17.4 1.8h-4l-2.1 5.6 2.6 2.4z"/><circle class="rk-coin" cx="12" cy="15.2" r="6.8"/><path class="rk-star" d="m12 11 1.27 2.58 2.85.41-2.06 2.01.49 2.83L12 17.5l-2.55 1.34.49-2.83L7.88 14l2.85-.41z"/></svg>';
+  const rankBadge = (k, label = "TOP SALES", cls = "", tip = "") => {
+    k = Number(k);
+    if (!(k >= 1 && k <= 10)) return "";
+    return `<span class="rank-badge rk${Math.min(k, 6)}${cls ? " " + cls : ""}" title="${esc(tip || `Rank ${k} of the Top 10`)}">${MEDAL}<b>#${k}</b>${label ? `<small>${esc(label)}</small>` : ""}</span>`;
+  };
+  const rankMemo = new Map();
+  const rankList = (key, call) => {
+    const hit = rankMemo.get(key);
+    if (hit && Date.now() - hit.t < 120000) return hit.p;
+    const p = Promise.resolve().then(call).then(({ data, error }) => new Map(error ? [] : (data || []).map((r) => [r.outlet_id || r.customer_id, r]))).catch(() => new Map());
+    rankMemo.set(key, { t: Date.now(), p });
+    return p;
+  };
+  const outletRanks = (month) => rankList(`o${month}`, () => sb.rpc("outlet_ranks", { p_month: month }));
+  const customerRanks = () => rankList("c", () => sb.rpc("customer_ranks"));
   const shortName = (r, max = 22) => {
     const full = fullName(r);
     if (full.length <= max) return full;
@@ -2934,7 +2952,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankBadge, outletRanks, customerRanks, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
