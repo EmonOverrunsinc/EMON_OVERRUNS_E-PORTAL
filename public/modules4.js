@@ -103,7 +103,8 @@
     if (!E.canWrite("inventory")) { location.hash = "inventory"; return; }
     E.shell("newstockbill", "Add E-Bill", busy());
     const here = E.stillHere();
-    const { data: cos, error } = await sb.from("pay_companies").select("id, name, status").order("name");
+    let { data: cos, error } = await sb.from("pay_companies").select("id, name, status").neq("office", "manila").order("name"); // 3.99.163: E-Bill is Dhaka's
+    if (error && /office/i.test(error.message || "")) ({ data: cos, error } = await sb.from("pay_companies").select("id, name, status").order("name"));
     if (!here()) return; // 3.35: not drawn over the page the person went to
     if (error) return fail(error, "Could not load the companies");
     if (!(cos || []).length) {

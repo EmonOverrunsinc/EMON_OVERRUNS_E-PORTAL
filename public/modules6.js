@@ -44,17 +44,19 @@
   // EO-Office page: mini dashboard, QC Test tab, Collection Voucher tab
   // ======================================================================
   // The pages of EO-Office: QC Test and Collection Voucher (this page), Employees and Payroll (3.23), Credit Memo and Project (3.24: no Job Applications / Job Positions)
-  const eoTabs = (on) => `<nav class="subnav reg-nav">${[["eooffice", `${ic("shield")} Regional Office Manila`, "eooffice"], ["custorders", "Customer Order", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memo", "creditmemos"], ["projects", "Project", "projects"], ["insurance", "Coverage", "eooffice"]]
+  const eoTabs = (on) => `<nav class="subnav reg-nav">${[["eooffice", `${ic("shield")} Regional Office Manila`, "eooffice"], ["custorders", "Customer Order", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memo", "creditmemos"], ["projects", "Project", "projects"], ["insurance", "Coverage", "eooffice"], ["mbilling", "Billing", "mbilling"]]
     .filter((x) => E.hasModule(x[2]) && (x[2] !== "eooffice" || E.isStaff())).map(([k, l]) => `<a href="#${k}" class="${k === on ? "on" : ""}">${l}</a>`).join("")}</nav>`;
   // 3.99.158: REGIONAL OFFICE MANILA (was EO-Office): a card for every part on top, with its number
   const MNL = [["custorders", "Customer Order", "box", "Orders, boxes, delivery and the invoice", "eooffice"], ["employees", "Employees", "users", "Staff, ID cards and documents", "employees"],
     ["payroll", "Payroll", "wallet", "Salaries and payslips", "employees"], ["creditmemos", "Credit Memo", "receipt", "Returns, credits and discounts", "creditmemos"],
-    ["projects", "Project", "folder", "Projects and their payments", "projects"], ["insurance", "Coverage", "shield", "Order coverage certificates", "eooffice"]];
+    ["projects", "Project", "folder", "Projects and their payments", "projects"], ["insurance", "Coverage", "shield", "Order coverage certificates", "eooffice"],
+    ["mbilling", "Billing", "building", "Manila companies, payments and vouchers", "mbilling"]];
   const mnlCount = {
     custorders: () => sb.from("customer_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "approved"]).then((r) => (r.error ? "" : r.count ? `${r.count} open order(s)` : "No open order")),
     employees: () => sb.from("employees").select("id", { count: "exact", head: true }).eq("status", "active").then((r) => (r.error ? "" : `${r.count || 0} active`)),
     creditmemos: () => sb.from("credit_memos").select("id", { count: "exact", head: true }).eq("status", "pending").then((r) => (r.error ? "" : r.count ? `${r.count} waiting for approval` : "Nothing waiting")),
     projects: () => sb.from("projects").select("id", { count: "exact", head: true }).then((r) => (r.error ? "" : `${r.count || 0} project(s)`)),
+    mbilling: () => sb.from("pay_companies").select("id", { count: "exact", head: true }).eq("office", "manila").then((r) => (r.error ? "" : `${r.count || 0} compan${r.count === 1 ? "y" : "ies"}`)),
     insurance: () => sb.from("order_insurance").select("id", { count: "exact", head: true }).in("status", ["unpaid", "review"]).then((r) => (r.error ? "" : r.count ? `${r.count} to check` : "Nothing to check"))
   };
   V.eooffice = async (tab, month) => {

@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.162"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.163"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.162"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.163"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -184,7 +184,8 @@
     if (s < 7 * 86400) return `${Math.floor(s / 86400)} day${s < 2 * 86400 ? "" : "s"} ago`;
     return mdy(iso);
   }
-  const busy = (text = "Loading") => `<div class="loading" role="status"><span class="spin"></span><span>${esc(text)}<span class="dots"></span></span></div>`;
+  // 3.99.163: while a page loads: soft shining rows (the page feels faster than a lone spinner)
+  const busy = (text = "Loading") => `<div class="loading sk" role="status" aria-label="${esc(text)}"><span class="sk-t"><span class="spin sm"></span>${esc(text)}<span class="dots"></span></span><i class="sk-b"></i><i class="sk-b"></i><i class="sk-b s"></i></div>`;
 
   // Line icons (stroke drawn with the text colour).
   const ICONS = {
@@ -1364,7 +1365,7 @@
     { k: "outlets", icon: "building", label: "Outlets" } // 3.99.116: the shops
   ];
   // 3.2: EO-Office holds QC Test, Collection Voucher, Job Applications, Job Positions, Credit Memo and Project: it opens for anyone who may open one of them
-  const EO_MODULES = ["eooffice", "creditmemos", "projects", "employees"];
+  const EO_MODULES = ["eooffice", "creditmemos", "projects", "employees", "mbilling"]; // 3.99.163: + Manila Billing
   // Which menu item (module) each page belongs to; pages a user has no access to are blocked.
   const MODULE_OF = {
     customers: "customers", newcustomer: "customers", customer: "customers", statements: "customers", order: "customers",
@@ -1374,7 +1375,8 @@
     creditmemos: "creditmemos", newcreditmemo: "creditmemos", creditmemo: "creditmemos",
     employees: "employees", newemployee: "employees", editemployee: "employees", employee: "employees", jobapps: "employees", jobapp: "employees", positions: "employees", payroll: "employees",
     projects: "projects", newproject: "projects", project: "projects",
-    billing: "billing", newpaycompany: "billing", paycompany: "billing", newvoucher: "billing", voucher: "billing", ebill: ["billing", "inventory"],
+    billing: "billing", newpaycompany: ["billing", "mbilling"], paycompany: ["billing", "mbilling"], newvoucher: ["billing", "mbilling"], voucher: ["billing", "mbilling"], ebill: ["billing", "inventory"],
+    mbilling: "mbilling", // 3.99.163: Regional Office Manila › Billing (its own companies; "15 Manila Billing")
     inventory: "inventory", newstockbill: "inventory", stockbill: "inventory",
     outlets: "outlets", outlet: "outlets", // 3.99.116: its own access "14 Outlets"
     eooffice: EO_MODULES, newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice",
@@ -1407,7 +1409,7 @@
   const REGIONAL = [["purchase", "Purchase Order", "order"], ["billing", "Billing", "building"], ["inventory", "E-Bill", "box"]];
   const regionalItems = () => REGIONAL.filter(([k]) => (k === "purchase" ? isStaff() && hasModule("purchase") : hasModule(k)));
   const REG_PAGES = ["purchase", "newpurchase", "po", "editpo", "billing", "newpaycompany", "paycompany", "newvoucher", "voucher", "inventory", "newstockbill", "stockbill", "ebill"];
-  const ACTIVE_OF = { employees: "eooffice", newemployee: "eooffice", editemployee: "eooffice", employee: "eooffice", payroll: "eooffice", payslip: "eooffice", creditmemos: "eooffice", newcreditmemo: "eooffice", creditmemo: "eooffice", projects: "eooffice", newproject: "eooffice", project: "eooffice", jobapps: "eooffice", jobapp: "eooffice", positions: "eooffice", newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice", newpurchase: "purchase", po: "purchase", editpo: "purchase", ebill: "inventory", custorders: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: "eooffice", insurance: "eooffice", find: "", profile: "", settings: "", regional: "regional", ...Object.fromEntries(REG_PAGES.map((k) => [k, "regional"])) };
+  const ACTIVE_OF = { employees: "eooffice", newemployee: "eooffice", editemployee: "eooffice", employee: "eooffice", payroll: "eooffice", payslip: "eooffice", creditmemos: "eooffice", newcreditmemo: "eooffice", creditmemo: "eooffice", projects: "eooffice", newproject: "eooffice", project: "eooffice", jobapps: "eooffice", jobapp: "eooffice", positions: "eooffice", newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice", newpurchase: "purchase", po: "purchase", editpo: "purchase", ebill: "inventory", custorders: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: "eooffice", insurance: "eooffice", find: "", profile: "", settings: "", regional: "regional", mbilling: "eooffice", ...Object.fromEntries(REG_PAGES.map((k) => [k, "regional"])) };
   // Older addresses from version 1.0.
   const ALIAS = { users: "employees", userres: "employees", resolutions: "purchase", resolution: "purchase", community: "purchase", orders: "dashboard", neworder: "dashboard", editorder: "dashboard", verification: "verify", supplier: "billing", newsupplier: "billing", search: "dashboard" };
   const avatarUrl = () => publicUrl("avatars", S.profile?.avatar_path);
