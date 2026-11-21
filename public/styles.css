@@ -4788,3 +4788,8 @@ body:has(.modal) > .quick-add, body:has(.preview) > .quick-add, body:not(:has(.c
 #main .cust-hero .ch-tags > span:empty { display: none; }
 #main .cust-hero .ch-tags .pill, #main .cust-hero .ch-tags > span > * { max-width: 100%; white-space: normal; text-align: center; }
 @media (max-width: 480px) { .os-code-row .rank-badge small { display: none; } .os-code-row .rank-badge { padding: 5px 10px 5px 6px; } }
+/* 3.99.181: the stars under the branch code, in the middle (shop head and cards) */
+.os-code-col, .ol-code-col { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
+.os-code-col .os-stars[hidden] { display: none; }
+.ol-code-col .ol-st:empty { display: none; } .ol-code-col .stars.mini { margin: 0; }
+.ol-code-row { align-items: flex-start; }
