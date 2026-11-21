@@ -4483,3 +4483,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .vw-print { display: flex; align-items: center; justify-content: center; height: 100%; } .vw-print img { max-width: 100%; max-height: 270mm; object-fit: contain; }
 @media (max-width: 760px) { .vw-tools { width: 100%; justify-content: center; margin: 0 0 6px; } }
 .viewer-body.vw2 { min-height: min(70dvh, 640px); }
+/* 3.99.166: the shop code big and easy to find (SHOP-1, SHOP-2 ...); the address with a location pin */
+.os-code { font-size: 20px; padding: 4px 16px; letter-spacing: .1em; border-radius: 10px; box-shadow: 0 3px 10px rgba(0, 0, 0, .18); }
+.os-hero-m h2 { font-size: 21px; }
+.ol-card-h b.ol-code { display: inline-block; font-size: 17px; padding: 3px 12px; border-radius: 9px; background: #e2b33c; color: #0f2a66; letter-spacing: .08em; }
+.ol-card-a { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; } .ol-card-a svg, .os-hero-m p svg { width: 15px; height: 15px; flex: none; }
+.ol-card-a svg { color: #c9a227; }
+@media (max-width: 760px) { .os-code { font-size: 18px; } }
+#main .ol-kpis .ol-kpi b { font-size: clamp(10px, 9.6cqi, 22px); }

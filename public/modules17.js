@@ -100,8 +100,8 @@
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}">
-          <div class="ol-card-h">${ic("building")}<div><b>${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
-          <div class="ol-card-a">${esc(r.o.address || "")}${hoursOf(r.o) ? ` · ${esc(hoursOf(r.o))}` : ""}</div>
+          <div class="ol-card-h">${ic("building")}<div><b class="ol-code">${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
+          <div class="ol-card-a">${r.o.address ? `${ic("pin")} ${esc(r.o.address)}` : ""}${r.o.address && hoursOf(r.o) ? " · " : ""}${hoursOf(r.o) ? esc(hoursOf(r.o)) : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
       }).join("") : `<div class="empty">${isAdmin() ? "No outlet yet. Press <b>New Outlet</b> to add SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
@@ -185,7 +185,7 @@
     const days = [...new Set([...sales.map((r) => r.sale_date), ...exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort().reverse()
       .map((d) => { const r = sales.find((x) => x.sale_date === d), t = num(r?.total), ex = dayOf(d, "daily"), co = dayOf(d, "cashout"); return { d, r, t, ex, co, left: t - ex - co }; });
     const dEx = sum(days, "ex"), dCo = sum(days, "co");
-    const pc = (v) => (num(v) ? peso(v) : `<span class="os-0">—</span>`);
+    const pc = (v) => (num(v) ? peso(v) : "");
     const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th>${PAY.map(([, l]) => `<th class="num">${esc(l.toUpperCase())}</th>`).join("")}<th class="num">TOTAL SALES</th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">CASH LEFT</th><th></th></tr></thead><tbody>
         ${days.map((x) => `<tr><td><b>${esc(mdy(x.d))}</b>${x.r?.note ? `<small>${esc(x.r.note)}</small>` : ""}</td>${PAY.map(([k]) => `<td class="num">${pc(x.r?.[k])}</td>`).join("")}<td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td>${x.r ? tools("outlet_sales", x.r) : ""}</td></tr>`).join("")}</tbody>
         <tfoot><tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${peso(sum(sales, k))}</td>`).join("")}<td class="num">${peso(net)}</td><td class="num">${peso(dEx)}</td><td class="num">${peso(dCo)}</td><td class="num">${peso(net - dEx - dCo)}</td><td></td></tr></tfoot></table></div>`
@@ -222,7 +222,7 @@
             <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">AUTHENTIC · EMON OVERRUNS</text></svg>`;
         })()}
         <div class="os-hero-top"><div class="os-hero-ic">${ic("building")}</div>
-          <div class="os-hero-m"><span class="os-code">${esc(o.code)}</span><h2>${esc(o.name)}</h2><p>${ic("home")} ${esc(o.address || "No address")}</p></div></div>
+          <div class="os-hero-m"><span class="os-code">${esc(o.code)}</span><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
         <div class="os-chips"><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
@@ -473,7 +473,7 @@
     const xps = d.exps.filter((r) => r.kind !== "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
     const cos = d.exps.filter((r) => r.kind === "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
     const pays = [...d.pays].sort((a, b) => (a.paid_date < b.paid_date ? -1 : 1));
-    const P = (v) => peso(v), Z = (v) => (num(v) ? peso(v) : "—");
+    const P = (v) => peso(v), Z = (v) => (num(v) ? peso(v) : "");
     const soaNo = `SOA-${o.code}-${m.replace("-", "")}`;
     const sdate = (x) => String(mdy(x) || "").replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1");
     // the blocks of the statement, each with its height in "rows" (to fill the pages)
