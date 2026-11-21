@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.168"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.169"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.168"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.169"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2377,8 +2377,10 @@
           part.width = cw; part.height = ph;
           const pc = part.getContext("2d"); pc.fillStyle = "#fff"; pc.fillRect(0, 0, cw, ph); pc.drawImage(canvas, 0, cuts[i], cw, ph, 0, 0, cw, ph);
           const k = Math.min(w / cw, h / ph);
-          if (!pdf) pdf = new lib.jsPDF({ orientation: w > h ? "landscape" : "portrait", unit: "mm", format: [w, h], compress: true });
-          else pdf.addPage([w, h], w > h ? "landscape" : "portrait");
+          // 3.99.169: every sheet is A4 (an A5 receipt sits on the top half of an A4 portrait sheet)
+          const [sw, sh] = w > h && w === 297 ? [297, 210] : [210, 297];
+          if (!pdf) pdf = new lib.jsPDF({ orientation: sw > sh ? "landscape" : "portrait", unit: "mm", format: [sw, sh], compress: true });
+          else pdf.addPage([sw, sh], sw > sh ? "landscape" : "portrait");
           pdf.addImage(part.toDataURL("image/jpeg", 0.92), "JPEG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
         }
       }
