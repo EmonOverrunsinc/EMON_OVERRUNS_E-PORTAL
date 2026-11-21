@@ -4666,3 +4666,19 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .pg-more-list button:hover { background: #eef3fc; } .pg-more-list button .ic { width: 18px; height: 18px; }
 @media (max-width: 760px) { .store-logo.big { width: 74px; height: 74px; } }
 .store-logo .sl-t { font-size: 7.6px; letter-spacing: .02em; } .store-logo .sl-b { font-size: 7px; letter-spacing: .02em; }
+.os-chips .os-bid { background: rgba(226, 179, 60, .22); color: #fff3c4; letter-spacing: .06em; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.ol-card-h small.ol-bid { display: block; font: 700 11px/1.2 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; color: #a87a22; }
+/* ===================== 3.99.177: a steady screen like professional software =====================
+   no bounce or pull at the edges of a phone screen; a press on a button, a card, a tab or the menu does not select its words
+   or open the copy menu; taps answer at once (no double-tap zoom); a mouse shows the hand on everything that can be pressed */
+html, body { overscroll-behavior: none; } body { overflow-x: clip; }
+.preview .pv-desk, .modal .wbody, #drawer, .pop, .am-list, .grid-scroll { overscroll-behavior: contain; }
+button, .btn, a.btn, .tabs button, .subnav a, #drawer a, .tile, .ol-card, .reg-card, .os-kpi, .ol-kpi, .blx-batch, .blx-tile, .mv-tile, .pill, .qa, .todo-chip, .doccard, .iconbtn, .scanbtn, .seg button, .os-tabs button, .pg-more-btn, .pg-more-list button, .statusbar, .band h1, .ch-name h2, label.btn, .store-logo, img, svg {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+a, button, .btn, input, select, textarea, label, .grid tbody tr.click, [data-i], .tabs button, .subnav a, #drawer a, .ol-card, .reg-card, .blx-batch { touch-action: manipulation; }
+input, textarea, select, [contenteditable="true"], .grid td, .os-t td, .page, .preview .page * { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+@media (hover: hover) and (pointer: fine) {
+  a, button, .btn, label.btn, .grid tbody tr.click, .ol-card, .reg-card, .blx-batch, .tabs button, .subnav a, #drawer a, .pill[data-f], select, summary, [role="button"], .qc-doc-open, .doccard { cursor: pointer; }
+  button:disabled, .btn:disabled { cursor: not-allowed; }
+  body { cursor: default; } input, textarea { cursor: text; }
+}

@@ -33,7 +33,8 @@
   const hourText = (v) => { const t = to24(v); if (!t) return String(v || "").trim(); const [h, mi] = t.split(":").map(Number); return `${h % 12 || 12}:${String(mi).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
   const hoursOf = (o) => (o.opens || o.closes ? `${hourText(o.opens) || "—"} – ${hourText(o.closes) || "—"}` : "");
   const shortDay = (d) => String(mdy(d) || "").replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1");
-  const shopId = (o) => { const c = String(o?.code || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), m = /^(.*?)(\d+)$/.exec(c); return `EO-${m ? m[1] + m[2].padStart(2, "0") : c}`; };
+  // 3.99.177: the shop's Branch ID is made by the server (EO- and 8 random digits, 124); before that update: from its code
+  const shopId = (o) => { if (o?.branch_id) return o.branch_id; const c = String(o?.code || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), m = /^(.*?)(\d+)$/.exec(c); return `EO-${m ? m[1] + m[2].padStart(2, "0") : c}`; };
   E.shopId = shopId;
   // 3.99.176: the STORE LOGO of a shop (made by itself): the company logo in a blue & gold ring with the branch code on top and
   // the branch (the last words of the address) at the bottom
@@ -122,7 +123,7 @@
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(r.o))}</span><span>AUTHENTIC OUTLET</span>`).join("")}</div>
-          <div class="ol-card-h">${storeLogo(r.o)}<div><b class="ol-code">${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
+          <div class="ol-card-h">${storeLogo(r.o)}<div><b class="ol-code">${esc(r.o.code)}</b><small class="ol-bid">${esc(shopId(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
           <div class="ol-card-a">${r.o.address ? `${ic("pin")} ${esc(r.o.address)}` : ""}${r.o.address && hoursOf(r.o) ? " · " : ""}${hoursOf(r.o) ? esc(hoursOf(r.o)) : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
@@ -141,6 +142,7 @@
     const preset = o?.customer_id ? await E.getCustomer(o.customer_id).catch(() => null) : null;
     const v = (k, d = "") => esc(o?.[k] ?? d);
     const m = E.modal(o ? `Edit ${o.code}` : `Add Store · ${code || `SHOP-${count + 1}`}`, `<div class="formgrid ol-form">
+        ${o?.branch_id ? `<div class="span2"><label>Branch ID</label><input value="${esc(o.branch_id)}" readonly class="ro" title="Made by the system, never changed"></div>` : ""}
         <div><label for="olCode">Branch Code</label><input id="olCode" maxlength="30" value="${esc(o ? o.code : code || `SHOP-${count + 1}`)}" readonly class="ro" title="Given by the system"></div>
         <div><label for="olName">Store Name *</label><input id="olName" maxlength="120" value="${v("name", "RETAIL OUTLET")}" required></div>
         <div class="span2"><label for="olAddr">Address</label><input id="olAddr" maxlength="300" value="${v("address")}"></div>
@@ -255,7 +257,7 @@
         })()}
         <div class="os-hero-top">${storeLogo(o, "big")}
           <div class="os-hero-m"><span class="os-code">${esc(o.code)}</span><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
-        <div class="os-chips"><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
+        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(shopId(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
@@ -504,7 +506,7 @@
     const xp = day.filter((x) => x.kind !== "cashout"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), cash = sum(co, "amount"), left = tot - ex - cash;
-    const no = `DSR-${shopId(o).replace(/^EO-/, "")}-${date.replace(/-/g, "")}`;
+    const no = `DSR-${String(o.code || "").replace(/[^A-Z0-9]/gi, "").toUpperCase()}-${date.replace(/-/g, "")}`;
     const row = (k, v, cls = "") => `<tr class="${cls}"><td>${k}</td><td class="num">${v}</td></tr>`;
     const list = (title, rows, cols) => `<div class="soa-sec"><h4>${title}</h4>${rows.length ? `<table class="soa-t"><thead><tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>` : `<div class="soa-none">None this day.</div>`}</div>`;
     const dirSig = (() => { const x = E.approvedBy?.(null, "EMON HASAN"); return x?.pic ? `<img src="${esc(x.pic)}" alt="Signature">` : ""; })();
