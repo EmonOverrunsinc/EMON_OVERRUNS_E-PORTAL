@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.179"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.180"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.179"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.180"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -87,6 +87,34 @@
     return p;
   };
   const outletRanks = (month) => rankList(`o${month}`, () => sb.rpc("outlet_ranks", { p_month: month }));
+  // 3.99.180: ACHIEVEMENTS (SQL 126): the medals (gold, silver, bronze) and the stars (max 5, half stars too)
+  const salesStars = (kind) => rankList(`s${kind}`, () => sb.rpc("sales_stars", { p_kind: kind }).then((r) => ({ ...r, data: (r.data || []).map((x) => ({ ...x, customer_id: x.owner_id })) })));
+  let starN = 0;
+  const STAR5 = [0, 1, 2, 3, 4].map((i) => `<path transform="translate(${i * 24} 0)" d="M12 2.2l2.95 6.1 6.7.95-4.85 4.7 1.15 6.65L12 17.45 6.05 20.6l1.15-6.65L2.35 9.25l6.7-.95z"/>`).join("");
+  const starsHtml = (n, cls = "") => {
+    n = Math.max(0, Math.min(5, Math.round(Number(n || 0) * 2) / 2));
+    const id = `stc${++starN}`;
+    return `<span class="stars${cls ? " " + cls : ""}" role="img" aria-label="${n} of 5 stars" title="${n} of 5 stars"><svg viewBox="0 0 120 24" aria-hidden="true"><defs><clipPath id="${id}"><rect width="${n * 24}" height="24"/></clipPath></defs><g class="st-off">${STAR5}</g><g class="st-on" clip-path="url(#${id})">${STAR5}</g></svg></span>`;
+  };
+  const MEDAL_NAME = ["", "GOLD", "SILVER", "BRONZE"];
+  const medalHtml = (k) => `<span class="medal md${k}" title="${MEDAL_NAME[k] || ""} medal">${MEDAL}</span>`;
+  // the Achievements tab of a shop (kind "outlet") or a customer ("customer")
+  const achHtml = (a, kind) => {
+    if (!a) return `<div class="empty">No achievement yet. It needs the database update <b>126</b>.</div>`;
+    const shop = kind === "outlet", when = (p) => (shop ? mdy(p) : `WEEK OF ${mdy(p)}`);
+    return `<div class="ach-head">
+        <div class="ach-stars">${starsHtml(a.stars, "big")}<b>${Number(a.stars)} OF 5 STARS</b><small>${shop ? "Medals of the last 30 days" : "Medals of the last 12 weeks"} · ${a.points} point${a.points === 1 ? "" : "s"}</small></div>
+        <div class="ach-count">${[1, 2, 3].map((k) => `<div class="ach-c md${k}">${medalHtml(k)}<b>${num(a[["", "gold", "silver", "bronze"][k]])}</b><small>${MEDAL_NAME[k]}</small></div>`).join("")}</div></div>
+      ${(a.medals || []).length ? `<div class="ach-list">${a.medals.map((x) => `<div class="ach-row md${x.rank}">${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} · #${x.rank} OF THE ${shop ? "DAY" : "WEEK"}</b><small>${esc(when(x.period))}</small></div>${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}</div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
+      <p class="ach-note">${shop ? "Every day the 3 shops with the highest sales get a medal: gold, silver and bronze. The day's medals are saved at 12 noon the next day, so sales recorded late at night still count." : "Every week (Monday to Sunday) the 3 customers with the highest net sales of the week get a medal: gold, silver and bronze. They are saved on Monday."} A saved medal never changes. Stars (max 5): gold 3 points, silver 2, bronze 1; the one with the most points has 5 stars, the others in proportion.</p>`;
+  };
+  const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
+  // the corner of a profile head: the rank badge and the stars (always in the same place)
+  const achCorner = (el, rank, label, tip, stars) => {
+    if (!el) return;
+    el.innerHTML = `${rank ? rankBadge(rank, label, "", tip) : ""}${stars > 0 ? starsHtml(stars) : ""}`;
+    el.hidden = !el.innerHTML;
+  };
   const customerRanks = () => rankList("c", () => sb.rpc("customer_ranks"));
   const shortName = (r, max = 22) => {
     const full = fullName(r);
@@ -1381,15 +1409,28 @@
     }
     location.hash = home || "#dashboard";
   }
-  // 3.99.179: + PAYMENT and + INVOICE at the bottom right (over the Back button) of the Customers, Invoices and Payments lists
+  // 3.99.180: a + button beside the Back button (Customers, Invoices and Payments lists): it opens a menu that goes straight to
+  // New Customer Account, Add Invoice, Add Payment, Add Order, Verification (and All Statements for EMON HASAN)
   function quickAdd() {
     $$("body > .quick-add").forEach((x) => x.remove());
     if (!["customers", "invoices", "payments"].includes(location.hash.slice(1))) return;
-    const b = `${canWrite("payments") || canWrite("invoices") ? `<a class="qa-btn pay" href="#newpayment">${ic("wallet")} Payment</a>` : ""}${canWrite("invoices") ? `<a class="qa-btn inv" href="#newinvoice">${ic("plus")} Invoice</a>` : ""}`;
-    if (!b) return;
-    document.body.insertAdjacentHTML("beforeend", `<div class="quick-add">${b}</div>`);
-    requestAnimationFrame(() => { // in one row on the left of the Back button
-      const bb = $("body > .band-back"), qa = $("body > .quick-add");
+    const items = [[canWrite("customers"), "#newcustomer", "New Customer Account", "user"], [canWrite("invoices"), "#newinvoice", "Add Invoice", "receipt"],
+      [canWrite("payments") || canWrite("invoices"), "#newpayment", "Add Payment", "wallet"], [canWrite("eooffice"), "#newcustorder", "Add Order", "box"],
+      [true, "#verify", "Verification", "shield"], [isAdmin(), "#statements", "All Statements (SOA)", "doc"]].filter((x) => x[0]);
+    document.body.insertAdjacentHTML("beforeend", `<div class="quick-add"><div class="qa-menu" id="qaMenu" hidden>${items.map(([, h, l, i]) => `<a href="${h}">${ic(i)}<span>${esc(l)}</span></a>`).join("")}</div>
+      <button type="button" class="qa-plus" id="qaPlus" aria-label="Add new" aria-haspopup="true" aria-expanded="false">${ic("plus")}</button></div>`);
+    const qa = $("body > .quick-add"), menu = $("#qaMenu"), plus = $("#qaPlus");
+    const away = (e) => { if (!e.target.closest?.(".quick-add")) show(false); };
+    const key = (e) => { if (e.key === "Escape") show(false); };
+    const show = (on) => {
+      menu.hidden = !on; plus.classList.toggle("on", on); plus.setAttribute("aria-expanded", String(on));
+      document[on ? "addEventListener" : "removeEventListener"]("click", away, true);
+      document[on ? "addEventListener" : "removeEventListener"]("keydown", key);
+    };
+    plus.onclick = () => show(menu.hidden);
+    $$("a", menu).forEach((a) => a.addEventListener("click", () => show(false)));
+    requestAnimationFrame(() => { // on the left of the Back button
+      const bb = $("body > .band-back");
       if (qa) qa.style.right = bb?.offsetWidth ? `${Math.round(window.innerWidth - bb.getBoundingClientRect().left + 8)}px` : "";
     });
   }
@@ -2983,7 +3024,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankBadge, outletRanks, customerRanks, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankBadge, outletRanks, customerRanks, salesStars, starsHtml, medalHtml, achHtml, achievements, achCorner, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)

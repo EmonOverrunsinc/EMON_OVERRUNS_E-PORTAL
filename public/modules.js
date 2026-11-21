@@ -765,16 +765,15 @@
       <div class="options"><fieldset class="opt" style="flex:1 1 320px"><legend>Search Customer</legend>
         <form id="cuForm" class="fields wide">
           <label for="cuQ">Name / Account</label><input type="search" id="cuQ" placeholder="Name, account no, business or phone">
-          <label for="cuSt">Status</label><select id="cuSt"><option value="">All</option><option value="active">Active</option><option value="pending">Pending review</option><option value="verified">Verified</option><option value="suspended">Suspended</option><option value="closed">Closed</option><option value="rejected">Rejected</option></select>
         </form></fieldset></div>
       <div class="btnrow"><button type="button" class="btn primary" id="cuGo">${ic("search")} Search</button><button type="button" class="btn" id="cuScan">${ic("scan")} Scan QR</button>${isStaff() ? `<button type="button" class="btn" id="cuTop">${ic("crown")} Top 10</button>` : ""}
-        ${E.canWrite("customers") ? `<a class="btn ok" href="#newcustomer">+ New Customer</a>` : ""}${isAdmin() ? `<a class="btn" href="#statements">All Statements (SOA)</a>` : ""}</div>
+</div>
       <div id="cuRes">${busy("Searching")}</div>`, "All customer accounts. Closed accounts are shown here with a <b>CLOSED</b> mark but are hidden from the top search bar.");
     const fresh = E.loadGuard();
     const run = async () => {
       const ok = fresh(); // 3.35: a newer search wins over a slower older one
       $("#cuRes").innerHTML = busy("Searching");
-      const t = cleanQ($("#cuQ").value), st = $("#cuSt").value;
+      const t = cleanQ($("#cuQ").value), st = "";
       let q = sb.from("customers").select("*").order("created_at", { ascending: false }).limit(1000);
       if (st) q = q.eq("status", st);
       if (t) { const w = t.split(/\s+/)[0]; q = q.or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%,public_id.ilike.%${w}%`); }
@@ -801,7 +800,7 @@
       E.setRecords(`Customers: ${rows.length}`);
     };
     $("#cuForm").onsubmit = (e) => { e.preventDefault(); run(); };
-    $("#cuGo").onclick = run; $("#cuSt").onchange = run;
+    $("#cuGo").onclick = run;
     $("#cuScan").onclick = () => E.scanDialog(E.openScanned);
     if ($("#cuTop")) $("#cuTop").onclick = topCustomers;
     run();
@@ -1047,14 +1046,15 @@
     const tabs = ["Details", "Statement of Account", `Invoices (${(invs.data || []).length})`, `Payments (${(pays.data || []).length})`, `Credit Memos (${cms.length})`, `Documents (${att.length})`, "History", `Overdue (${overdue.length})`, `Returns (${rets.length})`, `Gate Pass (${E.gateHistoryRows ? E.gateHistoryRows(orders, ev.data || [], aiLog.data || []).length : 0})`];
     const showOrders = isStaff() && !!E.customerOrdersOf; // 3.37: the customer's orders (tab 10)
     if (showOrders) tabs.push("Customer Orders");
+    const achAt = isStaff() ? tabs.push("Achievements") - 1 : -1; // 3.99.180: medals and stars
     $(".band h1").textContent = `Customer — ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c)}
-      <section class="cust-hero st-${esc(c.status)}">
+      <section class="cust-hero st-${esc(c.status)}">${isStaff() ? `<div class="ach-corner cu-ach" id="pfAch" data-cid="${esc(c.id)}" hidden></div>` : ""}
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
-          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}</div>
+          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
         <div class="ch-main">
-          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${isApprovedAccount(c) && isStaff() ? `<span id="pfVerified"></span><span id="pfStanding"></span>` : ""}${isStaff() ? `<span id="pfRank" data-cid="${esc(c.id)}"></span>` : ""}${num(c.credit_limit) >= 1000000 ? `<span class="vip-chip" title="VIP · credit limit ₱ ${peso(c.credit_limit)}">${ic("crown")}VIP</span>` : ""}</div>
+          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${num(c.credit_limit) >= 1000000 ? `<span class="vip-chip" title="VIP · credit limit ₱ ${peso(c.credit_limit)}">${ic("crown")}VIP</span>` : ""}</div>
           <div class="ch-sub">${[c.credit_limit != null ? `CREDIT LIMIT ₱ ${peso(c.credit_limit)}` : "", c.email].filter(Boolean).map(esc).join(" · ") || "—"}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
@@ -1092,6 +1092,7 @@
         <div data-p="8" hidden>${rets.length ? `<div class="btnrow"><button type="button" class="btn small" data-hprint="rt">${ic("print")} Print</button></div>` : ""}${E.grid({ cols: RET_HIST, rows: rets, onRow: true, empty: "No returns." })}</div>
         <div data-p="9" hidden>${E.gateHistoryHtml ? E.gateHistoryHtml(orders, ev.data || [], aiLog.data || []) : ""}</div>
         ${showOrders ? `<div data-p="10" hidden id="pfOrders">${busy()}</div>` : ""}
+        ${achAt >= 0 ? `<div data-p="${achAt}" hidden id="pfAchTab" data-cid="${esc(c.id)}">${busy()}</div>` : ""}
         <div data-p="6" hidden>${E.grid({ cols: [{ label: "Date / Time", get: (r) => stamp(new Date(r.at)) }, { label: "Action", get: (r) => r.action }, { label: "By", get: (r) => r.by }, { label: "Note", get: (r) => r.note },
           ...(isAdmin() ? [{ label: "", html: (r) => `<button type="button" class="btn small danger" data-hdel="${r.src}:${r.id}" aria-label="Delete this history line">${ic("trash")}</button>` }] : [])], rows: history })}</div>
       </div>`;
@@ -1171,10 +1172,12 @@
     if ($("#pfRequest")) $("#pfRequest").onclick = () => E.customerRequest(c, gctx);
     E.bindRequests(c, orders, gctx);
     E.standingBadge($("#pfStanding"), c, gctx);
-    if ($("#pfRank")) E.customerRanks().then((rk) => { // 3.99.178: Top 10 customers by total net sales (changes every Monday)
-      const el = $("#pfRank"), r = rk.get(c.id);
-      if (r && el && el.dataset.cid === c.id) el.outerHTML = E.rankBadge(r.rank, "TOP CUSTOMER", "", `Rank ${r.rank} of the Top 10 customers · total net sales up to Monday ${mdy(r.as_of)}${r.net != null ? ` · ₱ ${peso(r.net)}` : ""} · the rank changes every Monday`);
+    // 3.99.178/180: Top 10 customers by total net sales (changes every Monday) and the stars, in the corner of the head
+    if ($("#pfAch")) Promise.all([E.customerRanks(), E.salesStars("customer")]).then(([rk, ss]) => {
+      const el = $("#pfAch"), r = rk.get(c.id);
+      if (el && el.dataset.cid === c.id) E.achCorner(el, r?.rank, "TOP CUSTOMER", r ? `Rank ${r.rank} of the Top 10 customers · total net sales up to Monday ${mdy(r.as_of)}${r.net != null ? ` · ₱ ${peso(r.net)}` : ""} · the rank changes every Monday` : "", ss.get(c.id)?.stars);
     });
+    if ($("#pfAchTab")) E.achievements("customer", c.id).then((a) => { const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) p.innerHTML = E.achHtml(a, "customer"); });
     E.custVerified?.($("#pfVerified"), c.id); // 3.69: the customer agreed to the legal terms
     // 3.12: the Director deletes a history line
     $$("[data-hdel]").forEach((b) => (b.onclick = async () => {

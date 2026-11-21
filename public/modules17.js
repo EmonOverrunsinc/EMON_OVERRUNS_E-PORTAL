@@ -103,10 +103,13 @@
     rankCards(holder, monthNow());
   };
   // 3.99.178: the month's rank (Top 10 by net sales) on each shop
-  const rankCards = (holder, m) => E.outletRanks(m).then((rk) => holder?.querySelectorAll(".ol-rk").forEach((el) => {
-    const r = rk.get(el.dataset.oid);
-    if (r) el.innerHTML = E.rankBadge(r.rank, "", "mini", `Rank ${r.rank} of ${r.shops} · net sales ${E.monthText(m)}`);
-  }));
+  const rankCards = (holder, m) => Promise.all([E.outletRanks(m), E.salesStars("outlet")]).then(([rk, ss]) => {
+    holder?.querySelectorAll(".ol-rk").forEach((el) => {
+      const r = rk.get(el.dataset.oid);
+      if (r) el.innerHTML = E.rankBadge(r.rank, "", "mini", `Rank ${r.rank} of ${r.shops} · net sales ${E.monthText(m)}`);
+    });
+    holder?.querySelectorAll(".ol-st").forEach((el) => { const s = ss.get(el.dataset.oid); if (s?.stars > 0) el.innerHTML = E.starsHtml(s.stars, "mini"); });
+  });
   const kpi = (k, v, cls = "") => `<div class="ol-kpi ${cls}${num(v) < 0 ? " neg" : ""}"><small>${esc(k)}</small><b>₱ ${peso(v)}</b></div>`;
 
   // ---------- Outlets: the list of the shops ----------
@@ -129,7 +132,7 @@
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(r.o))}</span><span>AUTHENTIC OUTLET</span>`).join("")}</div>
-          <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(shopId(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
+          <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span><span class="ol-st" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(shopId(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
           <div class="ol-card-a">${r.o.address ? `${ic("pin")} ${esc(r.o.address)}` : ""}${r.o.address && hoursOf(r.o) ? " · " : ""}${hoursOf(r.o) ? esc(hoursOf(r.o)) : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
@@ -251,7 +254,7 @@
       ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn small" for="olDocUp">${ic("upload")} Upload</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}
       ${o.notes ? `<div class="ol-sub">Notes</div><p class="ol-notes">${esc(o.notes)}</p>` : ""}`;
     const box = (cls, k, v, sub = "") => `<div class="os-kpi ${cls}"><small>${k}</small><b>₱ ${peso(v)}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
-    const tabs = [["Daily Sales", days.length, salesTab], ["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Documents", docs.length, docTab]];
+    const tabs = [["Daily Sales", days.length, salesTab], ["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Achievements", 0, `<div id="osAchTab" data-oid="${esc(o.id)}">${busy()}</div>`], ["Documents", docs.length, docTab]];
     $("#olBody").innerHTML = `
       <section class="os-hero">
         <div class="os-hero-micro" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(o))}</span>`).join("")}</div>
@@ -263,7 +266,7 @@
             <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">AUTHENTIC · EMON OVERRUNS</text></svg>`;
         })()}
         <div class="os-hero-top">${storeLogo(o, "big")}
-          <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span><span id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}"></span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
+          <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span><div class="ach-corner" id="osAch" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></div></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
         <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(shopId(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
@@ -290,10 +293,12 @@
     if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout");
     $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
-    E.outletRanks(m).then((rk) => { // 3.99.178: the shop's rank in the month shown (Top 10 by net sales)
-      const el = $("#osRank"), r = rk.get(o.id);
-      if (r && el && el.dataset.oid === o.id && el.dataset.m === m) el.outerHTML = E.rankBadge(r.rank, "TOP SALES", "", `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}${r.net != null ? ` · ₱ ${peso(r.net)}` : ""}`);
+    // 3.99.178/180: the rank of the month shown (Top 10 by net sales) and the stars, at the right of the branch code
+    Promise.all([E.outletRanks(m), E.salesStars("outlet")]).then(([rk, ss]) => {
+      const el = $("#osAch"), r = rk.get(o.id);
+      if (el && el.dataset.oid === o.id && el.dataset.m === m) E.achCorner(el, r?.rank, "TOP SALES", r ? `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}${r.net != null ? ` · ₱ ${peso(r.net)}` : ""}` : "", ss.get(o.id)?.stars);
     });
+    E.achievements("outlet", o.id).then((a) => { const p = $("#osAchTab"); if (p && p.dataset.oid === o.id) p.innerHTML = E.achHtml(a, "outlet"); });
     $$("[data-del]").forEach((b) => (b.onclick = async () => {
       const [tbl, rid] = b.dataset.del.split(":");
       if (!(await E.confirmBox("Remove this record? This cannot be undone.", { title: "Remove", ok: "Remove", danger: true }))) return;
