@@ -750,7 +750,7 @@
       if (ws.length) { const st0 = (v) => String(v || "").toLowerCase().startsWith(ws[0]); const rk = (c) => (st0(c.first_name) ? 0 : st0(c.last_name) ? 1 : 2); rows.sort((a, b) => rk(a) - rk(b)); }
       rows.forEach((r, i) => (r._no = i + 1));
       $("#cuRes").innerHTML = E.grid({ cols: [
-        { label: "No.", num: true, get: (r) => r._no }, { label: "Account No", get: (r) => r.account_no }, { label: "Name", wrap: true, get: (r) => fullName(r) }, // 3.99.159: CLOSED once (in Status)
+        { label: "No.", num: true, get: (r) => r._no }, { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r) }, // 3.99.159: CLOSED once (in Status)
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
         { label: "Balance Due (₱)", key: "due", num: true, get: (r) => peso(r.due) }],
@@ -1438,7 +1438,7 @@
       rows = data || [];
       const sum = (k) => peso(rows.reduce((s, r) => s + num(r[k]), 0));
       $("#stRes").innerHTML = E.grid({ cols: [
-        { label: "Statement No", get: (r) => r.statement_no }, { label: "Account No", get: (r) => r.customers?.account_no || "" }, { label: "Customer", get: (r) => fullName(r.customers || {}) },
+        { label: "Statement No", get: (r) => r.statement_no }, { label: "Account No", get: (r) => r.customers?.account_no || "" }, { label: "Customer", get: (r) => E.shortName(r.customers || {}) },
         { label: "Opening (₱)", key: "opening_balance", num: true, get: (r) => peso(r.opening_balance) }, { label: "Debit (₱)", key: "total_debit", num: true, get: (r) => peso(r.total_debit) },
         { label: "Credit (₱)", key: "total_credit", num: true, get: (r) => peso(r.total_credit) }, { label: "Closing (₱)", key: "closing_balance", num: true, get: (r) => peso(r.closing_balance) }],
         rows, onRow: true, foot: { opening_balance: sum("opening_balance"), total_debit: sum("total_debit"), total_credit: sum("total_credit"), closing_balance: sum("closing_balance") }, empty: `No statements for ${monthText(m)} yet.` });
@@ -1484,7 +1484,7 @@
     // 3.90.2: an invoice of a coverage shows the coverage logo (the shield), not the word
     { label: "Invoice No", get: (r) => r.invoice_no, html: (r) => `${esc(r.invoice_no)}${insOfInvoice(r) ? ` <span class="cov-ic" title="Coverage ${esc(insOfInvoice(r))}" aria-label="Coverage">${ic("shield")}</span>` : ""}` }, { label: "Date", get: (r) => mdy(r.invoice_date) },
     { label: "Terms", get: (r) => r.payment_terms || "" }, { label: "Due Date", get: (r) => mdy(r.due_date) },
-    { label: "Account No", get: (r) => r.account_no }, { label: "Customer", get: fullName },
+    { label: "Account No", get: (r) => r.account_no }, { label: "Customer", get: (r) => E.shortName(r) },
     { label: "Boxes", num: true, get: (r) => qtyText(r.total_boxes) }, { label: "Pcs", num: true, get: (r) => qtyText(r.total_pcs) },
     { label: "Amount (₱)", key: "total_amount", num: true, get: (r) => peso(r.total_amount) },
     { label: "Returned (₱)", key: "amount_returned", num: true, get: (r) => (num(r.amount_returned) ? peso(r.amount_returned) : "") },
@@ -1812,7 +1812,7 @@
   const PAY_COLS = [
     { label: "Receipt No", get: (r) => r.receipt_no }, { label: "Date Paid", get: (r) => mdy(r.paid_date) },
     // 3.99.5: every column shows on an iPad (a long name goes on 2 lines); a phone shows the main columns only
-    { label: "Account No", phone: false, get: (r) => r.customers?.account_no || "" }, { label: "Customer", wrap: true, get: (r) => fullName(r.customers || {}) },
+    { label: "Account No", phone: false, get: (r) => r.customers?.account_no || "" }, { label: "Customer", get: (r) => E.shortName(r.customers || {}) },
     { label: "Method", phone: false, get: (r) => METHOD[r.method] || r.method }, { label: "Reference", phone: false, get: (r) => r.reference_no || "" },
     { label: "Amount (₱)", key: "amount", num: true, get: (r) => peso(r.amount) }, { label: "Verified By", phone: false, wrap: true, get: (r) => r.created_by_name || "" }
   ];
@@ -1961,7 +1961,7 @@
   const WAREHOUSE = { not_received: "NOT RECEIVED", received: "RECEIVED AT WAREHOUSE" };
   const MEMO_COLS = [
     { label: "Report No", get: (r) => r.memo_no }, { label: "Date", get: (r) => mdy(r.memo_date) },
-    { label: "Customer", get: (r) => fullName(r.customers || {}) }, { label: "Article", get: (r) => r.article || "" },
+    { label: "Customer", get: (r) => E.shortName(r.customers || {}) }, { label: "Article", get: (r) => r.article || "" },
     { label: "Defect", get: (r) => (r.is_return ? "Return" : DEFECT[r.defect_category] || "") }, { label: "Request", get: (r) => (r.is_return ? `Return · ${r.po_number || ""}` : ACTION[r.requested_action] || "") },
     { label: "Amount (₱)", key: "request_amount", num: true, get: (r) => peso(r.request_amount) }, { label: "Status", html: (r) => pill(r.status) }
   ];
