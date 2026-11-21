@@ -645,7 +645,7 @@
         ${pays.length ? pays.map((x) => `<tr><td>${esc(x.payment_no)}</td><td>${esc(mdy(x.pay_date))}</td><td>${esc(x.method || "")}</td><td>${esc(x.card_no || "")}</td><td class="num">${peso(x.amount)}</td></tr>`).join("") : `<tr><td colspan="5">Not paid yet</td></tr>`}
         <tr class="sub"><td colspan="4">Paid</td><td class="num">${peso(p.paid)}</td></tr><tr class="sub"><td colspan="4">Unpaid</td><td class="num">${peso(p.balance)}</td></tr></tbody></table>`)}
       ${p.notes ? `<p class="pdecl"><b>Notes:</b> ${esc(p.notes)}</p>` : ""}
-      ${E.sigs("Received by (Employee Signature) / Date", `Prepared by: <b>${esc(p.created_by_name || "")}</b>`)}`;
+      ${E.sigs("Received by (Employee Signature) / Date", `Prepared by: <b>${esc(p.created_by_name || "")}</b>`, E.signerBy(p.created_by))}`;
   }
   // the receipt of one salary payment: the employee's ID card was scanned when it was paid
   function receiptPage(p, x) {
@@ -659,7 +659,7 @@
       <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(x.amount))}</div></div>
       ${x.notes ? `<p class="pdecl"><b>Notes:</b> ${esc(x.notes)}</p>` : ""}
       <p class="pdecl">I acknowledge receipt of the amount above from ${esc(C.company.name)}.</p>
-      ${E.sigs("Received by (Employee Signature) / Date", `Paid by: <b>${esc(x.created_by_name || "")}</b>`)}`;
+      ${E.sigs("Received by (Employee Signature) / Date", `Paid by: <b>${esc(x.created_by_name || "")}</b>`, E.signerBy(x.created_by))}`;
   }
   V.payslip = async (id) => {
     E.shell("payslip", "Payslip", busy());
@@ -669,6 +669,7 @@
     if (!here()) return; // 3.35: not drawn over the page the person went to
     if (!p0) { $("#main").innerHTML = `<div class="empty">Payslip not found. <a href="#profile">Back</a></div>`; return; }
     const p = { ...withBalance([p0], bal)[0], employees: p0.employees };
+    E.loadSigners?.([p0.created_by, ...((pays?.rows || pays?.data || []).map((x) => x.created_by))]); // 3.99.168: their signatures, for the prints
     const em = p.employees || {}; // (a payslip whose employee is gone still opens)
     // 3.67: an employee's OWN payslip shows its amounts (screen and print) also without "13 See Balances & History"
     if (S.hideMoney && em?.profile_id && em.profile_id === S.profile?.id) {
@@ -1049,6 +1050,7 @@
       E.attachmentsOf("project", id)]);
     if (!here()) return; // not drawn over the page the person went to
     if (!pr) { $("#main").innerHTML = `<div class="empty">Project not found. <a href="#projects">Back</a></div>`; return; }
+    E.loadSigners?.([pr.created_by]); // 3.99.168: the signature of who prepared it, for the print
     const lines = items.data || [], payments = pays.data || [];
     // the receipt of each payment (the newest one), to open it from the list
     const rcpts = payments.length ? (await sb.from("attachments").select("*").eq("owner_type", "project_payment").in("owner_id", payments.map((r) => r.id)).order("created_at")).data || [] : [];
@@ -1063,7 +1065,7 @@
         ${lines.map((l) => `<tr><td>${esc(l.description)}</td><td class="num">${esc(qtyOf(l))}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}
         <tr class="grand"><td colspan="2" class="num">TOTAL PROJECT COST (₱)</td><td class="num">${peso(pr.total_cost)}</td></tr></tbody></table>
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(pr.total_cost))}</div></div>`)}
-      ${E.sigs(`Prepared by: ${esc(pr.created_by_name || "")}`, signed ? "Approved by" : "Approved by / Date", signed ? E.approvedBy(null, pr.approved_by_name, pr.approved_at) : null)}`]);
+      ${E.sigs(`Prepared by: ${esc(pr.created_by_name || "")}`, signed ? "Approved by" : "Approved by / Date", signed ? E.approvedBy(null, pr.approved_by_name, pr.approved_at) : null, E.signerBy(pr.created_by))}`]);
     $(".band h1").textContent = `Project — ${pr.project_no}`;
     $("#main").innerHTML = `
       <div class="window"><div class="wtitle">${esc(pr.project_no)} — ${esc(pr.title)} ${pill(pr.status)}</div><div class="wbody">
