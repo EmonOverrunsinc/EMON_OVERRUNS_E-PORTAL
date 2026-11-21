@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.164"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.165"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.164"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.165"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -134,6 +134,14 @@
     if (n.nodeType !== 1) return;
     if (n.matches?.('input[type="number"]')) commaBox(n); else commaAll(n);
   }))).observe(document.documentElement, { childList: true, subtree: true });
+  // 3.99.166: every profile head gets the AUTHENTIC sticker: a small holographic seal that slowly shines (our own design)
+  const AUTH_STICKER = `<div class="auth-st" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><path id="authRing" d="M50 12 a38 38 0 1 1 -0.01 0"/></defs>
+    <circle cx="50" cy="50" r="46" class="as-out"/><circle cx="50" cy="50" r="30" class="as-in"/>
+    <text class="as-ring"><textPath href="#authRing" textLength="238" lengthAdjust="spacing">EMON OVERRUNS · AUTHENTIC · VERIFIED ·</textPath></text>
+    <path d="M38 50 l8 8 l16 -18" class="as-tick"/><text x="50" y="72" text-anchor="middle" class="as-word">AUTHENTIC</text></svg><i class="as-shine"></i></div>`;
+  const addSticker = (root) => root.querySelectorAll?.("#main .cust-hero:not(.has-auth)").forEach((h) => { h.classList.add("has-auth"); h.insertAdjacentHTML("beforeend", AUTH_STICKER); });
+  new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches?.("#main .cust-hero")) addSticker(n.parentNode); else if (n.querySelector?.(".cust-hero")) addSticker(n); } })
+    .observe(document.documentElement, { childList: true, subtree: true });
   // 3.36: a month as OCTOBER 2026 (from 2026-10 or any date in it), in every section
   const monthOf = (d) => String(d || "").slice(0, 7);
   const monthText = (d) => { const [y, m] = monthOf(d).split("-"); return MON[Number(m) - 1] ? `${MON[Number(m) - 1]} ${y}` : ""; };
@@ -804,8 +812,12 @@
       // 3.99.86: while the passkey window is open the button says so and waits (pressing again starts nothing new)
       const pkWait = async (p) => {
         pkBtn.innerHTML = `<span class="spin sm"></span> Waiting for your passkey…`;
+        // 3.99.169: say where the passkey window is (on a computer it can open behind the browser)
+        const desk = window.EOApp?.windows || !/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+        lgSay("info", desk ? "<b>A passkey window is open.</b> Use your PIN, fingerprint or phone in the <b>Windows Security</b> window (it can be behind this window)." : "<b>A passkey window is open.</b> Use Face ID, your fingerprint or your PIN.");
         const ok = await p;
-        if (!ok && pkBtn.isConnected) pkBtn.innerHTML = pkIdle;
+        if (ok && pkBtn.isConnected) { pkBtn.innerHTML = `<span class="spin sm"></span> Opening the portal…`; lgSay("ok", "<b>✔ Signed in.</b> Opening the portal…"); }
+        if (!ok && pkBtn.isConnected) { pkBtn.innerHTML = pkIdle; if ($("#lgProblem")?.classList.contains("info") && /passkey window is open/.test($("#lgProblem").textContent)) $("#lgProblem").remove(); }
       };
       // 3.99.95: no passkey used (none on this device, the window closed): a short grey line, the password form stays
       const pkNone = (w) => (w ? lgFail(w, true) : lgSay("info", "No passkey used. Sign in with your email and password."));

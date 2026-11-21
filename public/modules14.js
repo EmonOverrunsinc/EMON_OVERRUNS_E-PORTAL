@@ -388,17 +388,6 @@
     const covered = o?.status === "completed" ? o.total_amount : i.order_amount;
     const terms = o?.payment_terms || "", td = termsDays(terms);
     const v = (x) => (x === "" || x == null ? "&nbsp;" : esc(x));
-    const fld = (label, value, cls = "") => `<div class="c2-fld ${cls}"><small>${esc(label)}</small><b>${v(value)}</b></div>`;
-    const sec = (t, right = "") => `<div class="c2-sec"><span>${esc(t)}</span>${right ? `<em>${esc(right)}</em>` : ""}</div>`;
-    const kv = (rows) => `<table class="c2-kv">${rows.map(([k, x, cls = ""]) => `<tr class="${cls}"><th>${esc(k)}</th><td>${v(x)}</td></tr>`).join("")}</table>`;
-    const band = (title, right) => `<div class="c2-band"><div class="c2-logo">${E.logoHtml("c2-logo-img")}</div>
-      <div class="c2-co"><b>${esc(C.company.name)}</b><span class="c2-tag">Factory Branded Overruns &nbsp;|&nbsp; Est. 2023</span><span>${esc(C.company.address.join(", "))} &nbsp;·&nbsp; ${esc(C.company.email)}${E.siteText()}</span></div>
-      <div class="c2-title"><b>${title}</b><i></i>${right}</div></div><div class="c2-gold"></div>`;
-    // 3.78.2: a PDF417 barcode of the order no / the invoice no (scanned, it opens the record)
-    const codeBox = (label, payload, text) => `<div class="c2-sig"><div class="c2-sec"><span>${esc(label)}</span></div><div class="c2-sigbox c2-code">
-      ${payload ? `<img class="c2-codebar" src="${E.pdf417DataUrl(payload)}" alt="PDF417 barcode: ${esc(text)}">` : ""}<b class="mono">${v(text)}</b></div></div>`;
-    const sig = (label, p, pic) => `<div class="c2-sig"><div class="c2-sec"><span>${esc(label)}</span></div><div class="c2-sigbox">
-      ${pic ? `<img class="c2-esig" src="${esc(pic)}" alt="Signature">` : ""}<div class="c2-line"></div><b>${v(p.name)}</b><small>${esc(p.note || "Signature over Printed Name / Date")}</small></div></div>`;
     const rows = [
       ["WRONG ITEM", "An item not in the order (style, size, colour or quality)", "Free exchange"],
       ["WRONG BUNDLE", "A bundle with the wrong items or the wrong number of pieces", "Exchanged or completed free"],
@@ -406,45 +395,35 @@
       ["WRONG QUANTITY", "Boxes or pieces missing against the order and the delivery list", "Delivered free or credited"],
       ["UNSOLD BOXES", "Sealed boxes not sold", "Exchanged for new items of the same value"],
       ["PAYMENT DUE EXTENSION", "Extra days to pay the invoice of this order", `+${DUE} days after the terms`]];
-    const front = `<div class="c2 ${st.k}"><div class="c2-wm">${ic("shield")}</div>
-      ${band("COVERAGE CERTIFICATE", `<div class="c2-topbar"><img src="${E.pdf417DataUrl("EMONINS|" + i.ins_no)}" alt="PDF417 barcode: ${esc(i.ins_no)}"><b class="mono">${esc(i.ins_no)}</b></div>`)}
-      <div class="c2-fields">
-        ${fld("CUSTOMER", name, "w2")}${fld("ACCOUNT NO.", c.account_no || "")}${fld("DATE ISSUED", i.issued_at ? mdy(i.issued_at) : "")}
-        ${fld("ORDER NO.", i.order_no || "")}${fld("INVOICE NO.", invoice?.invoice_no || (o?.status === "completed" ? "" : "AFTER DELIVERY"))}${fld("BOXES COVERED", boxes)}${fld("COVERED VALUE", `PHP ${peso(covered)}`)}
-      </div>
-      <div class="c2-main">
-        <div class="c2-left">
-          ${sec("SCHEDULE OF COVERAGE", ok ? "STATUS: COVERED" : `STATUS: ${st.label}`)}
-          <table class="c2-tbl"><thead><tr><th>#</th><th>COVERAGE</th><th>WHAT IS COVERED</th><th>BENEFIT</th></tr></thead>
-            <tbody>${rows.map((r, k) => `<tr><td>${k + 1}</td><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join("")}</tbody></table>
-          <div class="c2-dates">
-            <div class="c2-date"><small>BENEFITS EXPIRE · CLAIMS UNTIL</small><b>${esc(until)}</b><span>15 days after the delivery · no claim is accepted after this date</span></div>
-
-          </div>
-        </div>
-        <div class="c2-right"><div>
-          ${sec("PREMIUM")}
-          ${kv([["CALCULATION", `${boxes} × PHP ${peso(i.box_price)} + ${num(i.rate_pct)}%`], ["PREMIUM", `PHP ${peso(i.amount)}`, "tot"], ["IN WORDS", E.words(i.amount, "PESOS")],
-            // 3.99.99: the receipt numbers in place of PAID BY
-            ["COLLECTION RECEIPT NO.", cv?.cv_no || (i.pay_method === "account" ? i.pay_ref : "") || "—"]])}
-          </div><div>${sec("PAYMENT DUE")}
-          <div class="c2-eq">
-            <div class="c2-eqb"><b>${td == null ? esc(terms || "—") : `${td}`}</b><small>${td == null ? "TERMS" : "DAYS · TERMS"}</small></div><i>+</i>
-            <div class="c2-eqb"><b>${DUE}</b><small>DAYS · COVERAGE</small></div><i>=</i>
-            <div class="c2-eqb tot"><b>${td == null ? "—" : td + DUE}</b><small>DAYS TO PAY</small></div>
-          </div>
-          <div class="c2-eqdue"><small>DUE DATE</small><b>${esc(i._due ? mdy(i._due.ext) : "COUNTED FROM THE INVOICE DATE")}</b></div>
-        </div></div>
-      </div>
-      <div class="c2-decl">${sec("CERTIFICATION")}
-        <p><b>THIS IS TO CERTIFY</b> that the customer named above is covered by the EO-OFFICE COVERAGE of ${esc(C.company.name)} for the <b>${esc(boxes)}</b> of order <b>${esc(i.order_no || "")}</b>, with a covered value of <b>PHP ${peso(covered)}</b>, for the benefits in the Schedule of Coverage, from <b>${esc(i.issued_at ? mdy(i.issued_at) : "")}</b> until the benefits expire on <b>${esc(until)}</b>, and that the invoice of this order is payable within <b>${esc(td == null ? `its terms + ${DUE} days` : `${td + DUE} days (${td} days terms + ${DUE} days coverage)`)}</b>, subject to the terms and conditions of the EO-OFFICE COVERAGE.</p>
-        <p><b>IN WITNESS WHEREOF</b>, ${esc(C.company.name)} has caused this certificate to be signed by its authorized signatory at Pasay City, Metro Manila, Philippines, on <b>${esc(i.approved_at ? mdy(i.approved_at) : mdy(E.isoToday()))}</b>.</p></div>
-      <div class="c2-sigs">
-        <div class="c2-sig c2-sealsig">${E.secSeal(i.ins_no, { code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
-        ${codeBox("INVOICE NO.", invoice?.invoice_no ? "EMONINV|" + invoice.invoice_no : "", invoice?.invoice_no || "AFTER DELIVERY")}
-        ${sig("ISSUED BY", { name: who.approver, note: `Authorized Signatory · ${i.approved_at ? mdy(i.approved_at) : ""}` }, sign.pic)}
-      </div>
-      </div>`; // 3.99.100: no footer words
+    // 3.99.167: the certificate in a clear business layout: the status, the holder, 6 key facts, the benefits as a check
+    // list, the payment due in one line, a short statement in plain words, and the seal, the invoice barcode and the signature.
+    const issued = i.issued_at ? mdy(i.issued_at) : "", invNo = invoice?.invoice_no || (o?.status === "completed" ? "" : "AFTER DELIVERY");
+    const fact = (k, x, cls = "") => `<div class="cv3-fact ${cls}"><small>${esc(k)}</small><b>${v(x)}</b></div>`;
+    const dueLine = td == null ? `Pay the invoice within its terms + ${DUE} days` : `${td} days terms + ${DUE} days coverage = <b>${td + DUE} days</b> to pay`;
+    const front = `<div class="cv3 ${st.k}"><div class="cv3-wm">${ic("shield")}</div>
+      <div class="cv3-micro" aria-hidden="true">${Array.from({ length: 16 }, () => `<span>${esc(C.company.name)}</span><span>${esc(i.ins_no)}</span><span>COVERAGE CERTIFICATE</span>`).join("")}</div>
+      <header class="cv3-head">
+        <div class="cv3-co">${E.logoHtml("cv3-logo")}<div><b>${esc(C.company.name)}</b><span>Factory Branded Overruns · Est. 2023</span><small>${esc(C.company.address.join(", "))} · ${esc(C.company.email)}${E.siteText()}</small></div></div>
+        <div class="cv3-no"><img src="${E.pdf417DataUrl("EMONINS|" + i.ins_no)}" alt="PDF417 barcode: ${esc(i.ins_no)}"><small>Certificate No</small><b class="mono">${esc(i.ins_no)}</b></div>
+      </header>
+      <div class="cv3-title"><h1>COVERAGE CERTIFICATE</h1><span>Order protection for the boxes delivered by ${esc(C.company.name)}</span></div>
+      <div class="cv3-status ${ok ? "ok" : st.k === "expired" || st.k === "rejected" ? "end" : "no"}"><b>${ok ? "COVERED" : esc(st.label)}</b><span>${ok ? `${issued ? `Valid from ${esc(issued)} · ` : ""}Claims until <b>${esc(until)}</b>` : st.k === "expired" ? "The benefits of this certificate have ended" : st.k === "rejected" ? "This certificate was not approved" : "Not valid yet: it starts when the premium is paid and approved"}</span></div>
+      <section class="cv3-holder"><small>Certificate Holder</small><b>${esc(name)}</b><span>Account No <b class="mono">${v(c.account_no || "")}</b>${issued ? ` · Issued <b>${esc(issued)}</b>` : ""}</span></section>
+      <section class="cv3-facts">${fact("Order No", i.order_no || "")}${fact("Invoice No", invNo)}${fact("Boxes Covered", boxes)}${fact("Covered Value", `PHP ${peso(covered)}`, "hl")}${fact("Coverage Premium", `PHP ${peso(i.amount)}`)}${fact("Claims Until", until, "hl")}</section>
+      <section class="cv3-sec"><h3>What is covered</h3><div class="cv3-ben">${rows.map((r) => `<div class="cv3-b"><i>${ic("check")}</i><div><b>${esc(r[0])}</b><span>${esc(r[1])}</span><em>${esc(r[2])}</em></div></div>`).join("")}</div></section>
+      <section class="cv3-row">
+        <div class="cv3-box"><h3>Payment Due</h3><p>${dueLine}</p><div class="cv3-due"><small>Due Date</small><b>${esc(i._due ? mdy(i._due.ext) : "Counted from the invoice date")}</b></div></div>
+        <div class="cv3-box"><h3>Premium</h3><p>${esc(`${boxes} × PHP ${peso(i.box_price)} + ${num(i.rate_pct)}%`)} = <b>PHP ${peso(i.amount)}</b></p><p class="cv3-words">${esc(E.words(i.amount, "PESOS"))}</p>
+          <div class="cv3-due"><small>Collection Receipt No</small><b class="mono">${v(cv?.cv_no || (i.pay_method === "account" ? i.pay_ref : "") || "—")}</b></div></div>
+      </section>
+      <section class="cv3-stmt"><p>${esc(C.company.name)} certifies that the customer above is covered for the <b>${esc(boxes)}</b> of order <b>${esc(i.order_no || "")}</b> (covered value <b>PHP ${peso(covered)}</b>) for the benefits listed, ${issued ? `from <b>${esc(issued)}</b> ` : ""}until <b>${esc(until)}</b>. A claim is accepted only until that date. The invoice of this order may be paid <b>${DUE} days</b> after its terms.</p>
+        <p class="cv3-place">Signed at Pasay City, Metro Manila, Philippines, on <b>${esc(i.approved_at ? mdy(i.approved_at) : mdy(E.isoToday()))}</b>.</p></section>
+      <footer class="cv3-sign">
+        <div class="cv3-seal">${E.secSeal(i.ins_no, { code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
+        <div class="cv3-inv">${invoice?.invoice_no ? `<img src="${E.pdf417DataUrl("EMONINV|" + invoice.invoice_no)}" alt="PDF417 barcode: ${esc(invoice.invoice_no)}">` : ""}<small>Invoice No</small><b class="mono">${v(invNo)}</b></div>
+        <div class="cv3-dir"><div class="cv3-dsig">${sign.pic ? `<img src="${esc(sign.pic)}" alt="Signature">` : ""}</div><i></i><b>${v(who.approver)}</b><small>Authorized Signatory${i.approved_at ? ` · ${esc(mdy(i.approved_at))}` : ""}</small></div>
+      </footer>
+      </div>`;
     E.openPreview(`Coverage Certificate ${i.ins_no}`, [front], { bare: true }); // 3.78.3: 1 page, A4 portrait
   }
 
