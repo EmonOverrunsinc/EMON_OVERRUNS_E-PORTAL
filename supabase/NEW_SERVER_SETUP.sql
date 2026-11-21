@@ -17101,6 +17101,59 @@ create policy "storage records: signatures" on storage.objects as restrictive fo
 notify pgrst, 'reload schema';
 
 select '121 OK - the issuer''s approved signature prints on the documents' as result;
+
+-- ======== 122_companies_to_manila.sql ========
+-- 3.99.175: BILLING OFFICES: only MODINA FASHION stays with REGIONAL OFFICE DHAKA; every other billing company moves to
+-- REGIONAL OFFICE MANILA (its accounts, vouchers and employees go with it). Vouchers already made keep their numbers.
+-- Needs 120 first. Safe to run again. The last lines list each company and its office.
+
+do $$
+begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'pay_companies' and column_name = 'office') then
+    raise exception 'Run 120_manila_billing.sql first, then run this again.';
+  end if;
+end $$;
+
+do $$
+begin
+  perform set_config('eo.allow_change', 'on', true); -- an approved change of the Director (saved records are locked)
+  update public.pay_companies set office = 'manila' where upper(name) not like '%MODINA%' and office <> 'manila';
+  update public.pay_companies set office = 'dhaka' where upper(name) like '%MODINA%' and office <> 'dhaka';
+  perform set_config('eo.allow_change', '', true);
+end $$;
+
+notify pgrst, 'reload schema';
+
+select upper(office) as office, name from public.pay_companies order by office, name;
+
+-- ======== 123_outlet_sales_notify.sql ========
+-- 3.99.175: SHOP SALES NOTIFICATIONS. When a shop's employee records (or changes) the day's sales, EMON HASAN gets a
+-- notification: the shop, the date, the total with the cash and GCash, and who recorded it (it opens the shop's page).
+-- Needs 109 first. Safe to run again.
+
+create or replace function public.outlet_sales_notify() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare o public.outlets; who text; d text;
+begin
+  if public.is_admin() then return null; end if; -- the Director's own entry: no message to himself
+  select * into o from public.outlets where id = new.outlet_id;
+  who := coalesce(new.created_by_name, (select p.full_name from public.profiles p where p.id = auth.uid()), 'An employee');
+  d := upper(to_char(new.sale_date, 'FMMonth DD YYYY'));
+  perform public.notify_admins(
+    coalesce(o.code, 'Shop') || ' [[U+00B7]] Daily Sales ' || case when tg_op = 'INSERT' then 'recorded' else 'changed' end,
+    d || ' [[U+00B7]] PHP ' || to_char(new.total, 'FM999,999,990.00') || ' (Cash ' || to_char(new.cash, 'FM999,999,990.00') || ' [[U+00B7]] GCash ' || to_char(new.gcash, 'FM999,999,990.00') || ') [[U+00B7]] by ' || who,
+    'outlet/' || new.outlet_id);
+  return null;
+end $$;
+revoke execute on function public.outlet_sales_notify() from public, anon, authenticated;
+
+drop trigger if exists outlet_sales_notify on public.outlet_sales;
+create trigger outlet_sales_notify after insert or update of cash, gcash, maya, bank, card, other on public.outlet_sales
+  for each row execute function public.outlet_sales_notify();
+
+notify pgrst, 'reload schema';
+
+select '123 OK - the Director is notified of every shop''s daily sales' as result;
 $sql$;
 begin
   s := replace(s, chr(13), '');  -- Windows line breaks
