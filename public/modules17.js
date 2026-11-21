@@ -35,6 +35,28 @@
   const shortDay = (d) => String(mdy(d) || "").replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1");
   const shopId = (o) => { const c = String(o?.code || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), m = /^(.*?)(\d+)$/.exec(c); return `EO-${m ? m[1] + m[2].padStart(2, "0") : c}`; };
   E.shopId = shopId;
+  // 3.99.176: the STORE LOGO of a shop (made by itself): the company logo in a blue & gold ring with the branch code on top and
+  // the branch (the last words of the address) at the bottom
+  // the branch: the place words of the address ("NOVALICHES CITY QUEZON CITY" -> "NOVALICHES QUEZON CITY")
+  const branchOf = (o) => {
+    let w = String(o?.address || "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean)
+      .filter((x) => !/^(AVE|AVENUE|ST|STREET|RD|ROAD|BLVD|NO|BLDG|BRGY)$/.test(x));
+    w = w.filter((x, k) => x !== "CITY" || k === w.lastIndexOf("CITY"));
+    return (w.length > 3 ? w.slice(-3) : w).join(" ") || String(o?.code || "");
+  };
+  let logoN = 0;
+  function storeLogo(o, cls = "") {
+    const k = `sl${++logoN}`, top = `EMON OVERRUNS OUTLET · ${String(o.code || "").toUpperCase()}`, bot = `${branchOf(o)} BRANCH`;
+    const fit = (t, max) => Math.min(t.length * 5.1, max).toFixed(1);
+    return `<span class="store-logo ${cls}" aria-label="${esc(top)} · ${esc(bot)}"><svg viewBox="0 0 120 120" aria-hidden="true">
+      <defs><path id="${k}t" d="M18.7 75 A44 44 0 1 1 101.3 75"/><path id="${k}b" d="M11.7 68.5 A49 49 0 0 0 108.3 68.5"/></defs>
+      <circle cx="60" cy="60" r="58" class="sl-out"/><circle cx="60" cy="60" r="56" class="sl-gold"/><circle cx="60" cy="60" r="33" class="sl-in"/>
+      <text class="sl-t"><textPath href="#${k}t" startOffset="50%" text-anchor="middle" textLength="${fit(top, 160)}" lengthAdjust="spacingAndGlyphs">${esc(top)}</textPath></text>
+      <text class="sl-b"><textPath href="#${k}b" startOffset="50%" text-anchor="middle" textLength="${fit(bot, 128)}" lengthAdjust="spacingAndGlyphs">${esc(bot)}</textPath></text></svg>${E.logoHtml("sl-img")}</span>`;
+  }
+  E.storeLogo = storeLogo;
+  // the next branch code: SHOP-1, SHOP-2, SHOP-3 … (the highest number + 1)
+  const nextCode = (list) => `SHOP-${Math.max(0, ...list.map((x) => Number((/(\d+)$/.exec(String(x.code || "")) || [])[1] || 0))) + 1}`;
   const empName = (e) => [e?.first_name, e?.middle_name, e?.last_name].filter(Boolean).join(" ").toUpperCase();
   const empty = (t) => `<div class="ol-empty">${t}</div>`; // 3.99.153: for every part of the page (the employee list too)
   // the rental of a month: paid (a rental expense in the month) or its due date
@@ -96,26 +118,31 @@
     $("#olBody").innerHTML = `
       <div class="ol-kpis">${kpi("Today's Sales", act.reduce((s, r) => s + r.today, 0))}${kpi(E.monthText(m), act.reduce((s, r) => s + r.net, 0))}
         ${kpi("Expenses", act.reduce((s, r) => s + r.out, 0))}${kpi("Cash Out", act.reduce((s, r) => s + r.cash, 0))}${kpi("Stock Payments", act.reduce((s, r) => s + r.paid, 0))}${kpi("Balance", act.reduce((s, r) => s + r.bal, 0), "bal")}</div>
-      ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn primary" id="olNew">${ic("plus")} New Outlet</button></div>` : ""}
+      ${isAdmin() ? `<div class="pg-more"><button type="button" class="pg-more-btn" id="olMore" aria-label="More" aria-haspopup="true">⋯</button><div class="pg-more-list" id="olMoreList" hidden><button type="button" id="olNew">${ic("plus")} Add Store</button></div></div>` : ""}
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(r.o))}</span><span>AUTHENTIC OUTLET</span>`).join("")}</div>
-          <div class="ol-card-h">${ic("building")}<div><b class="ol-code">${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
+          <div class="ol-card-h">${storeLogo(r.o)}<div><b class="ol-code">${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
           <div class="ol-card-a">${r.o.address ? `${ic("pin")} ${esc(r.o.address)}` : ""}${r.o.address && hoursOf(r.o) ? " · " : ""}${hoursOf(r.o) ? esc(hoursOf(r.o)) : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
-      }).join("") : `<div class="empty">${isAdmin() ? "No outlet yet. Press <b>New Outlet</b> to add SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
-    if ($("#olNew")) $("#olNew").onclick = () => editOutlet(null, outlets.length);
+      }).join("") : `<div class="empty">${isAdmin() ? "No store yet. Press <b>⋯</b> at the top right, then <b>Add Store</b>: it gets SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
+    if ($("#olMore")) {
+      const list = $("#olMoreList"), close = () => { list.hidden = true; document.removeEventListener("click", away, true); };
+      const away = (e) => { if (!e.target.closest(".pg-more")) close(); };
+      $("#olMore").onclick = () => { list.hidden = !list.hidden; if (!list.hidden) document.addEventListener("click", away, true); };
+      $("#olNew").onclick = () => { close(); editOutlet(null, outlets.length, nextCode(outlets)); };
+    }
     E.setRecords(`Outlets: ${outlets.length}`);
   };
 
   // ---------- add or change a shop ----------
-  async function editOutlet(o, count = 0) {
+  async function editOutlet(o, count = 0, code = "") {
     const preset = o?.customer_id ? await E.getCustomer(o.customer_id).catch(() => null) : null;
     const v = (k, d = "") => esc(o?.[k] ?? d);
-    const m = E.modal(o ? `Edit ${o.code}` : "New Outlet", `<div class="formgrid ol-form">
-        <div><label for="olCode">Outlet Code *</label><input id="olCode" maxlength="30" value="${v("code", `SHOP-${count + 1}`)}" required></div>
-        <div><label for="olName">Name *</label><input id="olName" maxlength="120" value="${v("name", `SHOP-${count + 1}`)}" required></div>
+    const m = E.modal(o ? `Edit ${o.code}` : `Add Store · ${code || `SHOP-${count + 1}`}`, `<div class="formgrid ol-form">
+        <div><label for="olCode">Branch Code</label><input id="olCode" maxlength="30" value="${esc(o ? o.code : code || `SHOP-${count + 1}`)}" readonly class="ro" title="Given by the system"></div>
+        <div><label for="olName">Store Name *</label><input id="olName" maxlength="120" value="${v("name", "RETAIL OUTLET")}" required></div>
         <div class="span2"><label for="olAddr">Address</label><input id="olAddr" maxlength="300" value="${v("address")}"></div>
         <div><label for="olOpen">Opening Hours</label><input id="olOpen" type="time" step="300" value="${esc(to24(o?.opens) || (o ? "" : "09:00"))}"></div>
         <div><label for="olClose">Closing Hours</label><input id="olClose" type="time" step="300" value="${esc(to24(o?.closes) || (o ? "" : "21:00"))}"></div>
@@ -226,7 +253,7 @@
           return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · AUTHENTIC OUTLET IDENTITY`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
             <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">AUTHENTIC · EMON OVERRUNS</text></svg>`;
         })()}
-        <div class="os-hero-top"><div class="os-hero-ic">${ic("building")}</div>
+        <div class="os-hero-top">${storeLogo(o, "big")}
           <div class="os-hero-m"><span class="os-code">${esc(o.code)}</span><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
         <div class="os-chips"><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
