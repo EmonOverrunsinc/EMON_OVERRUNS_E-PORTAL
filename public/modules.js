@@ -743,10 +743,14 @@
       const ws = t.toLowerCase().split(/\s+/).filter(Boolean);
       const rows = (data || []).filter((c) => ws.every((x) => `${fullName(c)} ${c.account_no || ""} ${c.business_name || ""} ${c.phone || ""} ${c.public_id}`.toLowerCase().includes(x)))
         .map((c) => ({ ...c, due: num(bm.get(c.id)?.balance_due) }));
+      // 3.99.159: in the order of the account no (its date and running number: AB-202606001 first)
+      const acctNo = (c) => Number(String(c.account_no || "").replace(/\D/g, "")) || 9e12;
+      rows.sort((a, b) => acctNo(a) - acctNo(b));
       // 2.9: names that start with what was typed come first (first name, then last name)
       if (ws.length) { const st0 = (v) => String(v || "").toLowerCase().startsWith(ws[0]); const rk = (c) => (st0(c.first_name) ? 0 : st0(c.last_name) ? 1 : 2); rows.sort((a, b) => rk(a) - rk(b)); }
+      rows.forEach((r, i) => (r._no = i + 1));
       $("#cuRes").innerHTML = E.grid({ cols: [
-        { label: "Account No", get: (r) => r.account_no }, { label: "Name", wrap: true, html: (r) => `${esc(fullName(r))}${r.status === "closed" ? ' <span class="closed-mark">CLOSED</span>' : ""}` },
+        { label: "No.", num: true, get: (r) => r._no }, { label: "Account No", get: (r) => r.account_no }, { label: "Name", wrap: true, get: (r) => fullName(r) }, // 3.99.159: CLOSED once (in Status)
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
         { label: "Balance Due (₱)", key: "due", num: true, get: (r) => peso(r.due) }],
