@@ -33,6 +33,8 @@
   const hourText = (v) => { const t = to24(v); if (!t) return String(v || "").trim(); const [h, mi] = t.split(":").map(Number); return `${h % 12 || 12}:${String(mi).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
   const hoursOf = (o) => (o.opens || o.closes ? `${hourText(o.opens) || "—"} – ${hourText(o.closes) || "—"}` : "");
   const shortDay = (d) => String(mdy(d) || "").replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1");
+  const shopId = (o) => { const c = String(o?.code || "").toUpperCase().replace(/[^A-Z0-9]/g, ""), m = /^(.*?)(\d+)$/.exec(c); return `EO-${m ? m[1] + m[2].padStart(2, "0") : c}`; };
+  E.shopId = shopId;
   const empName = (e) => [e?.first_name, e?.middle_name, e?.last_name].filter(Boolean).join(" ").toUpperCase();
   const empty = (t) => `<div class="ol-empty">${t}</div>`; // 3.99.153: for every part of the page (the employee list too)
   // the rental of a month: paid (a rental expense in the month) or its due date
@@ -211,12 +213,13 @@
     const tabs = [["Daily Sales", days.length, salesTab], ["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ["Stock Account", invs.length, stockTab], ["Employees", st.length, staffHtml(st)], ["Documents", docs.length, docTab]];
     $("#olBody").innerHTML = `
       <section class="os-hero">
-        <div class="os-hero-micro" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(o.code)}</span>`).join("")}</div>
+        <div class="os-hero-micro" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(o))}</span>`).join("")}</div>
+        <div class="os-hero-micro low" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>AUTHENTIC OUTLET</span><span>${esc(o.code)}</span>`).join("")}</div>
         ${(() => { // 3.99.163: the identity in the rosette: rings of microtext and the shop's ID number
-          const idNo = `EO-${String(o.id || "").replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+          const idNo = shopId(o);
           const ring = (r, txt, n) => `<path id="osR${r}" d="M150 ${150 - r} a${r} ${r} 0 1 1 -0.01 0"/><text><textPath href="#osR${r}" textLength="${(2 * Math.PI * r).toFixed(1)}" lengthAdjust="spacing">${esc(Array.from({ length: n }, () => txt).join(" · "))}</textPath></text>`;
-          return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · OUTLET IDENTITY`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
-            <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">${esc(o.code)} · VERIFIED OUTLET</text></svg>`;
+          return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · AUTHENTIC OUTLET IDENTITY`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
+            <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">AUTHENTIC · EMON OVERRUNS</text></svg>`;
         })()}
         <div class="os-hero-top"><div class="os-hero-ic">${ic("building")}</div>
           <div class="os-hero-m"><span class="os-code">${esc(o.code)}</span><h2>${esc(o.name)}</h2><p>${ic("home")} ${esc(o.address || "No address")}</p></div></div>

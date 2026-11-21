@@ -153,10 +153,40 @@
     ]);
     if (!url) return toast("The file could not be opened.", true);
     const isPdf = /pdf/.test(f.mime || "") || /\.pdf$/i.test(f.storage_path || "");
-    const m = E.modal(`Preview — ${f.file_name || ""}`,
-      `<div class="viewer-body">${isImage(f) ? `<img src="${esc(url)}" alt="${esc(f.file_name || "")}">` : isPdf ? `<iframe src="${esc(url)}" title="${esc(f.file_name || "")}"></iframe>` : `<div class="empty">This file type cannot be previewed here.</div>`}</div>`,
-      `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">${ic("eye")} Open in New Tab</a><a class="btn" href="${esc(dl || url)}" rel="noopener">${ic("download")} Download</a><button type="button" class="btn primary" data-x>Close</button>`,
+    const img = isImage(f);
+    // 3.99.168: a clean viewer: the picture fits the screen; zoom (− / + / Fit, a double tap), rotate, print, download
+    const m = E.modal(`${f.file_name || "File"}`,
+      `<div class="viewer-body vw2" id="vwBody">${img ? `<img id="vwImg" src="${esc(url)}" alt="${esc(f.file_name || "")}" draggable="false">` : isPdf ? `<iframe src="${esc(url)}" title="${esc(f.file_name || "")}"></iframe>` : `<div class="empty">This file type cannot be shown here. Press <b>Download</b> to open it.</div>`}</div>`,
+      `${img ? `<div class="vw-tools"><button type="button" class="btn small" data-z="-" aria-label="Zoom out">−</button><b id="vwPct">Fit</b><button type="button" class="btn small" data-z="+" aria-label="Zoom in">+</button><button type="button" class="btn small" data-z="fit">Reset</button><button type="button" class="btn small" data-rot>${ic("back")} Rotate</button></div>` : ""}
+       <a class="btn" href="${esc(url)}" target="_blank" rel="noopener">${ic("eye")} Open</a><a class="btn" href="${esc(dl || url)}" rel="noopener">${ic("download")} Download</a>${img || isPdf ? `<button type="button" class="btn" data-print>${ic("print")} Print</button>` : ""}<button type="button" class="btn primary" data-x>Close</button>`,
       { wide: true, cls: "viewer" });
+    const pic = $("#vwImg", m.el), body = $("#vwBody", m.el);
+    if (pic) {
+      let z = 0, rot = 0; // z 0 = fit
+      const ZS = [0, 1.5, 2, 3, 4];
+      const draw = () => {
+        const fitW = Math.min(body.clientWidth - 16, (body.clientHeight - 16) * (pic.naturalWidth / Math.max(1, pic.naturalHeight)));
+        pic.classList.toggle("zoomed", z > 0);
+        pic.style.width = z ? `${Math.round(fitW * ZS[z])}px` : "";
+        pic.style.transform = rot ? `rotate(${rot}deg)` : "";
+        $("#vwPct", m.el).textContent = z ? `${Math.round(ZS[z] * 100)}%` : "Fit";
+      };
+      $$("[data-z]", m.el).forEach((b) => (b.onclick = () => { const d = b.dataset.z; z = d === "fit" ? 0 : Math.max(0, Math.min(ZS.length - 1, z + (d === "+" ? 1 : -1))); draw(); }));
+      $("[data-rot]", m.el).onclick = () => { rot = (rot + 90) % 360; draw(); };
+      pic.ondblclick = () => { z = z ? 0 : 2; draw(); };
+      let lastTap = 0;
+      pic.addEventListener("touchend", (e) => { const t = Date.now(); if (t - lastTap < 300) { e.preventDefault(); z = z ? 0 : 2; draw(); } lastTap = t; });
+    }
+    if ($("[data-print]", m.el)) $("[data-print]", m.el).onclick = async (e) => {
+      if (isPdf) return window.open(url, "_blank", "noopener");
+      e.currentTarget.disabled = true;
+      try { // the picture as data, so the print preview (and its PDF) can draw it
+        const blob = await (await fetch(url)).blob();
+        const data = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = bad; r.readAsDataURL(blob); });
+        E.openPreview(f.file_name || "Picture", [`<div class="vw-print"><img src="${esc(data)}" alt=""></div>`], { bare: true });
+      } catch (_) { toast("The picture could not be prepared for printing. Press Download, then print it.", true); }
+      if (e.currentTarget) e.currentTarget.disabled = false;
+    };
     $("[data-x]", m.el).onclick = m.close;
   }
   const latestSigned = (att, kind = "signed_form") => att.filter((a) => a.kind === kind).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
