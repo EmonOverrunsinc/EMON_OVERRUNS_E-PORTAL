@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.155"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.156"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.155"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.156"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1349,10 +1349,8 @@
     { k: "customers", icon: "user", label: "Customer" },
     { k: "invoices", icon: "doc", label: "Invoice" },
     { k: "payments", icon: "wallet", label: "Payment" },
-    { k: "purchase", icon: "order", label: "Purchase Order" },
     { k: "eooffice", icon: "shield", label: "EO-Office" },
-    { k: "billing", icon: "building", label: "Billing" },
-    { k: "inventory", icon: "box", label: "E-Bill" },
+    { k: "regional", icon: "globe", label: "Regional Office" }, // 3.99.156: Purchase Order, Billing and E-Bill are inside
     { k: "outlets", icon: "building", label: "Outlets" } // 3.99.116: the shops
   ];
   // 3.2: EO-Office holds QC Test, Collection Voucher, Job Applications, Job Positions, Credit Memo and Project: it opens for anyone who may open one of them
@@ -1371,6 +1369,7 @@
     outlets: "outlets", outlet: "outlets", // 3.99.116: its own access "14 Outlets"
     eooffice: EO_MODULES, newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice",
     purchase: "purchase", newpurchase: "purchase", po: "purchase", editpo: "purchase", // 3.31: its own menu access
+    regional: ["purchase", "billing", "inventory"], // 3.99.156: REGIONAL OFFICE opens for anyone who may open one of them
     custorders: "eooffice", soldboxes: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: ["eooffice", "customers"], insurance: "eooffice" // 3.37; 3.72 insurance: Customer Order (an order opens from the customer's profile too)
   };
   // Admins see everything; NULL modules = all (older accounts).
@@ -1394,7 +1393,11 @@
     ["devices", "Devices", () => isAdmin(), "device"], // 3.80: the devices of every login; a new device waits for approval
     ["legal", "Legal Terms", () => true, "doc"] // 3.69: the terms every login accepts; EMON HASAN sees every acceptance
   ];
-  const ACTIVE_OF = { employees: "eooffice", newemployee: "eooffice", editemployee: "eooffice", employee: "eooffice", payroll: "eooffice", payslip: "eooffice", creditmemos: "eooffice", newcreditmemo: "eooffice", creditmemo: "eooffice", projects: "eooffice", newproject: "eooffice", project: "eooffice", jobapps: "eooffice", jobapp: "eooffice", positions: "eooffice", newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice", newpurchase: "purchase", po: "purchase", editpo: "purchase", ebill: "inventory", custorders: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: "eooffice", insurance: "eooffice", find: "", profile: "", settings: "" };
+  // 3.99.156: the pages inside REGIONAL OFFICE (Purchase Order only for EMON OVERRUNS staff, as before)
+  const REGIONAL = [["purchase", "Purchase Order", "order"], ["billing", "Billing", "building"], ["inventory", "E-Bill", "box"]];
+  const regionalItems = () => REGIONAL.filter(([k]) => (k === "purchase" ? isStaff() && hasModule("purchase") : hasModule(k)));
+  const REG_PAGES = ["purchase", "newpurchase", "po", "editpo", "billing", "newpaycompany", "paycompany", "newvoucher", "voucher", "inventory", "newstockbill", "stockbill", "ebill"];
+  const ACTIVE_OF = { employees: "eooffice", newemployee: "eooffice", editemployee: "eooffice", employee: "eooffice", payroll: "eooffice", payslip: "eooffice", creditmemos: "eooffice", newcreditmemo: "eooffice", creditmemo: "eooffice", projects: "eooffice", newproject: "eooffice", project: "eooffice", jobapps: "eooffice", jobapp: "eooffice", positions: "eooffice", newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice", newpurchase: "purchase", po: "purchase", editpo: "purchase", ebill: "inventory", custorders: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: "eooffice", insurance: "eooffice", find: "", profile: "", settings: "", regional: "regional", ...Object.fromEntries(REG_PAGES.map((k) => [k, "regional"])) };
   // Older addresses from version 1.0.
   const ALIAS = { users: "employees", userres: "employees", resolutions: "purchase", resolution: "purchase", community: "purchase", orders: "dashboard", neworder: "dashboard", editorder: "dashboard", verification: "verify", supplier: "billing", newsupplier: "billing", search: "dashboard" };
   const avatarUrl = () => publicUrl("avatars", S.profile?.avatar_path);
@@ -1466,7 +1469,7 @@
   }
   function shell(key, title, body, hint) {
     const cur = ACTIVE_OF[key] ?? (Array.isArray(MODULE_OF[key]) ? MODULE_OF[key][0] : MODULE_OF[key]) ?? key;
-    const items = MENU.filter((m) => m.k === "dashboard" || (m.k === "purchase" ? isStaff() && hasModule("purchase") : m.k === "eooffice" ? EO_MODULES.filter((x) => isStaff() || x !== "eooffice").some(hasModule) : hasModule(m.k)));
+    const items = MENU.filter((m) => m.k === "dashboard" || (m.k === "regional" ? regionalItems().length > 0 : m.k === "eooffice" ? EO_MODULES.filter((x) => isStaff() || x !== "eooffice").some(hasModule) : hasModule(m.k)));
     const main = items.map((m, i) => `<a href="#${m.k}" style="--i:${i}" class="${m.k === cur ? "active" : ""}"><span class="num">${ic(m.icon)}</span><span class="lbl">${esc(m.label)}</span></a>`).join("");
     const other = OTHER.filter((o) => o[2]()).map(([k, label, , icon], j) => `<a href="#${k}" style="--i:${items.length + j + 1}" class="sub ${k === cur ? "active" : ""}"><span class="num">${ic(icon)}</span><span class="lbl">${esc(label)}</span></a>`).join("");
     const av = avatarUrl();
@@ -2877,7 +2880,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)

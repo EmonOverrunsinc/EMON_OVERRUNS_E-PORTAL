@@ -4255,3 +4255,14 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .os-pane .ol-acct { display: flex; align-items: center; gap: 10px; }
 @media (max-width: 760px) { .os-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .os-two { grid-template-columns: 1fr; } .os-month { width: 100%; justify-content: space-between; } .os-hero { padding: 16px; } }
 #main .ol-kpis .ol-kpi small { white-space: normal; text-overflow: clip; }
+/* 3.99.156: REGIONAL OFFICE (Purchase Order, Billing, E-Bill inside) */
+.reg-nav a { display: inline-flex; align-items: center; gap: 6px; } .reg-nav a svg { width: 16px; height: 16px; }
+.reg-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.reg-card { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 18px; background: #fff; box-shadow: var(--shadow-1); text-decoration: none; color: inherit; border-top: 4px solid #e2b33c; transition: transform .15s, box-shadow .15s; }
+.reg-card:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(18, 48, 107, .14); }
+.reg-ic { flex: none; width: 54px; height: 54px; border-radius: 16px; background: linear-gradient(135deg, #0f2a66, #1d4ed8); color: #f3c94b; display: grid; place-items: center; }
+.reg-ic svg { width: 28px; height: 28px; }
+.reg-card > div { flex: 1; min-width: 0; } .reg-card b { display: block; color: #12306b; font-size: 18px; }
+.reg-card small { display: block; color: #6b7487; font-size: 13px; margin-top: 2px; }
+.reg-card em { display: block; font-style: normal; font-weight: 800; color: #b45309; font-size: 13px; margin-top: 6px; min-height: 1em; }
+.reg-go { color: #12306b; } .reg-go svg { width: 18px; height: 18px; }
