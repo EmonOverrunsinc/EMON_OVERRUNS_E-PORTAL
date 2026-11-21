@@ -244,8 +244,101 @@
     E.setRecords(`QC test: ${t.qc_no}`);
   };
 
+  // 3.99.160: the uploads of a QC test (the paper form with its sticker): the form logo is shown, press it to open.
+  // canRemove: a submitted (locked) QC test keeps its uploads; only the Director removes one.
+  function qcDocs(t, docs, here, canRemove, setBusy) {
+    let busyUp = false;
+    const paintDocs = () => {
+      $("#qcDocs").innerHTML = docs.length ? docs.map((p, i) => `<div class="qc-doc"><button type="button" class="qc-doc-open" data-i="${i}" aria-label="Open upload ${i + 1}">${E.logoHtml("qc-doc-logo")}
+          <b>QC FORM</b><small>Press to open${docs.length > 1 ? ` · ${i + 1}` : ""}</small></button>${canRemove ? `<button type="button" class="qc-doc-rm" data-r="${i}" aria-label="Remove">${ic("trash")}</button>` : ""}</div>`).join("")
+        : `<div class="empty small">No form uploaded.</div>`;
+      $("#qcUpL").hidden = docs.length >= 6;
+      $$("#qcDocs .qc-doc-open").forEach((b) => (b.onclick = () => E.viewFile({ storage_path: docs[Number(b.dataset.i)], mime: "", file_name: `${t.qc_no} QC Form` })));
+      $$("#qcDocs .qc-doc-rm").forEach((b) => (b.onclick = async () => {
+        if (!(await E.confirmBox(`Remove this upload of <b>${esc(t.qc_no)}</b>? You can upload it again.`, { ok: "Remove", danger: true }))) return;
+        const keep = docs.filter((_, i) => i !== Number(b.dataset.r));
+        if (busyUp) return toast("Wait until the upload is finished.", true);
+        const { data: d, error } = await sb.rpc("qc_set_docs", { p_id: t.id, p_docs: keep });
+        if (error) return fail(error, "Could not remove the file");
+        docs.splice(0, docs.length, ...keep);
+        if (d.removed?.length) sb.storage.from("records").remove(d.removed).then(() => {}, () => {});
+        if (here()) paintDocs();
+      }));
+    };
+    paintDocs();
+    $("#qcUp").onchange = async (e) => {
+      const picked = Array.from(e.target.files).slice(0, 6 - docs.length); e.target.value = "";
+      if (!picked.length || busyUp) return;
+      busyUp = true; setBusy(true);
+      const lab = $("#qcUpL"); lab.classList.add("disabled");
+      const added = [];
+      for (const raw of picked) {
+        if (raw.size > 25 * 1024 * 1024) { toast(`${raw.name} is larger than 25 MB and was skipped.`, true); continue; }
+        const f = await E.slimFile(raw);
+        const path = `qc/${t.id}/doc_${Date.now()}_${rand()}.${E.extOf(f)}`;
+        const up = await sb.storage.from("records").upload(path, f, { contentType: f.type || "application/octet-stream" });
+        if (up.error) { toast("A file could not be uploaded: " + up.error.message, true); continue; }
+        added.push(path);
+      }
+      const finish = () => { busyUp = false; setBusy(false); if (here()) lab.classList.remove("disabled"); };
+      if (!added.length) return finish();
+      const { error } = await sb.rpc("qc_set_docs", { p_id: t.id, p_docs: [...docs, ...added] });
+      if (error) { sb.storage.from("records").remove(added).then(() => {}, () => {}); finish(); return fail(error, "Could not save the upload"); }
+      docs.push(...added);
+      finish();
+      toast("Upload saved.");
+      if (here()) paintDocs();
+    };
+  }
+
+  // 3.99.160: a SUBMITTED QC test: one clear page that cannot be changed. Only the paper form can still be uploaded
+  // (the sticker goes on it after the test); the Director alone removes an upload or deletes the QC test.
+  function drawLocked(t, r) {
+    const here = E.stillHere(), docs = [...(r.docs || [])];
+    const res = resultOf(t, r) || { verdict: verdict(t.score) || "", score: t.score, pass: 0, fail: 0, qty: 0, when: t.tested_at, by: t.tested_by_name || "" };
+    const vd = String(res.verdict || "").toLowerCase();
+    const lines = (Array.isArray(t.qty_lines) ? t.qty_lines : []).filter((l) => l && (l.c || l.q != null));
+    const kv = (k, v) => `<div class="qcl-kv"><small>${esc(k)}</small><b>${esc(v == null || v === "" ? "—" : String(v))}</b></div>`;
+    const row = ([k, label], i) => {
+      const c = choiceOf(t, r, k), n = r.numbers?.[k];
+      return `<div class="qcl-row ${c}"><span class="qcl-n">${i + 1}</span><span class="qcl-l">${esc(label)}${k === "mending" && t.mending_max ? ` <em>${esc(t.mending_max)}</em>` : ""}</span>
+        ${c === "fail" && n ? `<span class="qcl-q">${esc(n)} pcs</span>` : ""}<span class="qcl-pf ${c}">${c === "fail" ? `${ic("x")} FAIL` : `${ic("check")} PASS`}</span></div>`;
+    };
+    $("#main").innerHTML = `<div class="qcl">
+      <section class="qcl-hero ${vd}">
+        <div class="qcl-verd"><b>${esc(res.verdict || "—")}</b><span>${esc(String(res.score ?? "—"))} / 100</span></div>
+        <div class="qcl-m"><h2>${esc(t.qc_no)}</h2><p>${esc([t.item, t.brand].filter(Boolean).join(" · ") || "QC TEST")}</p>
+          <div class="qcl-chips"><span class="lock">${ic("key")} SUBMITTED · LOCKED</span><span>Pass ${res.pass} · Fail ${res.fail}</span>${res.qty ? `<span>Qty Found ${esc(String(res.qty))}</span>` : ""}</div>
+          <small>Checked ${esc(mdy(res.when))}${res.by ? ` by ${esc(res.by)}` : ""}</small></div>
+      </section>
+      <div class="qcl-grid">
+        <section class="qcl-card"><h3>${ic("box")} Goods</h3>
+          <div class="qcl-kvs">${kv("QC No", t.qc_no)}${kv("Date", mdy(t.created_at))}${kv("Serial No", t.serial_no)}${kv("Item", t.item)}${kv("Brand", t.brand)}${kv("Batch", t.batch)}${kv("CTN", t.ctn)}${kv("Total Qty (pcs)", t.qty != null ? E.qtyText(t.qty) : "")}</div>
+          ${lines.length ? `<div class="qcl-sub">Qty by Color</div><div class="qcl-colors">${lines.map((l) => `<span>${esc(l.c || "—")}${l.q != null ? ` <b>${esc(E.qtyText(l.q))}</b>` : ""}</span>`).join("")}</div>` : ""}</section>
+        <section class="qcl-card"><h3>${ic("shield")} Quality Check</h3><div class="qcl-list">${CHECKS.map(row).join("")}</div></section>
+      </div>
+      ${r.remarks ? `<section class="qcl-card"><h3>${ic("doc")} Notes</h3><p class="qcl-notes">${esc(r.remarks)}</p></section>` : ""}
+      <section class="qcl-card"><h3>${ic("upload")} QC Form (paper copy)</h3>
+        <p class="muted" style="margin-top:0">Stick a result sticker on the paper QC TEST form, then upload it (up to 6 files). Press the logo to open.</p>
+        <div class="qc-docs" id="qcDocs"></div>
+        <div class="btnrow"><label class="btn primary" for="qcUp" id="qcUpL">${ic("upload")} Upload Form</label><input type="file" id="qcUp" hidden multiple accept="image/*,application/pdf" data-save-now></div></section>
+      <div class="qcl-foot"><span class="qcl-note">${ic("key")} Submitted QC tests are locked: the result cannot be changed.</span>
+        <button type="button" class="btn primary" id="qcSticker">${ic("print")} Print 2 Stickers</button>${isAdmin() ? `<button type="button" class="btn danger" id="qcDel">${ic("trash")} Delete</button>` : ""}<a class="btn" href="#eooffice">Close</a></div>
+    </div>`;
+    qcDocs(t, docs, here, isAdmin(), () => {});
+    $("#qcSticker").onclick = () => openStickers(t, r);
+    if ($("#qcDel")) $("#qcDel").onclick = async () => {
+      if (!(await E.confirmBox(`Delete QC test <b>${esc(t.qc_no)}</b> with its result and uploads? This cannot be undone.`, { ok: "Delete", danger: true }))) return;
+      const { data: gone, error } = await sb.rpc("delete_qc", { p_id: t.id });
+      if (error) return fail(error, "Could not delete");
+      if (gone?.length) sb.storage.from("records").remove(gone).then(() => {}, () => {});
+      toast("Deleted."); location.hash = "eooffice";
+    };
+  }
+
   // Add QC Test (t = {}) and the page of a QC test: every detail on one screen
   function draw(t, r) {
+    if (t.id && t.status === "done") return drawLocked(t, r); // 3.99.160: submitted: locked, nothing can be changed
     const isNew = !t.id, here = E.stillHere();
     let busyUp = false; // a paper copy is being uploaded
     const docs = [...(r.docs || [])];
@@ -377,48 +470,7 @@
       if (v.score !== String(t.score) || CHECKS.some(([k]) => choice(k) !== start[k]) || (full && digits(colorSum(v.lines) ?? v.qty) !== digits(t.qty))) return toast("Press Update first: the stickers print the saved result.", true);
       openStickers(t, r);
     };
-    // paper copies: only the form logo is shown, press to open
-    const paintDocs = () => {
-      $("#qcDocs").innerHTML = docs.length ? docs.map((p, i) => `<div class="qc-doc"><button type="button" class="qc-doc-open" data-i="${i}" aria-label="Open upload ${i + 1}">${E.logoHtml("qc-doc-logo")}
-          <b>QC FORM</b><small>Press to open${docs.length > 1 ? ` · ${i + 1}` : ""}</small></button><button type="button" class="qc-doc-rm" data-r="${i}" aria-label="Remove">${ic("trash")}</button></div>`).join("")
-        : `<div class="empty small">No form uploaded.</div>`;
-      $("#qcUpL").hidden = docs.length >= 6;
-      $$("#qcDocs .qc-doc-open").forEach((b) => (b.onclick = () => E.viewFile({ storage_path: docs[Number(b.dataset.i)], mime: "", file_name: `${t.qc_no} QC Form` })));
-      $$("#qcDocs .qc-doc-rm").forEach((b) => (b.onclick = async () => {
-        if (!(await E.confirmBox(`Remove this upload of <b>${esc(t.qc_no)}</b>? You can upload it again.`, { ok: "Remove", danger: true }))) return;
-        const keep = docs.filter((_, i) => i !== Number(b.dataset.r));
-        if (busyUp) return toast("Wait until the upload is finished.", true);
-        const { data: d, error } = await sb.rpc("qc_set_docs", { p_id: t.id, p_docs: keep });
-        if (error) return fail(error, "Could not remove the file");
-        docs.splice(0, docs.length, ...keep);
-        if (d.removed?.length) sb.storage.from("records").remove(d.removed).then(() => {}, () => {});
-        if (here()) paintDocs();
-      }));
-    };
-    paintDocs();
-    $("#qcUp").onchange = async (e) => {
-      const picked = Array.from(e.target.files).slice(0, 6 - docs.length); e.target.value = "";
-      if (!picked.length || busyUp) return;
-      busyUp = true; $("#qcSave").disabled = true;
-      const lab = $("#qcUpL"); lab.classList.add("disabled");
-      const added = [];
-      for (const raw of picked) {
-        if (raw.size > 25 * 1024 * 1024) { toast(`${raw.name} is larger than 25 MB and was skipped.`, true); continue; }
-        const f = await E.slimFile(raw);
-        const path = `qc/${t.id}/doc_${Date.now()}_${rand()}.${E.extOf(f)}`;
-        const up = await sb.storage.from("records").upload(path, f, { contentType: f.type || "application/octet-stream" });
-        if (up.error) { toast("A file could not be uploaded: " + up.error.message, true); continue; }
-        added.push(path);
-      }
-      const finish = () => { busyUp = false; if (here() && $("#qcSave")) { $("#qcSave").disabled = false; lab.classList.remove("disabled"); } };
-      if (!added.length) return finish();
-      const { error } = await sb.rpc("qc_set_docs", { p_id: t.id, p_docs: [...docs, ...added] });
-      if (error) { sb.storage.from("records").remove(added).then(() => {}, () => {}); finish(); return fail(error, "Could not save the upload"); }
-      docs.push(...added);
-      finish();
-      toast("Upload saved.");
-      if (here()) paintDocs();
-    };
+    qcDocs(t, docs, here, true, (b) => { busyUp = b; if ($("#qcSave")) $("#qcSave").disabled = b; });
     if ($("#qcDel")) $("#qcDel").onclick = async () => {
       if (!(await E.confirmBox(`Delete QC test <b>${esc(t.qc_no)}</b> with its result and uploads? This cannot be undone.`, { ok: "Delete", danger: true }))) return;
       const { data: gone, error } = await sb.rpc("delete_qc", { p_id: t.id });
