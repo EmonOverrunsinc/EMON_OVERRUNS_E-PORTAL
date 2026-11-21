@@ -4372,3 +4372,33 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 /* numbers line up in every table */
 .grid td.num, .os-t td, .mv-t td { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .loading.sk .sk-b { animation: none; } .reg-card, .ol-card, .os-tabs button, .subnav a { transition: none; } }
+/* ===================== 3.99.164: the OUTLET STATEMENT (document layout) ===================== */
+.soa-doc { font-family: Inter, Arial, Helvetica, sans-serif; color: #111827; font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; position: relative; min-height: 100%; }
+.soa-no { text-align: right; } .soa-no small { display: block; font-size: 8px; letter-spacing: .1em; color: #6b7487; text-transform: uppercase; } .soa-no b { display: block; font-size: 11px; color: #12306b; margin: 1px 0; }
+.soa-info { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 1px solid #12306b; border-radius: 6px; overflow: hidden; margin: 8px 0; }
+.soa-info > div { padding: 5px 8px; border-right: 1px solid #d5dbe8; border-bottom: 1px solid #d5dbe8; } .soa-info > div.w2 { grid-column: span 2; }
+.soa-info small { display: block; font-size: 7.5px; font-weight: 800; letter-spacing: .08em; color: #6b7487; text-transform: uppercase; }
+.soa-info b { font-size: 10.5px; color: #12306b; }
+.soa-tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 8px 0 4px; }
+.soa-tile { border-radius: 6px; padding: 6px 8px; background: #f4f6fb; border-top: 3px solid #c9a227; }
+.soa-tile.in { border-top-color: #16a34a; } .soa-tile.out { border-top-color: #ea580c; } .soa-tile.co { border-top-color: #c2410c; } .soa-tile.pay { border-top-color: #2563eb; }
+.soa-tile.bal { background: #12306b; border-top-color: #e2b33c; } .soa-tile.bal small, .soa-tile.bal b { color: #fff; } .soa-tile.bal.neg b { color: #fecaca; }
+.soa-tile small { display: block; font-size: 7.5px; font-weight: 800; letter-spacing: .08em; color: #6b7487; text-transform: uppercase; }
+.soa-tile b { display: block; font-size: 12px; color: #12306b; margin-top: 2px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.soa-pay { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 9px; color: #374151; margin: 0 0 6px; } .soa-pay b { color: #12306b; }
+.soa-sec { margin: 8px 0 4px; break-inside: avoid; }
+.soa-sec h4 { margin: 0 0 3px; padding: 3px 8px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #fff; background: #12306b; border-radius: 4px; border-left: 4px solid #e2b33c; }
+.soa-sec h4 small { font-weight: 600; text-transform: none; letter-spacing: 0; opacity: .85; }
+.soa-t { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+.soa-t th { text-align: left; font-size: 8px; letter-spacing: .06em; text-transform: uppercase; color: #12306b; background: #eef2fb; padding: 3px 6px; border-bottom: 1px solid #12306b; }
+.soa-t td { padding: 3px 6px; border-bottom: 1px solid #e5e9f2; font-variant-numeric: tabular-nums; }
+.soa-t tbody tr:nth-child(even) td { background: #fafbfe; }
+.soa-t .num { text-align: right; white-space: nowrap; }
+.soa-t tfoot td { font-weight: 800; color: #12306b; border-top: 1.5px solid #12306b; border-bottom: 0; background: #f4f6fb; }
+.soa-none { padding: 4px 8px; color: #6b7487; font-style: italic; }
+.soa-result { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0 4px; padding: 7px 10px; border: 1.5px solid #12306b; border-radius: 6px; background: #f4f6fb; font-size: 9px; }
+.soa-result b { font-size: 13px; color: #12306b; white-space: nowrap; } .soa-result b.neg { color: #b91c1c; }
+.soa-sign { margin-top: 14mm; }
+.soa-cont { display: flex; justify-content: space-between; gap: 8px; font-size: 9px; color: #12306b; border-bottom: 2px solid #e2b33c; padding-bottom: 3px; margin-bottom: 6px; } .soa-cont span { font-family: monospace; }
+.soa-pg { position: absolute; right: 0; bottom: -4mm; font-size: 8px; color: #6b7487; letter-spacing: .08em; }
+.soa-sign { align-items: start; } .soa-sign > div:first-child { padding-top: 15mm; } .soa-sign .inv-dir { padding-bottom: 0; }
