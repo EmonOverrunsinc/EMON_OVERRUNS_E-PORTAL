@@ -69,7 +69,7 @@
   // ---------- the Dashboard box: all the shops ----------
   E.outletsBox = async (holder) => {
     const gone = () => holder?.closest(".box")?.remove();
-    if (!holder || !E.hasModule("outlets")) return gone();
+    if (!holder || !E.hasModule("outlets") || (S.hideMoney && !isAdmin())) return gone(); // 3.99.175: no money: no box
     const { data: outlets, error } = await sb.from("outlets").select("*").eq("status", "active").order("code");
     if (error || !outlets?.length) return gone();
     let mm; try { mm = await monthMoney(outlets, monthNow()); } catch (_) { return gone(); }
@@ -165,6 +165,11 @@
       E.allRows(() => sb.from("outlet_expenses").select("amount").eq("outlet_id", id)).then((r) => r.data || []),
       o.customer_id ? E.allRows(() => sb.from("payments_received").select("amount").eq("customer_id", o.customer_id).gte("paid_date", start)).then((r) => r.data || []) : []]);
     if (!here()) return;
+    // 3.99.175: an employee without "13 See Balances & History": only the sales and expenses he or she recorded (with their
+    // amounts); no totals, balance, stock account or monthly statement
+    const mine = !!S.hideMoney && !isAdmin();
+    if (mine) { const me = E.meId(); sales.splice(0, sales.length, ...sales.filter((r) => r.created_by === me)); exps.splice(0, exps.length, ...exps.filter((r) => r.created_by === me)); }
+    const peso = mine ? (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : E.peso;
     const ids = [...sales.map((r) => r.id), ...exps.map((r) => r.id)];
     const docs = await E.attachmentsOf("outlet", id).catch(() => []); // 3.99.119: the shop's documents
     const files = ids.length ? ((await sb.from("attachments").select("*").in("owner_type", ["outlet_sales", "outlet_expense"]).in("owner_id", ids).order("created_at", { ascending: false })).data || []) : [];
@@ -187,7 +192,7 @@
     const dEx = sum(days, "ex"), dCo = sum(days, "co");
     const pc = (v) => (num(v) ? peso(v) : "");
     const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th>${PAY.map(([, l]) => `<th class="num">${esc(l.toUpperCase())}</th>`).join("")}<th class="num">TOTAL SALES</th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">CASH LEFT</th><th></th></tr></thead><tbody>
-        ${days.map((x) => `<tr><td><b>${esc(mdy(x.d))}</b>${x.r?.note ? `<small>${esc(x.r.note)}</small>` : ""}</td>${PAY.map(([k]) => `<td class="num">${pc(x.r?.[k])}</td>`).join("")}<td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td>${x.r ? tools("outlet_sales", x.r) : ""}</td></tr>`).join("")}</tbody>
+        ${days.map((x) => `<tr><td><b>${esc(mdy(x.d))}</b>${x.r?.note ? `<small>${esc(x.r.note)}</small>` : ""}</td>${PAY.map(([k]) => `<td class="num">${pc(x.r?.[k])}</td>`).join("")}<td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : ""}</span></td></tr>`).join("")}</tbody>
         <tfoot><tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${peso(sum(sales, k))}</td>`).join("")}<td class="num">${peso(net)}</td><td class="num">${peso(dEx)}</td><td class="num">${peso(dCo)}</td><td class="num">${peso(net - dEx - dCo)}</td><td></td></tr></tfoot></table></div>`
       : empty("No sales recorded this month.");
     const xps = exps.filter((r) => r.kind !== "cashout"), cos = exps.filter((r) => r.kind === "cashout");
@@ -210,7 +215,7 @@
       ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn small" for="olDocUp">${ic("upload")} Upload</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}
       ${o.notes ? `<div class="ol-sub">Notes</div><p class="ol-notes">${esc(o.notes)}</p>` : ""}`;
     const box = (cls, k, v, sub = "") => `<div class="os-kpi ${cls}"><small>${k}</small><b>₱ ${peso(v)}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
-    const tabs = [["Daily Sales", days.length, salesTab], ["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ["Stock Account", invs.length, stockTab], ["Employees", st.length, staffHtml(st)], ["Documents", docs.length, docTab]];
+    const tabs = [["Daily Sales", days.length, salesTab], ["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Documents", docs.length, docTab]];
     $("#olBody").innerHTML = `
       <section class="os-hero">
         <div class="os-hero-micro" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(o))}</span>`).join("")}</div>
@@ -223,14 +228,15 @@
         })()}
         <div class="os-hero-top"><div class="os-hero-ic">${ic("building")}</div>
           <div class="os-hero-m"><span class="os-code">${esc(o.code)}</span><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
-        <div class="os-chips"><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
+        <div class="os-chips"><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
-      <div class="os-kpis">${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", out, `${xps.length} expense(s)`)}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("pay", "Stock Payments", paid, cust ? `To pay ₱ ${peso(owed)}` : "")}
+      ${mine ? `<div class="banner info os-mine">${ic("shield")} You see only the sales, expenses and cash out you recorded. The totals and the balance are for EMON HASAN.</div>` : ""}
+      <div class="os-kpis"${mine ? " hidden" : ""}>${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", out, `${xps.length} expense(s)`)}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("pay", "Stock Payments", paid, cust ? `To pay ₱ ${peso(owed)}` : "")}
         <div class="os-kpi bal${bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(bal)}</b><span class="${allBal < 0 ? "neg" : ""}">In all ₱ ${peso(allBal)}</span></div></div>
       <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button><button type="button" class="btn" id="olExp">${ic("plus")} Expense / Bill</button><button type="button" class="btn" id="olCash">${ic("wallet")} Cash Out</button>` : ""}
-        <button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
+        ${mine ? "" : `<button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>`}${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
       <div class="tabs os-tabs" id="osTabs">${tabs.map(([t, n], k) => `<button type="button" class="${k ? "" : "on"}" data-t="${k}">${esc(t)}${n ? ` <em>${n}</em>` : ""}</button>`).join("")}</div>
       <div class="tabpanes os-panes" id="osPanes">${tabs.map(([, , html], k) => `<div data-p="${k}" class="os-pane"${k ? " hidden" : ""}>${html}</div>`).join("")}</div>`;
     $$("#osTabs button").forEach((t) => (t.onclick = () => { $$("#osTabs button").forEach((x) => x.classList.toggle("on", x === t)); $$("#osPanes > div").forEach((q) => (q.hidden = q.dataset.p !== t.dataset.t)); }));
@@ -259,7 +265,8 @@
       const mm = E.modal("Files", `<div id="olFiles">${E.filesHtml(list)}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
       $("[data-x]", mm.el).onclick = () => mm.close(); E.bindFiles(mm.el);
     }));
-    $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null });
+    $$("[data-day]").forEach((b) => (b.onclick = () => printDay(o, b.dataset.day, sales, exps, mine)));
+    if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null });
     E.setRecords(`Outlet: ${o.code}`);
   };
 
@@ -462,6 +469,31 @@
   E.staffHtml = staffHtml; E.bindStaff = bindStaff; E.STAFF_SEL = STAFF_SEL;
 
   // ---------- the monthly statement (SOA): a ledger of the month ----------
+  // 3.99.175: the DAILY SALES REPORT of one shop for ONE day: the sales (cash, GCash), the day's expenses and cash out, the cash
+  // left, who recorded it, and the signatures. Report No DSR-<shop>-<date>.
+  async function printDay(o, date, sales, exps, mine) {
+    await Promise.all([E.loadSignatures?.().catch(() => {}), E.loadSigners?.([S.profile?.id]).catch(() => {})]);
+    const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
+    const xp = day.filter((x) => x.kind !== "cashout"), co = day.filter((x) => x.kind === "cashout");
+    const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), cash = sum(co, "amount"), left = tot - ex - cash;
+    const no = `DSR-${shopId(o).replace(/^EO-/, "")}-${date.replace(/-/g, "")}`;
+    const row = (k, v, cls = "") => `<tr class="${cls}"><td>${k}</td><td class="num">${v}</td></tr>`;
+    const list = (title, rows, cols) => `<div class="soa-sec"><h4>${title}</h4>${rows.length ? `<table class="soa-t"><thead><tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>` : `<div class="soa-none">None this day.</div>`}</div>`;
+    const dirSig = (() => { const x = E.approvedBy?.(null, "EMON HASAN"); return x?.pic ? `<img src="${esc(x.pic)}" alt="Signature">` : ""; })();
+    const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Report No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small></div>`)}
+      <div class="soa-info"><div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div><div><small>Date</small><b>${esc(mdy(date))}</b></div>
+        <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div><div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div><div><small>Recorded By</small><b>${esc(r.created_by_name || "—")}</b></div>
+        <div class="w2"><small>Note</small><b>${esc(r.note || "—")}</b></div></div>
+      <div class="soa-tiles">${[["Total Sales", tot, "in"], ["Expenses", ex, "out"], ["Cash Out", cash, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
+      <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
+      ${list("Expenses", xp.map((x) => `<tr><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc([x.payee, x.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Type"], ["Paid To / Note"], ["Amount (₱)", 1]])}
+      ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td>${esc(x.note || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Note"], ["Amount (₱)", 1]])}
+      <div class="soa-result"><span>Total Sales ₱ ${P(tot)} − Expenses ₱ ${P(ex)} − Cash Out ₱ ${P(cash)}</span><b class="${left < 0 ? "neg" : ""}">CASH LEFT ₱ ${P(left)}</b></div>
+      <div class="inv-sealsig soa-sign">${E.sigCol(`Prepared by: ${esc(r.created_by_name || me() || "")}`, E.signerBy?.(r.created_by))}<div class="inv-dir"><div class="inv-dir-sig">${dirSig}</div><div class="line"></div><b>EMON HASAN</b><small>OPERATIONAL DIRECTOR</small></div></div></div>`;
+    E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
+  }
+
   // 3.99.164: the OUTLET STATEMENT in a document layout: the company head, the shop, 5 summary boxes, the daily sales,
   // the expenses, the cash out and the stock payments (each a table with its total), and the signatures. A long month
   // goes on to the next page (the table head is repeated there).

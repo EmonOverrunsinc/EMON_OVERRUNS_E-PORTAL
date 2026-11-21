@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.174"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.175"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.174"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.175"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -141,6 +141,19 @@
     <path d="M38 50 l8 8 l16 -18" class="as-tick"/><text x="50" y="72" text-anchor="middle" class="as-word">AUTHENTIC</text></svg><i class="as-shine"></i></div>`;
   const addSticker = (root) => root.querySelectorAll?.("#main .cust-hero:not(.has-auth)").forEach((h) => { h.classList.add("has-auth"); h.insertAdjacentHTML("beforeend", AUTH_STICKER); });
   new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches?.("#main .cust-hero")) addSticker(n.parentNode); else if (n.querySelector?.(".cust-hero")) addSticker(n); } })
+    .observe(document.documentElement, { childList: true, subtree: true });
+  // 3.99.175: a login that may not see the money (no "13 See Balances & History"): every box that would only show ••••• is
+  // hidden completely (the tiles, the shop boxes, the profile money boxes), not shown empty
+  const MONEY_BOX = ".tile, .os-kpi, .ol-kpi, .rec-tile, .mv-tile, .soa-tile, .blx-tile, .ol-card-n > div, #main .cust-hero .idbox, .due-card";
+  const hideMasked = (root) => {
+    if (!S.hideMoney || !root?.querySelectorAll) return;
+    const list = [...(root.matches?.(MONEY_BOX) ? [root] : []), ...root.querySelectorAll(MONEY_BOX)];
+    for (const el of list) {
+      const v = el.querySelector("b, .v");
+      if (v && /•{3,}/.test(v.textContent) && !/[0-9]/.test(v.textContent.replace(/•/g, ""))) el.classList.add("money-hidden");
+    }
+  };
+  new MutationObserver((ms) => { if (!S.hideMoney) return; for (const m of ms) for (const n of m.addedNodes) { if (n.nodeType === 1) hideMasked(n); else if (n.nodeType === 3) { const box = n.parentElement?.closest(MONEY_BOX); if (box) hideMasked(box); } } })
     .observe(document.documentElement, { childList: true, subtree: true });
   // 3.36: a month as OCTOBER 2026 (from 2026-10 or any date in it), in every section
   const monthOf = (d) => String(d || "").slice(0, 7);
@@ -1395,7 +1408,7 @@
     eooffice: EO_MODULES, newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice",
     purchase: "purchase", newpurchase: "purchase", po: "purchase", editpo: "purchase", // 3.31: its own menu access
     regional: ["purchase", "billing", "inventory"], // 3.99.156: REGIONAL OFFICE opens for anyone who may open one of them
-    custorders: "eooffice", soldboxes: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: ["eooffice", "customers"], insurance: "eooffice" // 3.37; 3.72 insurance: Customer Order (an order opens from the customer's profile too)
+    custorders: "eooffice", soldboxes: "eooffice", boxlist: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: ["eooffice", "customers"], insurance: "eooffice" // 3.37; 3.72 insurance: Customer Order (an order opens from the customer's profile too)
   };
   // Admins see everything; NULL modules = all (older accounts).
   // 3.31: Employees, Payroll and Job Applications come with EO-Office (there is no Employee (HR) access any more)
@@ -1422,7 +1435,7 @@
   const REGIONAL = [["purchase", "Purchase Order", "order"], ["billing", "Billing", "building"], ["inventory", "E-Bill", "box"]];
   const regionalItems = () => REGIONAL.filter(([k]) => (k === "purchase" ? isStaff() && hasModule("purchase") : hasModule(k)));
   const REG_PAGES = ["purchase", "newpurchase", "po", "editpo", "billing", "newpaycompany", "paycompany", "newvoucher", "voucher", "inventory", "newstockbill", "stockbill", "ebill"];
-  const ACTIVE_OF = { employees: "eooffice", newemployee: "eooffice", editemployee: "eooffice", employee: "eooffice", payroll: "eooffice", payslip: "eooffice", creditmemos: "eooffice", newcreditmemo: "eooffice", creditmemo: "eooffice", projects: "eooffice", newproject: "eooffice", project: "eooffice", jobapps: "eooffice", jobapp: "eooffice", positions: "eooffice", newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice", newpurchase: "purchase", po: "purchase", editpo: "purchase", ebill: "inventory", custorders: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: "eooffice", insurance: "eooffice", find: "", profile: "", settings: "", regional: "regional", mbilling: "eooffice", ...Object.fromEntries(REG_PAGES.map((k) => [k, "regional"])) };
+  const ACTIVE_OF = { employees: "eooffice", newemployee: "eooffice", editemployee: "eooffice", employee: "eooffice", payroll: "eooffice", payslip: "eooffice", creditmemos: "eooffice", newcreditmemo: "eooffice", creditmemo: "eooffice", projects: "eooffice", newproject: "eooffice", project: "eooffice", jobapps: "eooffice", jobapp: "eooffice", positions: "eooffice", newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice", newpurchase: "purchase", po: "purchase", editpo: "purchase", ebill: "inventory", custorders: "eooffice", newcustorder: "eooffice", editcustorder: "eooffice", custorder: "eooffice", insurance: "eooffice", find: "", profile: "", settings: "", regional: "regional", mbilling: "eooffice", boxlist: "eooffice", ...Object.fromEntries(REG_PAGES.map((k) => [k, "regional"])) };
   // Older addresses from version 1.0.
   const ALIAS = { users: "employees", userres: "employees", resolutions: "purchase", resolution: "purchase", community: "purchase", orders: "dashboard", neworder: "dashboard", editorder: "dashboard", verification: "verify", supplier: "billing", newsupplier: "billing", search: "dashboard" };
   const avatarUrl = () => publicUrl("avatars", S.profile?.avatar_path);
@@ -2475,6 +2488,19 @@
       const mm = r(pg).width / 210; // screen pixels per millimetre
       const room = 293 * mm - (r(fit).top - r(pg).top) - (foot ? r(foot).height : 0) - 9 * mm; // 9 mm: the bottom margin
       if (r(fit).height > room) fit.style.zoom = Math.max(0.6, room / r(fit).height).toFixed(3);
+    }));
+    // 3.99.175: a one-page document (an invoice, an order, a receipt …) a little longer than an A4 sheet is made smaller to
+    // fit ONE sheet (down to 72%): its writing goes into a box that is scaled; the date box, the page no and the security layer stay.
+    if (!onePage && !bare && pages.length === 1) Promise.all([document.fonts?.ready, ...$$("img", desk).map((im) => im.decode().catch(() => {}))]).then(() => $$(".page", desk).forEach((pg) => {
+      const mm = pg.getBoundingClientRect().width / 210, room = 296 * mm, h = pg.scrollHeight * (pg.getBoundingClientRect().width / pg.offsetWidth);
+      if (h <= room + 1 || h > room / 0.72) return; // fits, or far too long (a document of several pages)
+      const keep = new Set(["pg-date", "pg-num", "pg-sec", "pg-web", "rp-stamp", "rp-foot", "vp-sys"]);
+      const box = document.createElement("div"); box.className = "pg-fit";
+      [...pg.childNodes].filter((n) => !(n.nodeType === 1 && [...n.classList].some((c) => keep.has(c)))).forEach((n) => box.appendChild(n));
+      pg.insertBefore(box, pg.firstChild);
+      const st = getComputedStyle(pg), pad = (parseFloat(st.paddingTop) + parseFloat(st.paddingBottom)) * (pg.getBoundingClientRect().width / pg.offsetWidth);
+      const need = box.getBoundingClientRect().height, can = room - pad;
+      if (need > can) box.style.zoom = Math.max(0.72, can / need).toFixed(3);
     }));
     desk.onscroll = () => {
       const pg = $$(".page", desk); let cur = 1;

@@ -93,6 +93,102 @@
     show();
   };
 
+
+  // ======================================================================
+  // 3.99.175: BOX LIST: every box in the box database with its status now (AVAILABLE, ON ORDER, SOLD), sorted by batch; the batch
+  // list (each batch's boxes and how many are sold); a search like the top search (a dash or a space does not matter:
+  // QQ13 = QQ-13); Download (Excel / CSV) and Print of what is shown.
+  // ======================================================================
+  const keyOf = (v) => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); // QQ-13, QQ 13 and qq13 are the same
+  E.boxKeyOf = keyOf;
+  const BL_ST = { stock: ["bx-stock", "IN STOCK"], shipped: ["bx-ship", "SHIPPED"], order: ["bx-order", "ON ORDER"], sold: ["bx-sold", "SOLD"] };
+  V.boxlist = async (batchArg) => {
+    E.shell("boxlist", "Box List", `${E.eoTabs("boxlist")}<div id="blxBody">${busy("Loading the boxes")}</div>`);
+    const here = E.stillHere();
+    const [st, on, sd, arr] = await Promise.all([
+      E.allRows(() => sb.from("box_stock").select("serial_no, product, brand, ctn, style, qty, batch, price, arrival_date, ship_date, release_date, sold_date, sheet_invoice").order("serial_no")),
+      E.allRows(() => sb.from("customer_order_boxes").select("serial_no, customer_orders(id, order_no, status)").order("id")),
+      E.allRows(() => sb.from("box_sales").select("serial_no, invoice_no, sold_at").order("serial_no")).then((r) => r, () => ({ data: [] })),
+      E.boxStatus?.hasArrival ? E.boxStatus.hasArrival().catch(() => false) : false]);
+    if (!here() || !$("#blxBody")) return;
+    if (st.error) { $("#blxBody").innerHTML = `<div class="empty">${/box_stock|schema cache|PGRST20/.test(st.error.message || "") ? "The Box List needs the box database (EVA Records › Read Sheet)." : esc(st.error.message)}</div>`; return; }
+    const onOrder = new Map(), sold = new Map();
+    for (const x of on.data || []) if (x.customer_orders && x.customer_orders.status !== "cancelled") onOrder.set(x.serial_no, x.customer_orders);
+    for (const x of sd.data || []) sold.set(x.serial_no, x);
+    const all = (st.data || []).map((b) => {
+      const o = onOrder.get(b.serial_no), sl = sold.get(b.serial_no);
+      const k = E.boxStatus ? E.boxStatus.key(b, o, sl, arr) : sl || o?.status === "completed" ? "sold" : o ? "order" : "stock";
+      return { ...b, k, order: o, invoice: sl?.invoice_no || b.sheet_invoice || "", soldOn: sl?.sold_at ? String(sl.sold_at).slice(0, 10) : b.sold_date || "",
+        hay: [b.serial_no, b.batch, b.product, b.brand, b.ctn, b.style, o?.order_no, sl?.invoice_no || b.sheet_invoice].map(keyOf).join(" ") };
+    }).sort((a, b) => String(a.batch || "~").localeCompare(String(b.batch || "~"), "en", { numeric: true }) || String(a.serial_no).localeCompare(String(b.serial_no), "en", { numeric: true }));
+    const isAvail = (r) => r.k === "stock" || r.k === "shipped";
+    let filter = "all", q = "", batch = batchArg ? decodeURIComponent(batchArg) : "";
+    $("#blxBody").innerHTML = `
+      <div class="blx-tiles" id="blxTiles"></div>
+      <div class="blx-bar"><div class="blx-find">${ic("search")}<input type="search" id="blxQ" placeholder="Search serial no, batch (QQ13 or QQ-13), product, brand, CTN" autocomplete="off" aria-label="Search the boxes"></div>
+        <div class="seg blx-seg" id="blxSeg">${[["all", "All"], ["avail", "In Stock"], ["order", "On Order"], ["sold", "Sold"]].map(([k, l]) => `<button type="button" data-f="${k}" class="${k === "all" ? "on" : ""}">${l}</button>`).join("")}</div>
+        <button type="button" class="btn" id="blxCsv">${ic("download")} Download</button><button type="button" class="btn primary" id="blxPrint">${ic("print")} Print</button></div>
+      <div class="tabs os-tabs" id="blxTabs"><button type="button" class="on" data-t="b">Batch List</button><button type="button" data-t="a">All Boxes</button></div>
+      <div id="blxView"></div>`;
+    const shown = () => all.filter((r) => (filter === "all" || (filter === "avail" ? isAvail(r) : r.k === filter)) && (!batch || keyOf(r.batch) === keyOf(batch))
+      && (!q || q.split(/\s+/).every((w) => r.hay.includes(w))));
+    const batchesOf = (rows) => { const m = new Map(); for (const r of rows) { const b = r.batch || "—"; if (!m.has(b)) m.set(b, []); m.get(b).push(r); } return [...m.entries()]; };
+    const cnt = (rows, f) => rows.filter(f).length, pcs = (rows) => rows.reduce((s, r) => s + num(r.qty), 0);
+    const tiles = (rows) => {
+      const t = (cls, k, v, sub) => `<div class="blx-tile ${cls}"><small>${k}</small><b>${v}</b><span>${sub}</span></div>`;
+      $("#blxTiles").innerHTML = t("", "Boxes", qtyText(rows.length), `${qtyText(pcs(rows))} pcs`) + t("av", "In Stock", qtyText(cnt(rows, isAvail)), `${qtyText(pcs(rows.filter(isAvail)))} pcs`)
+        + t("or", "On Order", qtyText(cnt(rows, (r) => r.k === "order")), "boxes on an order") + t("so", "Sold", qtyText(cnt(rows, (r) => r.k === "sold")), `${qtyText(pcs(rows.filter((r) => r.k === "sold")))} pcs`)
+        + t("ba", "Batches", qtyText(batchesOf(rows).length), batch ? `Batch ${esc(batch)}` : "in this list");
+    };
+    const stPill = (k) => E.pill(BL_ST[k][0], BL_ST[k][1]);
+    const boxRows = (rows) => rows.map((r) => `<tr class="k-${r.k}"><td><b class="mono">${esc(r.serial_no)}</b></td><td>${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · "))}</td>
+      <td>${esc(r.style || "")}</td><td>${esc(r.ctn || "")}</td><td class="num">${qtyText(r.qty)}</td><td class="nw">${esc(String(mdy(r.ship_date) || "").replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1"))}</td><td>${stPill(r.k)}</td>
+      <td>${r.k === "sold" ? `${esc(r.invoice)}${r.soldOn ? `<small>${esc(String(mdy(r.soldOn)).replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1"))}</small>` : ""}` : r.order ? `<a href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : ""}</td></tr>`).join("");
+    const head = `<tr><th>Serial No</th><th>Product</th><th>Code</th><th>CTN</th><th class="num">Pcs</th><th>Ship Date</th><th>Status</th><th>Invoice / Order</th></tr>`;
+    let tab = "b";
+    const draw = () => {
+      const rows = shown(); tiles(rows);
+      const v = $("#blxView");
+      if (!rows.length) { v.innerHTML = `<div class="empty">${all.length ? "No box matches." : "No box in the box database yet."}</div>`; return; }
+      if (tab === "b" && !batch) {
+        v.innerHTML = `<div class="blx-batches">${batchesOf(rows).map(([b, list]) => {
+          const av = cnt(list, isAvail), so = cnt(list, (r) => r.k === "sold"), or = cnt(list, (r) => r.k === "order"), pct = Math.round((so / list.length) * 100);
+          return `<button type="button" class="blx-batch" data-b="${esc(b)}"><div class="blx-bh"><b>${esc(b)}</b><span>${qtyText(list.length)} box${list.length === 1 ? "" : "es"} · ${qtyText(pcs(list))} pcs</span></div>
+            <div class="blx-bar2"><i style="width:${pct}%"></i></div>
+            <div class="blx-bn"><span class="so">SOLD ${so}</span><span class="av">IN STOCK ${av}</span>${or ? `<span class="or">ON ORDER ${or}</span>` : ""}<span class="to">TOTAL ${list.length} BOX${list.length === 1 ? "" : "ES"}</span></div></button>`;
+        }).join("")}</div>`;
+        $$(".blx-batch", v).forEach((x) => (x.onclick = () => { batch = x.dataset.b; draw(); }));
+        return;
+      }
+      v.innerHTML = `${batch ? `<div class="blx-crumb"><button type="button" class="btn small" id="blxAll">${ic("back")} All batches</button><b>Batch ${esc(batch)}</b></div>` : ""}
+        ${batchesOf(rows).map(([b, list]) => `<section class="blx-sec"><header><b>${esc(b)}</b><span class="blx-line"><em class="so">SOLD ${cnt(list, (r) => r.k === "sold")}</em><em class="av">IN STOCK ${cnt(list, isAvail)}</em>${cnt(list, (r) => r.k === "order") ? `<em class="or">ON ORDER ${cnt(list, (r) => r.k === "order")}</em>` : ""}<em class="to">TOTAL ${list.length} BOX${list.length === 1 ? "" : "ES"}</em></span></header>
+          <div class="grid-scroll"><table class="os-t blx-t"><thead>${head}</thead><tbody>${boxRows(list)}</tbody></table></div></section>`).join("")}`;
+      if ($("#blxAll")) $("#blxAll").onclick = () => { batch = ""; draw(); };
+    };
+    let tm = null;
+    $("#blxQ").oninput = (e) => { clearTimeout(tm); tm = setTimeout(() => { q = e.target.value.trim().split(/\s+/).map(keyOf).filter(Boolean).join(" "); draw(); }, 120); };
+    $$("#blxSeg button").forEach((b) => (b.onclick = () => { $$("#blxSeg button").forEach((x) => x.classList.toggle("on", x === b)); filter = b.dataset.f; draw(); }));
+    $$("#blxTabs button").forEach((b) => (b.onclick = () => { $$("#blxTabs button").forEach((x) => x.classList.toggle("on", x === b)); tab = b.dataset.t; draw(); }));
+    const label = (r) => BL_ST[r.k][1];
+    $("#blxCsv").onclick = () => {
+      const rows = shown(), cell = (v) => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+      const lines = [["Batch", "Serial No", "Product", "Brand", "Code", "CTN", "Pcs", "Ship Date", "Status", "Invoice", "Date Sold", "Order No"],
+        ...rows.map((r) => [r.batch || "", r.serial_no, r.product || "", r.brand || "", r.style || "", r.ctn || "", num(r.qty), r.ship_date || "", label(r), r.invoice, r.soldOn, r.order?.order_no || ""])];
+      const blob = new Blob(["﻿" + lines.map((l) => l.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `Box-List${batch ? "-" + keyOf(batch) : ""}-${isoToday()}.csv`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    };
+    $("#blxPrint").onclick = () => {
+      const rows = shown(), F = { all: "All boxes", avail: "Boxes in stock", order: "Boxes on order", sold: "Sold boxes" }[filter];
+      const sums = batchesOf(rows).map(([b, list]) => [b, `SOLD ${cnt(list, (r) => r.k === "sold")} · IN STOCK ${cnt(list, isAvail)} · TOTAL ${list.length} BOXES`]);
+      E.openPreview(`Box List${batch ? " " + batch : ""}`, E.listingPages({ title: batch ? `BOX LIST · BATCH ${batch}` : "BOX LIST", range: `${esc(F)} · ${esc(mdy(isoToday()))}${q ? ` · Search: ${esc(q)}` : ""}`, logo: true, perPage: 30,
+        cols: [{ label: "Batch", get: (r) => r.batch || "" }, { label: "Serial No", get: (r) => r.serial_no }, { label: "Product", get: (r) => [r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · ") },
+          { label: "CTN", get: (r) => r.ctn || "" }, { label: "Pcs", num: true, get: (r) => qtyText(r.qty) }, { label: "Status", get: label }, { label: "Invoice / Order", get: (r) => (r.k === "sold" ? r.invoice : r.order?.order_no || "") }],
+        rows, summary: { title: "BY BATCH", cols: ["Batch", "Boxes"], rows: sums, total: ["TOTAL", `SOLD ${cnt(rows, (r) => r.k === "sold")} · IN STOCK ${cnt(rows, isAvail)} · TOTAL ${rows.length} BOXES`] } }));
+    };
+    draw();
+    E.setRecords(`Boxes: ${all.length}`);
+  };
+
   V.custorders = async () => {
     E.shell("custorders", "Customer Order", `${E.eoTabs("custorders")}<div id="coBody">${busy()}</div>`);
     if (!E.hasModule("eooffice") || !E.isStaff()) { location.hash = "eooffice"; return; }

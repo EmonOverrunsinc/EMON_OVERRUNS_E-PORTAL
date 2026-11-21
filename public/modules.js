@@ -2254,6 +2254,14 @@
       if (boxes.length === 1) key = boxes[0].serial_no; else if (boxes.length) kind = "match";
     }
     if (!boxes.length) { boxes = (await E.allRows(() => sb.from("box_stock").select("*").eq("batch", key).order("serial_no"))).data || []; kind = "batch"; }
+    // 3.99.175: typed without (or with another) dash or space: QQ13 finds QQ-13, QQ 13 and QQ13; A-2026001 finds A2026001
+    const m2 = /^([A-Z]+)[\s-]*(\d[\d\s-]*)$/.exec(key);
+    if (!boxes.length && m2) {
+      const L = m2[1], D = m2[2].replace(/[\s-]/g, ""), forms = [...new Set([L + D, `${L}-${D}`, `${L} ${D}`])];
+      const byBatch = (await E.allRows(() => sb.from("box_stock").select("*").in("batch", forms).order("serial_no"))).data || [];
+      if (byBatch.length) { boxes = byBatch; key = byBatch[0].batch; kind = "batch"; }
+      else { const bySer = (await sb.from("box_stock").select("*").in("serial_no", forms).limit(1).then((r) => r.data || [], () => [])); if (bySer.length) { boxes = bySer; key = bySer[0].serial_no; kind = "serial"; } }
+    }
     if (!boxes.length || !here()) return false;
     // where each box is: on an order, sold (invoiced) or in stock
     const parts = [];
