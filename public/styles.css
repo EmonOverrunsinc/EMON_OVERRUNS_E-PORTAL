@@ -4281,3 +4281,33 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .mnl-cards .reg-ic { width: 46px; height: 46px; border-radius: 14px; } .mnl-cards .reg-ic svg { width: 24px; height: 24px; }
 .mnl-cards .reg-card b { font-size: 16px; }
 .eo-mini .tiles { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+/* ===================== 3.99.160: a SUBMITTED QC test: the locked page ===================== */
+.qcl { display: grid; gap: 14px; }
+.qcl-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 18px 20px; border-radius: 18px; color: #fff; background: linear-gradient(135deg, #0f2a66, #1d4ed8); border-bottom: 4px solid #e2b33c; box-shadow: 0 10px 24px rgba(15, 42, 102, .22); }
+.qcl-hero.pass .qcl-verd { background: #16a34a; } .qcl-hero.fail .qcl-verd { background: #dc2626; }
+.qcl-verd { flex: none; width: 112px; height: 112px; border-radius: 50%; display: grid; place-content: center; text-align: center; background: rgba(255, 255, 255, .15); border: 4px solid rgba(255, 255, 255, .85); }
+.qcl-verd b { font-size: 26px; letter-spacing: .1em; } .qcl-verd span { font-size: 14px; font-weight: 700; opacity: .95; }
+.qcl-m { flex: 1; min-width: 220px; } .qcl-m h2 { margin: 0; color: #fff; font-size: 24px; letter-spacing: .03em; } .qcl-m p { margin: 2px 0 8px; color: #dbe4fb; }
+.qcl-m small { display: block; margin-top: 8px; color: #dbe4fb; }
+.qcl-chips { display: flex; gap: 8px; flex-wrap: wrap; } .qcl-chips span { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: rgba(255, 255, 255, .15); font-size: 12.5px; font-weight: 800; letter-spacing: .03em; }
+.qcl-chips span.lock { background: #fef3c7; color: #92400e; } .qcl-chips svg { width: 14px; height: 14px; }
+.qcl-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px; }
+.qcl-card { background: #fff; border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow-1); }
+.qcl-card h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: #12306b; font-size: 15px; letter-spacing: .03em; } .qcl-card h3 svg { width: 18px; height: 18px; color: #c9a227; }
+.qcl-kvs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+.qcl-kv small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .07em; color: #6b7487; text-transform: uppercase; } .qcl-kv b { color: #12306b; font-size: 15px; overflow-wrap: anywhere; }
+.qcl-sub { margin: 12px 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .07em; color: #6b7487; text-transform: uppercase; }
+.qcl-colors { display: flex; flex-wrap: wrap; gap: 6px; } .qcl-colors span { padding: 4px 10px; border-radius: 999px; background: #eef2fb; color: #12306b; font-size: 13px; font-weight: 700; }
+.qcl-list { display: grid; gap: 6px; }
+.qcl-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: #f7f9fd; }
+.qcl-row.fail { background: #fef2f2; }
+.qcl-n { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #e3e8f1; color: #12306b; font-size: 12px; font-weight: 800; }
+.qcl-l { flex: 1; font-weight: 700; color: #1f2937; font-size: 14px; } .qcl-l em { font-style: normal; color: #6b7487; font-weight: 600; font-size: 12.5px; }
+.qcl-q { font-weight: 800; color: #b91c1c; font-size: 13px; white-space: nowrap; }
+.qcl-pf { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; background: #dcfce7; color: #166534; }
+.qcl-pf.fail { background: #dc2626; color: #fff; } .qcl-pf svg { width: 13px; height: 13px; }
+.qcl-notes { margin: 0; white-space: pre-wrap; color: #1f2937; }
+.qcl-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: flex-end; padding: 12px 14px; background: #fff; border-radius: 16px; box-shadow: var(--shadow-1); }
+.qcl-note { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; color: #92400e; font-weight: 700; font-size: 13px; } .qcl-note svg { width: 15px; height: 15px; }
+@media (max-width: 760px) { .qcl-grid { grid-template-columns: 1fr; } .qcl-verd { width: 92px; height: 92px; } .qcl-verd b { font-size: 21px; } .qcl-note { margin-right: 0; width: 100%; } }
+.qcl-kv b { overflow-wrap: normal; word-break: normal; }
