@@ -767,7 +767,7 @@
           <label for="cuQ">Name / Account</label><input type="search" id="cuQ" placeholder="Name, account no, business or phone">
           <label for="cuSt">Status</label><select id="cuSt"><option value="">All</option><option value="active">Active</option><option value="pending">Pending review</option><option value="verified">Verified</option><option value="suspended">Suspended</option><option value="closed">Closed</option><option value="rejected">Rejected</option></select>
         </form></fieldset></div>
-      <div class="btnrow"><button type="button" class="btn primary" id="cuGo">${ic("search")} Search</button><button type="button" class="btn" id="cuScan">${ic("scan")} Scan QR</button>
+      <div class="btnrow"><button type="button" class="btn primary" id="cuGo">${ic("search")} Search</button><button type="button" class="btn" id="cuScan">${ic("scan")} Scan QR</button>${isStaff() ? `<button type="button" class="btn" id="cuTop">${ic("crown")} Top 10</button>` : ""}
         ${E.canWrite("customers") ? `<a class="btn ok" href="#newcustomer">+ New Customer</a>` : ""}${isAdmin() ? `<a class="btn" href="#statements">All Statements (SOA)</a>` : ""}</div>
       <div id="cuRes">${busy("Searching")}</div>`, "All customer accounts. Closed accounts are shown here with a <b>CLOSED</b> mark but are hidden from the top search bar.");
     const fresh = E.loadGuard();
@@ -778,7 +778,7 @@
       let q = sb.from("customers").select("*").order("created_at", { ascending: false }).limit(1000);
       if (st) q = q.eq("status", st);
       if (t) { const w = t.split(/\s+/)[0]; q = q.or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%,public_id.ilike.%${w}%`); }
-      const [{ data, error }, bal] = await Promise.all([q, E.allRows(() => sb.from("customer_balances").select("customer_id,balance_due").order("customer_id"))]);
+      const [{ data, error }, bal, rk] = await Promise.all([q, E.allRows(() => sb.from("customer_balances").select("customer_id,balance_due").order("customer_id")), E.customerRanks()]);
       if (!ok()) return;
       if (error) return fail(error, "Could not load customers");
       const bm = new Map((bal.data || []).map((b) => [b.customer_id, b]));
@@ -792,7 +792,7 @@
       if (ws.length) { const st0 = (v) => String(v || "").toLowerCase().startsWith(ws[0]); const rk = (c) => (st0(c.first_name) ? 0 : st0(c.last_name) ? 1 : 2); rows.sort((a, b) => rk(a) - rk(b)); }
       rows.forEach((r, i) => (r._no = i + 1));
       $("#cuRes").innerHTML = E.grid({ cols: [
-        { label: "No.", num: true, get: (r) => r._no }, { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r) }, // 3.99.159: CLOSED once (in Status)
+        { label: "No.", num: true, get: (r) => r._no }, { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r), html: (r) => `${esc(E.shortName(r))}${rk.has(r.id) ? ` ${E.rankBadge(rk.get(r.id).rank, "", "mini", `Rank ${rk.get(r.id).rank} of the Top 10 customers`)}` : ""}` }, // 3.99.159: CLOSED once (in Status)
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
         { label: "Balance Due (₱)", key: "due", num: true, get: (r) => peso(r.due) }],
@@ -803,6 +803,7 @@
     $("#cuForm").onsubmit = (e) => { e.preventDefault(); run(); };
     $("#cuGo").onclick = run; $("#cuSt").onchange = run;
     $("#cuScan").onclick = () => E.scanDialog(E.openScanned);
+    if ($("#cuTop")) $("#cuTop").onclick = topCustomers;
     run();
   };
 
@@ -1053,7 +1054,7 @@
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}</div>
         <div class="ch-main">
-          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${isApprovedAccount(c) && isStaff() ? `<span id="pfVerified"></span><span id="pfStanding"></span>` : ""}${num(c.credit_limit) >= 1000000 ? `<span class="vip-chip" title="VIP · credit limit ₱ ${peso(c.credit_limit)}">${ic("crown")}VIP</span>` : ""}</div>
+          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${isApprovedAccount(c) && isStaff() ? `<span id="pfVerified"></span><span id="pfStanding"></span>` : ""}${isStaff() ? `<span id="pfRank" data-cid="${esc(c.id)}"></span>` : ""}${num(c.credit_limit) >= 1000000 ? `<span class="vip-chip" title="VIP · credit limit ₱ ${peso(c.credit_limit)}">${ic("crown")}VIP</span>` : ""}</div>
           <div class="ch-sub">${[c.credit_limit != null ? `CREDIT LIMIT ₱ ${peso(c.credit_limit)}` : "", c.email].filter(Boolean).map(esc).join(" · ") || "—"}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
@@ -1170,6 +1171,10 @@
     if ($("#pfRequest")) $("#pfRequest").onclick = () => E.customerRequest(c, gctx);
     E.bindRequests(c, orders, gctx);
     E.standingBadge($("#pfStanding"), c, gctx);
+    if ($("#pfRank")) E.customerRanks().then((rk) => { // 3.99.178: Top 10 customers by total net sales (changes every Monday)
+      const el = $("#pfRank"), r = rk.get(c.id);
+      if (r && el && el.dataset.cid === c.id) el.outerHTML = E.rankBadge(r.rank, "TOP CUSTOMER", "", `Rank ${r.rank} of the Top 10 customers · total net sales up to Monday ${mdy(r.as_of)}${r.net != null ? ` · ₱ ${peso(r.net)}` : ""} · the rank changes every Monday`);
+    });
     E.custVerified?.($("#pfVerified"), c.id); // 3.69: the customer agreed to the legal terms
     // 3.12: the Director deletes a history line
     $$("[data-hdel]").forEach((b) => (b.onclick = async () => {
@@ -1187,6 +1192,21 @@
   };
 
   // 2.7: the account amounts are listed here; the profile shows only the Balance Due
+  // 3.99.178: TOP 10 CUSTOMERS by total net sales (all invoices − approved credits), counted up to this week's Monday
+  async function topCustomers() {
+    const m = E.modal("Top 10 Customers", `<div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
+    m.el.querySelector("[data-x]").onclick = m.close;
+    const rk = await E.customerRanks(), list = [...rk.values()].sort((a, b) => a.rank - b.rank);
+    const { data } = list.length ? await sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").in("id", list.map((r) => r.customer_id)) : { data: [] };
+    const box = m.el.querySelector("#rkBoard"), cm = new Map((data || []).map((c) => [c.id, c]));
+    if (!box) return;
+    box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} Total net sales up to Monday ${esc(mdy(list[0].as_of))} · the rank changes every Monday.</p>
+      <div class="rank-board">${list.map((r) => { const c = cm.get(r.customer_id) || {};
+        return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankBadge(r.rank, "")}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
+      : `<div class="empty">No rank yet. It needs the database update <b>125</b>, and invoices before this Monday.</div>`;
+    box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => m.close()));
+  }
+
   // The details of a customer application as [label, text, html] rows, for the Details tab and the Director's Review (3.35)
   const appRows = (c) => ({
     phone: ["Phone", c.phone], email: ["Email", c.email], address: ["Full Address", c.address],
