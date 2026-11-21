@@ -165,7 +165,7 @@
 
     // 3.99.153: the shop page in a new layout: the head, 4 boxes, the buttons, and tabs (Daily Sales · Expenses & Cash Out ·
     // Stock Account · Employees · Documents). Daily Sales is a day by day table: sales, the day's expenses, cash out, cash left.
-    const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" && edit ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
+    const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${edit ? `<button type="button" class="btn small" ${tbl === "outlet_sales" ? "data-esale" : "data-eexp"}="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
     const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
     const days = [...new Set([...sales.map((r) => r.sale_date), ...exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort().reverse()
       .map((d) => { const r = sales.find((x) => x.sale_date === d), t = num(r?.total), ex = dayOf(d, "daily"), co = dayOf(d, "cashout"); return { d, r, t, ex, co, left: t - ex - co }; });
@@ -216,6 +216,7 @@
     if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales);
     $$("[data-esale]").forEach((b) => (b.onclick = () => saleForm(o, sales.find((r) => r.id === b.dataset.esale), sales)));
     if ($("#olExp")) $("#olExp").onclick = () => expenseForm(o);
+    $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
     $$("[data-del]").forEach((b) => (b.onclick = async () => {
       const [tbl, rid] = b.dataset.del.split(":");
@@ -278,28 +279,29 @@
   }
 
   // ---------- an expense, bill, supplier payment or the rental ----------
-  function expenseForm(o) {
-    const m = E.modal(`${o.code} · Expense / Bill`, `<div class="formgrid ol-form">
-        <div><label for="oxDate">Date *</label><input id="oxDate" type="date" value="${today()}"></div>
-        <div><label for="oxKind">Type *</label><select id="oxKind">${Object.entries(KIND).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("")}</select></div>
-        <div><label for="oxPayee">Paid To</label><input id="oxPayee" maxlength="120" placeholder="Supplier / landlord / company"></div>
-        <div><label for="oxAmt">Amount (₱) *</label><input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal"></div>
-        <div class="span2"><label for="oxNote">Note</label><input id="oxNote" maxlength="500"></div>
-        <div class="span2"><label for="oxPic">Receipt Photo</label><input id="oxPic" type="file" accept="image/*,application/pdf" multiple></div>
+  function expenseForm(o, row = null) {
+    const v = (k) => esc(row?.[k] ?? "");
+    const m = E.modal(`${o.code} · ${row ? "Edit Expense" : "Expense / Bill"}`, `<div class="formgrid ol-form">
+        <div><label for="oxDate">Date *</label><input id="oxDate" type="date" value="${row ? v("exp_date") : today()}"></div>
+        <div><label for="oxKind">Type *</label><select id="oxKind">${Object.entries(KIND).map(([k, l]) => `<option value="${k}"${row?.kind === k ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
+        <div><label for="oxPayee">Paid To</label><input id="oxPayee" maxlength="120" placeholder="Supplier / landlord / company" value="${v("payee")}"></div>
+        <div><label for="oxAmt">Amount (₱) *</label><input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>
+        <div class="span2"><label for="oxNote">Note</label><input id="oxNote" maxlength="500" value="${v("note")}"></div>
+        <div class="span2"><label for="oxPic">${row ? "Add Receipt Photo" : "Receipt Photo"}</label><input id="oxPic" type="file" accept="image/*,application/pdf" multiple></div>
       </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="oxSave">${ic("check")} Save</button>`, { wide: true });
     $("#oxKind", m.el).onchange = (e) => { if (e.target.value === "rent" && !$("#oxAmt", m.el).value && num(o.monthly_rent)) $("#oxAmt", m.el).value = num(o.monthly_rent).toFixed(2); };
     $("[data-x]", m.el).onclick = () => m.close();
     $("#oxSave", m.el).onclick = async (e) => {
       const data = { outlet_id: o.id, exp_date: $("#oxDate", m.el).value, kind: $("#oxKind", m.el).value, payee: $("#oxPayee", m.el).value.trim().toUpperCase() || null,
-        amount: num($("#oxAmt", m.el).value), note: $("#oxNote", m.el).value.trim() || null, created_by_name: me() };
+        amount: num($("#oxAmt", m.el).value), note: $("#oxNote", m.el).value.trim() || null, ...(row ? {} : { created_by_name: me() }) };
       if (!data.exp_date) return toast("Choose the date.", true);
       if (!(data.amount > 0)) return toast("Type the amount.", true);
       e.target.disabled = true;
-      const r = await sb.from("outlet_expenses").insert(data).select().single();
+      const r = row ? await sb.from("outlet_expenses").update(data).eq("id", row.id).select().single() : await sb.from("outlet_expenses").insert(data).select().single();
       if (r.error) { e.target.disabled = false; return fail(r.error, "Could not save the expense"); }
       const pics = Array.from($("#oxPic", m.el).files || []);
       const failed = pics.length ? await E.uploadRecords("outlet_expense", r.data.id, "receipt", pics) : 0;
-      m.close(); toast(failed ? `Saved; ${failed} photo(s) could not be uploaded.` : `${KIND[data.kind]} saved: ₱ ${peso(data.amount)}.`, !!failed); E.route();
+      m.close(); toast(failed ? `Saved; ${failed} photo(s) could not be uploaded.` : `${KIND[data.kind]} ${row ? "changed" : "saved"}: ₱ ${peso(data.amount)}.`, !!failed); E.route();
     };
   }
 
