@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.160"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.161"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.160"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.161"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -68,6 +68,16 @@
   const MIDDLE = new Map();
   const middleOf = (r) => (r?.middle_name !== undefined ? r.middle_name : r?.first_name && r?.last_name ? MIDDLE.get(r.customer_id) || MIDDLE.get(r.id) || "" : "");
   const fullName = (r) => [r?.first_name, middleOf(r), r?.last_name].filter(Boolean).join(" ").trim();
+  // 3.99.161: a long name made short for the lists (one line): FIRST M. LAST - the middle name as its initial; still long,
+  // the words of the surname before its last one as initials too (DELA CRUZ SANTOS: D. C. SANTOS). Profiles and prints keep the full name.
+  const shortName = (r, max = 22) => {
+    const full = fullName(r);
+    if (full.length <= max) return full;
+    const ini = (w) => String(w || "").split(/\s+/).filter(Boolean).map((x) => x[0] + ".");
+    const first = String(r?.first_name || "").trim(), mid = ini(middleOf(r)), lw = String(r?.last_name || "").trim().split(/\s+/).filter(Boolean);
+    const a = [first, ...mid, ...lw].join(" ");
+    return a.length <= max || lw.length < 2 ? a : [first, ...mid, ...ini(lw.slice(0, -1).join(" ")), lw[lw.length - 1]].join(" ");
+  };
   async function loadMiddleNames() {
     try {
       const { data } = await allRows(() => sb.from("customers").select("id, middle_name").not("middle_name", "is", null));
@@ -2880,7 +2890,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
