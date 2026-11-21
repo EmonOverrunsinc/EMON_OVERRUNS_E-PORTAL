@@ -9,7 +9,7 @@
 (() => {
   const E = window.EO;
   const V = (window.EO_VIEWS = window.EO_VIEWS || {});
-  const { sb, S, esc, $, $$, isAdmin, toast, fail, ic, busy, peso, num, mdy } = E;
+  const { sb, S, C, esc, $, $$, isAdmin, toast, fail, ic, busy, peso, num, mdy } = E;
 
   const PAY = [["cash", "Cash"], ["gcash", "GCash"]]; // 3.99.117: only Cash and GCash (the server keeps the other columns at 0)
   const KIND = { daily: "Daily Expense", rent: "Monthly Rental", supplier: "Supplier Payment", bills: "Bills / Utilities", salary: "Salary", other: "Other Expense", cashout: "Cash Out" };
@@ -256,7 +256,7 @@
       const mm = E.modal("Files", `<div id="olFiles">${E.filesHtml(list)}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
       $("[data-x]", mm.el).onclick = () => mm.close(); E.bindFiles(mm.el);
     }));
-    $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal });
+    $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null });
     E.setRecords(`Outlet: ${o.code}`);
   };
 
@@ -459,18 +459,70 @@
   E.staffHtml = staffHtml; E.bindStaff = bindStaff; E.STAFF_SEL = STAFF_SEL;
 
   // ---------- the monthly statement (SOA): a ledger of the month ----------
-  function printSoa(o, m, d) {
-    const lines = [
-      ...d.sales.map((r) => ({ date: r.sale_date, type: "SALES", ref: PAY.filter(([k]) => num(r[k])).map(([k, l]) => `${l} ${peso(r[k])}`).join(" · "), inn: num(r.total), out: 0 })),
-      ...d.exps.map((r) => ({ date: r.exp_date, type: (KIND[r.kind] || r.kind).toUpperCase(), ref: [r.payee, r.note].filter(Boolean).join(" · "), inn: 0, out: num(r.amount) })),
-      ...d.pays.map((r) => ({ date: r.paid_date, type: "STOCK PAYMENT", ref: r.receipt_no, inn: 0, out: num(r.amount) }))].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : b.inn - a.inn));
-    let run = 0; lines.forEach((l) => (run += l.inn - l.out, l.bal = run));
-    const pages = E.listingPages({ title: `OUTLET STATEMENT · ${o.code}${o.name !== o.code ? " · " + o.name : ""}`, range: `${esc(E.monthText(m))}${o.address ? ` · ${esc(o.address)}` : ""}`, logo: true,
-      cols: [{ label: "Date", get: (r) => mdy(r.date) }, { label: "Type", get: (r) => r.type }, { label: "Details", get: (r) => r.ref || "" },
-        { label: "Sales (₱)", num: true, get: (r) => (r.inn ? peso(r.inn) : "") }, { label: "Deducted (₱)", num: true, get: (r) => (r.out ? peso(r.out) : "") }, { label: "Balance (₱)", num: true, get: (r) => peso(r.bal) }],
-      rows: lines,
-      summary: { title: "SUMMARY", cols: ["", "Amount (₱)"], rows: [["Net Sales", peso(d.net)], ["Expenses & Bills", peso(d.out)], ["Cash Out", peso(d.cash || 0)], ["Stock Payments", peso(d.paid)]], total: ["Balance", peso(d.bal)] } });
-    E.openPreview(`Outlet Statement ${o.code} ${E.monthText(m)}`, pages);
+  // 3.99.164: the OUTLET STATEMENT in a document layout: the company head, the shop, 5 summary boxes, the daily sales,
+  // the expenses, the cash out and the stock payments (each a table with its total), and the signatures. A long month
+  // goes on to the next page (the table head is repeated there).
+  async function printSoa(o, m, d) {
+    await E.loadSignatures?.().catch(() => {});
+    const dayOf = (dt, k) => sum(d.exps.filter((x) => x.exp_date === dt && x.kind === k), "amount");
+    const days = [...new Set([...d.sales.map((r) => r.sale_date), ...d.exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort()
+      .map((dt) => { const r = d.sales.find((x) => x.sale_date === dt), t = num(r?.total), ex = dayOf(dt, "daily"), co = dayOf(dt, "cashout"); return { dt, r, t, ex, co, left: t - ex - co }; });
+    const xps = d.exps.filter((r) => r.kind !== "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
+    const cos = d.exps.filter((r) => r.kind === "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
+    const pays = [...d.pays].sort((a, b) => (a.paid_date < b.paid_date ? -1 : 1));
+    const P = (v) => peso(v), Z = (v) => (num(v) ? peso(v) : "—");
+    const soaNo = `SOA-${o.code}-${m.replace("-", "")}`;
+    const sdate = (x) => String(mdy(x) || "").replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1");
+    // the blocks of the statement, each with its height in "rows" (to fill the pages)
+    const blocks = [];
+    const head = `${E.printHead("OUTLET STATEMENT", `<div class="soa-no"><small>Statement No</small><b class="mono">${esc(soaNo)}</b><small>${esc(E.monthText(m))}</small></div>`)}`;
+    const info = `<div class="soa-info">
+        <div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div>
+        <div><small>Period</small><b>${esc(E.monthText(m))}</b></div>
+        <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div>
+        <div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div>
+        <div><small>Monthly Rental</small><b>₱ ${P(o.monthly_rent)}</b></div>
+        ${d.cust ? `<div class="w2"><small>Stock Account</small><b>${esc(E.fullName(d.cust))} · ${esc(d.cust.account_no || "")}</b></div>` : ""}</div>`;
+    const tile = (k, v, cls = "") => `<div class="soa-tile ${cls}"><small>${k}</small><b>₱ ${P(v)}</b></div>`;
+    const tiles = `<div class="soa-tiles">${tile("Net Sales", d.net, "in")}${tile("Expenses", d.out, "out")}${tile("Cash Out", d.cash || 0, "co")}${tile("Stock Payments", d.paid, "pay")}${tile("Balance", d.bal, `bal${d.bal < 0 ? " neg" : ""}`)}</div>
+      <div class="soa-pay">${PAY.map(([k, l]) => `<span>${esc(l)} <b>₱ ${P(sum(d.sales, k))}</b></span>`).join("")}<span>Sales days <b>${d.sales.length}</b></span>${d.owed != null ? `<span>Stock to pay <b>₱ ${P(d.owed)}</b></span>` : ""}</div>`;
+    blocks.push({ h: 13, html: head + info + tiles });
+    // a table: its title, its head, its rows (split over pages) and its total
+    const table = (title, cols, rows, foot) => {
+      const th = `<tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr>`;
+      if (!rows.length) { blocks.push({ h: 3, html: `<div class="soa-sec"><h4>${title}</h4><div class="soa-none">None this month.</div></div>` }); return; }
+      const PER = 26;
+      for (let k = 0; k < rows.length; k += PER) {
+        const part = rows.slice(k, k + PER), last = k + PER >= rows.length;
+        blocks.push({ h: part.length + 3 + (last ? 1 : 0), html: `<div class="soa-sec"><h4>${title}${k ? " <small>(continued)</small>" : ""}</h4><table class="soa-t"><thead>${th}</thead><tbody>${part.join("")}</tbody>${last ? `<tfoot>${foot}</tfoot>` : ""}</table></div>` });
+      }
+    };
+    table("Daily Sales", [["Date"], ...PAY.map(([, l]) => [l, 1]), ["Total Sales", 1], ["Expenses", 1], ["Cash Out", 1], ["Cash Left", 1]],
+      days.map((x) => `<tr><td>${esc(sdate(x.dt))}</td>${PAY.map(([k]) => `<td class="num">${Z(x.r?.[k])}</td>`).join("")}<td class="num"><b>${Z(x.t)}</b></td><td class="num">${Z(x.ex)}</td><td class="num">${Z(x.co)}</td><td class="num"><b>${P(x.left)}</b></td></tr>`),
+      `<tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${P(sum(d.sales, k))}</td>`).join("")}<td class="num">${P(d.net)}</td><td class="num">${P(sum(days, "ex"))}</td><td class="num">${P(sum(days, "co"))}</td><td class="num">${P(d.net - sum(days, "ex") - sum(days, "co"))}</td></tr>`);
+    table("Expenses &amp; Bills", [["Date"], ["Type"], ["Paid To / Note"], ["Amount (₱)", 1]],
+      xps.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc([r.payee, r.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
+      `<tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${P(d.out)}</td></tr>`);
+    table("Cash Out", [["Date"], ["Cash Out To"], ["Note"], ["Amount (₱)", 1]],
+      cos.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(r.payee || "—")}</td><td>${esc(r.note || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
+      `<tr><td colspan="3">TOTAL CASH OUT</td><td class="num">${P(d.cash || 0)}</td></tr>`);
+    table("Stock Payments", [["Receipt No"], ["Date"], ["Amount (₱)", 1]],
+      pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
+      `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
+    // the result and the signatures
+    const dirSig = (() => { const x = E.approvedBy?.(null, "EMON HASAN"); return x?.pic ? `<img src="${esc(x.pic)}" alt="Signature">` : ""; })();
+    blocks.push({ h: 9, html: `<div class="soa-result"><span>Net Sales ₱ ${P(d.net)} − Expenses ₱ ${P(d.out)} − Cash Out ₱ ${P(d.cash || 0)} − Stock Payments ₱ ${P(d.paid)}</span><b class="${d.bal < 0 ? "neg" : ""}">BALANCE ₱ ${P(d.bal)}</b></div>
+      <div class="inv-sealsig soa-sign">${E.sigCol(`Prepared by: ${esc(me() || "")}`)}<div class="inv-dir"><div class="inv-dir-sig">${dirSig}</div><div class="line"></div><b>EMON HASAN</b><small>OPERATIONAL DIRECTOR</small></div></div>` });
+    // fill the pages
+    const CAP = 48, pages = [];
+    let cur = [], used = 0;
+    for (const b of blocks) {
+      if (used + b.h > CAP && cur.length) { pages.push(cur); cur = []; used = 0; }
+      cur.push(b.html); used += b.h;
+    }
+    if (cur.length) pages.push(cur);
+    const html = pages.map((pg, i) => `<div class="soa-doc">${i ? `<div class="soa-cont"><b>${esc(C.company.name)}</b> · OUTLET STATEMENT · ${esc(o.code)} · ${esc(E.monthText(m))}<span>${esc(soaNo)}</span></div>` : ""}${pg.join("")}<div class="soa-pg">Page ${i + 1} of ${pages.length}</div></div>`);
+    E.openPreview(`Outlet Statement ${o.code} ${E.monthText(m)}`, html);
   }
 
   // ======================================================================
