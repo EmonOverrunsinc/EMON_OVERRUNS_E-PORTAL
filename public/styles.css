@@ -4266,3 +4266,12 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .reg-card small { display: block; color: #6b7487; font-size: 13px; margin-top: 2px; }
 .reg-card em { display: block; font-style: normal; font-weight: 800; color: #b45309; font-size: 13px; margin-top: 6px; min-height: 1em; }
 .reg-go { color: #12306b; } .reg-go svg { width: 18px; height: 18px; }
+/* 3.99.157: Cash Out apart from the expenses */
+.os-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.os-kpi.co { border-top-color: #c2410c; } .os-co { color: #c2410c; }
+.ol-card-n { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ol-card-n > div:last-child b { color: #12306b; } .ol-card-n > div.bal b { color: #1e8e3e; } .ol-card-n > div.bal.neg b { color: #c41e3a; }
+@media (max-width: 760px) { .os-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .os-kpis .os-kpi.bal { grid-column: span 2; } .ol-card-n { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ol-card-n > div { min-width: 0; container-type: inline-size; }
+.ol-card-n b { white-space: nowrap; font-size: clamp(11px, 12cqi, 15px); }
+.os-kpi span { overflow-wrap: anywhere; }
