@@ -4502,3 +4502,18 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .page:not(.bare)::after { bottom: .6mm; border-top: .2mm solid rgba(168, 122, 34, .55); color: rgba(168, 122, 34, .75); }
 .page.a5l:not(.bare)::before { top: .8mm; } .page.a5l:not(.bare) { background-size: 90mm 90mm, auto; background-position: center 40mm, 0 0; }
 @media print { .page:not(.bare) { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+/* 3.99.169: EVERY document prints on A4 paper: an A5 receipt / voucher on the top half of an A4 sheet (the printer's paper
+   choice is the same for all); the copies, the pages and the printer stay free to change in the print window */
+@page a5l { size: A4 portrait; margin: 0; }
+@media print { .page.a5l { min-height: 148mm; height: auto; page-break-after: always; break-after: page; } }
+/* 3.99.169: the BADGES (status pills: ACTIVE, PAID, RENT PAID, COVERED ...) shine softly by themselves; nothing else moves */
+.pill, .mv-st, .ins-badge, .os-chips .r-paid, .os-chips .r-unpaid, .os-chips .r-overdue, .qcl-chips .lock, .mv-chip, .os-kind { position: relative; overflow: hidden; isolation: isolate; }
+.pill::after, .mv-st::after, .ins-badge::after, .os-chips .r-paid::after, .os-chips .r-unpaid::after, .os-chips .r-overdue::after, .qcl-chips .lock::after, .mv-chip::after, .os-kind::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 45%; z-index: 1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, .85) 50%, transparent 100%); transform: translateX(-130%); animation: badgeShine 5.5s ease-in-out infinite; }
+.pill:nth-of-type(2n)::after, .mv-chip:nth-of-type(2n)::after { animation-delay: 1.4s; }
+.pill:nth-of-type(3n)::after, .mv-chip:nth-of-type(3n)::after { animation-delay: 2.8s; }
+@keyframes badgeShine { 0%, 72% { transform: translateX(-130%); } 100% { transform: translateX(260%); } }
+@media (prefers-reduced-motion: reduce) { .pill::after, .mv-st::after, .ins-badge::after, .os-chips span::after, .qcl-chips .lock::after, .mv-chip::after, .os-kind::after { animation: none; display: none; } }
+@media print { .pill::after, .mv-st::after, .ins-badge::after, .os-chips span::after, .qcl-chips .lock::after, .mv-chip::after, .os-kind::after { display: none; } }
+.pill, .mv-chip, .os-kind { vertical-align: middle; }
