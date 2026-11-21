@@ -4517,3 +4517,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 @media (prefers-reduced-motion: reduce) { .pill::after, .mv-st::after, .ins-badge::after, .os-chips span::after, .qcl-chips .lock::after, .mv-chip::after, .os-kind::after { animation: none; display: none; } }
 @media print { .pill::after, .mv-st::after, .ins-badge::after, .os-chips span::after, .qcl-chips .lock::after, .mv-chip::after, .os-kind::after { display: none; } }
 .pill, .mv-chip, .os-kind { vertical-align: middle; }
+/* 3.99.170: the shop code on the list cards: white bold text on dark navy with a gold edge (clear to read) */
+.ol-card-h b.ol-code { background: #0f2a66; color: #fff; border: 2px solid #e2b33c; font-weight: 800; font-size: 17px; letter-spacing: .1em; padding: 3px 12px; text-shadow: none; }
+/* 3.99.170: the code's text took the grey of the name line (an inner span): it follows the label now; back to gold with navy */
+.ol-card-h b.ol-code { background: #e2b33c; color: #0b1f4d; border: 0; }
+.ol-card-h b.ol-code span, .os-code span { color: inherit !important; font-size: inherit !important; font-weight: inherit; }
