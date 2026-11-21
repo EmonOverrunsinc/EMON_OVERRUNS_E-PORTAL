@@ -466,7 +466,7 @@
   // the expenses, the cash out and the stock payments (each a table with its total), and the signatures. A long month
   // goes on to the next page (the table head is repeated there).
   async function printSoa(o, m, d) {
-    await E.loadSignatures?.().catch(() => {});
+    await Promise.all([E.loadSignatures?.().catch(() => {}), E.loadSigners?.([S.profile?.id]).catch(() => {})]);
     const dayOf = (dt, k) => sum(d.exps.filter((x) => x.exp_date === dt && x.kind === k), "amount");
     const days = [...new Set([...d.sales.map((r) => r.sale_date), ...d.exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort()
       .map((dt) => { const r = d.sales.find((x) => x.sale_date === dt), t = num(r?.total), ex = dayOf(dt, "daily"), co = dayOf(dt, "cashout"); return { dt, r, t, ex, co, left: t - ex - co }; });
@@ -515,7 +515,7 @@
     // the result and the signatures
     const dirSig = (() => { const x = E.approvedBy?.(null, "EMON HASAN"); return x?.pic ? `<img src="${esc(x.pic)}" alt="Signature">` : ""; })();
     blocks.push({ h: 9, html: `<div class="soa-result"><span>Net Sales ₱ ${P(d.net)} − Expenses ₱ ${P(d.out)} − Cash Out ₱ ${P(d.cash || 0)} − Stock Payments ₱ ${P(d.paid)}</span><b class="${d.bal < 0 ? "neg" : ""}">BALANCE ₱ ${P(d.bal)}</b></div>
-      <div class="inv-sealsig soa-sign">${E.sigCol(`Prepared by: ${esc(me() || "")}`)}<div class="inv-dir"><div class="inv-dir-sig">${dirSig}</div><div class="line"></div><b>EMON HASAN</b><small>OPERATIONAL DIRECTOR</small></div></div>` });
+      <div class="inv-sealsig soa-sign">${E.sigCol(`Prepared by: ${esc(me() || "")}`, E.signerBy?.(S.profile?.id))}<div class="inv-dir"><div class="inv-dir-sig">${dirSig}</div><div class="line"></div><b>EMON HASAN</b><small>OPERATIONAL DIRECTOR</small></div></div>` });
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;

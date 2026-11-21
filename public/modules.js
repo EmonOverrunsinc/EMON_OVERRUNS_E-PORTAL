@@ -220,6 +220,18 @@
     await Promise.all(SIG.list.map((x) => signaturePic(x.signature_path)));
     return SIG.list;
   }
+  // 3.99.168: the approved signatures of the people who made documents (Request Created By, Prepared by, Paid by), loaded
+  // before a print; signerBy gives the picture only (the line already says the name). Needs 121_issuer_signatures.sql.
+  const SIGNERS = new Map();
+  async function loadSigners(ids) {
+    const want = [...new Set((ids || []).filter((x) => x && !SIGNERS.has(x)))];
+    if (!want.length || !S.session) return;
+    const { data, error } = await sb.rpc("signatures_of", { p_ids: want }).then((r) => r, () => ({ error: true }));
+    if (error) return;
+    want.forEach((x) => SIGNERS.set(x, ""));
+    await Promise.all((data || []).map(async (x) => SIGNERS.set(x.id, await signaturePic(x.signature_path))));
+  }
+  const signerBy = (id) => { const pic = id ? SIGNERS.get(id) : ""; return pic ? { name: "", at: null, pic } : null; };
   // The approval of a document by the Director, for its print: the name, the date and the signature picture (empty
   // until the Director's signature is uploaded). id: the Director's id; without it the name is used.
   function approvedBy(id, name, at) {
@@ -535,7 +547,7 @@
   const sigCol = (label, sign) => sign
     ? `<div class="sig-on">${sign.pic ? `<img class="esig" src="${esc(sign.pic)}" alt="Signature">` : ""}<div class="line"></div>${label}${sign.name ? `: <b class="nw">${esc(sign.name)}</b>` : ""}${sign.at ? ` &nbsp;·&nbsp; <span class="nw">${esc(mdy(sign.at))}</span>` : ""}</div>`
     : `<div><div class="line"></div>${label}</div>`;
-  const sigs = (left, right, sign = null) => `<div class="psig">${sigCol(left)}${sigCol(right, sign)}</div>`;
+  const sigs = (left, right, sign = null, leftSign = null) => `<div class="psig">${sigCol(left, leftSign)}${sigCol(right, sign)}</div>`;
   // 3.17 certificate style: a top row (left · centre number · right), a thin section title and "Label : value" lines
   const cxTop = (items) => `<div class="cx-top">${items.map(([k, v]) => `<div><small>${esc(k)}</small><b>${val(v)}</b></div>`).join("")}</div>`;
   const cxSec = (title, note = "") => `<div class="cx-sec">${esc(title)}${note ? `<small>${esc(note)}</small>` : ""}</div>`;
@@ -2682,7 +2694,7 @@
   Object.assign(E, {
     extOf, viewFile, latestSigned, uploadRecords, signedUrl, attachmentsOf, filesHtml, bindFiles, fileField, filesOf, isImage,
     docCard, bindDocCards, customerPicker, getCustomer, fullName, printHead, box, cell, sigs, sigCol, cxTop, cxSec, cxKv, uuid, cleanQ, idBox, METHOD,
-    loadSignatures, approvedBy, signaturePic, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
+    loadSignatures, approvedBy, signaturePic, loadSigners, signerBy, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
   });
   E._docs = { ...(E._docs || {}), invoicePage, ackPage, soaPages, memoPage, detailsPage, applicationPage, txnsOf }; // 3.79: the document pages (for the print checks)
 })();

@@ -389,7 +389,7 @@
       };
     };
     keepPrint(p, urls);
-    if ($("#poPdf")) $("#poPdf").onclick = async () => { await Promise.all([E.loadSignatures(), keepPrint(p, urls)]); E.openPreview(`Purchase Order ${p.po_no}`, poPage(p, urls)); };
+    if ($("#poPdf")) $("#poPdf").onclick = async () => { await Promise.all([E.loadSignatures(), E.loadSigners([p.created_by]), keepPrint(p, urls)]); E.openPreview(`Purchase Order ${p.po_no}`, poPage(p, urls)); };
     E.setRecords(`Purchase order: ${p.po_no}`);
   };
 
@@ -431,7 +431,7 @@
       bottom: `${netBox(p)}${p.notes ? E.box("Notes / Details", `<div class="pcell"><div class="pv" style="white-space:pre-wrap">${esc(p.notes)}</div></div>`) : ""}
         <p class="pdecl">EMON OVERRUNS authority approved this lot — buy this purchase order immediately at the approved price.</p>
         <p class="po-warn"><b>Warning:</b> this approval does not mean the products must be bought only at the approved price. Depending on the market, the price of this lot can sometimes be higher or lower. This order is for this lot, and all product designs are APPROVED to buy. For a different price, the person who made the purchase order requests an update, and the new details show here after the EOA approves it.</p>
-        ${E.sigs("Request Created By: " + esc(p.created_by_name || ""), "Approved by", sign)}`,
+        ${E.sigs("Request Created By: " + esc(p.created_by_name || ""), "Approved by", sign, E.signerBy(p.created_by))}`,
       caps: pics.length ? { single: 5, first: 9, next: 22, last: 11 } : { single: 11, first: 15, next: 22, last: 11 }
     });
   }
