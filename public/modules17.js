@@ -22,6 +22,17 @@
   const canEdit = () => E.canWrite("outlets");
   const sum = (list, f) => list.reduce((s, r) => s + num(typeof f === "function" ? f(r) : r[f]), 0);
   const me = () => String(S.profile?.full_name || "").toUpperCase();
+  // 3.99.162: the opening / closing hours are chosen on a time wheel (HH:MM) and shown the same everywhere: 7:00 AM
+  const to24 = (v) => {
+    const t = String(v || "").toUpperCase().replace(/\./g, "").trim(), mm = /^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/.exec(t);
+    if (!mm) return "";
+    let h = Number(mm[1]); const mi = Number(mm[2] || 0), ap = mm[3];
+    if (ap === "PM" && h < 12) h += 12; if (ap === "AM" && h === 12) h = 0;
+    return h > 23 || mi > 59 ? "" : `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+  };
+  const hourText = (v) => { const t = to24(v); if (!t) return String(v || "").trim(); const [h, mi] = t.split(":").map(Number); return `${h % 12 || 12}:${String(mi).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+  const hoursOf = (o) => (o.opens || o.closes ? `${hourText(o.opens) || "—"} – ${hourText(o.closes) || "—"}` : "");
+  const shortDay = (d) => String(mdy(d) || "").replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1");
   const empName = (e) => [e?.first_name, e?.middle_name, e?.last_name].filter(Boolean).join(" ").toUpperCase();
   const empty = (t) => `<div class="ol-empty">${t}</div>`; // 3.99.153: for every part of the page (the employee list too)
   // the rental of a month: paid (a rental expense in the month) or its due date
@@ -88,7 +99,7 @@
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}">
           <div class="ol-card-h">${ic("building")}<div><b>${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
-          <div class="ol-card-a">${esc(r.o.address || "")}${r.o.opens || r.o.closes ? ` · ${esc(r.o.opens || "")}–${esc(r.o.closes || "")}` : ""}</div>
+          <div class="ol-card-a">${esc(r.o.address || "")}${hoursOf(r.o) ? ` · ${esc(hoursOf(r.o))}` : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
       }).join("") : `<div class="empty">${isAdmin() ? "No outlet yet. Press <b>New Outlet</b> to add SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
@@ -104,8 +115,8 @@
         <div><label for="olCode">Outlet Code *</label><input id="olCode" maxlength="30" value="${v("code", `SHOP-${count + 1}`)}" required></div>
         <div><label for="olName">Name *</label><input id="olName" maxlength="120" value="${v("name", `SHOP-${count + 1}`)}" required></div>
         <div class="span2"><label for="olAddr">Address</label><input id="olAddr" maxlength="300" value="${v("address")}"></div>
-        <div><label for="olOpen">Opening Hours</label><input id="olOpen" maxlength="20" placeholder="9:00 AM" value="${v("opens")}"></div>
-        <div><label for="olClose">Closing Hours</label><input id="olClose" maxlength="20" placeholder="9:00 PM" value="${v("closes")}"></div>
+        <div><label for="olOpen">Opening Hours</label><input id="olOpen" type="time" step="300" value="${esc(to24(o?.opens) || (o ? "" : "09:00"))}"></div>
+        <div><label for="olClose">Closing Hours</label><input id="olClose" type="time" step="300" value="${esc(to24(o?.closes) || (o ? "" : "21:00"))}"></div>
         <div><label for="olRent">Monthly Rental (₱)</label><input id="olRent" type="number" min="0" step="0.01" value="${v("monthly_rent", "0")}"></div>
         <div><label for="olDay">Rental Due Day (1–31)</label><input id="olDay" type="number" min="1" max="31" value="${v("rent_day")}"></div>
         <div class="span2"><label>Customer Account (the shop's stock: orders, invoices, payments)</label><div id="olCust"></div></div>
@@ -118,7 +129,7 @@
     $("[data-x]", m.el).onclick = () => m.close();
     $("#olSave", m.el).onclick = async (e) => {
       const row = { code: $("#olCode", m.el).value.trim().toUpperCase(), name: $("#olName", m.el).value.trim().toUpperCase(), address: $("#olAddr", m.el).value.trim().toUpperCase() || null,
-        opens: $("#olOpen", m.el).value.trim().toUpperCase() || null, closes: $("#olClose", m.el).value.trim().toUpperCase() || null, monthly_rent: num($("#olRent", m.el).value),
+        opens: hourText($("#olOpen", m.el).value) || null, closes: hourText($("#olClose", m.el).value) || null, monthly_rent: num($("#olRent", m.el).value),
         rent_day: Number($("#olDay", m.el).value) || null, customer_id: cust, notes: $("#olNote", m.el).value.trim() || null, ...(o ? { status: $("#olSt", m.el).value } : {}) };
       if (!row.code || !row.name) return toast("Type the outlet code and name.", true);
       e.target.disabled = true;
@@ -200,9 +211,11 @@
     const tabs = [["Daily Sales", days.length, salesTab], ["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ["Stock Account", invs.length, stockTab], ["Employees", st.length, staffHtml(st)], ["Documents", docs.length, docTab]];
     $("#olBody").innerHTML = `
       <section class="os-hero">
-        <div class="os-hero-ic">${ic("building")}</div>
-        <div class="os-hero-m"><h2>${esc(o.name)}${o.name !== o.code ? ` <small>${esc(o.code)}</small>` : ""}</h2><p>${esc(o.address || "No address")}</p>
-          <div class="os-chips"><span>${ic("clock")} ${esc(o.opens || "—")} – ${esc(o.closes || "—")}</span><span class="r-${rs.k}">${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)} · ${esc(rs.label)}</span>${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div></div>
+        <div class="os-hero-micro" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(o.code)}</span>`).join("")}</div>
+        <div class="os-hero-top"><div class="os-hero-ic">${ic("building")}</div>
+          <div class="os-hero-m"><span class="os-code">${esc(o.code)}</span><h2>${esc(o.name)}</h2><p>${ic("home")} ${esc(o.address || "No address")}</p></div></div>
+        <div class="os-chips"><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
+          ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
       <div class="os-kpis">${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", out, `${xps.length} expense(s)`)}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("pay", "Stock Payments", paid, cust ? `To pay ₱ ${peso(owed)}` : "")}
