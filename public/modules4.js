@@ -54,7 +54,7 @@
   ];
   V.inventory = async () => {
     const w = E.canWrite("inventory");
-    E.shell("inventory", "E-Bill", `
+    E.shell("inventory", "E-Bill", `${E.regTabs ? E.regTabs("inventory") : ""}
       <div class="tiles" id="ivTiles">${["E-Bills", "At SHIP (Not Released)", "Total Cost (BDT)", "Balance (BDT)", "Net Balance (BDT)"].map((k) => `<div class="tile"><div class="k">${k}</div><div class="v"><span class="spin sm"></span></div></div>`).join("")}</div>
       <div class="btnrow">${w ? `<a class="btn primary" href="#newstockbill">${ic("plus")} Add E-Bill</a>` : ""}</div>
       <div class="tabs" id="ivF"><button type="button" class="on" data-f="">All</button>${STATUS.map((s) => `<button type="button" data-f="${s}">${STATUS_NAME[s].toUpperCase()}</button>`).join("")}</div>

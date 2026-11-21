@@ -1151,7 +1151,7 @@
 
   V.billing = async () => {
     const w = E.canWrite("billing");
-    E.shell("billing", "Billing", `
+    E.shell("billing", "Billing", `${E.regTabs ? E.regTabs("billing") : ""}
       <div class="tiles" id="blTiles">${["Companies", "Total Paid (PHP)", "Total Paid (BDT)", "This Month (BDT)"].map((k) => `<div class="tile"><div class="k">${k}</div><div class="v"><span class="spin sm"></span></div></div>`).join("")}</div>
       <div class="btnrow">${w ? `<a class="btn primary" href="#newvoucher">${ic("plus")} New Payment</a><a class="btn" href="#newpaycompany">${ic("plus")} Add Company</a>` : ""}</div>
       <div id="blRes">${busy()}</div>`,

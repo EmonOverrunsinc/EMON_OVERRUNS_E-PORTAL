@@ -437,4 +437,24 @@
       summary: { title: "SUMMARY", cols: ["", "Amount (₱)"], rows: [["Net Sales", peso(d.net)], ["Expenses & Bills", peso(d.out)], ["Stock Payments", peso(d.paid)]], total: ["Balance", peso(d.bal)] } });
     E.openPreview(`Outlet Statement ${o.code} ${E.monthText(m)}`, pages);
   }
+
+  // ======================================================================
+  // 3.99.156: REGIONAL OFFICE: one menu item with Purchase Order, Billing and E-Bill inside
+  // ======================================================================
+  E.regTabs = (on) => { const it = E.regionalItems(); return it.length > 1 ? `<nav class="subnav reg-nav"><a href="#regional" class="${on === "regional" ? "on" : ""}">${ic("globe")} Regional Office</a>${it.map(([k, l]) => `<a href="#${k}" class="${k === on ? "on" : ""}">${esc(l)}</a>`).join("")}</nav>` : ""; };
+  const REG_SAY = { purchase: "Buying lots: requests, negotiation, approval", billing: "Payments to the companies and their vouchers", inventory: "E-Bills of the shipments: ship, released, sold, paid" };
+  V.regional = async () => {
+    const it = E.regionalItems();
+    if (it.length === 1) { location.replace("#" + it[0][0]); return; } // only one page inside: open it
+    E.shell("regional", "Regional Office", `${E.regTabs("regional")}<div class="reg-cards">${it.map(([k, l, icon]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(REG_SAY[k] || "")}</small><em id="regN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>`);
+    const here = E.stillHere();
+    const cnt = (q) => q.then((r) => (r.error ? null : r.count), () => null);
+    const ask = {
+      purchase: () => cnt(sb.from("purchase_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "negotiation"])).then((n) => (n == null ? "" : n ? `${n} waiting for approval` : "Nothing waiting")),
+      billing: () => cnt(sb.from("pay_companies").select("id", { count: "exact", head: true })).then((n) => (n == null ? "" : `${n} compan${n === 1 ? "y" : "ies"}`)),
+      inventory: () => cnt(sb.from("stock_bills").select("id", { count: "exact", head: true }).neq("status", "paid")).then((n) => (n == null ? "" : n ? `${n} not paid yet` : "All paid"))
+    };
+    await Promise.all(it.map(([k]) => (ask[k] ? ask[k]().then((t) => { if (here() && $(`#regN-${k}`)) $(`#regN-${k}`).textContent = t; }) : null)));
+    E.setRecords(`Regional Office: ${it.length}`);
+  };
 })();
