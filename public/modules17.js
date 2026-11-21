@@ -99,7 +99,7 @@
       ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn primary" id="olNew">${ic("plus")} New Outlet</button></div>` : ""}
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
-        return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}">
+        return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(r.o))}</span><span>AUTHENTIC OUTLET</span>`).join("")}</div>
           <div class="ol-card-h">${ic("building")}<div><b class="ol-code">${esc(r.o.code)}</b><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
           <div class="ol-card-a">${r.o.address ? `${ic("pin")} ${esc(r.o.address)}` : ""}${r.o.address && hoursOf(r.o) ? " · " : ""}${hoursOf(r.o) ? esc(hoursOf(r.o)) : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
