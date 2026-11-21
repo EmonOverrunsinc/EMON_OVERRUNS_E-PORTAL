@@ -9,7 +9,7 @@
   const bindTools = (root) => E.bindRecordTools && E.bindRecordTools(root);
   // Menu access an employee can be given (Community, Verification and Download Forms are open to everyone).
   // 3.31: Purchase Order has its own menu access (5); no Employee (HR): 11 EO-Office gives Employees, Payroll and Job Applications
-  const MODULES = [["customers", "1 Customer"], ["invoices", "2 Invoice"], ["payments", "3 Payment"], ["creditmemos", "4 Credit Memo"], ["purchase", "5 Purchase Order"], ["projects", "7 Project"], ["billing", "8 Billing"], ["inventory", "10 E-Bill"], ["eooffice", "11 Regional Office Manila"], ["ai", "12 EVA AI"], ["money", "13 See Balances & History (₱)"], ["outlets", "14 Outlets"]];
+  const MODULES = [["customers", "1 Customer"], ["invoices", "2 Invoice"], ["payments", "3 Payment"], ["creditmemos", "4 Credit Memo"], ["purchase", "5 Purchase Order"], ["projects", "7 Project"], ["billing", "8 Billing"], ["inventory", "10 E-Bill"], ["eooffice", "11 Regional Office Manila"], ["ai", "12 EVA AI"], ["money", "13 See Balances & History (₱)"], ["outlets", "14 Outlets"], ["mbilling", "15 Manila Billing"]];
   const accessText = (role, mods) => {
     if (role === "admin") return "Everything (EMON HASAN)";
     const list = (mods || []).map((m) => MODULES.find((x) => x[0] === m)?.[1]).filter(Boolean).join(", ") || "Dashboard and Community";
@@ -1149,19 +1149,32 @@
   ];
   const ym = (iso) => String(iso).slice(0, 7);
 
-  V.billing = async () => {
-    const w = E.canWrite("billing");
-    E.shell("billing", "Billing", `${E.regTabs ? E.regTabs("billing") : ""}
+  // 3.99.163: BILLING FOR TWO OFFICES: Regional Office Dhaka › Billing (office dhaka: all the companies before) and
+  // Regional Office Manila › Billing (office manila, access "15 Manila Billing"). Each sees only its own companies (the server
+  // checks it: 120_manila_billing.sql); EMON HASAN sees both.
+  const OFF = { dhaka: { mod: "billing", list: "billing", name: "Regional Office Dhaka" }, manila: { mod: "mbilling", list: "mbilling", name: "Regional Office Manila" } };
+  const offOf = (c) => (c?.office === "manila" ? "manila" : "dhaka");
+  const markOffice = (off) => { if (off === "manila") $$("#drawer a").forEach((a) => a.classList.toggle("active", a.getAttribute("href") === "#eooffice")); };
+  const noOffice = (e) => /office/i.test(`${e?.message || ""}`) && /column|exist|schema/i.test(`${e?.message || ""} ${e?.code || ""}`);
+  // the ids of the companies of an office (null: the server has no offices yet: every company is Dhaka's)
+  const officeIds = async (off) => { const r = await sb.from("pay_companies").select("id").eq("office", off); return r.error ? (noOffice(r.error) ? null : []) : new Set((r.data || []).map((x) => x.id)); };
+  V.mbilling = () => V.billing("manila");
+  V.billing = async (office) => {
+    const off = office === "manila" ? "manila" : "dhaka", O = OFF[off];
+    const w = E.canWrite(O.mod);
+    E.shell(O.list, off === "manila" ? "Billing — Manila" : "Billing", `${off === "manila" ? (E.eoTabs ? E.eoTabs("mbilling") : "") : E.regTabs ? E.regTabs("billing") : ""}
       <div class="tiles" id="blTiles">${["Companies", "Total Paid (PHP)", "Total Paid (BDT)", "This Month (BDT)"].map((k) => `<div class="tile"><div class="k">${k}</div><div class="v"><span class="spin sm"></span></div></div>`).join("")}</div>
-      <div class="btnrow">${w ? `<a class="btn primary" href="#newvoucher">${ic("plus")} New Payment</a><a class="btn" href="#newpaycompany">${ic("plus")} Add Company</a>` : ""}</div>
+      <div class="btnrow">${w ? `<a class="btn primary" href="#newvoucher/${off}">${ic("plus")} New Payment</a><a class="btn" href="#newpaycompany/${off}">${ic("plus")} Add Company</a>` : ""}</div>
       <div id="blRes">${busy()}</div>`,
       "Add a company and choose its currency: PHP, BDT, or both. <b>New Payment</b> records the amount in that currency (for both: PHP × rate = BDT) and creates a payment voucher. E-bills are paid with a memo in EMON HASAN Portal.");
     const here = E.stillHere();
     // 3.99.127: the vouchers too: this month's (PAID / NOT PAID YET) and the last voucher of each company
     const ym = E.isoToday().slice(0, 7);
-    const [{ data, error }, vq] = await Promise.all([sb.from("pay_company_totals").select("*").order("name"),
-      E.allRows(() => sb.from("pay_vouchers").select("company_id, voucher_no, pay_date, created_at").order("pay_date", { ascending: false }).order("created_at", { ascending: false }))]);
+    const [{ data: all, error }, vq, ids] = await Promise.all([sb.from("pay_company_totals").select("*").order("name"),
+      E.allRows(() => sb.from("pay_vouchers").select("company_id, voucher_no, pay_date, created_at").order("pay_date", { ascending: false }).order("created_at", { ascending: false })), officeIds(off)]);
     if (!here()) return; // 3.35: another page was opened while the list loaded
+    if (ids === null && off === "manila") { $("#blRes").innerHTML = `<div class="empty">Manila Billing needs the database update <b>120</b>. Run it on the updates page, then open this page again.</div>`; return; }
+    const data = ids === null ? all : (all || []).filter((r) => ids.has(r.id)); // only this office's companies
     const lastV = new Map(), monthN = new Map();
     for (const v of vq.data || []) {
       if (!lastV.has(v.company_id)) lastV.set(v.company_id, v);
@@ -1188,8 +1201,9 @@
   const curChoice = (name, on = "BOTH") => `<div class="subj-grid">${["PHP", "BDT"].map((k) => `<label class="subj"><input type="checkbox" name="${name}" value="${k}" ${on === k || on === "BOTH" ? "checked" : ""}><span>${k}</span></label>`).join("")}</div>
     <small class="muted">Tick one: you type the amount in that currency. Tick both: you type PHP and the exchange rate, and the BDT amount is calculated.</small>`;
   const curPicked = (name) => { const on = [...document.querySelectorAll(`input[name=${name}]:checked`)].map((i) => i.value); return on.length === 2 ? "BOTH" : on[0] || ""; };
-  V.newpaycompany = () => {
-    if (!E.canWrite("billing")) { location.hash = "billing"; return; }
+  V.newpaycompany = (office) => {
+    const off = office === "manila" ? "manila" : "dhaka", O = OFF[off];
+    if (!E.canWrite(O.mod)) { location.hash = O.list; return; }
     E.shell("newpaycompany", "Add Company", `
       <form class="window" id="pcForm" novalidate><div class="wtitle">Company</div><div class="wbody">
         <div class="formgrid"><div class="fields wide">
@@ -1203,7 +1217,8 @@
         <fieldset class="opt"><legend>First Account (optional — you can add more later)</legend><div class="formgrid">
           <div class="fields wide"><label for="paName">Account Name</label><input type="text" id="paName"><label for="paNo">Account Number</label><input type="text" id="paNo"></div>
           <div class="fields wide"><label for="paBank">Bank Name</label><input type="text" id="paBank"><label for="paBranch">Branch</label><input type="text" id="paBranch"></div></div></fieldset>
-      </div><div class="wfoot"><a class="btn" href="#billing">Cancel</a><button type="submit" class="btn primary">Save Company</button></div></form>`);
+      </div><div class="wfoot"><a class="btn" href="#${O.list}">Cancel</a><button type="submit" class="btn primary">Save Company</button></div></form>`);
+    $(".band h1") && ($(".band h1").textContent = `Add Company — ${off === "manila" ? "Manila" : "Dhaka"}`); markOffice(off);
     $("#pcPhoto").onchange = (e) => {
       const f = e.target.files[0];
       $("#pcPrev").innerHTML = f ? `<img src="${URL.createObjectURL(f)}" alt="Photo preview">` : "No photo chosen";
@@ -1218,7 +1233,7 @@
       const id = E.uuid();
       const photo_path = await uploadPhoto("pay_company", id, $("#pcPhoto").files[0]);
       const { data: co, error } = await sb.from("pay_companies").insert({ id, name: v("pcName"), contact_person: v("pcPerson") || null, contact: v("pcContact") || null,
-        address: v("pcAddr") || null, notes: v("pcNotes") || null, currency, photo_path }).select().single();
+        address: v("pcAddr") || null, notes: v("pcNotes") || null, currency, photo_path, ...(off === "manila" ? { office: "manila" } : {}) }).select().single();
       if (error) { E.setBusy(e.target, false); return fail(error, "Could not save the company"); }
       if (v("paName")) {
         const { error: e2 } = await sb.from("pay_accounts").insert({ company_id: co.id, account_name: v("paName"), account_number: v("paNo") || null, bank_name: v("paBank") || null, branch_name: v("paBranch") || null });
@@ -1231,22 +1246,25 @@
   V.paycompany = async (id) => {
     E.shell("paycompany", "Billing — Company", busy());
     const here = E.stillHere();
-    const [co, accs, vs, ebs, stf] = await Promise.all([
+    const [co, accs, vs, ebs, stf, oq] = await Promise.all([
       sb.from("pay_company_totals").select("*").eq("id", id).maybeSingle(),
       sb.from("pay_accounts").select("*").eq("company_id", id).order("account_name"),
       sb.from("pay_vouchers").select("*, pay_accounts(account_name,account_number,bank_name,branch_name)").eq("company_id", id).order("pay_date", { ascending: false }).order("voucher_no", { ascending: false }),
       // 3.99.131: the company's e-bills: bill amount, shipping bill, total, net sales, profit
       E.canOpen("inventory") || E.canOpen("ebill") ? sb.from("stock_bill_totals").select("id, bill_no, batch_no, total_boxes, total_cost, release_bdt, shipping_cost, bill_total, net_sales, total_expenses, profit, status, shipment_date").eq("company_id", id).order("created_at", { ascending: false }).then((r) => r, () => ({ data: [] })) : { data: [] },
       // 3.99.142: the employees assigned to this company (114)
-      sb.from("pay_company_staff").select(E.STAFF_SEL || "employee_id").eq("company_id", id).then((r) => r, () => ({ error: true }))
+      sb.from("pay_company_staff").select(E.STAFF_SEL || "employee_id").eq("company_id", id).then((r) => r, () => ({ error: true })),
+      sb.from("pay_companies").select("office").eq("id", id).maybeSingle().then((r) => r, () => ({ data: null })) // 3.99.163
     ]);
     const c = co.data;
     const photo = c?.photo_path ? await E.signedUrl(c.photo_path) : "";
     if (!here()) return; // another page was opened while this one loaded
-    if (!c) { $("#main").innerHTML = `<div class="empty">Company not found. <a href="#billing">Back</a></div>`; return; }
+    if (!c) { $("#main").innerHTML = `<div class="empty">Company not found. <a href="#${offOf(oq?.data) === "manila" ? "mbilling" : "billing"}">Back</a></div>`; return; }
     const ebills = ebs?.data || [], staffOn = !stf?.error && !!E.staffHtml, staff = stf?.data || [];
     const accounts = accs.data || [], vouchers = vs.data || [];
-    const w = E.canWrite("billing");
+    const off = offOf(oq?.data), O = OFF[off];
+    const w = E.canWrite(O.mod);
+    markOffice(off); // the menu: Regional Office Manila
     const suspended = c.status === "suspended";
     const cur = curOf(c);
     const months = [...new Set(vouchers.map((v) => ym(v.pay_date)))].sort().reverse().map((m) => {
@@ -1267,7 +1285,7 @@
           ${w ? `<div class="btnrow"><label class="btn small" for="pcPhoto">${ic("camera")} ${photo ? "Change Photo" : "Add Photo"}</label><input type="file" id="pcPhoto" accept="image/*" hidden></div>` : ""}</div></section>
       <div class="tiles">${tiles.map(([k, l, v]) => `<div class="tile ${k}"><div class="k">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
       <div class="actionbar">${w && !suspended ? `<a class="btn primary" href="#newvoucher/${c.id}">${ic("plus")} New Payment</a>` : ""}<button type="button" class="btn" id="pcRecord">${ic("download")} Download Payment Record</button>
-        <span class="grow"></span>${tools("pay_companies", c, c.name, { reload: () => V.paycompany(id), afterDelete: () => (location.hash = "billing") })}</div>
+        <span class="grow"></span>${tools("pay_companies", c, c.name, { reload: () => V.paycompany(id), afterDelete: () => (location.hash = O.list) })}</div>
       <div class="tabs" id="pcTabs"><button type="button" class="on" data-t="0">Payment Vouchers (${vouchers.length})</button><button type="button" data-t="1">Monthly Records (${months.length})</button><button type="button" data-t="2">Accounts (${accounts.length})</button>${ebills.length ? `<button type="button" data-t="3">E-Bills (${ebills.length})</button>` : ""}${staffOn ? `<button type="button" data-t="4">Employees (${staff.length})</button>` : ""}</div>
       <div class="tabpanes" id="pcPanes">
         <div data-p="0"><div id="pcVouchers">${E.grid({ cols: voucherCols(cur), rows: vouchers, onRow: true, foot: { amount_php: peso(c.total_php), amount_bdt: `<b class="bdt">${peso(c.total_bdt)}</b>` }, empty: "No payments yet." })}</div></div>
@@ -1338,16 +1356,23 @@
   }
 
   V.newvoucher = async (companyId) => {
-    if (!E.canWrite("billing")) { location.hash = "billing"; return; }
     E.shell("newvoucher", "New Payment Voucher", busy());
     const here = E.stillHere();
-    const { data: cos, error } = await sb.from("pay_companies").select("*").order("name");
+    // 3.99.163: #newvoucher/manila, #newvoucher/dhaka or #newvoucher/<company>: the companies of that office only
+    let off = companyId === "manila" || companyId === "dhaka" ? companyId : "dhaka";
+    if (companyId && off === "dhaka" && companyId !== "dhaka") { const r = await sb.from("pay_companies").select("office").eq("id", companyId).maybeSingle(); off = offOf(r.data); }
+    if (companyId === "manila" || companyId === "dhaka") companyId = "";
+    const O = OFF[off];
+    if (!E.canWrite(O.mod)) { location.hash = O.list; return; }
+    markOffice(off);
+    let { data: cos, error } = await sb.from("pay_companies").select("*").eq("office", off).order("name");
+    if (error && noOffice(error) && off === "dhaka") ({ data: cos, error } = await sb.from("pay_companies").select("*").order("name"));
     if (!here()) return; // 3.35: not drawn over the page the person went to
     if (error) return fail(error, "Could not load companies");
-    if (!(cos || []).length) { $("#main").innerHTML = `<div class="empty">Add a company first. <a class="btn primary" href="#newpaycompany">Add Company</a></div>`; return; }
+    if (!(cos || []).length) { $("#main").innerHTML = `<div class="empty">Add a company first. <a class="btn primary" href="#newpaycompany/${off}">Add Company</a></div>`; return; }
     $("#main").innerHTML = `
       <form class="window" id="nvForm" novalidate><div class="wtitle">Payment Voucher</div><div class="wbody">
-        <div class="summary-box"><div class="fields wide"><span>Voucher No</span><b>Assigned on save (BD + date + number, e.g. BD${isoToday().replace(/-/g, "")}001)</b><span>Issued By</span><b>${esc(S.profile.full_name || "")}</b></div></div>
+        <div class="summary-box"><div class="fields wide"><span>Voucher No</span><b>Assigned on save (${off === "manila" ? "MN" : "BD"} + date + number, e.g. ${off === "manila" ? "MN" : "BD"}${isoToday().replace(/-/g, "")}001)</b><span>Issued By</span><b>${esc(S.profile.full_name || "")}</b></div></div>
         <fieldset class="opt"><legend>Paid To</legend><div class="fields wide">
           <label for="nvCo">Company *</label><select id="nvCo"><option value="">— Choose company —</option>${cos.map((c) => c.status === "suspended" ? `<option value="${c.id}" disabled>${esc(c.name)} (SUSPENDED)</option>` : `<option value="${c.id}" ${c.id === companyId ? "selected" : ""}>${esc(c.name)} — ${esc(CUR[curOf(c)])}</option>`).join("")}</select>
           <label for="nvAcc">Account *</label><select id="nvAcc"><option value="">— Choose the company first —</option></select></div></fieldset>
@@ -1365,7 +1390,7 @@
           <label for="nvNotes">Notes</label><input type="text" id="nvNotes">
           <label for="nvRcpt">Receipt</label><input type="file" id="nvRcpt" accept="image/*,application/pdf">
           <span></span><div id="nvPrev" class="rcpt-prev">No receipt chosen</div></div></fieldset>
-      </div><div class="wfoot"><a class="btn" href="#billing">Cancel</a><button type="submit" class="btn primary">Save &amp; Create Voucher</button></div></form>`;
+      </div><div class="wfoot"><a class="btn" href="#${O.list}">Cancel</a><button type="submit" class="btn primary">Save &amp; Create Voucher</button></div></form>`;
     const curNow = () => curOf(cos.find((c) => c.id === $("#nvCo").value));
     const freshAcc = E.loadGuard();
     const loadAcc = async () => {
