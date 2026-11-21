@@ -165,7 +165,7 @@
 
     // 3.99.153: the shop page in a new layout: the head, 4 boxes, the buttons, and tabs (Daily Sales · Expenses & Cash Out ·
     // Stock Account · Employees · Documents). Daily Sales is a day by day table: sales, the day's expenses, cash out, cash left.
-    const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${edit ? `<button type="button" class="btn small" ${tbl === "outlet_sales" ? "data-esale" : "data-eexp"}="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
+    const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" ? (edit ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : "") : isAdmin() ? `<button type="button" class="btn small" data-eexp="${esc(r.id)}" title="Edit (Director only)">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
     const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
     const days = [...new Set([...sales.map((r) => r.sale_date), ...exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort().reverse()
       .map((d) => { const r = sales.find((x) => x.sale_date === d), t = num(r?.total), ex = dayOf(d, "daily"), co = dayOf(d, "cashout"); return { d, r, t, ex, co, left: t - ex - co }; });
@@ -280,6 +280,7 @@
 
   // ---------- an expense, bill, supplier payment or the rental ----------
   function expenseForm(o, row = null) {
+    if (row && !isAdmin()) return toast("Only the Director (EMON HASAN) edits an expense.", true); // 3.99.155
     const v = (k) => esc(row?.[k] ?? "");
     const m = E.modal(`${o.code} · ${row ? "Edit Expense" : "Expense / Bill"}`, `<div class="formgrid ol-form">
         <div><label for="oxDate">Date *</label><input id="oxDate" type="date" value="${row ? v("exp_date") : today()}"></div>
