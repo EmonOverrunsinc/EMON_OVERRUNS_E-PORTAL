@@ -16946,6 +16946,18 @@ end $$;
 notify pgrst, 'reload schema';
 
 select '117 OK - a box goes to the order line of its batch no first' as result;
+
+-- ======== 118_outlet_expense_edit_director.sql ========
+-- 3.99.155: an outlet's EXPENSES (daily expense, cash out, rental, bills, supplier, salary, other) are changed by the
+-- Director (EMON HASAN) only. The shop's employees still add them (and the daily sales). Needs 110 first. Safe to run again.
+
+drop policy if exists "outlets: change" on public.outlet_expenses;
+create policy "outlets: change" on public.outlet_expenses for update to authenticated
+  using ((select public.is_admin())) with check ((select public.is_admin()));
+
+notify pgrst, 'reload schema';
+
+select '118 OK - outlet expenses: only the Director edits' as result;
 $sql$;
 begin
   s := replace(s, chr(13), '');  -- Windows line breaks
