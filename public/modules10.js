@@ -1229,9 +1229,9 @@
       <section class="pd-step"><h3><span class="pd-n">3</span> Complete Delivery</h3>
         <ul class="pd-check">${tick(nBoxes(boxes) > 0, `Boxes: ${vsText(d.total_boxes, nBoxes(boxes), false)}`)}${needPlate ? tick(!!d.plate_no, d.plate_no ? `Car plate no: ${d.plate_no}${d.vehicle_type ? " · " + d.vehicle_type : ""}` : "Car plate no and type of car (optional)") : ""}${tick(photos.length > 0, photos.length ? `Proof of delivery: ${photos.length} photo(s)` : "Proof of delivery photo (optional)")}</ul>
         <div class="co-done"><button type="button" class="btn ok big" id="pdDone">${ic("check")} ${submitOnly ? "Submit Delivery for Approval" : "Complete Delivery"}</button><small>${submitOnly
-          ? "You are not signed in with EO-Office: the delivery is SUBMITTED and EMON HASAN approves it. Approved, the order is COMPLETED and the invoice is made."
+          ? "You are not signed in with Regional Office Manila: the delivery is SUBMITTED and EMON HASAN approves it. Approved, the order is COMPLETED and the invoice is made."
           : "The order becomes COMPLETED and the customer's invoice is made and billed by itself."}</small></div>
-        ${submitOnly && !S.session ? `<div class="banner warn pd-signin">${ic("key")} <b>To make the invoice at once:</b> sign in with your EO-Office account first, then open this page again (scan the order paper). Without signing in, the invoice is made only when EMON HASAN approves the delivery.
+        ${submitOnly && !S.session ? `<div class="banner warn pd-signin">${ic("key")} <b>To make the invoice at once:</b> sign in with your Regional Office Manila account first, then open this page again (scan the order paper). Without signing in, the invoice is made only when EMON HASAN approves the delivery.
           <div class="btnrow"><button type="button" class="btn primary" id="pdSignIn">${ic("user")} Sign In to Complete Now</button></div></div>` : ""}
       </section>
       <div class="btnrow">${orderLink}</div>`;

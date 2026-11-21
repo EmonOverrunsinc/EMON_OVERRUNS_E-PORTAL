@@ -13,7 +13,7 @@
   const V = window.EO_VIEWS;
   const canW = () => E.canWrite("eooffice");
   const notSet = (e) => /qc_tests|collection_vouchers|create_qc|save_collection|qc_open|schema cache/i.test(e?.message || "");
-  const needUpdate = `<div class="empty">EO-Office needs the database update <b>024_eo_office.sql</b>. Run it in the Supabase SQL Editor.</div>`;
+  const needUpdate = `<div class="empty">Regional Office Manila needs the database update <b>024_eo_office.sql</b>. Run it in the Supabase SQL Editor.</div>`;
   const monthShort = (m) => new Date(m + "-01T00:00:00").toLocaleDateString("en-US", { month: "short" }).toUpperCase();
   const thisMonth = () => isoToday().slice(0, 7);
   const prevMonth = (m, n = 1) => { const d = new Date(m + "-01T00:00:00"); d.setMonth(d.getMonth() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
@@ -44,12 +44,26 @@
   // EO-Office page: mini dashboard, QC Test tab, Collection Voucher tab
   // ======================================================================
   // The pages of EO-Office: QC Test and Collection Voucher (this page), Employees and Payroll (3.23), Credit Memo and Project (3.24: no Job Applications / Job Positions)
-  const eoTabs = (on) => `<nav class="subnav">${[["eooffice", "EO-Office", "eooffice"], ["custorders", "Customer Order", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memo", "creditmemos"], ["projects", "Project", "projects"], ["insurance", "Coverage", "eooffice"]]
+  const eoTabs = (on) => `<nav class="subnav reg-nav">${[["eooffice", `${ic("shield")} Regional Office Manila`, "eooffice"], ["custorders", "Customer Order", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memo", "creditmemos"], ["projects", "Project", "projects"], ["insurance", "Coverage", "eooffice"]]
     .filter((x) => E.hasModule(x[2]) && (x[2] !== "eooffice" || E.isStaff())).map(([k, l]) => `<a href="#${k}" class="${k === on ? "on" : ""}">${l}</a>`).join("")}</nav>`;
+  // 3.99.158: REGIONAL OFFICE MANILA (was EO-Office): a card for every part on top, with its number
+  const MNL = [["custorders", "Customer Order", "box", "Orders, boxes, delivery and the invoice", "eooffice"], ["employees", "Employees", "users", "Staff, ID cards and documents", "employees"],
+    ["payroll", "Payroll", "wallet", "Salaries and payslips", "employees"], ["creditmemos", "Credit Memo", "receipt", "Returns, credits and discounts", "creditmemos"],
+    ["projects", "Project", "folder", "Projects and their payments", "projects"], ["insurance", "Coverage", "shield", "Order coverage certificates", "eooffice"]];
+  const mnlCount = {
+    custorders: () => sb.from("customer_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "approved"]).then((r) => (r.error ? "" : r.count ? `${r.count} open order(s)` : "No open order")),
+    employees: () => sb.from("employees").select("id", { count: "exact", head: true }).eq("status", "active").then((r) => (r.error ? "" : `${r.count || 0} active`)),
+    creditmemos: () => sb.from("credit_memos").select("id", { count: "exact", head: true }).eq("status", "pending").then((r) => (r.error ? "" : r.count ? `${r.count} waiting for approval` : "Nothing waiting")),
+    projects: () => sb.from("projects").select("id", { count: "exact", head: true }).then((r) => (r.error ? "" : `${r.count || 0} project(s)`)),
+    insurance: () => sb.from("order_insurance").select("id", { count: "exact", head: true }).in("status", ["unpaid", "review"]).then((r) => (r.error ? "" : r.count ? `${r.count} to check` : "Nothing to check"))
+  };
   V.eooffice = async (tab, month) => {
-    E.shell("eooffice", "EO-Office", `${eoTabs("eooffice")}<div id="eoBody">${busy()}</div>`, "QC Test forms and Collection Vouchers. Employees, Payroll, Credit Memo and Project are here too.");
-    if (!E.hasModule("eooffice") || !E.isStaff()) { $("#eoBody").innerHTML = `<div class="empty">Choose Employees, Payroll, Credit Memo or Project above.</div>`; return; }
+    const cards = MNL.filter((x) => E.hasModule(x[4]) && (x[4] !== "eooffice" || E.isStaff()));
+    E.shell("eooffice", "Regional Office Manila", `${eoTabs("eooffice")}<div class="reg-cards mnl-cards">${cards.map(([k, l, icon, say]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(say)}</small><em id="mnlN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>
+      <div id="eoBody">${busy()}</div>`);
     const here = E.stillHere();
+    cards.forEach(([k]) => mnlCount[k] && mnlCount[k]().then((t) => { if (here() && $(`#mnlN-${k}`)) $(`#mnlN-${k}`).textContent = t; }, () => {}));
+    if (!E.hasModule("eooffice") || !E.isStaff()) { $("#eoBody").innerHTML = ""; return; }
     const [qc, cv] = await Promise.all([
       sb.from("qc_tests").select("*").order("created_at", { ascending: false }).limit(2000),
       sb.from("collection_vouchers").select("*").order("cv_date", { ascending: false }).order("created_at", { ascending: false }).limit(5000)]);
@@ -221,7 +235,7 @@
     if (!here()) return;
     if (tq.error && notSet(tq.error)) { $("#main").innerHTML = needUpdate; return; }
     const t = tq.data;
-    if (!t) { $("#main").innerHTML = `<div class="empty">QC test not found. <a href="#eooffice">Back to EO-Office</a></div>`; return; }
+    if (!t) { $("#main").innerHTML = `<div class="empty">QC test not found. <a href="#eooffice">Back to Regional Office Manila</a></div>`; return; }
     if (rq.error && /qc_results|permission/i.test(rq.error.message || "")) { $("#main").innerHTML = `<div class="empty">QC Test needs the database update <b>025_qc_simple.sql</b>. Run it in the Supabase SQL Editor.</div>`; return; }
     const r = rq.data || { checks: {}, numbers: {}, docs: [] };
     $(".band h1") && ($(".band h1").textContent = `QC Test — ${t.qc_no}`);
@@ -589,7 +603,7 @@
     const { data: v, error } = await sb.from("collection_vouchers").select("*").eq("id", id).maybeSingle();
     if (!here()) return;
     if (error && notSet(error)) { $("#main").innerHTML = needUpdate; return; }
-    if (!v) { $("#main").innerHTML = `<div class="empty">Collection voucher not found. <a href="#eooffice/cv">Back to EO-Office</a></div>`; return; }
+    if (!v) { $("#main").innerHTML = `<div class="empty">Collection voucher not found. <a href="#eooffice/cv">Back to Regional Office Manila</a></div>`; return; }
     const url = v.receipt_path ? (await E.signedMap([v.receipt_path])).get(v.receipt_path) || "" : "";
     if (!here()) return;
     const isPdf = /\.pdf$/i.test(v.receipt_path || "");

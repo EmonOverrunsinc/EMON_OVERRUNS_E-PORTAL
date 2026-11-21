@@ -798,7 +798,7 @@
     [/^CR-/, null, "change_requests", "request_no", "id, request_no, target_label, status, requested_by_name",
       (r) => `Correction <a href="#changes"><b>${esc(r.request_no)}</b></a>: ${esc(r.target_label || "")} · <b>${esc(String(r.status || "").toUpperCase())}</b>${r.requested_by_name ? ` · asked by ${esc(r.requested_by_name)}` : ""}`]
   ];
-  const MENU_NAME = { payments: "Payment", invoices: "Invoice", billing: "Billing", creditmemos: "Credit Memo", eooffice: "EO-Office", employees: "Employees", projects: "Project", purchase: "Purchase Order", customers: "Customer", inventory: "E-Bill" };
+  const MENU_NAME = { payments: "Payment", invoices: "Invoice", billing: "Billing", creditmemos: "Credit Memo", eooffice: "Regional Office Manila", employees: "Employees", projects: "Project", purchase: "Purchase Order", customers: "Customer", inventory: "E-Bill" };
   async function aFind(code) {
     const d = DOCS.find(([re]) => re.test(code));
     if (!d) return { html: `<a href="#find/${encodeURIComponent(code)}">Search for ${esc(code)}</a>` };
