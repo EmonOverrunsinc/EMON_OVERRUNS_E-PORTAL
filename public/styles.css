@@ -4275,3 +4275,9 @@ html.eo-overlay :is(.chat-panel, .eva-panel) { top: calc(env(titlebar-area-heigh
 .ol-card-n > div { min-width: 0; container-type: inline-size; }
 .ol-card-n b { white-space: nowrap; font-size: clamp(11px, 12cqi, 15px); }
 .os-kpi span { overflow-wrap: anywhere; }
+/* 3.99.158: REGIONAL OFFICE MANILA (was EO-Office): the cards on top of its page */
+.mnl-cards { margin-bottom: 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.mnl-cards .reg-card { padding: 14px 16px; }
+.mnl-cards .reg-ic { width: 46px; height: 46px; border-radius: 14px; } .mnl-cards .reg-ic svg { width: 24px; height: 24px; }
+.mnl-cards .reg-card b { font-size: 16px; }
+.eo-mini .tiles { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }

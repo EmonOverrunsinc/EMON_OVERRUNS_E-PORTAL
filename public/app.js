@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.157"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.158"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.157"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.158"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1349,8 +1349,8 @@
     { k: "customers", icon: "user", label: "Customer" },
     { k: "invoices", icon: "doc", label: "Invoice" },
     { k: "payments", icon: "wallet", label: "Payment" },
-    { k: "eooffice", icon: "shield", label: "EO-Office" },
-    { k: "regional", icon: "globe", label: "Regional Office" }, // 3.99.156: Purchase Order, Billing and E-Bill are inside
+    { k: "eooffice", icon: "shield", label: "Regional Office Manila" }, // 3.99.158: was EO-Office
+    { k: "regional", icon: "globe", label: "Regional Office Dhaka" }, // 3.99.156: Purchase Order, Billing and E-Bill are inside
     { k: "outlets", icon: "building", label: "Outlets" } // 3.99.116: the shops
   ];
   // 3.2: EO-Office holds QC Test, Collection Voucher, Job Applications, Job Positions, Credit Memo and Project: it opens for anyone who may open one of them
