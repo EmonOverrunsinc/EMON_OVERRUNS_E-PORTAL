@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.178"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.179"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.178"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.179"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1381,9 +1381,22 @@
     }
     location.hash = home || "#dashboard";
   }
+  // 3.99.179: + PAYMENT and + INVOICE at the bottom right (over the Back button) of the Customers, Invoices and Payments lists
+  function quickAdd() {
+    $$("body > .quick-add").forEach((x) => x.remove());
+    if (!["customers", "invoices", "payments"].includes(location.hash.slice(1))) return;
+    const b = `${canWrite("payments") || canWrite("invoices") ? `<a class="qa-btn pay" href="#newpayment">${ic("wallet")} Payment</a>` : ""}${canWrite("invoices") ? `<a class="qa-btn inv" href="#newinvoice">${ic("plus")} Invoice</a>` : ""}`;
+    if (!b) return;
+    document.body.insertAdjacentHTML("beforeend", `<div class="quick-add">${b}</div>`);
+    requestAnimationFrame(() => { // in one row on the left of the Back button
+      const bb = $("body > .band-back"), qa = $("body > .quick-add");
+      if (qa) qa.style.right = bb?.offsetWidth ? `${Math.round(window.innerWidth - bb.getBoundingClientRect().left + 8)}px` : "";
+    });
+  }
   function bindBack(home) {
     // 3.52: the button is moved out of the page (the page slides in, which would carry it along) to float at the bottom left
     $$("body > .band-back").forEach((x) => x.remove());
+    quickAdd();
     const b = $("#bandBack");
     if (b) { document.body.append(b); b.onclick = () => goBack(home); }
   }
@@ -1534,7 +1547,7 @@
     const currency = ["inventory", "newstockbill", "stockbill", "ebill"].includes(key) ? "BDT" : "PHP (₱)";
     // 3.36: no "?" on any page; the dashboard has no title (its greeting stands in its place)
     const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1>${esc(title)}</h1></div>`;
-    const mainHtml = `<main id="main">${hint ? `<div class="hint"><b>Hint:</b> ${hint}</div>` : ""}${body}</main>`;
+    const mainHtml = `<main id="main">${hint ? `<div class="hint"><b>Hint:</b> ${hint}</div>` : ""}${body}</main>${pageFoot()}`;
     // 2.7.2: moving between pages keeps the top bar and the side menu in place (no flash); only the page itself is
     // swapped, with a soft fade. The whole frame is drawn again only when the menu or the person changes.
     const frame = [S.session.user.id, who, av, newBuild, items.map((m) => m.k).join(","), OTHER.filter((o) => o[2]()).map((o) => o[0]).join(",")].join("|");
@@ -1894,15 +1907,26 @@
     }
     location.hash = "find/" + encodeURIComponent(t);
   }
-  const setRecords = (txt) => { const e = $("#sbRecords"); if (e) e.textContent = txt; };
+  // 3.99.179: the PAGE FOOTER of every page: TOTAL DATA FOUND (the list's count), the server, the location and the rights
+  const pageFoot = () => `<footer class="page-foot"><div class="pf-data"><span id="pgTotal" hidden>TOTAL DATA FOUND <b>0</b></span><span>SERVER: SOUTH EAST ASIA</span><span>LOCATION: ${esc(String(C.company.address?.[0] || "Pasay City, Metro Manila").toUpperCase())}</span></div>
+    <div class="pf-copy">ALL RIGHTS RESERVED BY ${esc(C.company.name)} <span class="nw">© 2023–${new Date().getFullYear()}</span></div></footer>`;
+  const setRecords = (txt) => {
+    const e = $("#sbRecords"); if (e) e.textContent = txt;
+    const t = $("#pgTotal"), n = /:\s*(\d+)\s*$/.exec(String(txt || ""));
+    if (t) { t.hidden = !n; if (n) t.querySelector("b").textContent = Number(n[1]).toLocaleString("en-US"); }
+  };
 
   // ---------- grid ----------
-  function grid({ cols, rows, onRow, foot, group, empty = "No records match these options." }) {
+  function grid({ cols, rows, onRow, foot, group, empty = "No records match these options.", limit = 15, latest = "start" }) {
     if (!rows.length) return `<div class="grid-wrap"><div class="empty">${esc(empty)}</div></div>`;
     // 3.83: a column can be left out on a phone (phone: false) or let its words go on 2 lines there (wrap: true)
     const cls = (c) => [c.num ? "num" : "", c.phone === false ? "no-phone" : "", c.wrap ? "wrap" : ""].filter(Boolean).join(" ");
     const head = cols.map((c) => `<th class="${cls(c)}" scope="col">${esc(c.label)}</th>`).join("");
-    const rowHtml = (r, i) => `<tr class="${onRow ? "click" : ""}" data-i="${i}">${cols.map((c) => `<td class="${cls(c)}">${c.html ? c.html(r) : esc(c.get(r))}</td>`).join("")}</tr>`;
+    // 3.99.179: only the latest 15 rows are shown (latest "end": the last 15 of a list in the oldest-first order); the others
+    // stay in the page (hidden) for "Show All", and the search bar at the top finds any of them
+    const cap = !group && limit > 0 && rows.length > limit;
+    const hide = (i) => cap && (latest === "end" ? i < rows.length - limit : i >= limit);
+    const rowHtml = (r, i) => `<tr class="${onRow ? "click" : ""}${hide(i) ? " g-more" : ""}" data-i="${i}"${hide(i) ? " hidden" : ""}>${cols.map((c) => `<td class="${cls(c)}">${c.html ? c.html(r) : esc(c.get(r))}</td>`).join("")}</tr>`;
     let bodyHtml = "";
     if (group) {
       const groups = new Map();
@@ -1915,8 +1939,15 @@
     const footHtml = foot ? `<tfoot><tr>${cols.map((c) => `<td class="${cls(c)}">${foot[c.key] ?? ""}</td>`).join("")}</tr></tfoot>` : "";
     return `<div class="grid-wrap">${onRow ? `<div class="grid-group">Click a row to open it</div>` : ""}
       <div class="grid-scroll"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${bodyHtml}</tbody>${footHtml}</table></div>
-      <div class="grid-foot"><span>Record 1 of ${rows.length}</span><span>${rows.length} record(s)</span></div></div>`;
+      ${cap ? `<div class="grid-foot g-cap"><span>Showing the latest ${limit} of ${rows.length} · search at the top to find the others</span><button type="button" class="btn small g-all">Show All ${rows.length}</button></div>` : ""}</div>`;
   }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest?.(".g-all");
+    if (!b) return;
+    const w = b.closest(".grid-wrap");
+    w?.querySelectorAll("tr.g-more").forEach((tr) => { tr.hidden = false; tr.classList.remove("g-more"); });
+    b.parentElement.remove();
+  });
   // 3.81: EVERY table of the portal that is a little wider than its place is zoomed out to fit (all columns seen, the
   // same order): the lists, the stock bill, the customer's own history and the tables in a window. Down to 72% on an
   // iPad / phone (80% on a computer); one still too wide says so: "swipe sideways" and a shadow at the edge with more.

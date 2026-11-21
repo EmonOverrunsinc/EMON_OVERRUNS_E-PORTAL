@@ -796,7 +796,7 @@
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
         { label: "Balance Due (₱)", key: "due", num: true, get: (r) => peso(r.due) }],
-        rows, onRow: true, foot: { due: peso(rows.reduce((s, r) => s + r.due, 0)) }, empty: "No customers found." });
+        rows, onRow: true, foot: { due: peso(rows.reduce((s, r) => s + r.due, 0)) }, empty: "No customers found.", latest: ws.length ? "start" : "end" });
       E.bindGrid($("#cuRes"), rows, (r) => (location.hash = "customer/" + r.id));
       E.setRecords(`Customers: ${rows.length}`);
     };

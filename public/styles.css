@@ -4724,3 +4724,22 @@ input, textarea, select, [contenteditable="true"], .grid td, .os-t td, .page, .p
 .rank-row .rank-badge { min-width: 62px; justify-content: center; }
 .rank-row.rr1 { border-color: #f1d27a; background: linear-gradient(90deg, #fff8dc, #fff 60%); }
 .rank-row.rr2 { border-color: #f0dc9c; } .rank-row.rr3 { border-color: #dcc092; } .rank-row.rr4 { border-color: #d6dde9; } .rank-row.rr5 { border-color: #d3d6db; }
+/* 3.99.179: the page footer (TOTAL DATA FOUND · server · location · rights), "Show All" of a list, + Payment / + Invoice */
+.content:has(> .page-foot) > #main { padding-bottom: 10px; }
+.page-foot { max-width: 1280px; margin: 0 auto; padding: 14px 18px calc(104px + env(safe-area-inset-bottom, 0px)); text-align: center; color: #5b6b8c; display: grid; gap: 6px; }
+.page-foot .pf-data { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; }
+.page-foot .pf-data > span { padding: 4px 10px; border-radius: 999px; background: #eef2fa; border: 1px solid #dde5f3; }
+.page-foot .pf-data > span[hidden] { display: none; }
+.page-foot .pf-data b { color: #0f2a66; font-size: 12.5px; }
+.page-foot #pgTotal { background: #fff7dc; border-color: #f0d27a; color: #6b4e00; }
+.page-foot .pf-copy { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; color: #8090ad; }
+.grid-foot.g-cap { justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.grid-foot.g-cap > span:first-child { display: inline; font-size: 12.5px; }
+.quick-add { position: fixed; z-index: 70; right: calc(118px + env(safe-area-inset-right, 0px)); bottom: calc(34px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 8px; }
+.qa-btn { display: inline-flex; align-items: center; gap: 6px; height: 46px; padding: 0 15px 0 12px; border-radius: 23px; font-weight: 800; font-size: 14.5px; letter-spacing: .02em; text-decoration: none; white-space: nowrap; box-shadow: 0 6px 18px rgba(15, 42, 102, .28); transition: transform .15s; }
+.qa-btn .ic { width: 18px; height: 18px; }
+.qa-btn:active { transform: scale(.95); }
+.qa-btn.pay { background: #e2b33c; color: #0f2a66; }
+.qa-btn.inv { background: #fff; color: #1d4fb0; border: 1.5px solid #c9d6f0; }
+body:has(.modal) > .quick-add, body:has(.preview) > .quick-add, body:not(:has(.content)) > .quick-add { display: none; }
+@media print { .quick-add, .page-foot { display: none !important; } }
