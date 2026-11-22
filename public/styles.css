@@ -4909,3 +4909,9 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 .lg-find:focus-within { border-color: #1d4fb0; box-shadow: 0 0 0 3px rgba(29, 79, 176, .15); }
 .lg-head select { width: auto !important; flex: 0 1 220px; }
 @media (max-width: 760px) { .lg-head select { flex: 1 1 140px; } }
+/* 3.99.189: the Box List even simpler: one clean line per box */
+.lg-row { grid-template-columns: 10px minmax(110px, 150px) minmax(0, 1fr) 76px 84px minmax(100px, 150px); padding: 10px 14px; }
+.lg-prod { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-ref { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lg-batch { padding: 8px 14px; } .lg-batch span { margin-left: auto; }
+@media (max-width: 760px) { .lg-row { grid-template-columns: 10px minmax(0, 1fr) auto; grid-template-areas: "dot sn st" "dot prod pcs"; } .lg-row .lg-ref { display: none; } .lg-row .lg-dot { margin-top: 6px; } }

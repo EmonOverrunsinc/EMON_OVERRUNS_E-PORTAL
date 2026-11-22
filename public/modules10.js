@@ -137,25 +137,24 @@
     const shown = () => inScope().filter((r) => filter === "all" || (filter === "avail" ? isAvail(r) : r.k === filter));
     const batchesOf = (rows) => { const m = new Map(); for (const r of rows) { const b = r.batch || "—"; if (!m.has(b)) m.set(b, []); m.get(b).push(r); } return [...m.entries()]; };
     const cnt = (rows, f) => rows.filter(f).length, pcs = (rows) => rows.reduce((s, r) => s + num(r.qty), 0);
-    const short = (d) => String(mdy(d) || "").replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1");
     const line = (r) => `<div class="lg-row k-${r.k}"><i class="lg-dot" aria-hidden="true"></i><b class="mono lg-sn">${esc(r.serial_no)}</b>
-      <span class="lg-prod">${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · ") || "—")}<small>${esc([r.ctn ? `CTN ${r.ctn}` : "", r.style ? `CODE ${r.style}` : "", r.ship_date ? `SHIPPED ${short(r.ship_date)}` : ""].filter(Boolean).join(" · "))}</small></span>
+      <span class="lg-prod">${esc([r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · ") || "—")}</span>
       <span class="lg-pcs">${qtyText(r.qty)} pcs</span><span class="lg-st">${BL_ST[r.k][1]}</span>
-      <span class="lg-ref">${r.k === "sold" ? `${esc(r.invoice || "—")}${r.soldOn ? `<small>${esc(short(r.soldOn))}</small>` : ""}` : r.order ? `<a href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : ""}</span></div>`;
+      <span class="lg-ref">${r.k === "sold" ? esc(r.invoice || "") : r.order ? `<a href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : ""}</span></div>`;
     const LIMIT = 120;
     let more = false;
     const draw = () => {
       const scope = inScope(), rows = shown();
       $("#blxChips").innerHTML = [["all", "ALL", scope.length], ["avail", "IN STOCK", cnt(scope, isAvail)], ["order", "ON ORDER", cnt(scope, (r) => r.k === "order")], ["sold", "SOLD", cnt(scope, (r) => r.k === "sold")]]
         .map(([k, l, n]) => `<button type="button" class="lg-chip c-${k}${filter === k ? " on" : ""}" data-f="${k}">${l} <b>${qtyText(n)}</b></button>`).join("")
-        + `<span class="lg-sum">${qtyText(pcs(rows))} pcs · ${qtyText(batchesOf(rows).length)} batch${batchesOf(rows).length === 1 ? "" : "es"}</span>`;
+;
       $$("#blxChips .lg-chip").forEach((b) => (b.onclick = () => { filter = b.dataset.f; more = false; draw(); }));
       const v = $("#blxView");
       if (!rows.length) { v.innerHTML = `<div class="empty">${all.length ? "No box matches." : "No box in the box database yet."}</div>`; return; }
       const part = more ? rows : rows.slice(0, LIMIT);
       v.innerHTML = batchesOf(part).map(([b, list]) => {
         const full = rows.filter((r) => (r.batch || "—") === b);
-        return `<div class="lg-batch"><b>BATCH ${esc(b)}</b><span>${qtyText(full.length)} box${full.length === 1 ? "" : "es"} · ${qtyText(pcs(full))} pcs</span><em>SOLD ${cnt(full, (r) => r.k === "sold")} · IN STOCK ${cnt(full, isAvail)}${cnt(full, (r) => r.k === "order") ? ` · ON ORDER ${cnt(full, (r) => r.k === "order")}` : ""}</em></div>${list.map(line).join("")}`;
+        return `<div class="lg-batch"><b>BATCH ${esc(b)}</b><span>${qtyText(full.length)} box${full.length === 1 ? "" : "es"}</span></div>${list.map(line).join("")}`;
       }).join("") + (rows.length > part.length ? `<div class="lg-more"><span>Showing ${qtyText(part.length)} of ${qtyText(rows.length)} boxes</span><button type="button" class="btn small" id="blxMore">Show All ${qtyText(rows.length)}</button></div>` : "");
       if ($("#blxMore")) $("#blxMore").onclick = () => { more = true; draw(); };
     };
