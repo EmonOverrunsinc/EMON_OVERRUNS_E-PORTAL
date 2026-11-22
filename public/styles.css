@@ -5122,3 +5122,10 @@ body.os-info-open > .band-back { display: none !important; }
 .vp-sign > i { display: block; border-top: 1px solid #0b1f4d; margin: 1.5mm 0 1.4mm; }
 .vp-sign > b { display: block; font-size: 10pt; color: #0b1f4d; letter-spacing: .04em; }
 .vp-sign small { display: block; font-size: 7pt; font-weight: 700; letter-spacing: .1em; color: #5b6b8c; margin-top: .8mm; }
+/* 3.99.230: the TRX ID PDF417 in the note box of the sales report (small, still easy to scan) */
+.soa-info .dsr-note { display: flex; align-items: center; justify-content: space-between; gap: 3mm; }
+.soa-info .dsr-note > div:first-child { min-width: 0; flex: 1 1 auto; }
+.dsr-tbar { display: grid; justify-items: center; gap: .5mm; flex: 0 0 auto; }
+.dsr-tbar img { height: 8mm; width: auto; max-width: 52mm; image-rendering: pixelated; }
+.dsr-tbar span { font: 700 5.5pt/1 Arial, Helvetica, sans-serif; letter-spacing: .16em; color: #6b7a99; }
+.soa-info .dsr-note > div:first-child { align-self: flex-start; } .soa-info .dsr-note > .dsr-tbar { align-self: center; }
