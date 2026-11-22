@@ -234,6 +234,8 @@
     await Promise.all((data || []).map(async (x) => SIGNERS.set(x.id, await signaturePic(x.signature_path))));
   }
   const EOIDS = new Map(), eoidOf = (id) => (id && EOIDS.get(id)) || "";
+  // 3.99.219: the id of a Director by name (from the Directors' signatures list), e.g. to print EMON HASAN's EOID
+  const directorId = (name) => ((SIG.list || []).find((d) => String(d.full_name || "").trim().toUpperCase() === String(name || "").trim().toUpperCase()) || {}).id || "";
   const signerBy = (id) => { const pic = id ? SIGNERS.get(id) : ""; return pic ? { name: "", at: null, pic } : null; };
   // The approval of a document by the Director, for its print: the name, the date and the signature picture (empty
   // until the Director's signature is uploaded). id: the Director's id; without it the name is used.
@@ -2749,7 +2751,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
   Object.assign(E, {
     extOf, viewFile, latestSigned, uploadRecords, signedUrl, attachmentsOf, filesHtml, bindFiles, fileField, filesOf, isImage,
     docCard, bindDocCards, customerPicker, getCustomer, fullName, printHead, box, cell, sigs, sigCol, cxTop, cxSec, cxKv, uuid, cleanQ, idBox, METHOD,
-    loadSignatures, approvedBy, signaturePic, loadSigners, signerBy, eoidOf, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
+    loadSignatures, approvedBy, signaturePic, loadSigners, signerBy, eoidOf, directorId, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
   });
   E._docs = { ...(E._docs || {}), invoicePage, ackPage, soaPages, memoPage, detailsPage, applicationPage, txnsOf }; // 3.79: the document pages (for the print checks)
 })();

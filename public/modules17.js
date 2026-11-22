@@ -644,10 +644,15 @@
       toast("Taken back."); reload();
     }));
   }
-  // 3.99.195: the sales reports end with two equal name boxes: PREPARED BY (the employee) and APPROVED BY (EMON HASAN)
-  const nameBoxes = (prep, id) => `<div class="name-boxes"><div class="nbox"><small>PREPARED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b><em>${/^EMON HASAN$/i.test(String(prep || "").trim()) ? "OPERATIONAL DIRECTOR" : "OUTLET STAFF"}${E.eoidOf?.(id) ? ` · ${esc(E.eoidOf(id))}` : ""}</em></div><div class="nbox"><small>APPROVED BY</small><b>EMON HASAN</b><em>OPERATIONAL DIRECTOR</em></div></div>`;
+  // 3.99.219: the sales reports end with ISSUED BY (the name only) and APPROVED BY: a signature line, the name, the
+  // position and the EOID of EMON HASAN. No boxes.
+  const BOSS = "EMON HASAN";
+  const loadBoss = async () => { await E.loadSignatures?.().catch(() => {}); const id = E.directorId?.(BOSS); if (id) await E.loadSigners?.([id]).catch(() => {}); return id; };
+  const nameBoxes = (prep, _id, bossId) => { const eo = bossId ? E.eoidOf?.(bossId) : "";
+    return `<div class="sign-off"><div class="so-issued"><small>ISSUED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b></div>
+      <div class="so-ok"><small>APPROVED BY</small><div class="so-line"></div><b>${BOSS}</b><em>OPERATIONAL DIRECTOR</em>${eo ? `<span>${esc(eo)}</span>` : ""}</div></div>`; };
   async function printDay(o, date, sales, exps, mine) {
-    await Promise.all([E.loadSignatures?.().catch(() => {}), E.loadSigners?.([S.profile?.id, ...sales.filter((x) => x.sale_date === date).map((x) => x.created_by)]).catch(() => {})]);
+    const bossId = await loadBoss();
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
     const xp = day.filter((x) => x.kind !== "cashout"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -664,7 +669,7 @@
       ${list("Expenses", xp.map((x) => `<tr><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc([x.payee, x.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Type"], ["Paid To / Note"], ["Amount (₱)", 1]])}
       ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td>${esc(x.note || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Note"], ["Amount (₱)", 1]])}
       <div class="soa-result"><span>Total Sales ₱ ${P(tot)} − Expenses ₱ ${P(ex)} − Cash Out ₱ ${P(cash)}</span><b class="${left < 0 ? "neg" : ""}">CASH LEFT ₱ ${P(left)}</b></div>
-      ${nameBoxes(r.created_by_name || me() || "", r.created_by_name ? r.created_by : S.profile?.id)}</div>`;
+      ${nameBoxes(r.created_by_name || me() || "", null, bossId)}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
 
@@ -672,7 +677,7 @@
   // the expenses, the cash out and the stock payments (each a table with its total), and the signatures. A long month
   // goes on to the next page (the table head is repeated there).
   async function printSoa(o, m, d) {
-    await Promise.all([E.loadSignatures?.().catch(() => {}), E.loadSigners?.([S.profile?.id]).catch(() => {})]);
+    const bossId = await loadBoss();
     const dayOf = (dt, k) => sum(d.exps.filter((x) => x.exp_date === dt && x.kind === k), "amount");
     const days = [...new Set([...d.sales.map((r) => r.sale_date), ...d.exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort()
       .map((dt) => { const r = d.sales.find((x) => x.sale_date === dt), t = num(r?.total), ex = dayOf(dt, "daily"), co = dayOf(dt, "cashout"); return { dt, r, t, ex, co, left: t - ex - co }; });
@@ -720,7 +725,7 @@
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the result and the signatures
     blocks.push({ h: 9, html: `<div class="soa-result"><span>Net Sales ₱ ${P(d.net)} − Expenses ₱ ${P(d.out)} − Cash Out ₱ ${P(d.cash || 0)} − Stock Payments ₱ ${P(d.paid)}</span><b class="${d.bal < 0 ? "neg" : ""}">BALANCE ₱ ${P(d.bal)}</b></div>
-      ${nameBoxes(me() || "", S.profile?.id)}` });
+      ${nameBoxes(me() || "", null, bossId)}` });
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;
