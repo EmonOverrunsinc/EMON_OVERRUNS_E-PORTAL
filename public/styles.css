@@ -5113,3 +5113,14 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
   #main .cust-hero .ch-sub .ch-dot { display: none; }
   #main .cust-hero .ch-sub .ch-mail { display: block; margin-top: 2px; }
 }
+/* 3.99.209: phone: the payment / return rows of an invoice and the invoice rows of a payment fit the screen
+   (number and amount on the first line, date and status on the second) */
+@media (max-width: 600px) {
+  .lp-row { grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; }
+  .lp-row > a { order: 1; min-width: 0; overflow-wrap: anywhere; }
+  .lp-row > b { order: 2; text-align: right; white-space: nowrap; }
+  .lp-row > span:not(.pill) { order: 3; min-width: 0; font-size: 12.5px; color: #6e6e73; }
+  .lp-row > .pill, .lp-row > .linkbtn { order: 4; justify-self: end; white-space: nowrap; }
+}
+/* 3.99.209: phone: a document card title is never cut ("…"); the number goes on the next line */
+@media (max-width: 600px) { .dc-main b { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.25; } }

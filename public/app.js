@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.208"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.209"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.208"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.209"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1625,7 +1625,7 @@
     const who = S.profile.full_name || S.session.user.email;
     const currency = ["inventory", "newstockbill", "stockbill", "ebill"].includes(key) ? "BDT" : "PHP (₱)";
     // 3.36: no "?" on any page; the dashboard has no title (its greeting stands in its place)
-    const over = (MENU.find((m) => m.k === (ACTIVE_OF[key] ?? key)) || {}).label || `${C.company.name} E-Portal`; // 3.99.191
+    const over = (MENU.find((m) => m.k === cur) || {}).label || `${C.company.name} E-Portal`; // 3.99.191 · 3.99.209: same section as the menu (a payment shows PAYMENTS)
     const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1 data-over="${esc(String(over).toUpperCase())}">${esc(title)}</h1></div>`;
     const mainHtml = `<main id="main">${hint ? `<div class="hint"><b>Hint:</b> ${hint}</div>` : ""}${body}</main>${pageFoot()}`;
     // 2.7.2: moving between pages keeps the top bar and the side menu in place (no flash); only the page itself is
@@ -2090,8 +2090,7 @@
   // 3.99.18: a record number or a word with a hyphen (MS-202611001, INV-202611-0001, E-Bill) is never broken at its hyphen
   // (MS- / 202611001): it is kept whole on one line (only the words on the page are wrapped, nothing else changes)
   const CODE_RE = /[A-Za-z0-9#]+(?:-[A-Za-z0-9#]+)+/g;
-  const noBreakCodes = () => {
-    const main = document.getElementById("main");
+  const noBreakCodes = () => [document.getElementById("main"), document.querySelector(".band h1")].forEach((main) => { // 3.99.209: the page title too
     if (!main) return;
     const tw = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, { acceptNode: (t) => (t.nodeValue.includes("-") && !t.parentElement?.closest(".nw, script, style, textarea, select, option, svg, [contenteditable]") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) });
     const todo = [];
@@ -2111,7 +2110,7 @@
       if (at < txt.length) frag.append(txt.slice(at));
       t.replaceWith(frag);
     }
-  };
+  });
   const markWide = () => {
     alignFields();
     noBreakCodes();
