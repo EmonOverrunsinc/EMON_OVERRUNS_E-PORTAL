@@ -4981,3 +4981,15 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 .lg-seg .lg-more-btn small::before { content: none; }
 .co-trackbar { display: flex; margin: 10px 0 6px; } .co-trackbar .btn { min-width: 160px; justify-content: center; font-weight: 800; }
 @media (max-width: 760px) { .co-trackbar .btn { flex: 1; } }
+/* 3.99.196: non-working days */
+.os-nwd { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-weight: 600; } .os-nwd .ic { width: 18px; height: 18px; flex: none; }
+.nwd-list { display: grid; gap: 8px; margin-bottom: 14px; }
+.nwd-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid #e3e9f4; border-radius: 12px; background: #fff; }
+.nwd-row > div { flex: 1; min-width: 140px; display: grid; gap: 2px; } .nwd-row b { color: #0f2a66; } .nwd-row small { color: #5b6b8c; font-size: 12px; }
+.nwd-act { display: inline-flex; gap: 6px; } .nwd-act .btn.small .ic { width: 14px; height: 14px; }
+.nwd-pill { margin-left: 6px; }
+.nwd-notice { display: flex; gap: 12px; align-items: flex-start; margin: 12px 0; padding: 14px 16px; border-radius: 14px; background: #fff7e6; border: 1px solid #f3cf7a; color: #5c3d00; }
+.nwd-notice[hidden] { display: none; }
+.nwd-notice .nwd-ic { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: #f5c542; color: #3d2a00; flex: none; } .nwd-notice .nwd-ic .ic { width: 20px; height: 20px; }
+.nwd-notice b { letter-spacing: .08em; color: #7a4f00; } .nwd-notice p { margin: 4px 0 0; } .nwd-notice a { color: #0f2a66; font-weight: 800; } .nwd-notice small { display: block; margin-top: 4px; color: #7a5a1a; font-weight: 600; }
+.os-chips > span span { background: none !important; padding: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; font: inherit; color: inherit; display: inline !important; min-height: 0 !important; }
