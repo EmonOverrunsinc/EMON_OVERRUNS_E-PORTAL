@@ -223,14 +223,16 @@
   // 3.99.229: every employee has a STAMP, made by the system: name · position · EOID, in blue ink. The papers carry the
   // stamp of who prepared or approved them; a signature picture only goes on the ID card and on the Director's
   // Verification Copy (Verify page). Loaded before a print. Needs 138_people_stamp.sql (before it: name and EOID only).
-  const SIGNERS = new Set(), STAMPS = new Map();
+  const SIGNERS = new Set(), STAMPS = new Map(), SIGPICS = new Map();
   async function loadSigners(ids) {
     const want = [...new Set((ids || []).filter((x) => x && !SIGNERS.has(x)))];
     if (!want.length || !S.session) return;
-    const put = (x) => { want.forEach((w) => SIGNERS.add(w)); if (x.employee_no) EOIDS.set(x.id, x.employee_no); STAMPS.set(x.id, { name: x.full_name || "", pos: x.role || x.position ? E.personTitle?.(x.role, x.position) || x.position || "" : "", eoid: x.employee_no || "" }); };
+    const put = (x) => { want.forEach((w) => SIGNERS.add(w)); if (x.employee_no) EOIDS.set(x.id, x.employee_no); STAMPS.set(x.id, { name: x.full_name || "", pos: x.position || (x.role ? E.personTitle?.(x.role) || "" : ""), eoid: x.employee_no || "" }); };
+    // 3.99.232: an employee who issues a paper also signs it: their approved signature picture stands on the line
+    const pics = sb.rpc("signatures_of", { p_ids: want }).then(async ({ data: sg }) => { await Promise.all((sg || []).map(async (x) => SIGPICS.set(x.id, await signaturePic(x.signature_path)))); }, () => {});
     const { data, error } = await sb.rpc("people_stamp", { p_ids: want }).then((r) => r, () => ({ error: true }));
-    if (!error) { want.forEach((w) => SIGNERS.add(w)); return (data || []).forEach(put); }
-    await sb.rpc("people_eoid", { p_ids: want }).then(({ data: ppl }) => (ppl || []).forEach(put), () => {});
+    if (!error) { want.forEach((w) => SIGNERS.add(w)); (data || []).forEach(put); return pics; }
+    await Promise.all([pics, sb.rpc("people_eoid", { p_ids: want }).then(({ data: ppl }) => (ppl || []).forEach(put), () => {})]);
   }
   const EOIDS = new Map(), eoidOf = (id) => (id && EOIDS.get(id)) || "";
   const stampOf = (id, name = "", pos = "") => { const s = (id && STAMPS.get(id)) || {}; return { name: s.name || name, pos: s.pos || pos, eoid: s.eoid || eoidOf(id) }; };
@@ -239,13 +241,16 @@
   const sigMark = (sign) => (sign ? stampHtml(sign.stamp || (sign.name ? { name: sign.name } : null)) : "");
   // 3.99.219: the id of a Director by name (from the Directors' signatures list), e.g. to print EMON HASAN's EOID
   const directorId = (name) => ((SIG.list || []).find((d) => String(d.full_name || "").trim().toUpperCase() === String(name || "").trim().toUpperCase()) || {}).id || "";
-  const signerBy = (id) => { const s = id && STAMPS.get(id); return s && s.name ? { name: "", at: null, pic: "", stamp: stampOf(id) } : null; };
+  // the stamp rules: a paper the Director issues or approves: the Director's stamp only; a paper an employee issues: the
+  // employee's stamp and the employee's signature
+  const signerBy = (id) => { const s = id && STAMPS.get(id); return s && s.name ? { name: "", at: null, pic: SIGPICS.get(id) || "", stamp: stampOf(id) } : null; };
+  const sigPicOf = (id) => (id && SIGPICS.get(id)) || "";
   // The approval of a document by the Director, for its print: the name, the date and the signature picture (empty
   // until the Director's signature is uploaded). id: the Director's id; without it the name is used.
   function approvedBy(id, name, at) {
     if (!id && !name) return null;
     const x = (SIG.list || []).find((d) => (id ? d.id === id : d.full_name === name)), nm = name || x?.full_name || "";
-    return { name: nm, at, pic: x ? SIG.pics.get(x.signature_path) || "" : "", stamp: stampOf(id || x?.id, nm, "Operational Director") };
+    return { name: nm, at, pic: x ? SIG.pics.get(x.signature_path) || "" : "", dir: true, stamp: stampOf(id || x?.id, nm, "Operational Director") };
   }
   // A photo of a signature made ready to print: the paper made clear, the edges cut off, at most 900 × 320.
   async function cleanSignature(file) {
@@ -552,7 +557,7 @@
   // on the right line, with the name and the date under it.
   const sigCol = (label, sign) => {
     const mark = sigMark(sign);
-    if (mark) return `<div class="sig-on"><div class="line"></div>${mark}<small class="sig-role">${String(label).replace(/:[\s\S]*$/, "")}${sign.at ? ` &nbsp;·&nbsp; <span class="nw">${esc(mdy(sign.at))}</span>` : ""}</small></div>`;
+    if (mark) return `<div class="sig-on">${sign.pic && !sign.dir ? `<img class="esig" src="${esc(sign.pic)}" alt="Signature">` : ""}<div class="line"></div>${mark}<small class="sig-role">${String(label).replace(/:[\s\S]*$/, "")}${sign.at ? ` &nbsp;·&nbsp; <span class="nw">${esc(mdy(sign.at))}</span>` : ""}</small></div>`;
     return sign ? `<div class="sig-on"><div class="line"></div>${label}${sign.name ? `: <b class="nw">${esc(sign.name)}</b>` : ""}${sign.at ? ` &nbsp;·&nbsp; <span class="nw">${esc(mdy(sign.at))}</span>` : ""}</div>`
       : `<div><div class="line"></div>${label}</div>`;
   };
@@ -2737,7 +2742,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
   Object.assign(E, {
     extOf, viewFile, latestSigned, uploadRecords, signedUrl, attachmentsOf, filesHtml, bindFiles, fileField, filesOf, isImage,
     docCard, bindDocCards, customerPicker, getCustomer, fullName, printHead, box, cell, sigs, sigCol, cxTop, cxSec, cxKv, uuid, cleanQ, idBox, METHOD,
-    loadSignatures, approvedBy, signaturePic, loadSigners, signerBy, eoidOf, stampOf, stampHtml, sigMark, directorId, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
+    loadSignatures, approvedBy, signaturePic, loadSigners, signerBy, eoidOf, stampOf, stampHtml, sigMark, sigPicOf, directorId, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
   });
   E._docs = { ...(E._docs || {}), invoicePage, ackPage, soaPages, memoPage, detailsPage, applicationPage, txnsOf }; // 3.79: the document pages (for the print checks)
 })();

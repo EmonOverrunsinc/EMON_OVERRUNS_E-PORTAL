@@ -641,7 +641,7 @@
   // ---------- 3.99.142: assigned employees (a shop, or a company in Billing): assign, transfer, remove ----------
   // The employee gets a notification each time (the server sends it: 114_staff_assign_notify.sql).
   const STAFF = { outlet: { tbl: "outlet_staff", col: "outlet_id" }, company: { tbl: "pay_company_staff", col: "company_id" } };
-  const STAFF_SEL = "employee_id, employees(id, first_name, last_name, employee_no, position)";
+  const STAFF_SEL = "employee_id, employees(id, first_name, last_name, employee_no, position, profile_id)";
   const need114 = (er, word) => (new RegExp(word).test((er && er.message) || "") ? "Run the database update 114 first" : null);
   function staffHtml(st) {
     return `${st.length ? st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${isAdmin() ? `<span class="ol-emp-btns"><button type="button" class="btn small" data-stmove="${esc(x.employee_id)}">${ic("next")} Transfer</button><button type="button" class="btn small" data-stdel="${esc(x.employee_id)}" title="Remove">${ic("x")}</button></span>` : ""}</div>`).join("") : empty("No employee assigned.")}
@@ -790,20 +790,25 @@
   const loadBoss = async (more = []) => { await E.loadSignatures?.().catch(() => {}); const id = E.directorId?.(BOSS); await E.loadSigners?.([id, ...more].filter(Boolean)).catch(() => {}); return id; };
   const dsrNo = (o, d) => `DSR-${String(o.code || "").replace(/[^A-Z0-9]/gi, "").toUpperCase()}-${String(d || "").replace(/-/g, "")}`;
   // 3.99.220: a PDF417 barcode of the report no above ISSUED BY
-  const nameBoxes = (prep, no, bossId, trx = "", prepId = "", stamp = "") => {
+  // 3.99.232: the sign-off. Left: the report no (PDF417) and STORE RESPONSIBLE BY: the employee assigned to the store (their
+  // stamp and signature); with no one assigned, who recorded it. Right: the cash left stamp, room to sign, the Director's
+  // stamp, and the TRX ID (word and PDF417) to check the approval on the Verify page.
+  const nameBoxes = (prep, no, bossId, trx = "", prepId = "", stamp = "", resp = null) => {
     const code = (t) => { try { return t && E.pdf417DataUrl ? E.pdf417DataUrl(String(t)) : ""; } catch (_) { return ""; } };
     const bar = code(no), tbar = code(trx && String(trx).toUpperCase());
-    const st = prepId ? E.stampOf?.(prepId, prep) : null;
+    const st = resp ? { name: `${resp.first_name || ""} ${resp.last_name || ""}`.trim(), pos: resp.position || "", eoid: resp.employee_no || "" } : prepId ? E.stampOf?.(prepId, prep) : null;
+    const pic = E.sigPicOf?.(resp ? resp.profile_id : prepId) || "";
     const issued = E.stampHtml?.(st && st.name ? st : { name: prep }) || `<b>${esc(String(prep || "").toUpperCase())}</b>`;
     const boss = E.stampHtml?.(E.stampOf?.(bossId, BOSS, "Operational Director")) || `<b>${esc(BOSS)}</b>`;
-    return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>ISSUED BY</small><div class="so-sign"></div>${issued}</div></div>
-      <div class="so-ok">${stamp}${tbar ? `<div class="so-tbar"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}<div class="so-sign"></div>${boss}</div></div>`; };
+    return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>${resp || prepId ? "STORE RESPONSIBLE BY" : "ISSUED BY"}</small><div class="so-sign">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div>${issued}${tbar ? `<div class="so-appr-space"></div>` : ""}</div></div>
+      <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>APPROVAL · TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
   async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
     // 3.99.229: the sales records before and after this day (the cash left came from / went to)
     const near = (op, asc) => sb.from("outlet_sales").select("id, sale_date, created_at").eq("outlet_id", o.id)[op]("sale_date", date).order("sale_date", { ascending: asc }).limit(1)
       .then(({ data }) => (data || []).filter((x) => (asc ? x.sale_date > date : x.sale_date < date)).sort((a, b) => (asc ? 1 : -1) * String(a.sale_date).localeCompare(String(b.sale_date)))[0] || null, () => null);
-    const [bossId, dh, before, after] = await Promise.all([loadBoss([r.created_by]), sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", date).maybeSingle().then((r) => r.data, () => null), near("lt", false), near("gt", true)]);
+    const resp = ((staff || []).map((x) => x.employees).filter(Boolean))[0] || null; // the employee assigned to the store
+    const [bossId, dh, before, after] = await Promise.all([loadBoss([r.created_by, resp?.profile_id]), sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", date).maybeSingle().then((r) => r.data, () => null), near("lt", false), near("gt", true)]);
     const xp = day.filter((x) => x.kind === "daily"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), cash = sum(co, "amount"), left = num(prev) + tot - ex - cash;
@@ -842,7 +847,7 @@
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(a.what)}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
           <div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>`;
       })()}
-      ${nameBoxes(r.created_by_name || me() || "", no, bossId, "", r.created_by || (r.id ? "" : S.profile?.id), cashStamp)}</div>`; // 3.99.231: the cash left stamp above the Director's line
+      ${nameBoxes(r.created_by_name || me() || "", no, bossId, r.id || "", r.created_by || (r.id ? "" : S.profile?.id), cashStamp, resp)}</div>`; // 3.99.231: the cash left stamp above the Director's line
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
 

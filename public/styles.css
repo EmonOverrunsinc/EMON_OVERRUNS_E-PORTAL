@@ -5135,3 +5135,13 @@ body.os-info-open > .band-back { display: none !important; }
 .so-ok .dsr-cash { justify-content: center; margin: 0 0 5mm; }
 .sign-off .eo-stamp:not(.vst) { min-height: 11mm; align-content: start; }
 .so-ok .eo-stamp.vst { padding: 1.8mm 3.2mm 1.6mm; } .so-ok .eo-stamp.vst i { font-size: 5.8pt; letter-spacing: .03em; } .so-ok .eo-stamp.vst small { font-size: 6.2pt; }
+/* 3.99.232: the sales report sign-off: more room to sign; the signature of the store's employee on their line;
+   the Director's approval with its TRX ID and PDF417 under the stamp */
+.so-sign { height: 22mm; display: flex; align-items: flex-end; justify-content: center; }
+.so-sign img { max-height: 18mm; max-width: 80%; object-fit: contain; margin-bottom: .5mm; }
+.so-ok .dsr-cash { margin: 0 0 2mm; }
+.sign-off .so-appr { margin: 2.5mm auto 0; display: grid; justify-items: center; gap: .6mm; }
+.sign-off .so-appr img { height: 6.5mm; width: auto; max-width: 52mm; image-rendering: pixelated; }
+.sign-off .so-appr span { font: 700 5.6pt/1.3 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .02em; color: #42506b; }
+.sign-off .so-appr span b { display: inline; font: inherit; color: #0b1f4d; white-space: nowrap; }
+.sign-off .so-appr { height: 12mm; box-sizing: border-box; align-content: start; } .so-appr-space { height: 14.5mm; }
