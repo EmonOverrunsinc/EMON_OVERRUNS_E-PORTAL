@@ -4874,3 +4874,38 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 #main .cust-hero .ch-qr { padding-right: 14px; }
 #main .cust-hero .ch-qr .key { word-break: break-all; overflow-wrap: anywhere; letter-spacing: .02em; }
 @media (max-width: 760px) { #main .cust-hero .ch-qr { padding: 10px 16px 10px 10px; } #main .cust-hero .ch-qr .key { font-size: 10.5px; line-height: 1.45; padding-right: 4px; } }
+/* 3.99.188: BOX LIST as a simple log */
+.lg-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 10px; }
+.lg-find { flex: 1 1 260px; display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 42px; border-radius: 12px; border: 1px solid #d6e0f2; background: #fff; }
+.lg-find .ic { width: 18px; height: 18px; color: #5b6b8c; flex: none; } .lg-find input { border: 0; outline: 0; flex: 1; min-width: 0; height: 100%; background: transparent; font-size: 14.5px; }
+.lg-head select { height: 42px; border-radius: 12px; border: 1px solid #d6e0f2; padding: 0 10px; background: #fff; font-weight: 700; color: #0f2a66; max-width: 100%; }
+.lg-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.lg-chip { border: 1px solid #d6e0f2; background: #fff; color: #33415c; border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: 12px; letter-spacing: .05em; }
+.lg-chip b { margin-left: 4px; color: #0f2a66; }
+.lg-chip.on { background: #0f2a66; border-color: #0f2a66; color: #fff; } .lg-chip.on b { color: #f5c542; }
+.lg-sum { margin-left: auto; color: #5b6b8c; font-size: 12.5px; font-weight: 700; }
+.lg-log { border: 1px solid #e3e9f4; border-radius: 14px; background: #fff; overflow: hidden; }
+.lg-batch { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 9px 14px; background: #f1f5fc; border-top: 1px solid #e3e9f4; color: #0f2a66; }
+.lg-batch:first-child { border-top: 0; } .lg-batch b { letter-spacing: .06em; } .lg-batch span { color: #5b6b8c; font-size: 12.5px; } .lg-batch em { font-style: normal; margin-left: auto; font-size: 11.5px; font-weight: 800; letter-spacing: .05em; color: #33415c; }
+.lg-row { display: grid; grid-template-columns: 10px minmax(120px, 160px) minmax(0, 1fr) 70px 90px minmax(110px, 160px); gap: 4px 12px; align-items: center; padding: 8px 14px; border-top: 1px solid #f0f3f9; font-size: 13.5px; }
+.lg-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+.lg-sn { color: #0f2a66; font-size: 13px; } .lg-prod { min-width: 0; display: grid; } .lg-prod small, .lg-ref small { color: #6b7a96; font-size: 11.5px; }
+.lg-pcs { text-align: right; color: #33415c; font-weight: 700; white-space: nowrap; }
+.lg-st { font-size: 11px; font-weight: 800; letter-spacing: .06em; white-space: nowrap; }
+.lg-ref { display: grid; font-size: 12.5px; min-width: 0; overflow-wrap: anywhere; }
+.lg-row.k-stock .lg-dot { background: #16a34a; } .lg-row.k-stock .lg-st { color: #15803d; }
+.lg-row.k-shipped .lg-dot { background: #2563eb; } .lg-row.k-shipped .lg-st { color: #1d4ed8; }
+.lg-row.k-order .lg-dot { background: #d97706; } .lg-row.k-order .lg-st { color: #b45309; }
+.lg-row.k-sold .lg-dot { background: #c8920f; } .lg-row.k-sold .lg-st { color: #8a6100; } .lg-row.k-sold .lg-sn { color: #5b6b8c; }
+.lg-more { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 10px 14px; border-top: 1px solid #e3e9f4; color: #5b6b8c; font-size: 12.5px; }
+@media (max-width: 760px) {
+  .lg-head select { flex: 1 1 140px; } .lg-sum { margin-left: 0; width: 100%; }
+  .lg-row { grid-template-columns: 10px minmax(0, 1fr) auto; grid-template-areas: "dot sn st" "dot prod pcs" "dot ref ref"; padding: 9px 12px; gap: 2px 10px; }
+  .lg-row .lg-dot { grid-area: dot; align-self: start; margin-top: 5px; } .lg-row .lg-sn { grid-area: sn; } .lg-row .lg-st { grid-area: st; text-align: right; }
+  .lg-row .lg-prod { grid-area: prod; } .lg-row .lg-pcs { grid-area: pcs; } .lg-row .lg-ref { grid-area: ref; } .lg-row .lg-ref:empty { display: none; }
+  .lg-batch em { margin-left: 0; width: 100%; }
+}
+.lg-find input, .lg-find input:focus { border: 0 !important; box-shadow: none !important; padding: 0 !important; background: transparent !important; height: 40px; }
+.lg-find:focus-within { border-color: #1d4fb0; box-shadow: 0 0 0 3px rgba(29, 79, 176, .15); }
+.lg-head select { width: auto !important; flex: 0 1 220px; }
+@media (max-width: 760px) { .lg-head select { flex: 1 1 140px; } }
