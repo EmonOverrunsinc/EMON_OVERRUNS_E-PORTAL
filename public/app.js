@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.227"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.228"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.227"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.228"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2658,6 +2658,7 @@
   };
   function openPreview(title, pages, opts = {}) {
     const trx = opts.noTrx ? "" : opts.trx || trxNow(); // 3.99.220: the TRX ID on every page of a transaction's paper
+    pages = pages.map((p) => String(p).replace(/>(\s|&nbsp;)*[—–-](\s|&nbsp;)*</g, "><")); // 3.99.228: nothing written: nothing printed
     // the barcodes are drawn first: a print made while the barcode maker was still loading opens when it is there
     if (!window.bwipjs) { need("bwip").then(() => openPreview(title, pages, opts), (e) => toast(e.message, true)); return; }
     if (opts.customerId && !docCust.has(opts.customerId)) { loadDocCust(opts.customerId).then(() => openPreview(title, pages, opts)); return; }

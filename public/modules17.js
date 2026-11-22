@@ -789,10 +789,11 @@
   const BOSS = "EMON HASAN";
   const loadBoss = async () => { await E.loadSignatures?.().catch(() => {}); const id = E.directorId?.(BOSS); if (id) await E.loadSigners?.([id]).catch(() => {}); return id; };
   // 3.99.220: a PDF417 barcode of the report no above ISSUED BY
-  const nameBoxes = (prep, no, bossId) => { const eo = bossId ? E.eoidOf?.(bossId) : "";
+  const nameBoxes = (prep, no, bossId, trx = "") => { const eo = bossId ? E.eoidOf?.(bossId) : "";
+    let tbar = ""; try { tbar = trx && E.pdf417DataUrl ? E.pdf417DataUrl(String(trx).toUpperCase()) : ""; } catch (_) { tbar = ""; } // 3.99.228: the TRX ID as a small PDF417
     let bar = ""; try { bar = no && E.pdf417DataUrl ? E.pdf417DataUrl(String(no)) : ""; } catch (_) { bar = ""; }
     return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}<div class="so-issued"><small>ISSUED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b></div></div>
-      <div class="so-ok"><small>APPROVED BY</small><div class="so-line"></div><b>${BOSS}</b><em>OPERATIONAL DIRECTOR</em>${eo ? `<span>${esc(eo)}</span>` : ""}</div></div>`; };
+      <div class="so-ok">${tbar ? `<div class="so-tbar"><img src="${tbar}" alt=""><span>TRX ID</span></div>` : ""}<small>APPROVED BY</small><div class="so-line"></div><b>${BOSS}</b><em>OPERATIONAL DIRECTOR</em>${eo ? `<span>${esc(eo)}</span>` : ""}</div></div>`; };
   async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
     const [bossId, dh] = await Promise.all([loadBoss(), sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", date).maybeSingle().then((r) => r.data, () => null)]);
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
@@ -810,7 +811,6 @@
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
       ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
-      <div class="soa-result"><span>From Yesterday ₱ ${P(prev)} + Sales ₱ ${P(tot)} − Expenses ₱ ${P(ex)} − Cash Out ₱ ${P(cash)}</span><b class="${left < 0 ? "neg" : ""}">CASH LEFT ₱ ${P(left)}</b></div>
       ${(() => { // 3.99.226: every activity of the day, each with its TRX ID; the employees on duty
         const tm = (at) => (at ? new Date(at).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "—");
         const acts = [
@@ -825,7 +825,7 @@
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(a.what)}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
           <div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>`;
       })()}
-      ${nameBoxes(r.created_by_name || me() || "", no, bossId)}</div>`;
+      ${nameBoxes(r.created_by_name || me() || "", no, bossId, r.id || "")}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
 
@@ -877,9 +877,8 @@
     table("Stock Payments", [["Receipt No"], ["Date"], ["Amount (₱)", 1]],
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
-    // the result and the signatures
-    blocks.push({ h: 9, html: `<div class="soa-result"><span>Net Sales ₱ ${P(d.net)} − Expenses ₱ ${P(d.out)} − Cash Out ₱ ${P(d.cash || 0)} − Stock Payments ₱ ${P(d.paid)}</span><b class="${d.bal < 0 ? "neg" : ""}">BALANCE ₱ ${P(d.bal)}</b></div>
-      ${nameBoxes(me() || "", soaNo, bossId)}` });
+    // the signatures
+    blocks.push({ h: 7, html: nameBoxes(me() || "", soaNo, bossId) }); // 3.99.228: no sum line box; the tiles show it
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;
