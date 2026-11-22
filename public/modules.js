@@ -963,7 +963,7 @@
       <div class="prow3">${cell("Application No", c.application_no)}${cell("Account No", c.account_no)}${cell("Application Date", mdy(c.application_date))}</div>
       ${box("Customer Information", `<div class="pgrid">
         <div class="pphoto pqr"><img src="${qr}" alt="Customer QR code"><div class="mono key">${esc(c.public_id)}</div></div>
-        <div class="pgrid2">${cell("First Name", c.first_name)}${cell("Middle Name", c.middle_name || (c.no_middle_name ? "NONE" : ""))}
+        <div class="pgrid2">${cell("First Name", c.first_name)}${c.middle_name ? cell("Middle Name", c.middle_name) : ""}
           ${cell("Last Name", c.last_name)}${cell("Phone Number", c.phone)}
           ${cell("Email Address", c.email, "span2")}
           ${cell("Delivery Address", c.address, "span2")}</div></div>`)}
@@ -996,7 +996,7 @@
       <div class="prow3">${cell("Account No", c.account_no)}${cell("Application No", c.application_no)}${cell("Opening Date", mdy(c.application_date))}</div>
       ${box("Customer Information", `<div class="pgrid">
         <div class="pphoto pqr"><img src="${E.qrDataUrl(custQr(c))}" alt="Customer QR code"><div class="mono key">${esc(c.public_id)}</div></div>
-        <div class="pgrid2">${cell("First Name", c.first_name)}${cell("Middle Name", c.middle_name || (c.no_middle_name ? "NONE" : ""))}
+        <div class="pgrid2">${cell("First Name", c.first_name)}${c.middle_name ? cell("Middle Name", c.middle_name) : ""}
           ${cell("Last Name", c.last_name)}${cell("Phone Number", c.phone)}
           ${cell("Email Address", c.email, "span2")}
           ${c.business_name ? cell("Business Name", c.business_name, "span2") : ""}
@@ -1200,7 +1200,7 @@
       if (!r || !el || el.dataset.cid !== c.id) return;
       el.innerHTML = E.rankTag(r.rank, r.tier || null); el.title = `Rank ${r.rank} · total net sales up to Monday ${mdy(r.as_of)} · the rank changes every Monday`; el.hidden = false;
     });
-    if ($("#pfAchTab")) E.achievements("customer", c.id).then((a) => { const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) p.innerHTML = E.achHtml(a, "customer"); });
+    if ($("#pfAchTab")) E.achievements("customer", c.id).then((a) => { const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) { p.innerHTML = E.achHtml(a, "customer"); E.bindAch(p, c.id, () => V.customer(c.id)); } });
     E.custVerified?.($("#pfVerified"), c.id); // 3.69: the customer agreed to the legal terms
     // 3.12: the Director deletes a history line
     $$("[data-hdel]").forEach((b) => (b.onclick = async () => {
@@ -1248,7 +1248,7 @@
       ["Credits / Discounts", "₱ " + peso(b.total_credits)], ["Balance Due", "₱ " + peso(b.balance_due)]] : [];
     const a = appRows(c);
     const rows = [
-      ["First Name", c.first_name], ["Middle Name", c.middle_name || (c.no_middle_name ? "NO MIDDLE NAME" : "")], ["Last Name", c.last_name], a.phone, a.email, a.address, a.credit, a.opening, ...money,
+      ["First Name", c.first_name], ...(c.middle_name ? [["Middle Name", c.middle_name]] : []), ["Last Name", c.last_name], a.phone, a.email, a.address, a.credit, a.opening, ...money,
       a.business, a.start, a.fb, a.fbLink, a.fbExtra,
       [["pending", "verified", "rejected"].includes(c.status) ? "Application Date" : "Opening Date", mdy(c.application_date)], a.issued, ["Account Status", c.status.toUpperCase()], ["Status Note", c.status_note]
     ];
