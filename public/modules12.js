@@ -815,7 +815,7 @@
   const textOf = (r) => Object.entries(r).filter(([k]) => !/(^|_)id$/.test(k)).map(([, v]) => (v && typeof v === "object" ? Object.values(v).join(" ") : v ?? "")).join(" ").toLowerCase();
   // [the kind, the menu(s), what is asked, the record's name, its page, its details]
   const FINDS = [
-    ["Customer", ["customers"], (l) => sb.from("customers").select("id, first_name,middle_name, last_name, business_name, account_no, phone, public_id").or(`first_name.ilike.${l},last_name.ilike.${l},business_name.ilike.${l},account_no.ilike.${l},phone.ilike.${l},public_id.ilike.${l}`).limit(30),
+    ["Customer", ["customers"], (l) => sb.from("customers").select("id, first_name,middle_name, last_name, business_name, account_no, phone, public_id, public_ident").or(`first_name.ilike.${l},last_name.ilike.${l},business_name.ilike.${l},account_no.ilike.${l},phone.ilike.${l},public_id.ilike.${l},public_ident.ilike.${l}`).limit(30),
       (r) => fullName(r).toUpperCase(), (r) => `#customer/${r.id}`, (r) => [r.account_no, r.business_name].filter(Boolean).join(" · ")],
     ["Employee", ["employees"], (l) => sb.from("employees").select("id, first_name, last_name, employee_no, position, phone, email").or(`first_name.ilike.${l},last_name.ilike.${l},employee_no.ilike.${l},position.ilike.${l},phone.ilike.${l},email.ilike.${l}`).limit(20),
       (r) => fullName(r).toUpperCase(), (r) => `#employee/${r.id}`, (r) => [r.employee_no, r.position].filter(Boolean).join(" · ")],

@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.198"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.199"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.198"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.199"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -892,9 +892,9 @@
     $("#lgScanId").onclick = () => scanDialog((t) => {
       const v = String(t || "").trim();
       if (CARD_CODE.test(v)) return renderCardLogin(v);
-      if (/EO[0-9A-F]{40}/i.test(v) && window.EO.renderCustLogin) return window.EO.renderCustLogin(v);
+      if (/EO[0-9A-F]{40}/i.test(v)) return toast("The customer portal is closed. Please contact the office of EMON OVERRUNS.", true); // 3.99.199
       toast("This QR code is not an EMON OVERRUNS employee ID card or customer Public ID.", true);
-    }, { title: "Scan Your ID", hint: "Hold your employee ID card (the QR code on the back) or your customer Public ID in front of the camera.", photo: false });
+    }, { title: "Scan Your ID", hint: "Hold your employee ID card (the QR code on the back) in front of the camera.", photo: false });
     // 3.99.11: Sign In says why it did not work in a box that stays under the button (and that it worked)
     const lgSay = (cls, html) => {
       $("#lgProblem")?.remove();
@@ -2526,13 +2526,13 @@
   // 3.99.192: the security band of every printed page: fine waves and two lines of EMON OVERRUNS with the document's own number
   // (from the title: Invoice INV-202611-0001 → INV-202611-0001), small to big; nothing else
   const docId = (t) => (String(t || "").toUpperCase().match(/\b[A-Z]{1,6}(?:-[A-Z0-9]+){1,4}\b/) || [""])[0];
-  const secBand = (id) => {
+  const secBand = (id, ident = "") => {
     const waves = [0, 1, 2, 3, 4, 5].map((k) => {
       let d = "";
       for (let x = 0; x <= 700; x += 5) d += `${x ? " L" : "M"}${x} ${(60 + (k - 2.5) * 2.2 + Math.sin((x / 70) * 2 * Math.PI + k * 0.7) * (3.2 + k * 0.5)).toFixed(1)}`;
       return `<path d="${d}" stroke="${k % 2 ? "#a87a22" : "#12306b"}" stroke-opacity="${(0.1 + k * 0.012).toFixed(3)}" stroke-width=".55" fill="none"/>`;
     }).join("");
-    const words = ["EMON", "OVERRUNS", "·", ...(id ? [id, "·"] : [])];
+    const words = ["EMON", "OVERRUNS", "·", ...(id ? [id, "·"] : []), ...(ident ? [ident, "·"] : [])];
     const line = (y, fill, op) => {
       let x = 8, i = 0, out = "";
       while (x < 690) {
@@ -2545,14 +2545,29 @@
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="700" height="120" viewBox="0 0 700 120">${waves}${line(18, "#12306b", ".20")}${line(112, "#a87a22", ".24")}</svg>`;
     return `url('data:image/svg+xml,${encodeURIComponent(svg)}')`;
   };
+  // 3.99.199: A CUSTOMER'S PAPER (opts.customerId): the customer's Public Identification is in the security line; with HIDE
+  // IDENTITY the real name on the paper is replaced by the Public Identification (only on the printed / downloaded paper)
+  const docCust = new Map();
+  const loadDocCust = (id) => Promise.resolve().then(() => sb.from("customers").select("id, first_name, middle_name, last_name, no_middle_name, public_ident, hide_identity").eq("id", id).maybeSingle())
+    .then((r) => (r.error ? null : r.data), () => null).then((v) => { docCust.set(id, v); setTimeout(() => docCust.delete(id), 60000); return v; });
+  const hideNames = (pages, c) => {
+    if (!c?.hide_identity || !c.public_ident) return pages;
+    const forms = [...new Set([fullName(c), shortName(c, 60), `${c.first_name || ""} ${c.last_name || ""}`.trim()].filter((x) => x && x.length > 3).map((x) => esc(x)))]
+      .sort((a, b) => b.length - a.length).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"));
+    if (!forms.length) return pages;
+    const re = new RegExp(forms.join("|"), "gi");
+    return pages.map((p) => String(p).replace(re, esc(c.public_ident)));
+  };
   function openPreview(title, pages, opts = {}) {
     // the barcodes are drawn first: a print made while the barcode maker was still loading opens when it is there
     if (!window.bwipjs) { need("bwip").then(() => openPreview(title, pages, opts), (e) => toast(e.message, true)); return; }
-    pages = pages.map(fillCodes);
+    if (opts.customerId && !docCust.has(opts.customerId)) { loadDocCust(opts.customerId).then(() => openPreview(title, pages, opts)); return; }
+    const dc = opts.customerId ? docCust.get(opts.customerId) : null;
+    pages = hideNames(pages.map(fillCodes), dc);
     const { landscape = false, size = "", undated = false, bare = false, onePage = false } = opts; // bare: only the page itself (no date, no website footer, no page number)
     closePreview();
     const cls = size ? " " + size : landscape ? " landscape" : "";
-    const band = secBand(opts.secId || docId(title));
+    const band = secBand(opts.secId || docId(title), dc?.public_ident || "");
     // Every printed page shows the date it was printed (report listings and statements already carry their own);
     // a blank form (undated) does not.
     const printed = dateTime(new Date().toISOString());

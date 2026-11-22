@@ -750,10 +750,10 @@
     $$("[data-trk-go]").forEach((b) => (b.onclick = () => { const t = $(`#coPfTabs [data-t="${b.dataset.trkGo}"]`); if (t) { t.click(); t.scrollIntoView({ block: "center", behavior: "smooth" }); } }));
     $$("[data-pod]").forEach((b) => (b.onclick = () => showPod(o, urls)));
     $$("[data-og]").forEach((b) => (b.onclick = () => $(b.dataset.og)?.click())); // 3.99.30: the guide presses the old button
-    $("#coPdf").onclick = async () => { await E.loadSignatures().catch(() => {}); E.openPreview(`Customer Order ${o.order_no}`, orderPages(o, inv)); };
-    $("#coSheet").onclick = () => E.openPreview(`Delivery Sheet ${o.order_no}`, sheetPages(o, boxes));
+    $("#coPdf").onclick = async () => { await E.loadSignatures().catch(() => {}); E.openPreview(`Customer Order ${o.order_no}`, orderPages(o, inv), { customerId: o.customer_id }); };
+    $("#coSheet").onclick = () => E.openPreview(`Delivery Sheet ${o.order_no}`, sheetPages(o, boxes), { customerId: o.customer_id });
     // 3.38.1: everything in one PDF: the order (with its invoice and delivery), the Delivery Sheet with the boxes, the check photos
-    $("#coAll").onclick = async () => { await E.loadSignatures().catch(() => {}); E.openPreview(`Customer Order ${o.order_no} — All Details`, allPages(o, inv, boxes, urls)); };
+    $("#coAll").onclick = async () => { await E.loadSignatures().catch(() => {}); E.openPreview(`Customer Order ${o.order_no} — All Details`, allPages(o, inv, boxes, urls), { customerId: o.customer_id }); };
     bindBoxes(o, boxes, reload);
     if ((o.status === "approved" && w && !deliverNow) || canFixDelivery(o)) bindDelivery(o, boxes, urls, reload);
     E.insOrderStrip?.(o, $("#coIns")); // 3.72: insurance COVERED / EXPIRES, or Add Insurance before delivery
