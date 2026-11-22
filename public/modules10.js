@@ -510,6 +510,7 @@
       o.delivery_photos?.length ? E.signedMap(o.delivery_photos) : new Map(),
       sb.rpc("co_delivered", { p_order: o.id }).then((r) => (r.error ? null : r.data), () => null), // 3.56: what is charged as delivered
       sb.from("order_tracking").select("*").eq("order_id", o.id).order("at").then((r) => (r.error ? null : r.data || []), () => null)]); // 3.88
+    o._asg = await sb.from("order_assignees").select("*").eq("order_id", o.id).order("assigned_at").then((r) => (r.error ? null : r.data || []), () => null); // 3.99.233
     if (!here()) return;
     o._dl = dl; o._trk = trk || []; o._trkOn = trk !== null;
     draw(o, bx.data || [], inv, urls);
@@ -552,10 +553,33 @@
     const open = o.status === "approved" && !o.delivery_request_at, sorted = trk.some((t) => t.step === "sorting");
     const next = o.status === "pending" ? "Waiting for EMON HASAN's approval" : waiting ? "EMON HASAN approves the delivery"
       : !open ? "" : !ser.length ? "Add the box serials" : !sorted ? "Mark as sorting" : "Complete the delivery (car plate no and proof of delivery photo are optional)";
-    const btns = !(open && w) ? "" : `${!ser.length ? `<button type="button" class="btn primary small" data-trk-go="1">${ic("box")} Add Box Serials</button>` : ""}
+    const asg = o._asg || [], canAsg = o._asg !== null && canW() && (o.status === "pending" || open);
+    const asgBtn = canAsg ? `<button type="button" class="btn small" data-asg>${ic("user")} ${asg.length ? "Delivery By" : "Assign Delivery"}</button>` : "";
+    const asgLine = asg.length ? `<div class="trk-asg">${ic("user")} <b>DELIVERY BY</b> ${asg.map((a) => `<span>${esc(a.full_name)}${a.employee_no ? ` · <i class="mono">${esc(a.employee_no)}</i>` : ""}</span>`).join("")}</div>` : "";
+    const btns = asgBtn + (!(open && w) ? "" : `${!ser.length ? `<button type="button" class="btn primary small" data-trk-go="1">${ic("box")} Add Box Serials</button>` : ""}
         ${!sorted && o._trkOn ? `<button type="button" class="btn ${ser.length ? "primary" : ""} small" data-trk="sorting">${ic("next")} Mark as Sorting</button>` : ""}
-        ${ser.length && (sorted || !o._trkOn) ? goBtn || `<button type="button" class="btn ok small" data-trk-go="2">${ic("check")} Complete Delivery</button>` : ""}`;
-    return `<section class="trk"><div class="trk-head"><b>${ic("box")} TRACKING</b><span class="grow"></span>${btns}</div>${timelineHtml(ev, next)}</section>`;
+        ${ser.length && (sorted || !o._trkOn) ? goBtn || `<button type="button" class="btn ok small" data-trk-go="2">${ic("check")} Complete Delivery</button>` : ""}`);
+    return `<section class="trk"><div class="trk-head"><b>${ic("box")} TRACKING</b><span class="grow"></span>${btns}</div>${asgLine}${timelineHtml(ev, next)}</section>`;
+  }
+  // 3.99.233: who delivers the order: tick employees (the Manila office first). Only they can mark it delivered.
+  async function assignDialog(o, done) {
+    const { data: ppl, error } = await sb.rpc("delivery_people");
+    if (error) return fail(error, /delivery_people|PGRST202|schema cache/.test(error.message || "") ? "Run the database update 140_order_delivery_assign.sql first" : "Could not load the employees");
+    const on = new Set((o._asg || []).map((a) => a.employee_id));
+    const row = (p) => `<label class="asg-row"><input type="checkbox" value="${esc(p.id)}" ${on.has(p.id) ? "checked" : ""}><span><b>${esc(String(p.full_name || "").toUpperCase())}</b>
+      <small>${[p.employee_no, p.position, p.work_location].filter(Boolean).map(esc).join(" · ")}${p.has_login ? "" : " · NO PORTAL LOGIN"}</small></span></label>`;
+    const m = E.modal(`Delivery By · ${o.order_no}`, `<input type="search" class="asg-q" placeholder="Search name or EOID" aria-label="Search employees">
+      <div class="asg-list">${(ppl || []).map(row).join("") || `<div class="empty">No active employees.</div>`}</div>`,
+      `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>${ic("check")} Save</button>`);
+    $(".asg-q", m.el).oninput = (e) => { const q = e.target.value.trim().toLowerCase(); $$(".asg-row", m.el).forEach((r) => (r.hidden = q && !r.textContent.toLowerCase().includes(q))); };
+    $("[data-x]", m.el).onclick = m.close;
+    $("[data-ok]", m.el).onclick = async (e) => {
+      E.setBusy(e.currentTarget, true);
+      const ids = $$(".asg-row input:checked", m.el).map((x) => x.value);
+      const { error: er } = await sb.rpc("order_assign", { p_order: o.id, p_employees: ids });
+      if (er) { E.setBusy(e.currentTarget, false); return fail(er, "Could not save"); }
+      m.close(); toast(ids.length ? `${o.order_no}: ${ids.length} delivery employee(s). They were told.` : `${o.order_no}: no delivery employee.`); done();
+    };
   }
   // a tracking step pressed
   async function trackStep(o, k) {
@@ -678,7 +702,11 @@
     void banner; // 3.99.30: the guide says it
     // 3.99.31: no Delivery tab while it would only repeat the guide's Complete Delivery button (or has nothing to show)
     const noDelTab = o.status === "pending" || o.status === "cancelled" || (deliverNow && !o.delivery_request_at && !(o.delivery_photos || []).length);
-    $("#main").innerHTML = `${guide}${head}<div id="coIns"></div><div class="og-old">
+    // 3.99.233: who delivers it, and the button to choose them, under the guide
+    const asgs = o._asg || [], asgOk = o._asg !== null && w && (o.status === "pending" || (o.status === "approved" && !o.delivery_request_at));
+    const asgBar = asgs.length || asgOk ? `<div class="trk-asg co-asg">${ic("user")} <b>DELIVERY BY</b> ${asgs.length ? asgs.map((a) => `<span>${esc(a.full_name)}${a.employee_no ? ` · <i class="mono">${esc(a.employee_no)}</i>` : ""}</span>`).join("") : `<em>Not assigned</em>`}
+      ${asgOk ? `<button type="button" class="btn small" data-asg>${ic("edit")} ${asgs.length ? "Change" : "Assign"}</button>` : ""}</div>` : "";
+    $("#main").innerHTML = `${guide}${asgBar}${head}<div id="coIns"></div><div class="og-old">
       ${isAdmin() && o.status === "approved" && o.delivery_request_at ? `<fieldset class="opt review"><legend>Delivery Approval</legend><p class="muted" style="margin:0 0 8px">${vsText(o.total_boxes, nBoxes(boxes), false)} · ${(o.delivery_photos || []).length} photo(s): see the Boxes and Delivery tabs.</p><div class="btnrow"><button type="button" class="btn ok" id="coDvOk">${ic("check")} Approve Delivery · COMPLETE</button><button type="button" class="btn danger" id="coDvNo">Reject</button></div></fieldset>` : ""}
       ${isAdmin() && o.status === "pending" ? `<fieldset class="opt review"><legend>EMON HASAN's Decision</legend><div class="btnrow"><button type="button" class="btn ok" id="coApprove">${ic("check")} Approve · CONFIRM</button><button type="button" class="btn danger" id="coCancelO">Cancel Order</button></div></fieldset>` : ""}
       </div><div class="due-card co-amt"><div><div class="k">Order Amount</div><div class="v">₱ ${peso(o.total_amount)}</div></div><small>${esc(E.words(o.total_amount))}${o.note ? ` · Note: ${esc(o.note)}` : ""}</small></div>
@@ -745,6 +773,7 @@
       toast("Deleted."); location.hash = "custorders";
     };
     $$("[data-trk]").forEach((b) => (b.onclick = async () => { b.disabled = true; if (await trackStep(o, b.dataset.trk)) reload(); else b.disabled = false; })); // 3.88
+    $$("[data-asg]").forEach((b) => (b.onclick = () => assignDialog(o, reload))); // 3.99.233
     // 3.98: the next step opens its tab (the boxes, the delivery); View Proof of Delivery shows the photos and the plate no
     $$("[data-trk-go]").forEach((b) => (b.onclick = () => { const t = $(`#coPfTabs [data-t="${b.dataset.trkGo}"]`); if (t) { t.click(); t.scrollIntoView({ block: "center", behavior: "smooth" }); } }));
     $$("[data-pod]").forEach((b) => (b.onclick = () => showPod(o, urls)));
@@ -1175,6 +1204,7 @@
   };
   // 3.99.28: the QR code (it opens the paper's Complete Delivery page) is at the bottom left, not in the header
   const qrFoot = (o) => (o.delivery_code ? `<div class="doc-qr"><img src="${E.qrDataUrl(deliveryUrl(o.order_no, o.delivery_code))}" alt="QR code: verification"></div>` : "<div></div>");
+  const asgCell = (o) => ((o._asg || []).length ? E.cell("Delivery By", o._asg.map((a) => `${a.full_name}${a.employee_no ? ` (${a.employee_no})` : ""}`).join(", "), "span2") : ""); // 3.99.233
   function orderPages(o, inv) {
     const c = o.customers || {}, cols = o.extra_columns || [];
     const sign = o.approved_by ? E.approvedBy(o.approved_by, o.approved_by_name, o.approved_at) : null;
@@ -1189,7 +1219,7 @@
       head: E.printHead("CUSTOMER ORDER", codesHtml(o, `<div class="co-bigbox">${esc(boxesText(o.total_boxes))}</div>`)), contHead: E.printHead("CUSTOMER ORDER", ""),
       // 3.39: no address on the order (the customer's account says where it goes)
       top: stLine(o) + E.box("Order", `<div class="pgrid2">${E.cell("Customer", fullName(c))}${E.cell("Account No", c.account_no || "")}${E.cell("Order No", o.order_no)}${E.cell("Batch No", o.reference || "")}
-        ${E.cell("Date", mdy(o.order_date))}${E.cell("Due Date", mdy(dueOf(o)))}${E.cell("Terms of Payment", o.payment_terms || "")}${E.cell("Note", o.note || "")}</div>`),
+        ${E.cell("Date", mdy(o.order_date))}${E.cell("Due Date", mdy(dueOf(o)))}${E.cell("Terms of Payment", o.payment_terms || "")}${E.cell("Note", o.note || "")}${asgCell(o)}</div>`),
       boxTitle: "Order Lines (₱)", thead: `<tr><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price</th><th class="num">Amount</th></tr>`,
       rows: o.lines || [], rowHtml: (l) => `<tr><td class="num">${l.boxes ? qtyText(l.boxes) : ""}</td><td class="num">${qtyText(l.qty)}</td><td>${esc(l.code || "")}</td><td>${esc(l.lot || "")}</td><td>${esc(l.product)}</td>
         ${cols.map((x) => `<td>${esc(l.extra?.[x] || "")}</td>`).join("")}<td class="num">${peso(l.price)}</td><td class="num">${peso(l.amount)}</td></tr>`,
@@ -1204,7 +1234,7 @@
     const line = (k, v) => `<div class="cs-f"><small>${esc(k)}</small><b>${v ? esc(v) : "&nbsp;"}</b></div>`;
     return E.pagedDoc({
       head: E.printHead("DELIVERY SHEET", codesHtml(o)), contHead: E.printHead("DELIVERY SHEET", ""),
-      top: E.box("Customer", `<div class="pgrid2">${E.cell("Customer", fullName(c))}${E.cell("Account No", c.account_no || "")}${E.cell("Order No", o.order_no)}${E.cell("Batch No", o.reference || "")}</div>`),
+      top: E.box("Customer", `<div class="pgrid2">${E.cell("Customer", fullName(c))}${E.cell("Account No", c.account_no || "")}${E.cell("Order No", o.order_no)}${E.cell("Batch No", o.reference || "")}${asgCell(o)}</div>`),
       boxTitle: "Boxes", thead: `<tr><th>#</th><th>Serial No.</th><th>Code</th><th>Batch No.</th><th>Items</th><th>Brand</th><th>CTN</th><th class="num">Pcs</th><th>Remarks</th></tr>`,
       rows, rowHtml: (b, i) => b ? `<tr><td>${i + 1}</td><td class="mono">${b.serial_no ? esc(b.serial_no) : "-"}</td><td>${esc(b.code || "")}</td><td>${esc(b.batch_no || "")}</td><td>${esc(b.items || "")}</td><td>${esc(b.brand || "")}</td><td>${esc(b.ctn || "")}</td><td class="num">${qtyText(b.pcs)}</td><td>${esc(b.remarks || "")}</td></tr>`
         : `<tr class="cs-empty"><td>${i + 1}</td>${"<td></td>".repeat(8)}</tr>`,

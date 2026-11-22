@@ -801,7 +801,7 @@
     const issued = E.stampHtml?.(st && st.name ? st : { name: prep }) || `<b>${esc(String(prep || "").toUpperCase())}</b>`;
     const boss = E.stampHtml?.(E.stampOf?.(bossId, BOSS, "Operational Director")) || `<b>${esc(BOSS)}</b>`;
     return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>${resp || prepId ? "STORE RESPONSIBLE BY" : "ISSUED BY"}</small><div class="so-sign">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div>${issued}${tbar ? `<div class="so-appr-space"></div>` : ""}</div></div>
-      <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>APPROVAL · TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
+      <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
   async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
     // 3.99.229: the sales records before and after this day (the cash left came from / went to)

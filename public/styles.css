@@ -5145,3 +5145,18 @@ body.os-info-open > .band-back { display: none !important; }
 .sign-off .so-appr span { font: 700 5.6pt/1.3 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .02em; color: #42506b; }
 .sign-off .so-appr span b { display: inline; font: inherit; color: #0b1f4d; white-space: nowrap; }
 .sign-off .so-appr { height: 12mm; box-sizing: border-box; align-content: start; } .so-appr-space { height: 14.5mm; }
+/* 3.99.233: order delivery by assigned employees */
+.trk-asg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px; margin: 0 0 8px; border-radius: 10px; background: var(--soft, #eef3fd); font-size: 13px; }
+.trk-asg b { letter-spacing: .08em; font-size: 11.5px; color: var(--nv, #0f3a8c); }
+.trk-asg span { background: #fff; border: 1px solid var(--line, #d9e1f2); border-radius: 999px; padding: 2px 10px; }
+.asg-q { width: 100%; margin-bottom: 8px; }
+.asg-list { display: grid; gap: 6px; max-height: 52vh; overflow: auto; }
+.asg-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line, #d9e1f2); border-radius: 10px; cursor: pointer; }
+.asg-row input { width: 18px; height: 18px; flex: 0 0 auto; }
+.asg-row span { display: grid; gap: 2px; min-width: 0; } .asg-row small { color: var(--muted, #6b7487); font-size: 11.5px; }
+.asg-row:has(input:checked) { border-color: var(--nv, #0f3a8c); background: var(--soft, #eef3fd); }
+.my-dlv h3 { display: flex; align-items: center; gap: 8px; } .dlv-n { background: var(--nv, #0f3a8c); color: #fff; border-radius: 999px; font-size: 11px; padding: 1px 8px; }
+.dlv-list { display: grid; gap: 6px; } .dlv-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--line, #d9e1f2); border-radius: 12px; color: inherit; text-decoration: none; }
+.dlv-row span:first-child { display: grid; gap: 2px; min-width: 0; } .dlv-row small { color: var(--muted, #6b7487); font-size: 11.5px; }
+.co-asg { margin: 8px 0 10px; } .co-asg em { color: var(--muted, #6b7487); font-style: normal; } .co-asg .btn { margin-left: auto; }
+.trk-asg span i { font-style: normal; border: 0; background: none; padding: 0; font-size: 12px; color: var(--muted, #6b7487); }

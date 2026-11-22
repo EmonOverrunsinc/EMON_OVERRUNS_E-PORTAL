@@ -572,6 +572,15 @@
   // ======================================================================
   // 3.36: a clean business dashboard without a page title: the greeting, what waits for the Director (only what has
   // something), the key numbers (each opens its list), the quick actions and the latest records
+  // 3.99.233: the orders I deliver (assigned to me): each opens its Complete Delivery page only
+  async function myDeliveries() {
+    const { data, error } = await sb.rpc("my_deliveries").then((r) => r, () => ({ error: true }));
+    const el = $("#dDlv"); if (!el || error || !(data || []).length) return;
+    el.innerHTML = `<h3>${ic("box")} Delivery <span class="dlv-n">${data.length}</span></h3><div class="dlv-list">${data.map((d) => `<a class="dlv-row" href="#delivery/${encodeURIComponent(d.order_no)}/${encodeURIComponent(d.delivery_code || "")}">
+      <span><b class="mono">${esc(d.order_no)}</b><small>${esc(String(d.customer || "").toUpperCase())} · ${d.boxes} BOX${d.boxes === 1 ? "" : "ES"}</small></span>
+      ${d.submitted ? pill("pending", "SUBMITTED") : d.status === "pending" ? pill("pending", "WAITING APPROVAL") : `<span class="btn ok small">${ic("check")} Deliver</span>`}</a>`).join("")}</div>`;
+    el.hidden = false;
+  }
   V.dashboard = async () => {
     const H = E.hasModule, here = E.stillHere();
     const quick = [
@@ -604,6 +613,7 @@
         <p class="welcome">${esc(C.company.name)} <span class="hero-tag">E-PORTAL</span> · <b>${E.titleHtml(S.profile.role, S.position)}</b></p></div></section>
       ${H("outlets") ? `<section class="nwd-notice" id="dClosed" hidden></section>` : ""}
       ${isAdmin() ? `<section class="todo" id="dTodo" hidden></section>` : ""}
+      <section class="box my-dlv" id="dDlv" hidden></section>
       ${H("customers") ? `<div class="tiles" id="dTiles">${tiles.map(tile).join("")}</div>` : ""}
       <h3 class="home-h">Quick Actions</h3>
       <div class="quick">${quick.map((q) => `<a class="qa qa-${q[4]}" href="${q[1]}"><span class="qa-ic">${ic(q[3])}</span><span class="qa-l">${esc(q[2])}</span></a>`).join("")}</div>
@@ -614,6 +624,7 @@
         ${H("customers") ? box("dApps", "Pending Applications", "", ` id="dAppsBox" hidden`) : ""}
         ${isStaff() && H("purchase") ? box("dComm", "Purchase Orders", "purchase") : ""}
       </div>`);
+    myDeliveries();
     E.outletsBox?.($("#dOutlets")); // 3.99.116: the shops' sales on the Dashboard
     // 3.99.196: a shop with an approved non-working day today: everyone of that shop sees it here
     if ($("#dClosed")) sb.from("outlet_closures").select("outlet_id, outlets(code, name)").eq("day", isoToday()).eq("status", "approved").then(({ data, error }) => {
