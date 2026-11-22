@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.184"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.185"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.184"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.185"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -73,11 +73,8 @@
   // 3.99.178: SALES RANK · TOP 10 (SQL 125). The badge: 1 gold that shines by itself, 2 gold, 3 dark gold, 4 platinum,
   // 5 silver, 6 to 10 blue. The ranks are kept for 2 minutes, so a page and its list make one call.
   const MEDAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="rk-rib" d="M6.6 1.8h4l2.1 5.6-2.6 2.4zM17.4 1.8h-4l-2.1 5.6 2.6 2.4z"/><circle class="rk-coin" cx="12" cy="15.2" r="6.8"/><path class="rk-star" d="m12 11 1.27 2.58 2.85.41-2.06 2.01.49 2.83L12 17.5l-2.55 1.34.49-2.83L7.88 14l2.85-.41z"/></svg>';
-  const rankBadge = (k, label = "TOP SALES", cls = "", tip = "") => {
-    k = Number(k);
-    if (!(k >= 1 && k <= 10)) return "";
-    return `<span class="rank-badge rk${Math.min(k, 6)}${cls ? " " + cls : ""}" title="${esc(tip || `Rank ${k} of the Top 10`)}">${MEDAL}<b>#${k}</b>${label ? `<small>${esc(label)}</small>` : ""}</span>`;
-  };
+  // 3.99.185: the rank as a ROUND number (1 to 10 in their colours): lists, cards, the rank window and the status chip
+  const rankNo = (k, cls = "") => { k = Number(k); return k >= 1 ? `<span class="rk-no${k <= 10 ? ` rk${Math.min(k, 6)}` : ""}${cls ? " " + cls : ""}" title="Rank ${k}">${k}</span>` : ""; };
   const rankMemo = new Map();
   const rankList = (key, call) => {
     const hit = rankMemo.get(key);
@@ -87,15 +84,7 @@
     return p;
   };
   const outletRanks = (month) => rankList(`o${month}`, () => sb.rpc("outlet_ranks", { p_month: month }));
-  // 3.99.180: ACHIEVEMENTS (SQL 126): the medals (gold, silver, bronze) and the stars (max 5, half stars too)
-  const salesStars = (kind) => rankList(`s${kind}`, () => sb.rpc("sales_stars", { p_kind: kind }).then((r) => ({ ...r, data: (r.data || []).map((x) => ({ ...x, customer_id: x.owner_id })) })));
-  let starN = 0;
-  const STAR5 = [0, 1, 2, 3, 4].map((i) => `<path transform="translate(${i * 24} 0)" d="M12 2.2l2.95 6.1 6.7.95-4.85 4.7 1.15 6.65L12 17.45 6.05 20.6l1.15-6.65L2.35 9.25l6.7-.95z"/>`).join("");
-  const starsHtml = (n, cls = "") => {
-    n = Math.max(0, Math.min(5, Math.round(Number(n || 0) * 2) / 2));
-    const id = `stc${++starN}`;
-    return `<span class="stars${cls ? " " + cls : ""}" role="img" aria-label="${n} of 5 stars" title="${n} of 5 stars"><svg viewBox="0 0 120 24" aria-hidden="true"><defs><clipPath id="${id}"><rect width="${n * 24}" height="24"/></clipPath></defs><g class="st-off">${STAR5}</g><g class="st-on" clip-path="url(#${id})">${STAR5}</g></svg></span>`;
-  };
+  // 3.99.180: ACHIEVEMENTS (SQL 126): the medals (gold, silver, bronze)
   const MEDAL_NAME = ["", "GOLD", "SILVER", "BRONZE"];
   const medalHtml = (k) => `<span class="medal md${k}" title="${MEDAL_NAME[k] || ""} medal">${MEDAL}</span>`;
   // the Achievements tab of a shop (kind "outlet") or a customer ("customer")
@@ -103,21 +92,29 @@
     if (!a) return `<div class="empty">No achievement yet. It needs the database update <b>126</b>.</div>`;
     const shop = kind === "outlet", when = (p) => (shop ? mdy(p) : `WEEK OF ${mdy(p)}`);
     return `<div class="ach-head">
-        <div class="ach-stars">${starsHtml(a.stars, "big")}<b>${Number(a.stars)} OF 5 STARS</b><small>${shop ? "Medals of the last 30 days" : "Medals of the last 12 weeks"} · ${a.points} point${a.points === 1 ? "" : "s"}</small></div>
+        <div class="ach-stars"><b>MEDALS WON</b><small>${num(a.gold) + num(a.silver) + num(a.bronze)} medal(s) in all · #1, #2 and #3 of the ${shop ? "day" : "week"}</small></div>
         <div class="ach-count">${[1, 2, 3].map((k) => `<div class="ach-c md${k}">${medalHtml(k)}<b>${num(a[["", "gold", "silver", "bronze"][k]])}</b><small>${MEDAL_NAME[k]}</small></div>`).join("")}</div></div>
       ${(a.medals || []).length ? `<div class="ach-list">${a.medals.map((x) => `<div class="ach-row md${x.rank}">${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} · #${x.rank} OF THE ${shop ? "DAY" : "WEEK"}</b><small>${esc(when(x.period))}</small></div>${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}</div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
-      <p class="ach-note">${shop ? "Every day the 3 shops with the highest sales get a medal: gold, silver and bronze. The day's medals are saved at 12 noon the next day, so sales recorded late at night still count." : "Every week (Monday to Sunday) the 3 customers with the highest net sales of the week get a medal: gold, silver and bronze. They are saved on Monday."} A saved medal never changes. Stars (max 5): gold 3 points, silver 2, bronze 1; the one with the most points has 5 stars, the others in proportion.</p>`;
+      <p class="ach-note">${shop ? "Every day the 3 shops with the highest sales get a medal: gold, silver and bronze. The day's medals are saved at 12 noon the next day, so sales recorded late at night still count." : "Every week (Monday to Sunday) the 3 customers with the highest net sales of the week get a medal: gold, silver and bronze. They are saved on Monday."} A saved medal never changes.</p>`;
   };
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
-  // the corner of a profile head: the rank badge and the stars (always in the same place)
-  // 3.99.182: 5 stars = an animated VIP badge, by itself
-  const vipBadge = (stars) => (Number(stars) >= 5 ? `<span class="vip-badge" title="VIP · 5 of 5 stars">${ic("crown")}<b>VIP</b></span>` : "");
-  const achCorner = (el, rank, label, tip, stars, vip = true) => {
+  // 3.99.185: THE MEDAL PLACES of a profile head: 3 round places (1 gold, 2 silver, 3 bronze), always in the same place. A place
+  // stays empty until that medal is won; a won medal shows how many, and pressing it shows the dates it was won
+  const MEDAL_KEY = ["", "gold", "silver", "bronze"];
+  const medalSlots = (el, a, kind, who) => {
     if (!el) return;
-    const v = vip ? vipBadge(stars) : "", s = stars > 0 ? starsHtml(stars) : "";
-    el.innerHTML = `${rank ? rankBadge(rank, label, "", tip) : ""}${v || s ? `<span class="ach-line">${v}${s}</span>` : ""}`;
-    el.hidden = !el.innerHTML;
+    el.innerHTML = [1, 2, 3].map((k) => { const n = num(a?.[MEDAL_KEY[k]]); return n ? `<button type="button" class="mslot md${k}" data-k="${k}" title="${MEDAL_NAME[k]} medal × ${n} · press to see the dates" aria-label="${MEDAL_NAME[k]} medal, ${n}"><b>${k}</b><em>×${n}</em></button>` : `<span class="mslot empty" aria-hidden="true"></span>`; }).join("");
+    el.hidden = false;
+    el.querySelectorAll("button.mslot").forEach((b) => (b.onclick = () => {
+      const k = Number(b.dataset.k), shop = kind === "outlet", list = (a.medals || []).filter((x) => x.rank === k);
+      const m = modal(`${MEDAL_NAME[k]} MEDALS · ${who}`, `<p class="rank-note">${ic("clock")} ${num(a[MEDAL_KEY[k]])} ${MEDAL_NAME[k].toLowerCase()} medal${num(a[MEDAL_KEY[k]]) === 1 ? "" : "s"} · #${k} of the ${shop ? "day" : "week"}</p>
+        <div class="ach-list">${list.map((x) => `<div class="ach-row md${k}">${medalHtml(k)}<div><b>${esc(shop ? mdy(x.period) : `WEEK OF ${mdy(x.period)}`)}</b><small>${MEDAL_NAME[k]} · #${k} OF THE ${shop ? "DAY" : "WEEK"}</small></div>${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}</div>`).join("")}</div>`,
+        `<button type="button" class="btn" data-x>Close</button>`);
+      m.el.querySelector("[data-x]").onclick = m.close;
+    }));
   };
+  // 3.99.185: VIP = a customer with a credit limit of ₱1,000,000 or more: a special box (animated) near the name
+  const vipBox = (limit) => (num(limit) >= 1000000 ? `<span class="vip-box" title="VIP · credit limit ₱ ${peso(limit)}">${ic("crown")}<b>VIP</b></span>` : "");
   const customerRanks = () => rankList("c", () => sb.rpc("customer_ranks"));
   const shortName = (r, max = 22) => {
     const full = fullName(r);
@@ -186,8 +183,8 @@
   // 3.99.166: every profile head gets the AUTHENTIC sticker: a small holographic seal that slowly shines (our own design)
   const AUTH_STICKER = `<div class="auth-st" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><path id="authRing" d="M50 12 a38 38 0 1 1 -0.01 0"/></defs>
     <circle cx="50" cy="50" r="46" class="as-out"/><circle cx="50" cy="50" r="30" class="as-in"/>
-    <text class="as-ring"><textPath href="#authRing" textLength="238" lengthAdjust="spacing">EMON OVERRUNS · AUTHENTIC · VERIFIED ·</textPath></text>
-    <path d="M38 50 l8 8 l16 -18" class="as-tick"/><text x="50" y="72" text-anchor="middle" class="as-word">AUTHENTIC</text></svg><i class="as-shine"></i></div>`;
+    <text class="as-ring"><textPath href="#authRing" textLength="238" lengthAdjust="spacing">EMON OVERRUNS · OFFICIAL · VERIFIED ·</textPath></text>
+    <path d="M38 50 l8 8 l16 -18" class="as-tick"/><text x="50" y="72" text-anchor="middle" class="as-word">OFFICIAL</text></svg><i class="as-shine"></i></div>`;
   const addSticker = (root) => root.querySelectorAll?.("#main .cust-hero:not(.has-auth)").forEach((h) => { h.classList.add("has-auth"); h.insertAdjacentHTML("beforeend", AUTH_STICKER); });
   new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches?.("#main .cust-hero")) addSticker(n.parentNode); else if (n.querySelector?.(".cust-hero")) addSticker(n); } })
     .observe(document.documentElement, { childList: true, subtree: true });
@@ -3035,7 +3032,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankBadge, outletRanks, customerRanks, salesStars, starsHtml, medalHtml, achHtml, achievements, achCorner, vipBadge, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, outletRanks, customerRanks, medalHtml, achHtml, achievements, medalSlots, vipBox, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)

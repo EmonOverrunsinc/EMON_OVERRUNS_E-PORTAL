@@ -104,13 +104,10 @@
     rankCards(holder, monthNow());
   };
   // 3.99.178: the month's rank (Top 10 by net sales) on each shop
-  const rankCards = (holder, m) => Promise.all([E.outletRanks(m), E.salesStars("outlet")]).then(([rk, ss]) => {
-    holder?.querySelectorAll(".ol-rk").forEach((el) => {
-      const r = rk.get(el.dataset.oid);
-      if (r) el.innerHTML = E.rankBadge(r.rank, "", "mini", `Rank ${r.rank} of ${r.shops} · net sales ${E.monthText(m)}`);
-    });
-    holder?.querySelectorAll(".ol-st").forEach((el) => { const s = ss.get(el.dataset.oid); if (s?.stars > 0) el.innerHTML = E.starsHtml(s.stars, "mini"); });
-  });
+  const rankCards = (holder, m) => E.outletRanks(m).then((rk) => holder?.querySelectorAll(".ol-rk").forEach((el) => {
+    const r = rk.get(el.dataset.oid);
+    if (r) el.innerHTML = E.rankNo(r.rank);
+  }));
   const kpi = (k, v, cls = "") => `<div class="ol-kpi ${cls}${num(v) < 0 ? " neg" : ""}"><small>${esc(k)}</small><b>₱ ${peso(v)}</b></div>`;
 
   // ---------- Outlets: the list of the shops ----------
@@ -132,8 +129,8 @@
       ${isAdmin() ? `<div class="pg-more"><button type="button" class="pg-more-btn" id="olMore" aria-label="More" aria-haspopup="true">⋯</button><div class="pg-more-list" id="olMoreList" hidden><button type="button" id="olNew">${ic("plus")} Add Store</button></div></div>` : ""}
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
-        return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(r.o))}</span><span>AUTHENTIC OUTLET</span>`).join("")}</div>
-          <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><div class="ol-code-col"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-st" data-oid="${esc(r.o.id)}"></span></div><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
+        return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(r.o))}</span><span>OFFICIAL OUTLET</span>`).join("")}</div>
+          <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
           <div class="ol-card-a">${r.o.address ? `${ic("pin")} ${esc(r.o.address)}` : ""}${r.o.address && hoursOf(r.o) ? " · " : ""}${hoursOf(r.o) ? esc(hoursOf(r.o)) : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
@@ -259,17 +256,17 @@
     $("#olBody").innerHTML = `
       <section class="os-hero">
         <div class="os-hero-micro" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(shopId(o))}</span>`).join("")}</div>
-        <div class="os-hero-micro low" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>AUTHENTIC OUTLET</span><span>${esc(o.code)}</span>`).join("")}</div>
+        <div class="os-hero-micro low" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>OFFICIAL OUTLET</span><span>${esc(o.code)}</span>`).join("")}</div>
         ${(() => { // 3.99.163: the identity in the rosette: rings of microtext and the shop's ID number
           const idNo = shopId(o);
           const ring = (r, txt, n) => `<path id="osR${r}" d="M150 ${150 - r} a${r} ${r} 0 1 1 -0.01 0"/><text><textPath href="#osR${r}" textLength="${(2 * Math.PI * r).toFixed(1)}" lengthAdjust="spacing">${esc(Array.from({ length: n }, () => txt).join(" · "))}</textPath></text>`;
-          return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · AUTHENTIC OUTLET IDENTITY`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
-            <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">AUTHENTIC · EMON OVERRUNS</text></svg>`;
+          return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · OFFICIAL OUTLET IDENTITY`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
+            <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">OFFICIAL · EMON OVERRUNS</text></svg>`;
         })()}
-        <div class="ach-corner os-ach" id="osAch" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></div>
+        <div class="ach-corner medal-area os-ach" id="osAch" data-oid="${esc(o.id)}" hidden></div>
         <div class="os-hero-top">${storeLogo(o, "big")}
           <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
-        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
+        <div class="os-chips"><span class="os-rank" id="osRankChip" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
@@ -295,12 +292,16 @@
     if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout");
     $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
-    // 3.99.183: the rank of the month shown (Top 10 by net sales), the VIP badge (5 stars) and the stars: the same as a customer's
-    Promise.all([E.outletRanks(m), E.salesStars("outlet")]).then(([rk, ss]) => {
-      const el = $("#osAch"), r = rk.get(o.id);
-      if (el && el.dataset.oid === o.id && el.dataset.m === m) E.achCorner(el, r?.rank, "TOP SALES", r ? `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}${r.net != null ? ` · ₱ ${peso(r.net)}` : ""}` : "", ss.get(o.id)?.stars);
+    E.outletRanks(m).then((rk) => { // 3.99.185: the rank of the month shown, as a status chip
+      const el = $("#osRankChip"), r = rk.get(o.id);
+      if (!r || !el || el.dataset.oid !== o.id || el.dataset.m !== m) return;
+      el.innerHTML = `RANK ${E.rankNo(r.rank)}`; el.title = `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}`; el.hidden = false;
     });
-    E.achievements("outlet", o.id).then((a) => { const p = $("#osAchTab"); if (p && p.dataset.oid === o.id) p.innerHTML = E.achHtml(a, "outlet"); });
+    E.achievements("outlet", o.id).then((a) => { // 3.99.185: the 3 medal places and the Achievements tab
+      const p = $("#osAchTab"), el = $("#osAch");
+      if (p && p.dataset.oid === o.id) p.innerHTML = E.achHtml(a, "outlet");
+      if (el && el.dataset.oid === o.id) E.medalSlots(el, a, "outlet", o.code);
+    });
     $$("[data-del]").forEach((b) => (b.onclick = async () => {
       const [tbl, rid] = b.dataset.del.split(":");
       if (!(await E.confirmBox("Remove this record? This cannot be undone.", { title: "Remove", ok: "Remove", danger: true }))) return;

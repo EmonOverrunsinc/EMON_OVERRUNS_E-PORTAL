@@ -1053,11 +1053,11 @@
     $(".band h1").textContent = `Customer — ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c)}
-      <section class="cust-hero st-${esc(c.status)}">${isStaff() ? `<div class="ach-corner cu-ach" id="pfAch" data-cid="${esc(c.id)}" hidden></div>` : ""}
+      <section class="cust-hero st-${esc(c.status)}">${isStaff() ? `<div class="ach-corner medal-area cu-ach" id="pfAch" data-cid="${esc(c.id)}" hidden></div>` : ""}
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
         <div class="ch-main">
-          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${num(c.credit_limit) >= 1000000 ? `<span class="vip-chip" title="VIP · credit limit ₱ ${peso(c.credit_limit)}">${ic("crown")}VIP</span>` : ""}</div>
+          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${isStaff() ? `<span class="rank-chip" id="pfRankChip" data-cid="${esc(c.id)}" hidden></span>` : ""}${E.vipBox(c.credit_limit)}</div>
           <div class="ch-sub">${[c.credit_limit != null ? `CREDIT LIMIT ₱ ${peso(c.credit_limit)}` : "", c.email].filter(Boolean).map(esc).join(" · ") || "—"}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
@@ -1175,12 +1175,16 @@
     if ($("#pfRequest")) $("#pfRequest").onclick = () => E.customerRequest(c, gctx);
     E.bindRequests(c, orders, gctx);
     E.standingBadge($("#pfStanding"), c, gctx);
-    // 3.99.178/180: Top 10 customers by total net sales (changes every Monday) and the stars, in the corner of the head
-    if ($("#pfAch")) Promise.all([E.customerRanks(), E.salesStars("customer")]).then(([rk, ss]) => {
-      const el = $("#pfAch"), r = rk.get(c.id);
-      if (el && el.dataset.cid === c.id) E.achCorner(el, r?.rank, "TOP CUSTOMER", r ? `Rank ${r.rank} of the Top 10 customers · total net sales up to Monday ${mdy(r.as_of)}${r.net != null ? ` · ₱ ${peso(r.net)}` : ""} · the rank changes every Monday` : "", ss.get(c.id)?.stars);
+    if ($("#pfRankChip")) E.customerRanks().then((rk) => { // 3.99.185: the customer's rank (total net sales, changes every Monday)
+      const el = $("#pfRankChip"), r = rk.get(c.id);
+      if (!r || !el || el.dataset.cid !== c.id) return;
+      el.innerHTML = `RANK ${E.rankNo(r.rank)}`; el.title = `Rank ${r.rank} · total net sales up to Monday ${mdy(r.as_of)} · the rank changes every Monday`; el.hidden = false;
     });
-    if ($("#pfAchTab")) E.achievements("customer", c.id).then((a) => { const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) p.innerHTML = E.achHtml(a, "customer"); });
+    if ($("#pfAch")) E.achievements("customer", c.id).then((a) => { // 3.99.185: the 3 medal places and the Achievements tab
+      const p = $("#pfAchTab"), el = $("#pfAch");
+      if (p && p.dataset.cid === c.id) p.innerHTML = E.achHtml(a, "customer");
+      if (el && el.dataset.cid === c.id) E.medalSlots(el, a, "customer", fullName(c));
+    });
     E.custVerified?.($("#pfVerified"), c.id); // 3.69: the customer agreed to the legal terms
     // 3.12: the Director deletes a history line
     $$("[data-hdel]").forEach((b) => (b.onclick = async () => {
@@ -1208,7 +1212,7 @@
     if (!box) return;
     box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} Total net sales up to Monday ${esc(mdy(list[0].as_of))} · the rank changes every Monday.</p>
       <div class="rank-board">${list.map((r) => { const c = cm.get(r.customer_id) || {};
-        return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankBadge(r.rank, "")}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
+        return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankNo(r.rank, "lg")}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
       : `<div class="empty">No rank yet. It needs the database updates <b>125</b> and <b>127</b>, and invoices before this Monday.</div>`;
     box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => m.close()));
   }
