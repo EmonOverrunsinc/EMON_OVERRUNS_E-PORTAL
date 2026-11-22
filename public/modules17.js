@@ -77,6 +77,7 @@
   const minOf = (t) => { const v = to24(t); if (!v) return null; const [h, mi] = v.split(":").map(Number); return h * 60 + mi; };
   const dur = (m) => { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60), mi = m % 60; return h ? `${h} Hr${mi ? ` ${mi} Min` : ""}` : `${mi} Min`; };
   const storeNow = (o) => {
+    if (o._closed) return { k: "closed", word: "CLOSED", t: "Non-working day · opens tomorrow", sales: "" };
     const op = minOf(o.opens), cl = minOf(o.closes);
     if (op == null || cl == null || cl <= op) return null;
     const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" })), now = d.getHours() * 60 + d.getMinutes();
@@ -89,7 +90,7 @@
     else [k, t] = ["closed", `Opens in ${dur(op + 1440 - now)}`];
     return { k, word: { open: "OPEN", lunch: "LUNCH BREAK", closed: "CLOSED" }[k], t, sales: dur(sales) };
   };
-  const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}<small>Sales hours ${esc(s.sales)} a day</small>` : ""; };
+  const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}${s.sales ? `<small>Sales hours ${esc(s.sales)} a day</small>` : ""}` : ""; };
 
   // the money of the shops for a month (and today): sales, expenses, payments of their customer accounts
   async function monthMoney(outlets, m) {
@@ -156,6 +157,10 @@
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
       }).join("") : `<div class="empty">${isAdmin() ? "No store yet. Press <b>⋯</b> at the top right, then <b>Add Store</b>: it gets SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
     rankCards($("#olBody"), m);
+    sb.from("outlet_closures").select("outlet_id").eq("day", today()).eq("status", "approved").then(({ data }) => (data || []).forEach((c) => {
+      const h = document.querySelector(`#olBody .ol-card[href="#outlet/${c.outlet_id}"] .ol-card-h`);
+      if (h && !h.querySelector(".nwd-pill")) h.insertAdjacentHTML("beforeend", `<span class="nwd-pill">${E.pill("overdue", "CLOSED TODAY")}</span>`);
+    }), () => {});
     if ($("#olMore")) {
       const list = $("#olMoreList"), close = () => { list.hidden = true; document.removeEventListener("click", away, true); };
       const away = (e) => { if (!e.target.closest(".pg-more")) close(); };
@@ -211,7 +216,7 @@
     if (!here()) return;
     if (error || !o) { $("#olBody").innerHTML = error && missing(error) ? needSql : `<div class="empty">This outlet was not found. <a href="#outlets">Back to Outlets</a></div>`; return; }
     const first = `${m}-01`, last = monthEnd(m), start = String(o.created_at).slice(0, 10);
-    const [st, sales, exps, pays, invs, cust, allS, allX, allP] = await Promise.all([
+    const [st, sales, exps, pays, invs, cust, allS, allX, allP, clos] = await Promise.all([
       sb.from("outlet_staff").select(STAFF_SEL).eq("outlet_id", id).then((r) => r.data || []),
       sb.from("outlet_sales").select("*").eq("outlet_id", id).gte("sale_date", first).lte("sale_date", last).order("sale_date", { ascending: false }).then((r) => r.data || []),
       sb.from("outlet_expenses").select("*").eq("outlet_id", id).gte("exp_date", first).lte("exp_date", last).order("exp_date", { ascending: false }).then((r) => r.data || []),
@@ -220,8 +225,10 @@
       o.customer_id ? sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").eq("id", o.customer_id).maybeSingle().then((r) => r.data) : null,
       E.allRows(() => sb.from("outlet_sales").select("total").eq("outlet_id", id)).then((r) => r.data || []),
       E.allRows(() => sb.from("outlet_expenses").select("amount").eq("outlet_id", id)).then((r) => r.data || []),
-      o.customer_id ? E.allRows(() => sb.from("payments_received").select("amount").eq("customer_id", o.customer_id).gte("paid_date", start)).then((r) => r.data || []) : []]);
+      o.customer_id ? E.allRows(() => sb.from("payments_received").select("amount").eq("customer_id", o.customer_id).gte("paid_date", start)).then((r) => r.data || []) : [],
+      sb.from("outlet_closures").select("*").eq("outlet_id", id).gte("day", first < today() ? first : today()).order("day").limit(120).then((r) => (r.error ? null : r.data || []), () => null)]);
     if (!here()) return;
+    o._closed = (clos || []).some((c) => c.day === today() && c.status === "approved"); // 3.99.196: an approved non-working day
     // 3.99.175: an employee without "13 See Balances & History": only the sales and expenses he or she recorded (with their
     // amounts); no totals, balance, stock account or monthly statement
     const mine = !!S.hideMoney && !isAdmin();
@@ -289,11 +296,12 @@
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(rs.last))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
+      ${o._closed ? `<div class="banner warn os-nwd">${ic("clock")} <span><b>TODAY IS A NON-WORKING DAY</b> · the store is closed and opens again tomorrow.</span></div>` : ""}
       ${mine ? `<div class="banner info os-mine">${ic("shield")} You see only the sales, expenses and cash out you recorded. The totals and the balance are for EMON HASAN.</div>` : ""}
       <div class="os-kpis"${mine ? " hidden" : ""}>${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", out, `${xps.length} expense(s)`)}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("pay", "Stock Payments", paid, cust ? `To pay ₱ ${peso(owed)}` : "")}
         <div class="os-kpi bal${bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(bal)}</b><span class="${allBal < 0 ? "neg" : ""}">In all ₱ ${peso(allBal)}</span></div></div>
       <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button><button type="button" class="btn" id="olExp">${ic("plus")} Expense / Bill</button><button type="button" class="btn" id="olCash">${ic("wallet")} Cash Out</button>` : ""}
-        ${mine ? "" : `<button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>`}${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
+        ${mine ? "" : `<button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>`}${isAdmin() || edit ? `<button type="button" class="btn" id="olNwd">${ic("clock")} Non-Working Days</button>` : ""}${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
       <div class="tabs os-tabs" id="osTabs">${tabs.map(([t, n], k) => `<button type="button" class="${k ? "" : "on"}" data-t="${k}">${esc(t)}${n ? ` <em>${n}</em>` : ""}</button>`).join("")}</div>
       <div class="tabpanes os-panes" id="osPanes">${tabs.map(([, , html], k) => `<div data-p="${k}" class="os-pane"${k ? " hidden" : ""}>${html}</div>`).join("")}</div>`;
     $$("#osTabs button").forEach((t) => (t.onclick = () => { $$("#osTabs button").forEach((x) => x.classList.toggle("on", x === t)); $$("#osPanes > div").forEach((q) => (q.hidden = q.dataset.p !== t.dataset.t)); }));
@@ -331,6 +339,7 @@
       $("[data-x]", mm.el).onclick = () => mm.close(); E.bindFiles(mm.el);
     }));
     $$("[data-day]").forEach((b) => (b.onclick = () => printDay(o, b.dataset.day, sales, exps, mine)));
+    if ($("#olNwd")) $("#olNwd").onclick = () => nwdForm(o, clos, m);
     if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null });
     E.setRecords(`Outlet: ${o.code}`);
   };
@@ -536,6 +545,48 @@
   // ---------- the monthly statement (SOA): a ledger of the month ----------
   // 3.99.175: the DAILY SALES REPORT of one shop for ONE day: the sales (cash, GCash), the day's expenses and cash out, the cash
   // left, who recorded it, and the signatures. Report No DSR-<shop>-<date>.
+  // 3.99.196: NON-WORKING DAYS (SQL 128): the days ahead (approved, waiting, not approved) and a calendar to ask for new ones
+  function nwdForm(o, clos, m) {
+    if (clos === null) { toast("Run the database update 128 first (Non-Working Days).", true); return; }
+    const t = today(), up = clos.filter((c) => c.day >= t);
+    const ST = { approved: ["paid", "APPROVED"], pending: ["pending", "WAITING"], rejected: ["overdue", "NOT APPROVED"] };
+    const rows = up.map((c) => `<div class="nwd-row"><div><b>${esc(mdy(c.day))}</b><small>${esc([c.reason, c.requested_by_name ? `asked by ${c.requested_by_name}` : ""].filter(Boolean).join(" · "))}</small></div>${E.pill(ST[c.status][0], ST[c.status][1])}
+      <span class="nwd-act">${isAdmin() && c.status === "pending" ? `<button type="button" class="btn small ok" data-nok="${esc(c.id)}">Approve</button><button type="button" class="btn small" data-nno="${esc(c.id)}">Refuse</button>` : ""}${isAdmin() || (c.status === "pending" && c.requested_by === E.meId()) ? `<button type="button" class="btn small danger" data-ndel="${esc(c.id)}" aria-label="Take back" title="Take back">${ic("x")}</button>` : ""}</span></div>`).join("");
+    const md = E.modal(`${o.code} · Non-Working Days`, `
+      <div class="nwd-list">${rows || `<div class="empty">No non-working day ahead.</div>`}</div>
+      <div class="formgrid ol-form nwd-form"><div class="span2 ol-sub">Ask for non-working day(s)</div>
+        <div><label for="nwdFrom">From *</label><input type="date" id="nwdFrom" min="${t}" value="${t}"></div>
+        <div><label for="nwdTo">To</label><input type="date" id="nwdTo" min="${t}" value="${t}"></div>
+        <div class="span2"><label for="nwdWhy">Reason</label><input id="nwdWhy" maxlength="300" placeholder="Holiday, inventory, repair …"></div>
+        <p class="span2 muted" style="margin:0">${isAdmin() ? "Your days are approved at once; the shop's employees are notified." : "EMON HASAN approves the days. On an approved day the store is CLOSED and opens again the next day."}</p></div>`,
+      `<button type="button" class="btn" data-x>Close</button><button type="button" class="btn primary" id="nwdGo">${ic("check")} Submit</button>`);
+    const el = md.el, reload = () => { md.close(); V.outlet(o.id, m); };
+    el.querySelector("[data-x]").onclick = md.close;
+    el.querySelector("#nwdFrom").onchange = (e) => { const to = el.querySelector("#nwdTo"); to.min = e.target.value; if (to.value < e.target.value) to.value = e.target.value; };
+    el.querySelector("#nwdGo").onclick = async (e) => {
+      const a = el.querySelector("#nwdFrom").value, b = el.querySelector("#nwdTo").value || a, btn = e.currentTarget;
+      if (!a) return toast("Choose the day.", true);
+      const days = [];
+      for (let d = new Date(`${a}T00:00:00`); E.isoDay(d) <= b && days.length < 32; d.setDate(d.getDate() + 1)) days.push(E.isoDay(d));
+      if (days.length > 31) return toast("At most 31 days at a time.", true);
+      btn.disabled = true;
+      const { data, error } = await sb.rpc("outlet_closure_request", { p_outlet: o.id, p_days: days, p_reason: el.querySelector("#nwdWhy").value });
+      if (error) { btn.disabled = false; return fail(error, "Could not submit"); }
+      toast(data ? (isAdmin() ? `${data} non-working day(s) saved.` : `${data} day(s) sent to EMON HASAN for approval.`) : "These days were already asked.");
+      reload();
+    };
+    el.querySelectorAll("[data-nok],[data-nno]").forEach((b) => (b.onclick = async () => {
+      const { error } = await sb.rpc("outlet_closure_decide", { p_id: b.dataset.nok || b.dataset.nno, p_ok: !!b.dataset.nok });
+      if (error) return fail(error, "Could not save");
+      toast(b.dataset.nok ? "Approved: the store is closed on that day." : "Not approved: the store stays open."); reload();
+    }));
+    el.querySelectorAll("[data-ndel]").forEach((b) => (b.onclick = async () => {
+      if (!(await E.confirmBox("Take this non-working day back? The store will be open on that day.", { title: "Non-Working Day", ok: "Take Back", danger: true }))) return;
+      const { error } = await sb.rpc("outlet_closure_cancel", { p_id: b.dataset.ndel });
+      if (error) return fail(error, "Could not take it back");
+      toast("Taken back."); reload();
+    }));
+  }
   // 3.99.195: the sales reports end with two equal name boxes: PREPARED BY (the employee) and APPROVED BY (EMON HASAN)
   const nameBoxes = (prep) => `<div class="name-boxes"><div class="nbox"><small>PREPARED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b><em>${/^EMON HASAN$/i.test(String(prep || "").trim()) ? "OPERATIONAL DIRECTOR" : "OUTLET STAFF"}</em></div><div class="nbox"><small>APPROVED BY</small><b>EMON HASAN</b><em>OPERATIONAL DIRECTOR</em></div></div>`;
   async function printDay(o, date, sales, exps, mine) {

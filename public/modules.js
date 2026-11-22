@@ -588,6 +588,7 @@
         <p class="hero-date">${esc(today)}</p>
         <h2>${esc(greet)}${first ? `, ${esc(first.charAt(0) + first.slice(1).toLowerCase())}` : ""}</h2>
         <p class="welcome">${esc(C.company.name)} <span class="hero-tag">E-PORTAL</span> · <b>${esc(E.personTitle(S.profile.role, S.position))}</b></p></div></section>
+      ${H("outlets") ? `<section class="nwd-notice" id="dClosed" hidden></section>` : ""}
       ${isAdmin() ? `<section class="todo" id="dTodo" hidden></section>` : ""}
       ${H("customers") ? `<div class="tiles" id="dTiles">${tiles.map(tile).join("")}</div>` : ""}
       <h3 class="home-h">Quick Actions</h3>
@@ -600,6 +601,14 @@
         ${isStaff() && H("purchase") ? box("dComm", "Purchase Orders", "purchase") : ""}
       </div>`);
     E.outletsBox?.($("#dOutlets")); // 3.99.116: the shops' sales on the Dashboard
+    // 3.99.196: a shop with an approved non-working day today: everyone of that shop sees it here
+    if ($("#dClosed")) sb.from("outlet_closures").select("outlet_id, outlets(code, name)").eq("day", isoToday()).eq("status", "approved").then(({ data, error }) => {
+      const el = $("#dClosed");
+      if (error || !data?.length || !el) return;
+      const one = data.length === 1;
+      el.innerHTML = `<span class="nwd-ic">${ic("clock")}</span><div><b>NON-WORKING DAY TODAY</b><p>${data.map((c) => `<a href="#outlet/${esc(c.outlet_id)}">${esc(c.outlets?.code || "Shop")}${c.outlets?.name && c.outlets.name !== c.outlets.code ? ` · ${esc(c.outlets.name)}` : ""}</a>`).join(", ")} ${one ? "is" : "are"} closed today and ${one ? "opens" : "open"} again tomorrow.</p>${isAdmin() ? "" : `<small>For questions, please call Sir Emon Hasan.</small>`}</div>`;
+      el.hidden = false;
+    }, () => {});
     const ym = isoToday().slice(0, 7);
     let soaDone = false; try { soaDone = sessionStorage.getItem("eoSoa") === ym; } catch (_) {}
     if (!soaDone) sb.rpc("generate_statements", {}).then(({ error }) => { if (!error) { try { sessionStorage.setItem("eoSoa", ym); } catch (_) {} } }, () => {});
@@ -687,7 +696,7 @@
     const cnt = (q) => q.then((r) => (r.error ? 0 : r.count || 0), () => 0);
     const head = { count: "exact", head: true };
     // 3.60: no payslip reminder here (the Payroll page shows the employees without the month's payslip)
-    const [apps, jobs, changes, memos, contacts, copies, pos, cords, prints, dlv, insr, devs] = await Promise.all([
+    const [apps, jobs, changes, memos, contacts, copies, pos, cords, prints, dlv, insr, devs, nwd] = await Promise.all([
       cnt(sb.from("customers").select("id", head).in("status", ["pending", "verified"])),
       cnt(sb.from("job_applications").select("id", head).eq("status", "submitted")),
       cnt(sb.from("change_requests").select("id", head).eq("status", "pending")),
@@ -700,11 +709,12 @@
       // 3.74.1: deliveries submitted by the order paper wait for EMON HASAN (approved: COMPLETED and the invoice is made)
       sb.from("customer_orders").select("id", { count: "exact" }).eq("status", "approved").not("delivery_request_at", "is", null).order("delivery_request_at").limit(1).then((r) => (r.error ? { n: 0 } : { n: r.count || 0, id: r.data?.[0]?.id }), () => ({ n: 0 })),
       cnt(sb.from("order_insurance").select("id", head).eq("status", "review")),
-      cnt(sb.from("user_devices").select("id", head).eq("status", "pending")) // 3.80: a new device waits for approval
+      cnt(sb.from("user_devices").select("id", head).eq("status", "pending")), // 3.80: a new device waits for approval
+      cnt(sb.from("outlet_closures").select("id", head).eq("status", "pending")) // 3.99.196: a non-working day asked by a shop
     ]);
     return [[apps, "Customer application", "#customers"], [jobs, "Job application", "#jobapps"], [changes, "Correction", "#changes"], [memos, "Credit memo", "#creditmemos"],
       [contacts, "Contact message", "#contacts"], [pos, "Purchase order", "#purchase"], [cords, "Customer order", "#custorders"], [prints, "Print request", "#printreqs"],
-      [dlv.n, "Delivery approval", dlv.id ? `#custorder/${dlv.id}` : "#custorders"], [insr, "Coverage payment", "#insurance"], [devs, "New device approval", "#devices"], [copies.length, "New upload", copies.length ? `#${copies[0].owner_type}/${copies[0].owner_id}` : ""]].filter(([n]) => n > 0);
+      [dlv.n, "Delivery approval", dlv.id ? `#custorder/${dlv.id}` : "#custorders"], [insr, "Coverage payment", "#insurance"], [devs, "New device approval", "#devices"], [nwd, "Non-working day request", "#outlets"], [copies.length, "New upload", copies.length ? `#${copies[0].owner_type}/${copies[0].owner_id}` : ""]].filter(([n]) => n > 0);
   }
   E.todoItems = todoItems;
 
