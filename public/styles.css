@@ -4868,3 +4868,10 @@ a.qa-plus { text-decoration: none; }
 .ol-row .ol-rk, .ol-row .ol-rk span { overflow: visible; min-width: 0; white-space: nowrap; }
 .ol-row .ol-rk:empty { display: none; }
 .ol-row .ol-rk .rk-no.rk-tag { height: 17px; padding: 0 6px; font-size: 10px; line-height: 17px; border-width: 1px; box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
+/* 3.99.215: every shop card the same: code and rank on one line, the rent tag on its own line under the name */
+.ol-card-h .ol-code-row { flex-wrap: nowrap; align-items: center; }
+.ol-card-h > div > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ol-card-s { display: flex; gap: 6px; margin: 8px 0 2px; min-height: 22px; }
+.ol-card-s:empty { display: none; }
+.ol-card-s .pill { font-size: 11px; padding: 3px 9px; white-space: nowrap; }
+.ol-card-s .pill.ol-rent.pending { background: #fff1f0; color: #b42318; border: 1px solid #f6c7c2; }
