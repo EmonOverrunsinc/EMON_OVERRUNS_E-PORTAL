@@ -4863,3 +4863,8 @@ a.qa-plus { text-decoration: none; }
 /* 3.99.213: order guide title in capitals (ADD BOXES) */
 .og-txt b { text-transform: uppercase; letter-spacing: .03em; }
 .og-txt p b { text-transform: none; letter-spacing: 0; }
+/* 3.99.214: dashboard shop rows: the #1 / #2 tag small, beside the shop code (no overlap) */
+.ol-row b { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ol-row .ol-rk, .ol-row .ol-rk span { overflow: visible; min-width: 0; white-space: nowrap; }
+.ol-row .ol-rk:empty { display: none; }
+.ol-row .ol-rk .rk-no.rk-tag { height: 17px; padding: 0 6px; font-size: 10px; line-height: 17px; border-width: 1px; box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
