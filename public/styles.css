@@ -5060,3 +5060,21 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
   #main .cust-hero .ch-name { grid-row: 1; align-self: end; }
   #main .cust-hero .ch-sub { grid-row: 2; align-self: start; }
 }
+/* 3.99.204: today's hours; rent paid of; medal lines (claimed); redeem; the tags under the photo smaller on a phone */
+.os-chips .r-left small, .os-chips .os-todayh small { display: block; font-size: 10.5px; font-weight: 700; opacity: .85; margin-top: 1px; }
+.os-chips .r-left { flex-direction: column; align-items: flex-start !important; }
+.os-chips .os-todayh { background: #fff7e0 !important; color: #6b4e00 !important; font-weight: 800; flex-direction: column; align-items: flex-start !important; }
+.ol-changed { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #a87a22; text-transform: uppercase; }
+.hr-quick .btn { flex: 1; justify-content: center; }
+.ach-end { display: grid; justify-items: end; gap: 4px; }
+.ach-claim { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: #e8f7ee; color: #146c2e; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; white-space: nowrap; }
+.ach-row.claimed { opacity: .85; }
+.pp-redeem { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-top: 1px solid #f3e6bf; background: #fff; }
+.pp-redeem small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; color: #6b4e00; } .pp-redeem b { font-size: 17px; color: #0f2a66; }
+.pp-redeem.done small { color: #146c2e; }
+@media (max-width: 760px) {
+  #main .cust-hero .ch-tags { gap: 4px; margin-top: 6px; }
+  #main .cust-hero .ch-tags .pill { font-size: 9.5px; padding: 3px 7px; letter-spacing: .03em; line-height: 1.2; }
+  #main .cust-hero .ch-tags .stand { padding: 4px 6px; gap: 1px; border-radius: 10px; }
+  #main .cust-hero .ch-tags .stand b { font-size: 9.5px; letter-spacing: .03em; } #main .cust-hero .ch-tags .stand .ic { width: 12px; height: 12px; } #main .cust-hero .ch-tags .stand small { display: none; }
+}

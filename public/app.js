@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.203"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.204"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.203"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.204"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -103,16 +103,28 @@
       const y = a.year || new Date().getFullYear(), lines = [1, 2, 3].map((k) => [k, num(a[`${MKEY[k]}_y`])]), tot = lines.reduce((s, [k, n]) => s + n * PRIZE[k], 0);
       return `<div class="prize-pool"><div class="pp-h">${ic("crown")} PRIZE POOL ${y}</div>
         ${lines.map(([k, n]) => `<div class="pp-row md${k}">${medalHtml(k)}<span class="pp-n">${MEDAL_NAME[k]}</span><span class="pp-x">${n} × ₱ ${amt(PRIZE[k])}</span><b>₱ ${amt(n * PRIZE[k])}</b></div>`).join("")}
-        <div class="pp-tot"><span>TOTAL PRIZE ${y}</span><b>₱ ${amt(tot)}</b></div></div>`;
+        <div class="pp-tot"><span>TOTAL PRIZE ${y}</span><b>₱ ${amt(tot)}</b></div>
+        ${(() => { const u = [1, 2, 3].reduce((s, k) => s + num(a[`${MKEY[k]}_u`]) * PRIZE[k], 0);
+          return u > 0 ? `<div class="pp-redeem"><div><small>TO REDEEM</small><b>₱ ${amt(u)}</b></div>${isAdmin() ? `<button type="button" class="btn primary" data-redeem="${esc(String(u))}">${ic("check")} Redeem to Account</button>` : ""}</div>`
+            : `<div class="pp-redeem done"><small>ALL PRIZES CLAIMED ✔</small></div>`; })()}</div>`;
     })();
     return `<div class="ach-head">
         <div class="ach-stars"><b>MEDALS ACHIEVED</b><small>${num(a.gold) + num(a.silver) + num(a.bronze)} medal(s) in all · #1, #2 and #3 of the ${shop ? "day" : "week"}</small></div>
         <div class="ach-count">${[1, 2, 3].map((k) => `<div class="ach-c md${k}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b><small>${MEDAL_NAME[k]}</small></div>`).join("")}</div></div>
-      ${list.length ? `<div class="ach-list">${list.map((x, n) => `<div class="ach-row md${x.rank}"><span class="ach-no">${n + 1}</span>${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} · ${shop ? `#${x.rank} OF THE DAY` : "MEDAL OF THE WEEK"}</b><small>${esc(when(x.period))}</small></div>${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}</div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
+      ${list.length ? `<div class="ach-list">${list.map((x, n) => `<div class="ach-row md${x.rank}${x.claimed ? " claimed" : ""}"><span class="ach-no">${n + 1}</span>${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} MEDAL · ${shop ? `#${x.rank} OF THE DAY` : esc(weekOf(x.period))}</b><small>Date of activity: ${esc(mdy(x.period))}</small></div><span class="ach-end">${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}${x.claimed ? `<span class="ach-claim" title="${esc(x.ref || "")}">CLAIMED ✔</span>` : ""}</span></div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
       ${pool}
       <p class="ach-note">${shop ? "Every day the 3 shops with the highest sales get a medal: gold, silver and bronze. The day's medals are saved at 12 noon the next day, so sales recorded late at night still count."
         : "Every week (Monday to Sunday) the 3 customers with the highest net purchases get a medal when they reach the minimum: GOLD ₱ 100,000 · SILVER ₱ 60,000 · BRONZE ₱ 25,000 (the #1 gets the best medal its amount reaches). Saved on Monday. Prize for each medal: gold ₱ 10,000 · silver ₱ 6,000 · bronze ₱ 3,000."} A saved medal never changes.</p>`;
   };
+  // 3.99.204: WEEK 2 OF NOVEMBER (the week a medal is for); the Redeem button of a customer's Achieved tab
+  const weekOf = (p) => { const d = new Date(`${String(p).slice(0, 10)}T00:00:00`); return `WEEK ${Math.ceil(d.getDate() / 7)} OF ${MON[d.getMonth()]}`; };
+  const bindAch = (el, customerId, reload) => el?.querySelectorAll("[data-redeem]").forEach((b) => (b.onclick = async () => {
+    if (!(await confirmBox(`Redeem the medal prizes <b>₱ ${amt(b.dataset.redeem)}</b> to this customer's account? The amount is taken off the balance due (a settlement on the statement) and these medals are marked <b>CLAIMED</b>; they cannot be redeemed again.`, { title: "Redeem to Account", ok: "Redeem" }))) return;
+    b.disabled = true;
+    const { data, error } = await sb.rpc("redeem_medal_prizes", { p_customer: customerId });
+    if (error) { b.disabled = false; return fail(error, /redeem_medal|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 131 first" : "Could not redeem"); }
+    toast(`₱ ${amt(data?.amount)} taken off the balance (${data?.order_no || ""}).`); reload?.();
+  }));
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
   // 3.99.185: VIP = a customer with a credit limit of ₱1,000,000 or more: a special box (animated) near the name
   const vipBox = (limit) => (num(limit) >= 1000000 ? `<span class="vip-box" title="VIP · credit limit ₱ ${peso(limit)}">${ic("crown")}<b>VIP</b></span>` : "");
@@ -3080,7 +3092,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, customerRanks, medalHtml, achHtml, achievements, vipBox, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, customerRanks, medalHtml, achHtml, bindAch, achievements, vipBox, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)

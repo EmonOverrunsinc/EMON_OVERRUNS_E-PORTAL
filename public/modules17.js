@@ -66,19 +66,19 @@
   const rentState = (o, exps, m) => {
     const rents = exps.filter((x) => x.kind === "rent"), paidAmt = rents.reduce((s, x) => s + num(x.amount), 0), rent = num(o.monthly_rent);
     const last = rents.map((x) => x.exp_date).sort().pop();
-    if (rents.length && (!rent || paidAmt >= rent - 0.005)) return { k: "paid", label: `PAID ${mdy(last)}`, short: "RENT PAID", left: 0, last };
+    if (rents.length && (!rent || paidAmt >= rent - 0.005)) return { k: "paid", label: `PAID ${mdy(last)}`, short: "RENT PAID", left: 0, last, paidAmt, rent };
     if (!rent) return { k: "none", label: "NO RENTAL", short: "", left: 0 };
     const day = Math.min(Number(o.rent_day) || 1, Number(monthEnd(m).slice(8)));
     const due = `${m}-${String(day).padStart(2, "0")}`, left = rent - paidAmt, part = rents.length > 0;
-    return due < today() ? { k: "overdue", label: `DUE ${mdy(due)} · OVERDUE`, short: part ? "RENT PARTLY PAID" : "RENT OVERDUE", left }
-      : { k: "unpaid", label: `DUE ${mdy(due)}`, short: part ? "RENT PARTLY PAID" : "RENT NOT PAID", left };
+    return due < today() ? { k: "overdue", label: `DUE ${mdy(due)} · OVERDUE`, short: part ? "RENT PARTLY PAID" : "RENT OVERDUE", left, paidAmt, rent }
+      : { k: "unpaid", label: `DUE ${mdy(due)}`, short: part ? "RENT PARTLY PAID" : "RENT NOT PAID", left, paidAmt, rent };
   };
   // 3.99.193: THE STORE NOW (Manila time): open, lunch break (1 to 2 PM) or closed, and how long until the next change
   const minOf = (t) => { const v = to24(t); if (!v) return null; const [h, mi] = v.split(":").map(Number); return h * 60 + mi; };
   const dur = (m) => { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60), mi = m % 60; return h ? `${h} Hr${mi ? ` ${mi} Min` : ""}` : `${mi} Min`; };
   const storeNow = (o) => {
     if (o._closed) return { k: "closed", word: "CLOSED", t: "Non-working day · opens tomorrow", sales: "" };
-    const op = minOf(o.opens), cl = minOf(o.closes);
+    const op = minOf(o._today?.opens || o.opens), cl = minOf(o._today?.closes || o.closes); // 3.99.204: today's hours first
     if (op == null || cl == null || cl <= op) return null;
     const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" })), now = d.getHours() * 60 + d.getMinutes();
     const ls = 13 * 60, le = 14 * 60, lunch = op < ls && cl > le, sales = cl - op - (lunch ? 60 : 0);
@@ -87,11 +87,12 @@
     else if (lunch && now < ls) [k, t] = ["open", `Lunch in ${dur(ls - now)}`];
     else if (lunch && now < le) [k, t] = ["lunch", `Back in ${dur(le - now)}`];
     else if (now < cl) [k, t] = ["open", `Closes in ${dur(cl - now)}`];
-    else [k, t] = ["closed", `Opens in ${dur(op + 1440 - now)}`];
+    else [k, t] = ["closed", `Opens in ${dur((minOf(o.opens) ?? op) + 1440 - now)}`]; // tomorrow: the normal opening
     return { k, word: { open: "OPEN", lunch: "LUNCH BREAK", closed: "CLOSED" }[k], t, sales: dur(sales) };
   };
+  const todayText = (o) => `${hourText(o._today?.opens || o.opens) || "—"} – ${hourText(o._today?.closes || o.closes) || "—"}`;
   const cardLive = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}` : ""; };
-  const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}${s.sales ? `<small>Sales hours ${esc(s.sales)} a day</small>` : ""}` : ""; };
+  const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}${s.sales ? `<small>Sales hours ${o._today ? "today" : ""} ${esc(s.sales)}${o._today ? "" : " a day"}</small>` : ""}` : ""; };
 
   // the money of the shops for a month (and today): sales, expenses, payments of their customer accounts
   async function monthMoney(outlets, m) {
@@ -154,11 +155,18 @@
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(r.o))}</span><span>${esc(r.o.code)}</span>`).join("")}</div>
           <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.k === "paid" ? E.pill("paid", "RENT PAID") : rs.k === "unpaid" || rs.k === "overdue" ? `<span class="pill ol-rent ${rs.k === "overdue" ? "overdue" : "pending"}" title="${esc(rs.label)}">UNPAID ₱ ${peso(rs.left)}</span>` : ""}</div>
           ${r.o.address ? `<div class="ol-card-a">${ic("pin")} ${esc(r.o.address)}</div>` : ""}
-          ${hoursOf(r.o) ? `<div class="ol-card-t">${ic("clock")}<span>${esc(hoursOf(r.o))}</span>${r.o.status !== "closed" && storeNow(r.o) ? `<span class="ol-live st-${storeNow(r.o).k}" data-oid="${esc(r.o.id)}">${cardLive(r.o)}</span>` : ""}</div>` : ""}
+          ${hoursOf(r.o) ? `<div class="ol-card-t">${ic("clock")}<span class="ol-hours" data-oid="${esc(r.o.id)}">${esc(hoursOf(r.o))}</span>${r.o.status !== "closed" && storeNow(r.o) ? `<span class="ol-live st-${storeNow(r.o).k}" data-oid="${esc(r.o.id)}">${cardLive(r.o)}</span>` : ""}</div>` : ""}
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
       }).join("") : `<div class="empty">${isAdmin() ? "No store yet. Press <b>⋯</b> at the top right, then <b>Add Store</b>: it gets SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
     rankCards($("#olBody"), m);
+    sb.from("outlet_day_hours").select("*").eq("day", today()).then(({ data }) => (data || []).forEach((h) => { // 3.99.204: today's hours
+      const o = outlets.find((x) => x.id === h.outlet_id); if (!o) return;
+      o._today = h;
+      const hs = document.querySelector(`#olBody .ol-hours[data-oid="${h.outlet_id}"]`), lv = document.querySelector(`#olBody .ol-live[data-oid="${h.outlet_id}"]`);
+      if (hs) hs.innerHTML = `Today ${esc(todayText(o))} <small class="ol-changed">changed</small>`;
+      const s2 = storeNow(o); if (lv && s2) { lv.className = `ol-live st-${s2.k}`; lv.innerHTML = cardLive(o); }
+    }), () => {});
     // 3.99.202: the store now on each card, counting by itself (every 30 seconds while the list is open)
     const tick = setInterval(() => {
       const els = $$("#olBody .ol-live");
@@ -227,7 +235,7 @@
     if (!here()) return;
     if (error || !o) { $("#olBody").innerHTML = error && missing(error) ? needSql : `<div class="empty">This outlet was not found. <a href="#outlets">Back to Outlets</a></div>`; return; }
     const first = `${m}-01`, last = monthEnd(m), start = String(o.created_at).slice(0, 10);
-    const [st, sales, exps, pays, invs, cust, allS, allX, allP, clos] = await Promise.all([
+    const [st, sales, exps, pays, invs, cust, allS, allX, allP, clos, dayH] = await Promise.all([
       sb.from("outlet_staff").select(STAFF_SEL).eq("outlet_id", id).then((r) => r.data || []),
       sb.from("outlet_sales").select("*").eq("outlet_id", id).gte("sale_date", first).lte("sale_date", last).order("sale_date", { ascending: false }).then((r) => r.data || []),
       sb.from("outlet_expenses").select("*").eq("outlet_id", id).gte("exp_date", first).lte("exp_date", last).order("exp_date", { ascending: false }).then((r) => r.data || []),
@@ -237,9 +245,11 @@
       E.allRows(() => sb.from("outlet_sales").select("total").eq("outlet_id", id)).then((r) => r.data || []),
       E.allRows(() => sb.from("outlet_expenses").select("amount").eq("outlet_id", id)).then((r) => r.data || []),
       o.customer_id ? E.allRows(() => sb.from("payments_received").select("amount").eq("customer_id", o.customer_id).gte("paid_date", start)).then((r) => r.data || []) : [],
-      sb.from("outlet_closures").select("*").eq("outlet_id", id).gte("day", first < today() ? first : today()).order("day").limit(120).then((r) => (r.error ? null : r.data || []), () => null)]);
+      sb.from("outlet_closures").select("*").eq("outlet_id", id).gte("day", first < today() ? first : today()).order("day").limit(120).then((r) => (r.error ? null : r.data || []), () => null),
+      sb.from("outlet_day_hours").select("*").eq("outlet_id", id).eq("day", today()).maybeSingle().then((r) => (r.error ? undefined : r.data), () => undefined)]);
     if (!here()) return;
     o._closed = (clos || []).some((c) => c.day === today() && c.status === "approved"); // 3.99.196: an approved non-working day
+    o._today = dayH || null; o._dayHoursOk = dayH !== undefined; // 3.99.204: today's hours (late open / early close)
     // 3.99.175: an employee without "13 See Balances & History": only the sales and expenses he or she recorded (with their
     // amounts); no totals, balance, stock account or monthly statement
     const mine = !!S.hideMoney && !isAdmin();
@@ -303,7 +313,7 @@
         })()}
         <div class="os-hero-top"><div class="os-logo-col">${storeLogo(o, "big")}<span class="os-rk" id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span></div>
           <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
-        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive">${liveHtml(o)}</span>` : ""}${!mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<span class="r-left">${ic("receipt")} Unpaid Rent ₱ ${peso(rs.left)}</span>` : ""}
+        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive">${liveHtml(o)}</span>` : ""}${!mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<span class="r-left">${ic("receipt")} Unpaid Rent ₱ ${peso(rs.left)}${rs.paidAmt > 0 ? `<small>Paid ₱ ${peso(rs.paidAmt)} of ₱ ${peso(rs.rent)}</small>` : ""}</span>` : ""}${o._today ? `<span class="os-todayh">${ic("clock")} Today ${esc(todayText(o))}<small>changed${o._today.set_by_name ? ` by ${esc(o._today.set_by_name)}` : ""}</small></span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(rs.last))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
@@ -312,7 +322,7 @@
       <div class="os-kpis"${mine ? " hidden" : ""}>${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", out, `${xps.length} expense(s)`)}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("pay", "Stock Payments", paid, cust ? `To pay ₱ ${peso(owed)}` : "")}
         <div class="os-kpi bal${bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(bal)}</b><span class="${allBal < 0 ? "neg" : ""}">In all ₱ ${peso(allBal)}</span></div></div>
       <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button><button type="button" class="btn" id="olExp">${ic("plus")} Expense / Bill</button><button type="button" class="btn" id="olCash">${ic("wallet")} Cash Out</button>` : ""}
-        ${mine ? "" : `<button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>`}${isAdmin() || edit ? `<button type="button" class="btn" id="olNwd">${ic("clock")} Non-Working Days</button>` : ""}${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
+        ${mine ? "" : `<button type="button" class="btn" id="olSoa">${ic("print")} Monthly Statement</button>`}${isAdmin() || edit ? `<button type="button" class="btn" id="olHours">${ic("clock")} Today's Hours</button><button type="button" class="btn" id="olNwd">${ic("clock")} Non-Working Days</button>` : ""}${edit && !mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<button type="button" class="btn ok" id="olPayRent">${ic("receipt")} Pay Rent ₱ ${peso(rs.left)}</button>` : ""}${isAdmin() ? `<button type="button" class="btn" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""}</div>
       <div class="tabs os-tabs" id="osTabs">${tabs.map(([t, n], k) => `<button type="button" class="${k ? "" : "on"}" data-t="${k}">${esc(t)}${n ? ` <em>${n}</em>` : ""}</button>`).join("")}</div>
       <div class="tabpanes os-panes" id="osPanes">${tabs.map(([, , html], k) => `<div data-p="${k}" class="os-pane"${k ? " hidden" : ""}>${html}</div>`).join("")}</div>`;
     $$("#osTabs button").forEach((t) => (t.onclick = () => { $$("#osTabs button").forEach((x) => x.classList.toggle("on", x === t)); $$("#osPanes > div").forEach((q) => (q.hidden = q.dataset.p !== t.dataset.t)); }));
@@ -351,6 +361,8 @@
     }));
     $$("[data-day]").forEach((b) => (b.onclick = () => printDay(o, b.dataset.day, sales, exps, mine)));
     if ($("#olNwd")) $("#olNwd").onclick = () => nwdForm(o, clos, m);
+    if ($("#olHours")) $("#olHours").onclick = () => hoursForm(o, m);
+    if ($("#olPayRent")) $("#olPayRent").onclick = () => expenseForm(o, null, "", { kind: "rent", amount: rs.left.toFixed(2), payee: "Landlord", note: `Rent ${E.monthText(m)}${rs.paidAmt > 0 ? " (the rest)" : ""}` });
     if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null });
     E.setRecords(`Outlet: ${o.code}`);
   };
@@ -404,7 +416,7 @@
   }
 
   // ---------- an expense, bill, supplier payment or the rental ----------
-  function expenseForm(o, row = null, kind = "") {
+  function expenseForm(o, row = null, kind = "", pre = null) {
     if (row && !isAdmin()) return toast("Only the Director (EMON HASAN) edits an expense.", true); // 3.99.155
     const v = (k) => esc(row?.[k] ?? "");
     const isCash = (row?.kind || kind) === "cashout"; // 3.99.157: Cash Out has its own simple form
@@ -419,6 +431,10 @@
         <div class="span2"><label for="oxNote">Note</label><input id="oxNote" maxlength="500" value="${v("note")}"></div>
         <div class="span2"><label for="oxPic">${row ? "Add Receipt Photo" : "Receipt Photo"}</label><input id="oxPic" type="file" accept="image/*,application/pdf" multiple></div>
       </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="oxSave">${ic("check")} Save</button>`, { wide: true });
+    if (pre && !row) { // 3.99.204: Pay Rent: the type, the amount still unpaid, the landlord and a note
+      const set = (sel, v) => { const x = m.el.querySelector(sel); if (x && v != null) x.value = v; };
+      set("#oxKind", pre.kind); set("#oxAmt", pre.amount); set("#oxPayee", pre.payee); set("#oxNote", pre.note);
+    }
     if (!isCash) $("#oxKind", m.el).onchange = (e) => { if (e.target.value === "rent" && !$("#oxAmt", m.el).value && num(o.monthly_rent)) $("#oxAmt", m.el).value = num(o.monthly_rent).toFixed(2); };
     $("[data-x]", m.el).onclick = () => m.close();
     $("#oxSave", m.el).onclick = async (e) => {
@@ -556,6 +572,34 @@
   // ---------- the monthly statement (SOA): a ledger of the month ----------
   // 3.99.175: the DAILY SALES REPORT of one shop for ONE day: the sales (cash, GCash), the day's expenses and cash out, the cash
   // left, who recorded it, and the signatures. Report No DSR-<shop>-<date>.
+  // 3.99.204: TODAY'S HOURS (SQL 131): opened late, closed early or closed now; only for today (tomorrow: the normal hours)
+  function hoursForm(o, m) {
+    if (!o._dayHoursOk) { toast("Run the database update 131 first (Today's Hours).", true); return; }
+    const nowHM = () => new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Manila", hour: "2-digit", minute: "2-digit", hour12: false });
+    const op = to24(o._today?.opens || o.opens), cl = to24(o._today?.closes || o.closes);
+    const md = E.modal(`${o.code} · Today's Hours`, `
+      <p class="muted" style="margin:0 0 10px">Normal hours: <b>${esc(hoursOf(o) || "not set")}</b>. A change is for <b>today only</b>; tomorrow the normal hours come back.</p>
+      <div class="btnrow hr-quick"><button type="button" class="btn" id="hrOpenNow">${ic("check")} Open Now</button><button type="button" class="btn danger" id="hrCloseNow">${ic("x")} Close Now</button></div>
+      <div class="formgrid ol-form"><div><label for="hrOpen">Open today at</label><input type="time" id="hrOpen" value="${esc(op || "")}"></div>
+        <div><label for="hrClose">Close today at</label><input type="time" id="hrClose" value="${esc(cl || "")}"></div>
+        <div class="span2"><label for="hrNote">Reason</label><input id="hrNote" maxlength="200" placeholder="Opened late, closed early, power out …" value="${esc(o._today?.note || "")}"></div></div>`,
+      `${o._today ? `<button type="button" class="btn" id="hrReset">Normal Hours</button>` : ""}<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="hrSave">${ic("check")} Save</button>`);
+    const el = md.el, reload = () => { md.close(); V.outlet(o.id, m); };
+    el.querySelector("[data-x]").onclick = md.close;
+    const save = async (opens, closes) => {
+      const { error } = await sb.rpc("outlet_set_today", { p_outlet: o.id, p_opens: opens || null, p_closes: closes || null, p_note: el.querySelector("#hrNote").value });
+      if (error) return fail(error, "Could not save today's hours");
+      toast("Today's hours saved."); reload();
+    };
+    el.querySelector("#hrOpenNow").onclick = () => save(nowHM(), el.querySelector("#hrClose").value);
+    el.querySelector("#hrCloseNow").onclick = () => save(el.querySelector("#hrOpen").value, nowHM());
+    el.querySelector("#hrSave").onclick = () => save(el.querySelector("#hrOpen").value, el.querySelector("#hrClose").value);
+    if (el.querySelector("#hrReset")) el.querySelector("#hrReset").onclick = async () => {
+      const { error } = await sb.rpc("outlet_clear_today", { p_outlet: o.id });
+      if (error) return fail(error, "Could not reset");
+      toast("Normal hours again."); reload();
+    };
+  }
   // 3.99.196: NON-WORKING DAYS (SQL 128): the days ahead (approved, waiting, not approved) and a calendar to ask for new ones
   function nwdForm(o, clos, m) {
     if (clos === null) { toast("Run the database update 128 first (Non-Working Days).", true); return; }
