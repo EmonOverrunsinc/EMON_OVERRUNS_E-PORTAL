@@ -610,7 +610,7 @@
       <section class="hero home-hero">${E.logoHtml("hero-logo")}<div>
         <p class="hero-date">${esc(today)}</p>
         <h2>${esc(greet)}${first ? `, ${E.bossName(first.charAt(0) + first.slice(1).toLowerCase(), S.profile.role)}` : ""}</h2>
-        <p class="welcome">${esc(C.company.name)} <span class="hero-tag">E-PORTAL</span> · <b>${E.titleHtml(S.profile.role, S.position)}</b></p></div></section>
+        <p class="welcome">${esc(C.company.name)} <span class="hero-tag">E-PORTAL</span> · <b>${E.titleHtml(S.profile.role, S.position)}</b></p><div id="dPlace" class="ch-place"></div></div></section>
       ${H("outlets") ? `<section class="nwd-notice" id="dClosed" hidden></section>` : ""}
       ${isAdmin() ? `<section class="todo" id="dTodo" hidden></section>` : ""}
       <section class="box my-dlv" id="dDlv" hidden></section>
@@ -625,6 +625,7 @@
         ${isStaff() && H("purchase") ? box("dComm", "Purchase Orders", "purchase") : ""}
       </div>`);
     myDeliveries();
+    if (S.empId) sb.rpc("my_place").then(({ data: pl }) => { const b = $("#dPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl, "sm"); }, () => {}); // 3.99.234
     E.outletsBox?.($("#dOutlets")); // 3.99.116: the shops' sales on the Dashboard
     // 3.99.196: a shop with an approved non-working day today: everyone of that shop sees it here
     if ($("#dClosed")) sb.from("outlet_closures").select("outlet_id, outlets(code, name)").eq("day", isoToday()).eq("status", "approved").then(({ data, error }) => {
