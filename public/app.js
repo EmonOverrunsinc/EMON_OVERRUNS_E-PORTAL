@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.181"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.182"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.181"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.182"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -110,9 +110,12 @@
   };
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
   // the corner of a profile head: the rank badge and the stars (always in the same place)
-  const achCorner = (el, rank, label, tip, stars) => {
+  // 3.99.182: 5 stars = an animated VIP badge, by itself
+  const vipBadge = (stars) => (Number(stars) >= 5 ? `<span class="vip-badge" title="VIP · 5 of 5 stars">${ic("crown")}<b>VIP</b></span>` : "");
+  const achCorner = (el, rank, label, tip, stars, vip = true) => {
     if (!el) return;
-    el.innerHTML = `${rank ? rankBadge(rank, label, "", tip) : ""}${stars > 0 ? starsHtml(stars) : ""}`;
+    const v = vip ? vipBadge(stars) : "", s = stars > 0 ? starsHtml(stars) : "";
+    el.innerHTML = `${rank ? rankBadge(rank, label, "", tip) : ""}${v || s ? `<span class="ach-line">${v}${s}</span>` : ""}`;
     el.hidden = !el.innerHTML;
   };
   const customerRanks = () => rankList("c", () => sb.rpc("customer_ranks"));
@@ -1413,13 +1416,20 @@
   // New Customer Account, Add Invoice, Add Payment, Add Order, Verification (and All Statements for EMON HASAN)
   function quickAdd() {
     $$("body > .quick-add").forEach((x) => x.remove());
-    if (!["customers", "invoices", "payments"].includes(location.hash.slice(1))) return;
-    const items = [[canWrite("customers"), "#newcustomer", "New Customer Account", "user"], [canWrite("invoices"), "#newinvoice", "Add Invoice", "receipt"],
-      [canWrite("payments") || canWrite("invoices"), "#newpayment", "Add Payment", "wallet"], [canWrite("eooffice"), "#newcustorder", "Add Order", "box"],
-      [true, "#verify", "Verification", "shield"], [isAdmin(), "#statements", "All Statements (SOA)", "doc"]].filter((x) => x[0]);
-    document.body.insertAdjacentHTML("beforeend", `<div class="quick-add"><div class="qa-menu" id="qaMenu" hidden>${items.map(([, h, l, i]) => `<a href="${h}">${ic(i)}<span>${esc(l)}</span></a>`).join("")}</div>
+    const page = location.hash.slice(1);
+    const C_ = [canWrite("customers"), "#newcustomer", "New Customer Account", "user"], INV = [canWrite("invoices"), "#newinvoice", "Add Invoice", "receipt"],
+      PAY = [canWrite("payments") || canWrite("invoices"), "#newpayment", "Add Payment", "wallet"], ORD = [canWrite("eooffice"), "#newcustorder", "Add Order", "box"];
+    // 3.99.182: the Invoices page: invoice and order; Payments: payment; Customer Orders: order; Customers: all of them
+    const items = ({ customers: [C_, INV, PAY, ORD, [true, "#verify", "Verification", "shield"], [isAdmin(), "#statements", "All Statements (SOA)", "doc"]],
+      invoices: [INV, ORD], payments: [PAY], custorders: [ORD] }[page] || []).filter((x) => x[0]);
+    if (!items.length) return;
+    if (items.length === 1) { // one choice: the + goes straight there
+      const [, h, l] = items[0];
+      document.body.insertAdjacentHTML("beforeend", `<div class="quick-add"><a class="qa-plus" href="${h}" aria-label="${esc(l)}" title="${esc(l)}">${ic("plus")}</a></div>`);
+    } else document.body.insertAdjacentHTML("beforeend", `<div class="quick-add"><div class="qa-menu" id="qaMenu" hidden>${items.map(([, h, l, i]) => `<a href="${h}">${ic(i)}<span>${esc(l)}</span></a>`).join("")}</div>
       <button type="button" class="qa-plus" id="qaPlus" aria-label="Add new" aria-haspopup="true" aria-expanded="false">${ic("plus")}</button></div>`);
     const qa = $("body > .quick-add"), menu = $("#qaMenu"), plus = $("#qaPlus");
+    if (!menu) return place(qa);
     const away = (e) => { if (!e.target.closest?.(".quick-add")) show(false); };
     const key = (e) => { if (e.key === "Escape") show(false); };
     const show = (on) => {
@@ -1429,11 +1439,12 @@
     };
     plus.onclick = () => show(menu.hidden);
     $$("a", menu).forEach((a) => a.addEventListener("click", () => show(false)));
-    requestAnimationFrame(() => { // on the left of the Back button
-      const bb = $("body > .band-back");
-      if (qa) qa.style.right = bb?.offsetWidth ? `${Math.round(window.innerWidth - bb.getBoundingClientRect().left + 8)}px` : "";
-    });
+    place(qa);
   }
+  const place = (qa) => requestAnimationFrame(() => { // on the left of the Back button
+    const bb = $("body > .band-back");
+    if (qa) qa.style.right = bb?.offsetWidth ? `${Math.round(window.innerWidth - bb.getBoundingClientRect().left + 8)}px` : "";
+  });
   function bindBack(home) {
     // 3.52: the button is moved out of the page (the page slides in, which would carry it along) to float at the bottom left
     $$("body > .band-back").forEach((x) => x.remove());
@@ -1949,7 +1960,7 @@
     location.hash = "find/" + encodeURIComponent(t);
   }
   // 3.99.179: the PAGE FOOTER of every page: TOTAL DATA FOUND (the list's count), the server, the location and the rights
-  const pageFoot = () => `<footer class="page-foot"><div class="pf-data"><span id="pgTotal" hidden>TOTAL DATA FOUND <b>0</b></span><span>SERVER: SOUTH EAST ASIA</span><span>LOCATION: ${esc(String(C.company.address?.[0] || "Pasay City, Metro Manila").toUpperCase())}</span></div>
+  const pageFoot = () => `<footer class="page-foot"><div class="pf-data"><span id="pgTotal" hidden>TOTAL DATA FOUND <b>0</b></span><span>SERVER: SOUTH EAST ASIA</span></div>
     <div class="pf-copy">ALL RIGHTS RESERVED BY ${esc(C.company.name)} <span class="nw">© 2023–${new Date().getFullYear()}</span></div></footer>`;
   const setRecords = (txt) => {
     const e = $("#sbRecords"); if (e) e.textContent = txt;
@@ -3024,7 +3035,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankBadge, outletRanks, customerRanks, salesStars, starsHtml, medalHtml, achHtml, achievements, achCorner, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankBadge, outletRanks, customerRanks, salesStars, starsHtml, medalHtml, achHtml, achievements, achCorner, vipBadge, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)

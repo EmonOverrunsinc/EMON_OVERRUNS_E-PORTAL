@@ -297,8 +297,10 @@
     Promise.all([E.outletRanks(m), E.salesStars("outlet")]).then(([rk, ss]) => {
       const el = $("#osAch"), r = rk.get(o.id);
       if (!el || el.dataset.oid !== o.id || el.dataset.m !== m) return;
+      const n = ss.get(o.id)?.stars;
       E.achCorner(el, r?.rank, "TOP SALES", r ? `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}${r.net != null ? ` · ₱ ${peso(r.net)}` : ""}` : "", 0);
-      const st = $("#osStars"), n = ss.get(o.id)?.stars; // 3.99.181: the stars under the branch code, in the middle
+      if (n >= 5) { el.insertAdjacentHTML("beforeend", E.vipBadge(n)); el.hidden = false; } // 3.99.182: 5 stars: VIP
+      const st = $("#osStars"); // 3.99.181: the stars under the branch code, in the middle
       if (st && n > 0) { st.innerHTML = E.starsHtml(n); st.hidden = false; }
     });
     E.achievements("outlet", o.id).then((a) => { const p = $("#osAchTab"); if (p && p.dataset.oid === o.id) p.innerHTML = E.achHtml(a, "outlet"); });

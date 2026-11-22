@@ -212,7 +212,7 @@
     let month = "";
     $("#coBody").innerHTML = `
       <div class="co-top-search"><input type="search" id="coFind" class="co-find" placeholder="Search every order: order no, customer, account no, batch no" aria-label="Search orders" autocomplete="off">
-        <button type="button" class="btn" id="coScan">${ic("scan")} Scan</button><a class="btn" href="#soldboxes">${ic("box")} Sold Boxes</a>${canW() ? `<a class="btn primary" href="#newcustorder">${ic("plus")} New Customer Order</a>` : ""}</div>
+        <button type="button" class="btn" id="coScan">${ic("scan")} Scan</button><a class="btn" href="#soldboxes">${ic("box")} Sold Boxes</a></div>
       <div class="tiles co-tiles">
         <div class="tile ${count(["pending"]) ? "warn" : ""}"><span class="tile-ic">${ic("clock")}</span><div class="k">Waiting for Approval</div><div class="v">${count(["pending"])}</div></div>
         <div class="tile"><span class="tile-ic">${ic("box")}</span><div class="k">Confirmed · To Deliver</div><div class="v">${count(["approved"])}</div></div>

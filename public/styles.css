@@ -4793,3 +4793,20 @@ body:has(.modal) > .quick-add, body:has(.preview) > .quick-add, body:not(:has(.c
 .os-code-col .os-stars[hidden] { display: none; }
 .ol-code-col .ol-st:empty { display: none; } .ol-code-col .stars.mini { margin: 0; }
 .ol-code-row { align-items: flex-start; }
+/* 3.99.182: the VIP badge (5 stars, animated); the customer's stars in the middle under the rank */
+.ach-corner.cu-ach { align-items: center; }
+.ach-line { display: inline-flex; align-items: center; gap: 8px; }
+.vip-badge { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 4px 11px 4px 8px; border-radius: 999px; overflow: hidden; isolation: isolate;
+  background: linear-gradient(135deg, #0f2a66, #1d4fb0 55%, #0f2a66); color: #f5c542; border: 1.5px solid #f5c542; box-shadow: 0 0 0 2px rgba(245, 197, 66, .25), 0 4px 12px rgba(15, 42, 102, .35);
+  font-weight: 900; font-size: 13px; letter-spacing: .14em; line-height: 1; white-space: nowrap; animation: vipGlow 2.4s ease-in-out infinite; }
+.vip-badge .ic { width: 16px; height: 16px; stroke: #f5c542; fill: rgba(245, 197, 66, .35); animation: vipCrown 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
+.vip-badge::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .45) 48%, transparent 66%); transform: translateX(-120%); animation: rkShine 2.4s ease-in-out infinite; }
+@keyframes vipGlow { 0%, 100% { box-shadow: 0 0 0 2px rgba(245, 197, 66, .25), 0 4px 12px rgba(15, 42, 102, .35); } 50% { box-shadow: 0 0 0 4px rgba(245, 197, 66, .45), 0 4px 16px rgba(245, 197, 66, .45); } }
+@keyframes vipCrown { 0%, 100% { transform: none; } 50% { transform: translateY(-2px) rotate(-8deg); } }
+@media (prefers-reduced-motion: reduce) { .vip-badge, .vip-badge .ic, .vip-badge::after { animation: none; } }
+a.qa-plus { text-decoration: none; }
+/* 3.99.182: the account standing chip under the photo: one column, never wider than the photo */
+#main .cust-hero .ch-tags .stand { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; max-width: 100%; padding: 6px 8px; border-radius: 12px; text-align: center; white-space: normal; }
+#main .cust-hero .ch-tags .stand small { border: 0 !important; padding: 0 !important; margin: 0 !important; }
+#main .cust-hero .ch-tags .stand small::before { content: none !important; }
+#main .cust-hero .ch-pic { min-width: 0; }
