@@ -306,7 +306,7 @@
     const vurls = p.voices?.length ? await E.signedMap(p.voices) : new Map();
     if (!here()) return;
     const mine = p.created_by === meId(), open = ["pending", "negotiation"].includes(p.status);
-    $(".band h1").textContent = `Purchase Order — ${p.po_no}`;
+    $(".band h1").textContent = `Purchase Order › ${p.po_no}`;
     const lines = (p.items || []).map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.item)}</td><td>${esc(l.brand || "")}</td><td class="num">${isAdmin() && open ? `<input type="number" class="ngP" data-i="${i}" min="0" step="0.01" value="${l.price}">` : peso(l.price)}</td>
       <td class="num">${qtyText(l.qty)}</td><td>${l.terms === "fixed" ? "Fixed" : "Negotiable"}</td><td>${esc(l.note || "")}</td><td class="num ngA">${peso(l.amount)}</td></tr>`).join("");
     $("#main").innerHTML = `<div class="window"><div class="wtitle">${esc(p.po_no)} · ${esc(p.lot_name)} ${stPill(p)}</div><div class="wbody">
