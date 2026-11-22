@@ -279,7 +279,7 @@
       ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn small" for="olDocUp">${ic("upload")} Upload</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}
       ${o.notes ? `<div class="ol-sub">Notes</div><p class="ol-notes">${esc(o.notes)}</p>` : ""}`;
     const box = (cls, k, v, sub = "") => `<div class="os-kpi ${cls}"><small>${k}</small><b>₱ ${peso(v)}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
-    const tabs = [["Daily Sales", days.length, salesTab], ["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Achievements", 0, `<div id="osAchTab" data-oid="${esc(o.id)}">${busy()}</div>`], ["Documents", docs.length, docTab]];
+    const tabs = [["Daily Sales", days.length, salesTab], ["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Achieved", 0, `<div id="osAchTab" data-oid="${esc(o.id)}">${busy()}</div>`], ["Documents", docs.length, docTab]];
     $("#olBody").innerHTML = `
       <section class="os-hero">
         <div class="os-hero-micro" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(o))}</span>`).join("")}</div>
@@ -588,9 +588,9 @@
     }));
   }
   // 3.99.195: the sales reports end with two equal name boxes: PREPARED BY (the employee) and APPROVED BY (EMON HASAN)
-  const nameBoxes = (prep) => `<div class="name-boxes"><div class="nbox"><small>PREPARED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b><em>${/^EMON HASAN$/i.test(String(prep || "").trim()) ? "OPERATIONAL DIRECTOR" : "OUTLET STAFF"}</em></div><div class="nbox"><small>APPROVED BY</small><b>EMON HASAN</b><em>OPERATIONAL DIRECTOR</em></div></div>`;
+  const nameBoxes = (prep, id) => `<div class="name-boxes"><div class="nbox"><small>PREPARED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b><em>${/^EMON HASAN$/i.test(String(prep || "").trim()) ? "OPERATIONAL DIRECTOR" : "OUTLET STAFF"}${E.eoidOf?.(id) ? ` · ${esc(E.eoidOf(id))}` : ""}</em></div><div class="nbox"><small>APPROVED BY</small><b>EMON HASAN</b><em>OPERATIONAL DIRECTOR</em></div></div>`;
   async function printDay(o, date, sales, exps, mine) {
-    await Promise.all([E.loadSignatures?.().catch(() => {}), E.loadSigners?.([S.profile?.id]).catch(() => {})]);
+    await Promise.all([E.loadSignatures?.().catch(() => {}), E.loadSigners?.([S.profile?.id, ...sales.filter((x) => x.sale_date === date).map((x) => x.created_by)]).catch(() => {})]);
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
     const xp = day.filter((x) => x.kind !== "cashout"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -607,7 +607,7 @@
       ${list("Expenses", xp.map((x) => `<tr><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc([x.payee, x.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Type"], ["Paid To / Note"], ["Amount (₱)", 1]])}
       ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td>${esc(x.note || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Note"], ["Amount (₱)", 1]])}
       <div class="soa-result"><span>Total Sales ₱ ${P(tot)} − Expenses ₱ ${P(ex)} − Cash Out ₱ ${P(cash)}</span><b class="${left < 0 ? "neg" : ""}">CASH LEFT ₱ ${P(left)}</b></div>
-      ${nameBoxes(r.created_by_name || me() || "")}</div>`;
+      ${nameBoxes(r.created_by_name || me() || "", r.created_by_name ? r.created_by : S.profile?.id)}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
 
@@ -663,7 +663,7 @@
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the result and the signatures
     blocks.push({ h: 9, html: `<div class="soa-result"><span>Net Sales ₱ ${P(d.net)} − Expenses ₱ ${P(d.out)} − Cash Out ₱ ${P(d.cash || 0)} − Stock Payments ₱ ${P(d.paid)}</span><b class="${d.bal < 0 ? "neg" : ""}">BALANCE ₱ ${P(d.bal)}</b></div>
-      ${nameBoxes(me() || "")}` });
+      ${nameBoxes(me() || "", S.profile?.id)}` });
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;

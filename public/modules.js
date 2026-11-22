@@ -226,11 +226,14 @@
   async function loadSigners(ids) {
     const want = [...new Set((ids || []).filter((x) => x && !SIGNERS.has(x)))];
     if (!want.length || !S.session) return;
-    const { data, error } = await sb.rpc("signatures_of", { p_ids: want }).then((r) => r, () => ({ error: true }));
+    // 3.99.200: and their EOID (employee no) for "Prepared by" (both before the paper is drawn)
+    const [{ data, error }] = await Promise.all([sb.rpc("signatures_of", { p_ids: want }).then((r) => r, () => ({ error: true })),
+      sb.rpc("people_eoid", { p_ids: want }).then(({ data: ppl }) => (ppl || []).forEach((x) => x.employee_no && EOIDS.set(x.id, x.employee_no)), () => {})]);
     if (error) return;
     want.forEach((x) => SIGNERS.set(x, ""));
     await Promise.all((data || []).map(async (x) => SIGNERS.set(x.id, await signaturePic(x.signature_path))));
   }
+  const EOIDS = new Map(), eoidOf = (id) => (id && EOIDS.get(id)) || "";
   const signerBy = (id) => { const pic = id ? SIGNERS.get(id) : ""; return pic ? { name: "", at: null, pic } : null; };
   // The approval of a document by the Director, for its print: the name, the date and the signature picture (empty
   // until the Director's signature is uploaded). id: the Director's id; without it the name is used.
@@ -803,7 +806,7 @@
       else { const rnk = (c) => rk.get(c.id)?.rank ?? 1e9; rows.sort((a, b) => rnk(a) - rnk(b)); }
       rows.forEach((r, i) => (r._no = i + 1));
       $("#cuRes").innerHTML = E.grid({ cols: [
-        { label: ws.length ? "No." : "Rank", num: true, get: (r) => r._no, html: (r) => { const k = !ws.length && rk.get(r.id)?.rank; return k && k <= 10 ? `<span class="rk-no rk${Math.min(k, 6)}" title="Rank ${k}">${k}</span>` : String(r._no); } },
+        { label: ws.length ? "No." : "Rank", num: true, get: (r) => r._no, html: (r) => { const x = !ws.length && rk.get(r.id); return x ? E.rankNo(x.rank, "", x.tier || null) : String(r._no); } },
         { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r) }, // 3.99.159: CLOSED once (in Status)
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
@@ -1059,7 +1062,7 @@
     const tabs = ["Details", "Statement of Account", `Invoices (${(invs.data || []).length})`, `Payments (${(pays.data || []).length})`, `Credit Memos (${cms.length})`, `Documents (${att.length})`, "History", `Overdue (${overdue.length})`, `Returns (${rets.length})`, `Gate Pass (${E.gateHistoryRows ? E.gateHistoryRows(orders, ev.data || [], aiLog.data || []).length : 0})`];
     const showOrders = isStaff() && !!E.customerOrdersOf; // 3.37: the customer's orders (tab 10)
     if (showOrders) tabs.push("Customer Orders");
-    const achAt = isStaff() ? tabs.push("Achievements") - 1 : -1; // 3.99.180: medals and stars
+    const achAt = isStaff() ? tabs.push("Achieved") - 1 : -1; // 3.99.180/200: medals and the prize pool
     $(".band h1").textContent = `Customer — ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c)}
@@ -1195,7 +1198,7 @@
     if ($("#pfRank")) E.customerRanks().then((rk) => { // 3.99.194: the rank under the profile picture: #1, #2 … (no rank: nothing)
       const el = $("#pfRank"), r = rk.get(c.id);
       if (!r || !el || el.dataset.cid !== c.id) return;
-      el.innerHTML = E.rankTag(r.rank); el.title = `Rank ${r.rank} · total net sales up to Monday ${mdy(r.as_of)} · the rank changes every Monday`; el.hidden = false;
+      el.innerHTML = E.rankTag(r.rank, r.tier || null); el.title = `Rank ${r.rank} · total net sales up to Monday ${mdy(r.as_of)} · the rank changes every Monday`; el.hidden = false;
     });
     if ($("#pfAchTab")) E.achievements("customer", c.id).then((a) => { const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) p.innerHTML = E.achHtml(a, "customer"); });
     E.custVerified?.($("#pfVerified"), c.id); // 3.69: the customer agreed to the legal terms
@@ -1225,7 +1228,7 @@
     if (!box) return;
     box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} Total net sales up to Monday ${esc(mdy(list[0].as_of))} · the rank changes every Monday.</p>
       <div class="rank-board">${list.map((r) => { const c = cm.get(r.customer_id) || {};
-        return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankNo(r.rank, "lg")}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
+        return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankNo(r.rank, "lg", r.tier || null)}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
       : `<div class="empty">No rank yet. It needs the database updates <b>125</b> and <b>127</b>, and invoices before this Monday.</div>`;
     box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => m.close()));
   }
@@ -2744,7 +2747,7 @@
   Object.assign(E, {
     extOf, viewFile, latestSigned, uploadRecords, signedUrl, attachmentsOf, filesHtml, bindFiles, fileField, filesOf, isImage,
     docCard, bindDocCards, customerPicker, getCustomer, fullName, printHead, box, cell, sigs, sigCol, cxTop, cxSec, cxKv, uuid, cleanQ, idBox, METHOD,
-    loadSignatures, approvedBy, signaturePic, loadSigners, signerBy, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
+    loadSignatures, approvedBy, signaturePic, loadSigners, signerBy, eoidOf, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
   });
   E._docs = { ...(E._docs || {}), invoicePage, ackPage, soaPages, memoPage, detailsPage, applicationPage, txnsOf }; // 3.79: the document pages (for the print checks)
 })();
