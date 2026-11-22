@@ -129,7 +129,7 @@
       ${isAdmin() ? `<div class="pg-more"><button type="button" class="pg-more-btn" id="olMore" aria-label="More" aria-haspopup="true">⋯</button><div class="pg-more-list" id="olMoreList" hidden><button type="button" id="olNew">${ic("plus")} Add Store</button></div></div>` : ""}
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
-        return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(r.o))}</span><span>OFFICIAL OUTLET</span>`).join("")}</div>
+        return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(r.o))}</span><span>${esc(r.o.code)}</span>`).join("")}</div>
           <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
           <div class="ol-card-a">${r.o.address ? `${ic("pin")} ${esc(r.o.address)}` : ""}${r.o.address && hoursOf(r.o) ? " · " : ""}${hoursOf(r.o) ? esc(hoursOf(r.o)) : ""}</div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
@@ -256,16 +256,16 @@
     $("#olBody").innerHTML = `
       <section class="os-hero">
         <div class="os-hero-micro" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(o))}</span>`).join("")}</div>
-        <div class="os-hero-micro low" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>OFFICIAL OUTLET</span><span>${esc(o.code)}</span>`).join("")}</div>
+        <div class="os-hero-micro low" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(o.code)}</span>`).join("")}</div>
         ${(() => { // 3.99.163: the identity in the rosette: rings of microtext and the shop's ID number
           const idNo = bidText(o); // 3.99.187: without "EO-"
           const ring = (r, txt, n) => `<path id="osR${r}" d="M150 ${150 - r} a${r} ${r} 0 1 1 -0.01 0"/><text><textPath href="#osR${r}" textLength="${(2 * Math.PI * r).toFixed(1)}" lengthAdjust="spacing">${esc(Array.from({ length: n }, () => txt).join(" · "))}</textPath></text>`;
-          return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · OFFICIAL OUTLET IDENTITY`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
-            <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">OFFICIAL · EMON OVERRUNS</text></svg>`;
+          return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · ${o.code} · EMON OVERRUNS`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
+            <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">EMON OVERRUNS · ${esc(o.code)}</text></svg>`;
         })()}
         <div class="os-hero-top">${storeLogo(o, "big")}
-          <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
-        <div class="os-chips"><span class="os-rank" id="osRankChip" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
+          <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span><span class="os-rk" id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
+        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
@@ -291,10 +291,10 @@
     if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout");
     $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
-    E.outletRanks(m).then((rk) => { // 3.99.185: the rank of the month shown, as a status chip
-      const el = $("#osRankChip"), r = rk.get(o.id);
+    E.outletRanks(m).then((rk) => { // 3.99.192: the rank of the month shown: a round circle beside the branch code (no word)
+      const el = $("#osRank"), r = rk.get(o.id);
       if (!r || !el || el.dataset.oid !== o.id || el.dataset.m !== m) return;
-      el.innerHTML = `RANK ${E.rankNo(r.rank)}`; el.title = `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}`; el.hidden = false;
+      el.innerHTML = E.rankNo(r.rank, "xl"); el.title = `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}`; el.hidden = false;
     });
     E.achievements("outlet", o.id).then((a) => { const p = $("#osAchTab"); if (p && p.dataset.oid === o.id) p.innerHTML = E.achHtml(a, "outlet"); });
     $$("[data-del]").forEach((b) => (b.onclick = async () => {

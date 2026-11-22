@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.191"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.192"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.191"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.192"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -74,7 +74,7 @@
   // 5 silver, 6 to 10 blue. The ranks are kept for 2 minutes, so a page and its list make one call.
   const MEDAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="rk-rib" d="M6.6 1.8h4l2.1 5.6-2.6 2.4zM17.4 1.8h-4l-2.1 5.6 2.6 2.4z"/><circle class="rk-coin" cx="12" cy="15.2" r="6.8"/><path class="rk-star" d="m12 11 1.27 2.58 2.85.41-2.06 2.01.49 2.83L12 17.5l-2.55 1.34.49-2.83L7.88 14l2.85-.41z"/></svg>';
   // 3.99.185: the rank as a ROUND number (1 to 10 in their colours): lists, cards, the rank window and the status chip
-  const rankNo = (k, cls = "") => { k = Number(k); return k >= 1 ? `<span class="rk-no${k <= 10 ? ` rk${Math.min(k, 6)}` : ""}${cls ? " " + cls : ""}" title="Rank ${k}">${k}</span>` : ""; };
+  const rankNo = (k, cls = "") => { k = Number(k); return k >= 1 ? `<span class="rk-no ${k <= 10 ? `rk${Math.min(k, 6)}` : "rkx"}${cls ? " " + cls : ""}" title="Rank ${k}">${k}</span>` : ""; };
   const rankMemo = new Map();
   const rankList = (key, call) => {
     const hit = rankMemo.get(key);
@@ -165,12 +165,19 @@
     if (n.nodeType !== 1) return;
     if (n.matches?.('input[type="number"]')) commaBox(n); else commaAll(n);
   }))).observe(document.documentElement, { childList: true, subtree: true });
-  // 3.99.166: every profile head gets the AUTHENTIC sticker: a small holographic seal that slowly shines (our own design)
-  const AUTH_STICKER = `<div class="auth-st" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><path id="authRing" d="M50 12 a38 38 0 1 1 -0.01 0"/></defs>
+  // 3.99.166: every profile head gets a small holographic seal that slowly shines (our own design). 3.99.192: it carries the
+  // record's own ID number (the first number box of the head: account no, order no, employee no …) with EMON OVERRUNS, and the
+  // fine line of the head repeats them; no other words
+  const headId = (h) => String(h.querySelector(".ch-ids .idbox b, .idbox b")?.textContent || "").trim().replace(/\s+/g, " ").slice(0, 22);
+  const authSticker = (id) => `<div class="auth-st" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><path id="authRing" d="M50 12 a38 38 0 1 1 -0.01 0"/></defs>
     <circle cx="50" cy="50" r="46" class="as-out"/><circle cx="50" cy="50" r="30" class="as-in"/>
-    <text class="as-ring"><textPath href="#authRing" textLength="238" lengthAdjust="spacing">EMON OVERRUNS · OFFICIAL · VERIFIED ·</textPath></text>
-    <path d="M38 50 l8 8 l16 -18" class="as-tick"/><text x="50" y="72" text-anchor="middle" class="as-word">OFFICIAL</text></svg><i class="as-shine"></i></div>`;
-  const addSticker = (root) => root.querySelectorAll?.("#main .cust-hero:not(.has-auth)").forEach((h) => { h.classList.add("has-auth"); h.insertAdjacentHTML("beforeend", AUTH_STICKER); });
+    <text class="as-ring"><textPath href="#authRing" textLength="238" lengthAdjust="spacing">${esc(id ? `EMON OVERRUNS · ${id} · EMON OVERRUNS · ${id} ·` : "EMON OVERRUNS · EMON OVERRUNS · EMON OVERRUNS ·")}</textPath></text>
+    <path d="M38 47 l8 8 l16 -18" class="as-tick"/><text x="50" y="70" text-anchor="middle" class="as-word"${id ? ` textLength="${Math.min(52, 4.4 * id.length).toFixed(1)}" lengthAdjust="spacingAndGlyphs"` : ""}>${esc(id || "EMON OVERRUNS")}</text></svg><i class="as-shine"></i></div>`;
+  const addSticker = (root) => root.querySelectorAll?.("#main .cust-hero:not(.has-auth)").forEach((h) => {
+    const id = headId(h);
+    h.classList.add("has-auth"); h.insertAdjacentHTML("beforeend", authSticker(id));
+    h.dataset.micro = Array.from({ length: 10 }, () => (id ? `EMON OVERRUNS · ${id}` : "EMON OVERRUNS")).join(" · ");
+  });
   new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches?.("#main .cust-hero")) addSticker(n.parentNode); else if (n.querySelector?.(".cust-hero")) addSticker(n); } })
     .observe(document.documentElement, { childList: true, subtree: true });
   // 3.99.175: a login that may not see the money (no "13 See Balances & History"): every box that would only show ••••• is
@@ -1943,7 +1950,7 @@
     location.hash = "find/" + encodeURIComponent(t);
   }
   // 3.99.179: the PAGE FOOTER of every page: TOTAL DATA FOUND (the list's count), the server, the location and the rights
-  const pageFoot = () => `<footer class="page-foot"><div class="pf-data"><span id="pgTotal" hidden>TOTAL DATA FOUND <b>0</b></span><span>SERVER: SOUTH EAST ASIA</span></div>
+  const pageFoot = () => `<footer class="page-foot"><div class="pf-data"><span id="pgTotal" hidden>TOTAL DATA FOUND <b>0</b></span></div>
     <div class="pf-copy">ALL RIGHTS RESERVED BY ${esc(C.company.name)} <span class="nw">© 2023–${new Date().getFullYear()}</span></div></footer>`;
   const setRecords = (txt) => {
     const e = $("#sbRecords"); if (e) e.textContent = txt;
@@ -2507,6 +2514,28 @@
     $("#pdClose", m.el).onclick = () => m.close();
     if ($("#pdShare", m.el)) $("#pdShare", m.el).onclick = () => navigator.share({ files: [file], title: file.name }).catch((e) => { if (e?.name !== "AbortError") toast("Could not open Share. Press Download.", true); });
   }
+  // 3.99.192: the security band of every printed page: fine waves and two lines of EMON OVERRUNS with the document's own number
+  // (from the title: Invoice INV-202611-0001 → INV-202611-0001), small to big; nothing else
+  const docId = (t) => (String(t || "").toUpperCase().match(/\b[A-Z]{1,6}(?:-[A-Z0-9]+){1,4}\b/) || [""])[0];
+  const secBand = (id) => {
+    const waves = [0, 1, 2, 3, 4, 5].map((k) => {
+      let d = "";
+      for (let x = 0; x <= 700; x += 5) d += `${x ? " L" : "M"}${x} ${(60 + (k - 2.5) * 2.2 + Math.sin((x / 70) * 2 * Math.PI + k * 0.7) * (3.2 + k * 0.5)).toFixed(1)}`;
+      return `<path d="${d}" stroke="${k % 2 ? "#a87a22" : "#12306b"}" stroke-opacity="${(0.1 + k * 0.012).toFixed(3)}" stroke-width=".55" fill="none"/>`;
+    }).join("");
+    const words = ["EMON", "OVERRUNS", "·", ...(id ? [id, "·"] : [])];
+    const line = (y, fill, op) => {
+      let x = 8, i = 0, out = "";
+      while (x < 690) {
+        const w = words[i++ % words.length], fs = 3.2 + (x / 700) * 0.6, tl = w.length * fs * 0.658;
+        out += `<text x="${x.toFixed(1)}" y="${y}" font-family="Arial" font-weight="700" font-size="${fs.toFixed(2)}" textLength="${tl.toFixed(1)}" lengthAdjust="spacingAndGlyphs" fill="${fill}" fill-opacity="${op}">${esc(w)}</text>`;
+        x += tl + 1.8;
+      }
+      return out;
+    };
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="700" height="120" viewBox="0 0 700 120">${waves}${line(18, "#12306b", ".20")}${line(112, "#a87a22", ".24")}</svg>`;
+    return `url('data:image/svg+xml,${encodeURIComponent(svg)}')`;
+  };
   function openPreview(title, pages, opts = {}) {
     // the barcodes are drawn first: a print made while the barcode maker was still loading opens when it is there
     if (!window.bwipjs) { need("bwip").then(() => openPreview(title, pages, opts), (e) => toast(e.message, true)); return; }
@@ -2514,6 +2543,7 @@
     const { landscape = false, size = "", undated = false, bare = false, onePage = false } = opts; // bare: only the page itself (no date, no website footer, no page number)
     closePreview();
     const cls = size ? " " + size : landscape ? " landscape" : "";
+    const band = secBand(opts.secId || docId(title));
     // Every printed page shows the date it was printed (report listings and statements already carry their own);
     // a blank form (undated) does not.
     const printed = dateTime(new Date().toISOString());
@@ -2535,7 +2565,7 @@
         <select id="pvZoom" style="width:auto"><option value="fit">Fit</option><option>50</option><option>75</option><option selected>100</option><option>125</option><option>150</option></select>
         <button type="button" class="btn" id="pvClose">Close</button>
       </div>
-      <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${onePage ? `<div class="pg-fit">${p}</div>` : p}<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div><div class="pg-sec" aria-hidden="true"></div></div>`)).join("")}</div>
+      <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${onePage ? `<div class="pg-fit">${p}</div>` : p}<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div><div class="pg-sec" aria-hidden="true" style="background-image:${band} !important"></div></div>`)).join("")}</div>
       <div class="statusbar"><span id="pvCur">Current Page No: 1</span><span>Total Page No: ${pages.length}</span><span id="pvZf">Zoom Factor: 100%</span></div>`;
     document.body.appendChild(pv);
     bwPictures($("#pvDesk", pv)); // 3.99.15
