@@ -111,7 +111,7 @@
       const box = $("#eoTab");
       if (k === "qc") {
         box.innerHTML = `<div class="btnrow">${canW() ? `<a class="btn primary" href="#newqc">${ic("plus")} Add QC Test</a>` : ""}<button type="button" class="btn" id="qcPlain">${ic("print")} Print QC Test Form</button></div>
-          <p class="muted" style="margin:4px 0 8px">Print the plain QC Test form (also in Download Forms) and check the goods on the paper. Then press <b>Add QC Test</b> and write all the details: after you submit, the 2 stickers open to print. Stick one on the paper form and scan the form on the page of the QC test.</p>
+          
           <div class="qc-find"><input type="search" id="qcFind" placeholder="Search: QC No, serial, item, brand, batch, CTN — or scan the barcode" aria-label="Search QC tests" autocomplete="off">
             <button type="button" class="btn" id="qcScan">${ic("scan")} Scan</button></div>
           <div id="qcGrid"></div>`;
@@ -221,7 +221,7 @@
       ${E.cxSec("Goods")}${E.cxKv([["Item", ""], ["Brand", ""], ["Serial No", ""], ["Batch", ""], ["CTN", ""], ["Qty (pcs)", ""]].map(([k, v]) => [k, v, "blank"]), "c3")}
       <div class="qx-h">QTY BY COLOR <small>Write each color and its pieces; added up they are the Qty.</small></div>
       <table class="qx-t qx-col"><thead><tr>${`<th class="qx-cc">Color</th><th class="qx-cq">Pcs</th>`.repeat(3)}</tr></thead><tbody><tr>${pair.repeat(3)}</tr><tr>${pair.repeat(3)}</tr></tbody></table>
-      <div class="qx-h">QUALITY CHECK <small>Tick PASS or FAIL for each check. For a FAIL the Qty Found (pieces) may be written.</small></div>
+      <div class="qx-h">QUALITY CHECK <small>Pass / Fail</small></div>
       <table class="qx-t"><thead><tr><th class="qx-n">#</th><th class="qx-c">Check</th><th class="qx-b">Pass</th><th class="qx-b">Fail</th><th class="qx-q">Qty Found</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="qx-h">RESULT <small>To PASS the QC test the score must be ${PASS_MARK} or more. Each FAIL takes 10 points off.</small></div>
       <div class="qx-res">${sum("Total Pass")}${sum("Total Fail")}${sum("Qty Found")}<div class="qx-sum qx-verdict"><small>QC Result</small><span>${boxTick(false)} PASS</span><span>${boxTick(false)} FAIL</span></div></div>
@@ -356,7 +356,7 @@
       <button type="button" class="linkbtn del qcX" aria-label="Remove this color"${off}>${ic("x")}</button></div>`;
     const field = (id, label, v, max, ph = "") => `<label for="${id}">${label}</label><input type="text" id="${id}" maxlength="${max}" value="${esc(v || "")}"${ph ? ` placeholder="${ph}"` : ""}${off}>`;
     $("#main").innerHTML = `<div class="window"><div class="wtitle">${isNew ? "Add QC Test" : `${esc(t.qc_no)}${t.item ? ` · ${esc(t.item)}` : ""} ${pill(done ? "approved" : "pending", done ? "TESTED" : "NOT TESTED YET")}`}</div><div class="wbody">
-      ${isNew ? `<p class="muted" style="margin-top:0">Write what was found on the paper QC TEST form (Download Forms). When you submit, the QC test gets its number (QC-${new Date().getFullYear()}-0001, 0002 …) and the 2 stickers open to print: stick one on the paper form, then scan the form on the page of the QC test.</p>` : ""}
+      ${isNew ? `` : ""}
       ${res ? `<div class="qc-banner ${res.verdict.toLowerCase()}"><b>${res.verdict}</b><span>${res.score} / 100 · Pass ${res.pass} · Fail ${res.fail}${t.qty != null ? ` · Qty ${E.qtyText(t.qty)}` : ""}${res.qty ? ` · Qty Found ${res.qty}` : ""}</span><small>Checked ${esc(mdy(res.when))}${res.by ? ` by ${esc(res.by)}` : ""}</small></div>` : ""}
       ${isNew ? "" : `<div class="pgrid2 qc-head">${E.cell("QC No", t.qc_no)}${E.cell("Date", mdy(t.created_at))}</div>`}
       ${full ? "" : `<div class="banner warn">${ic("bell")} The goods, the Qty, the colors and the mending number need the database update 043_qc_qty.sql to be changed here. Ask EMON HASAN.</div>`}
@@ -369,7 +369,7 @@
         <div class="qc-qty"><label for="qcQty">Total Qty (pcs)</label><input type="text" id="qcQty" inputmode="numeric" maxlength="9" placeholder="e.g. 420" value="${esc(digits(t.qty))}"${off}>
           <small class="muted" id="qcQtyHint"></small></div></fieldset>
       <fieldset class="opt"><legend>Quality Check</legend>
-        <p class="muted" style="margin-top:0">Choose Pass or Fail for each check. For a Fail you may write the Qty Found (how many pieces).</p>
+
         <div class="btnrow" style="margin:0 0 8px"><button type="button" class="btn small" id="qcAllPass">${ic("check")} All Pass</button><span class="qc-tally" id="qcTally"></span></div>
         <div class="qc-list" id="qcList">${CHECKS.map(([k, label], i) => `<div class="qc-row pf" data-k="${k}"><span class="qc-n">${i + 1}</span>
           <span class="qc-t"><b>${esc(label)}${k === "mending" ? ` <input type="text" class="qc-lim" id="qcMend" maxlength="20" placeholder="60 PCS / 35%" value="${esc(t.mending_max || "")}" aria-label="Mending not more than (for example 60 PCS or 35%)"${off}>` : ""}</b></span>
@@ -561,7 +561,7 @@
           <label for="cvRef">Reference No</label><input type="text" id="cvRef" maxlength="60" value="${esc(v?.reference_no || "")}">
           <label for="cvNote">Note</label><input type="text" id="cvNote" maxlength="300" value="${esc(v?.note || "")}"></div></fieldset>
         <fieldset class="opt"><legend>Receipt Picture</legend>
-          <p class="muted" style="margin-top:0">Take or choose a picture of the receipt. The empty area around it is cut off and the paper is made clear before it is saved.</p>
+          
           <div class="cv-prev" id="cvPrev"></div>
           <div class="btnrow"><label class="btn primary" for="cvoFile">${ic("camera")} ${v?.receipt_path ? "Change Receipt" : "Add Receipt"}</label><input type="file" id="cvoFile" hidden accept="image/*,application/pdf">
             <label class="chk" id="cvWholeL" hidden><input type="checkbox" id="cvWhole"> Keep the whole picture (do not cut)</label></div></fieldset>
@@ -721,7 +721,7 @@
       const need = needScan();
       box.innerHTML = !need ? `<span class="rp-qr-st ok">${ic("check")} Customer Account: no scan needed</span>`
         : key ? `<span class="rp-qr-st ok">${ic("check")} QR code checked · voucher ${esc(v.cv_no)}</span>`
-        : `<button type="button" class="btn small primary" id="rpScan">${ic("scan")} Scan the QR Code</button><span class="rp-qr-st">Scan the QR code of the printed voucher to unlock Receive Payment.</span>`;
+        : `<button type="button" class="btn small primary" id="rpScan">${ic("scan")} Scan the QR Code</button><span class="rp-qr-st">Scan to unlock</span>`;
       okBtn.disabled = need && !key;
       if ($("#rpScan", m.el)) $("#rpScan", m.el).onclick = scan;
     };

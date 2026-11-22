@@ -70,7 +70,7 @@
       { label: "Invoice", html: (r) => (r.invoice_id && E.canOpen("invoice") ? `<a href="#invoice/${esc(r.invoice_id)}">${esc(r.invoice_no || "")}</a>` : esc(r.invoice_no || "")) },
       { label: "Order", phone: false, html: (r) => `<a href="#custorder/${esc(r.order_id)}">${esc(r.order_no || "")}</a>` }, { label: "Customer", wrap: true, get: (r) => r.customer_name || "" }];
     $("#sbBody").innerHTML = `<div class="window"><div class="wtitle">Sold Boxes</div><div class="wbody">
-      <p class="muted" style="margin-top:0">Every box of an invoiced (completed) order, with the price, the pcs, the total and the invoice no.</p>
+
       <div class="btnrow"><input type="search" id="sbQ" placeholder="Search serial no, product, invoice, order or customer" style="flex:1;min-width:220px">
         <button type="button" class="btn primary" id="sbCsv">${ic("download")} Download (Excel / CSV)</button></div>
       <div class="rec-tiles" id="sbTiles"></div><div id="sbGrid"></div></div></div>`;
@@ -266,7 +266,7 @@
         ${o?.status === "completed" ? `<div class="banner warn">This order is COMPLETED. Saving it changes its invoice too (boxes, pcs, amount, terms, date). The customer stays the same.</div>` : ""}
         <fieldset class="opt of-step"><legend><i>1</i> Customer</legend><div id="coCust"></div></fieldset>
         <fieldset class="opt of-step"><legend><i>2</i> Boxes</legend>
-          <p class="of-say">Scan each box sticker: each box becomes <b>its own line</b>. The sheet's price fills in by itself; otherwise the price box shows a <b>suggested price</b> in grey (from your past prices of the same product) and you write the price. No sticker? Skip this step and type the lines.</p>
+          <p class="of-say">Scan · Type</p>
           <div class="fields wide of-price"><label for="cfAllPrice">Price for all boxes (optional)</label><input type="number" id="cfAllPrice" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 40.00"></div>
           <div class="btnrow"><button type="button" class="btn" id="cfSuggest">${ic("check")} Use the Suggested Prices</button></div>
           <div class="btnrow cf-scan"><button type="button" class="btn primary" id="cfScan">${ic("scan")} Scan Boxes</button>
@@ -289,8 +289,7 @@
               ${o ? `<span>Order No</span><small><b class="mono">${esc(o.order_no)}</b></small>` : ""}
             </div></details></fieldset>
         ${o ? "" : `<div id="coInsOffer"></div>`}
-      </div><div class="wfoot"><button type="button" class="btn" id="coCancel">Cancel</button><button type="submit" class="btn primary">${o ? "Save" : isAdmin() ? "Save Order" : "Save and Send to EMON HASAN"}</button></div></form>`,
-      isAdmin() ? "" : "CREATE ORDER: the order goes to EMON HASAN to approve. Approved, it is CONFIRMED: EMON HASAN's signature is on the printed order and the delivery can start.");
+      </div><div class="wfoot"><button type="button" class="btn" id="coCancel">Cancel</button><button type="submit" class="btn primary">${o ? "Save" : isAdmin() ? "Save Order" : "Save and Send to EMON HASAN"}</button></div></form>`);
     let cust = preset && preset.status === "active" ? preset : null;
     E.customerPicker($("#coCust"), { statuses: ["active"], onPick: (c) => { cust = c; }, preset: cust || undefined });
     if (preset && !cust) toast(`${fullName(preset)}'s account is ${String(preset.status).toUpperCase()}: an order is made only for an ACTIVE account.`, true);
@@ -411,7 +410,7 @@
         <tbody>${(ls.length ? ls : [{}]).map(lineRow).join("")}</tbody>
         <tfoot><tr><td></td><td class="num co-tq">0</td><td class="num co-tb">0</td><td colspan="${4 + cols.length}"><b>TOTAL AMOUNT</b></td><td></td><td class="num co-ta">0.00</td><td></td></tr></tfoot></table></div>
         <div class="btnrow"><button type="button" class="btn small co-add">${ic("plus")} Add Line</button><button type="button" class="btn small co-addc">${ic("plus")} Add Column</button>
-          <small class="muted">Total Pcs = boxes × pcs per box (or type the total pcs). Up to ${MAX_LINES} lines and ${MAX_COLS} added columns (for example COLOR or SIZE).</small></div>
+          <small class="muted">Max ${MAX_LINES} lines · ${MAX_COLS} columns</small></div>
         <div class="summary-box co-words"></div>`;
       bind(); sum();
     };
@@ -498,7 +497,7 @@
   // id: the order's id, or its number (OR-202610-0001: from an invoice or a scanned order; 3.38.1: CO- before, both are found)
   V.custorder = async (id) => {
     E.shell("custorder", "Customer Order", busy());
-    const here = E.stillHere(), m = /^(?:CO|OR)-(\d{6}-\d+)$/i.exec(id || ""), nos = m ? [`OR-${m[1]}`, `CO-${m[1]}`] : null;
+    const here = E.stillHere(), m = /^(?:CO|OR|PO)-(\d{6}-\d+)$/i.exec(id || ""), nos = m ? [`PO-${m[1]}`, `OR-${m[1]}`, `CO-${m[1]}`] : null;
     const boxesOf = (oid) => sb.from("customer_order_boxes").select("*").eq("order_id", oid).order("created_at").order("id");
     const [{ data: o, error }, bx0] = await Promise.all([
       (nos ? sb.from("customer_orders").select("*, customers(*)").in("order_no", nos) : sb.from("customer_orders").select("*, customers(*)").eq("id", id)).maybeSingle(), nos ? null : boxesOf(id)]);
@@ -621,19 +620,19 @@
     const big = (attrs, label, cls = "primary", icon = "check") => `<button type="button" class="btn ${cls} big og-go" ${attrs}>${ic(icon)} ${esc(label)}</button>`;
     const more = ser && ser < total && !waiting && w ? `<button type="button" class="btn og-more" data-trk-go="1">${ic("box")} Add More (${ser} of ${qtyText(total)})</button>` : "";
     let n = at + 1, title, say, btn = "";
-    if (cancelled) { n = "✖"; title = "This order is cancelled"; say = o.cancel_note ? esc(o.cancel_note) : "Nothing more to do."; }
-    else if (done) { n = "✔"; title = "Order finished"; say = `Delivered${o.delivered_at ? " " + esc(mdy(o.delivered_at)) : ""}`;
+    if (cancelled) { n = "✖"; title = "Cancelled"; say = o.cancel_note ? esc(o.cancel_note) : ""; }
+    else if (done) { n = "✔"; title = "Finished"; say = `Delivered${o.delivered_at ? " " + esc(mdy(o.delivered_at)) : ""}`;
       btn = inv && E.canOpen("invoice") ? `<a class="btn primary big og-go" href="#invoice/${inv.id}">${ic("doc")} Open Invoice</a>` : ""; }
     else if (o.status === "pending") {
-      if (isAdmin()) { title = "Approve this order"; say = "Check the lines below"; btn = big('data-og="#coApprove"', "Approve Order", "ok") + `<button type="button" class="btn og-more" data-og="#coCancelO">Cancel Order</button>`; }
-      else { title = "Waiting for approval"; say = "EMON HASAN approves this order"; }
+      if (isAdmin()) { title = "Approve Order"; say = "Check lines"; btn = big('data-og="#coApprove"', "Approve Order", "ok") + `<button type="button" class="btn og-more" data-og="#coCancelO">Cancel Order</button>`; }
+      else { title = "Waiting"; say = "Approval · EMON HASAN"; }
     } else if (waiting) {
-      if (isAdmin()) { title = "Approve the delivery"; say = `Sent by ${esc(o.delivery_request_by || "the order paper")}`; btn = big('data-og="#coDvOk"', "Approve Delivery", "ok") + `<button type="button" class="btn og-more" data-og="#coDvNo">Send Back</button>`; }
-      else { title = "Waiting for approval"; say = "EMON HASAN approves the delivery"; }
-    } else if (!w) { title = steps[at][0]; say = "Done by the office"; }
-    else if (!ser) { title = "Add the boxes"; say = `<b>0 of ${qtyText(total)}</b> added`; btn = big('data-trk-go="1"', "Add Boxes", "primary", "box"); }
-    else if (o._trkOn && !sorted) { title = "Mark as Sorting"; say = `<b>${ser} of ${qtyText(total)}</b> added`; btn = big('data-trk="sorting"', "Mark as Sorting", "primary", "next") + more; }
-    else { title = "Complete the delivery"; say = "When the customer has the boxes";
+      if (isAdmin()) { title = "Approve Delivery"; say = `Sent by ${esc(o.delivery_request_by || "order paper")}`; btn = big('data-og="#coDvOk"', "Approve Delivery", "ok") + `<button type="button" class="btn og-more" data-og="#coDvNo">Send Back</button>`; }
+      else { title = "Waiting"; say = "Delivery approval · EMON HASAN"; }
+    } else if (!w) { title = steps[at][0]; say = "Office"; }
+    else if (!ser) { title = "Add Boxes"; say = `<b>0 of ${qtyText(total)}</b> Added · Scan / Type`; btn = big('data-trk-go="1"', "Add Boxes", "primary", "box"); }
+    else if (o._trkOn && !sorted) { title = "Sorting"; say = `<b>${ser} of ${qtyText(total)}</b> Added`; btn = big('data-trk="sorting"', "Mark as Sorting", "primary", "next") + more; }
+    else { title = "Delivery"; say = "Customer received";
       btn = (go || big('data-trk-go="2"', "Complete Delivery", "ok")) + more; }
     return `<section class="og${done ? " og-done" : cancelled ? " og-bad" : ""}">${bar}
       <div class="og-now"><div class="og-txt"><b>${esc(title)}</b><p>${say}</p></div><div class="og-btns">${btn}</div></div></section>`; // 3.99.211: small, button at the side
@@ -646,7 +645,7 @@
     $(".band h1") && ($(".band h1").textContent = `Customer Order › ${o.order_no}`);
     const banner = o.status === "pending" ? `<div class="banner warn">${ic("clock")} WAITING FOR APPROVAL — EMON HASAN approves the order. Then it is CONFIRMED and the delivery can start.</div>`
       : o.status === "cancelled" ? `<div class="banner closed">CANCELLED${o.cancelled_by_name ? ` by ${esc(o.cancelled_by_name)}` : ""}${o.cancelled_at ? ` on ${esc(mdy(o.cancelled_at))}` : ""}${o.cancel_note ? ` — ${esc(o.cancel_note)}` : ""}</div>`
-      : o.status === "approved" && o.delivery_request_at ? `<div class="banner warn">${ic("clock")} DELIVERY SUBMITTED — ${esc(o.delivery_request_by || "ORDER PAPER")} · ${esc(E.dateTime(o.delivery_request_at))}. Waiting for EMON HASAN's approval. Then the order is COMPLETED and the invoice is made.</div>`
+      : o.status === "approved" && o.delivery_request_at ? `<div class="banner warn">${ic("clock")} DELIVERY SUBMITTED — ${esc(o.delivery_request_by || "ORDER PAPER")} · ${esc(E.dateTime(o.delivery_request_at))} · Waiting approval</div>`
       : ""; // 3.99.1: no COMPLETED line here: the tracking shows the delivery and the invoice
     const head = `<section class="cust-hero co-hero">
       <div class="ch-pic"><div class="ch-photo co-ic">${ic("box")}</div></div>
@@ -667,7 +666,7 @@
     const delHtml = o.status === "pending" ? `<div class="empty">The delivery starts when the order is CONFIRMED (approved by EMON HASAN).</div>`
       : o.status === "cancelled" ? `<div class="empty">CANCELLED: no delivery.</div>`
       : deliverNow ? `${(o.delivery_photos || []).length ? deliveryHtml(o, urls, false) : ""}${o.delivery_request_at ? "" : `<div class="co-done">${deliverBtn("big")}
-          <small>Add the box serials, then press COMPLETE DELIVERY (the car plate no and the proof of delivery photo are optional). The printed order can do it too: scan its QR code.</small></div>`}`
+          </div>`}`
       : deliveryHtml(o, urls, w);
     const invHtml = inv ? `<div class="pgrid2 qc-head">
           <div class="pcell"><div class="pl">Invoice No</div><div class="pv">${E.canOpen("invoice") ? `<a href="#invoice/${inv.id}"><b>${esc(inv.invoice_no)}</b></a>` : `<b>${esc(inv.invoice_no)}</b>`}</div></div>
@@ -891,7 +890,7 @@
   // 3.59: the Director verifies the boxes and locks them (no box added, changed or removed) - or unlocks them to fix
   const boxLock = (o, boxes) => o.boxes_verified_at
     ? `<div class="banner ok co-lock">🔒 BOXES VERIFIED &amp; LOCKED by <b>${esc(o.boxes_verified_by_name || "")}</b> · ${esc(E.dateTime(o.boxes_verified_at))}${isAdmin() ? ` <button type="button" class="btn small" id="cbUnlock">Unlock</button>` : ""}</div>`
-    : isAdmin() && nBoxes(boxes) ? `<div class="btnrow"><button type="button" class="btn ok" id="cbLock">${ic("check")} Verify &amp; Lock Boxes</button><small class="muted">Check the boxes above first: after it no box can be added, changed or removed.</small></div>` : "";
+    : isAdmin() && nBoxes(boxes) ? `<div class="btnrow"><button type="button" class="btn ok" id="cbLock">${ic("check")} Verify &amp; Lock Boxes</button><small class="muted">Locked after</small></div>` : "";
   const chargeSays = (o, boxes) => !nBoxes(boxes)
     ? `<div class="co-warn0">⚠ NO BOX ADDED (0 boxes)<br><small>If you go on, the invoice is the ORDER AMOUNT: ₱ ${peso(o.total_amount)}. Add the boxes first to charge the delivery list.</small></div>`
     : o._dl?.has_pcs ? `<div class="co-ok0">✅ ${esc(boxesText(nBoxes(boxes)))} with serial no: the invoice charges the delivery list — <b>₱ ${peso(o._dl.amount)}</b></div>` : "";
@@ -927,7 +926,7 @@
         <button type="button" class="btn" id="cbType">📦 Add Box</button></div>
         <div class="box-find"><input type="text" id="cbFind" maxlength="60" placeholder="Serial no, e.g. U20261238" aria-label="Find a box by its serial no" autocomplete="off"><button type="button" class="btn primary" id="cbFindGo">${ic("search")} Find &amp; Add</button></div>
         <div id="cbFound" class="box-found" aria-live="polite">${foundHtml(o.id)}</div>
-        <p class="muted" style="margin:0 0 8px">Scan each box label (the camera stays open: scan, scan, scan) or find it by its serial no: a box found in the box database (your Google Sheet) is added with all its details at once. Add Box: type a box that is not in the sheet by hand.</p>` : ""}
+        <p class="muted" style="margin:0 0 8px">Scan · Type</p>` : ""}
       ${E.grid({ cols: [{ label: "#", get: (b) => boxNo(boxes, b) }, { label: "Serial No", html: serHtml }, { label: "Code", get: (b) => b.code || "" },
         { label: "Batch No", get: (b) => b.batch_no || "" }, { label: "Items", get: (b) => b.items || "" }, { label: "Brand", get: (b) => b.brand || "" }, { label: "CTN", get: (b) => b.ctn || "" },
         { label: "Pcs", num: true, get: (b) => qtyText(b.pcs) }, { label: "Remarks", get: (b) => b.remarks || "" },
@@ -954,7 +953,7 @@
     if (boxes.some((x) => x.serial_no === ser)) return `✔ Box ${ser} is on this order (checked)`;
     let b;
     try { b = await findBox(ser, rpc); } catch (e) { return `✖ ${e.message}`; }
-    if (!b) return `✖ Box ${ser} is not in the box database (the Google Sheet). Press Add Box to type its details.`;
+    if (!b) return `✖ Box ${ser} not found · Add Box`;
     const r = await add({ serial_no: ser, code: b.style || "", batch_no: b.batch || "", items: b.product || "", pcs: b.qty || "" }, how);
     const n = (/(ORDER [\d,]+ BOX · (?:SCANNED|DELIVERED) [\d,]+ [✅❌])$/u.exec(r) || [])[1];
     return r.startsWith("✔") && !/checked/.test(r) ? `✔ Found and added: ${ser} · ${foundSays(b)}${n ? ` · ${n}` : ""}` : r;
@@ -1008,7 +1007,7 @@
     const found = (raw, how) => addFound(raw, how, add, null, boxes);
     bindFind("cb", o.id, (v) => found(v, "typed"), reload);
     $("#cbScan").onclick = () => E.scanDialog((text) => found(readLabel(text).serial_no, "scan"), {
-      title: `Scan Boxes — ${o.order_no}`, hint: "Point the camera at the code of each box label (QR, PDF417 or barcode). Each box found in the box database is added at once: scan the next one. Press Close when done.", keep: true,
+      title: `Scan Boxes — ${o.order_no}`, hint: "Scan each box", keep: true,
       onClose: () => { if (added) { toast(`${added} box(es) added.`); reload(); } } });
     $("#cbPhoto").onchange = async (e) => {
       const files = Array.from(e.target.files); e.target.value = "";
@@ -1050,7 +1049,7 @@
         <label for="bfItems">Items</label><input type="text" id="bfItems" maxlength="120" value="${esc(x?.items || "")}">
         <label for="bfPcs">Pcs</label><input type="number" id="bfPcs" min="0" step="1" inputmode="numeric" value="${x ? num(x.pcs) : ""}">
         <label for="bfRem">Remarks</label><input type="text" id="bfRem" maxlength="120" value="${esc(x?.remarks || "")}"></div>
-        <p class="muted" id="bfFrom" style="margin:8px 0 0" hidden></p>${x ? "" : `<p class="muted" style="margin:8px 0 0">With a serial no it counts as a box. Without one it is added (items, pcs) but not counted as a box.</p>`}`,
+        <p class="muted" id="bfFrom" style="margin:8px 0 0" hidden></p>`,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>${x ? "Save" : "Add Box"}</button>`);
     if (!x) {
       // a box typed from the line of its code: the batch no, items and pcs of that line
@@ -1091,11 +1090,11 @@
     if (!edit) return `<div class="pgrid2 qc-head">${E.cell("Delivered", o.delivered_at ? E.dateTime(o.delivered_at) : "")}${E.cell(o.status === "completed" ? "Completed By" : "Submitted By", o.completed_by_name || o.delivery_request_by || "")}
         ${E.cell("License Plate Number", o.plate_no || "")}${E.cell("Type of Car", o.vehicle_type || "")}${o.delivery_note ? E.cell("Note", o.delivery_note) : ""}${o.delivery_edited_at ? E.cell("Last Edited", `${E.dateTime(o.delivery_edited_at)} · ${o.delivery_edited_by_name || ""}`) : ""}</div>${pics.length ? photos : ""}
       ${fix ? `<div class="btnrow"><button type="button" class="btn" id="dvFix">${ic("edit")} Edit Delivery</button><label class="btn" for="dvPic" ${pics.length >= MAX_PHOTOS ? "hidden" : ""}>${ic("camera")} Add Photo</label><input type="file" id="dvPic" accept="image/*" multiple hidden></div>
-        <small class="muted">Only EMON HASAN and the employee who completed this delivery can edit it.</small>` : ""}`;
+` : ""}`;
     return `${plateField("dv", o.plate_no, o.vehicle_type)}<h4 class="co-h4">Proof of Delivery Photo (optional, up to ${MAX_PHOTOS})</h4>${photos}
       <div class="btnrow"><label class="btn" for="dvPic" id="dvPicL" ${pics.length >= MAX_PHOTOS ? "hidden" : ""}>${ic("camera")} Add Photo</label><input type="file" id="dvPic" accept="image/*" multiple hidden></div>
       <div class="co-done"><button type="button" class="btn ok big" id="dvDone">${ic("check")} Complete Delivery</button>
-        <small>The car plate no and the photo are optional. COMPLETE makes the customer's invoice by itself (₱ ${peso(o.total_amount)}).</small></div>`;
+        <small>Plate no · photo optional · invoice ₱ ${peso(o.total_amount)}</small></div>`;
   }
   const canFixDelivery = (o) => o.status === "completed" && (isAdmin() || (!!o.completed_by && o.completed_by === meId()));
   function bindDelivery(o, boxes, urls, reload) {
@@ -1261,7 +1260,7 @@
     const t = String(text || "").trim();
     const u = /#(delivery\/[^/\s]+\/[0-9a-f]{6,40})\b/i.exec(t);
     if (u) return u[1];
-    const m = /^EMONCO\|((?:CO|OR)-\d{6}-\d+)\|([0-9a-f]{6,40})$/i.exec(t);
+    const m = /^EMONCO\|((?:CO|OR|PO)-\d{6}-\d+)\|([0-9a-f]{6,40})$/i.exec(t);
     return m ? deliveryHash(m[1].toUpperCase(), m[2].toLowerCase()) : "";
   };
   V.delivery = async (no, code) => {
@@ -1325,9 +1324,9 @@
       <section class="pd-step"><h3><span class="pd-n">3</span> Complete Delivery</h3>
         <ul class="pd-check">${tick(nBoxes(boxes) > 0, `Boxes: ${vsText(d.total_boxes, nBoxes(boxes), false)}`)}${needPlate ? tick(!!d.plate_no, d.plate_no ? `Car plate no: ${d.plate_no}${d.vehicle_type ? " · " + d.vehicle_type : ""}` : "Car plate no and type of car (optional)") : ""}${tick(photos.length > 0, photos.length ? `Proof of delivery: ${photos.length} photo(s)` : "Proof of delivery photo (optional)")}</ul>
         <div class="co-done"><button type="button" class="btn ok big" id="pdDone">${ic("check")} ${submitOnly ? "Submit Delivery for Approval" : "Complete Delivery"}</button><small>${submitOnly
-          ? "You are not signed in with Regional Office Manila: the delivery is SUBMITTED and EMON HASAN approves it. Approved, the order is COMPLETED and the invoice is made."
-          : "The order becomes COMPLETED and the customer's invoice is made and billed by itself."}</small></div>
-        ${submitOnly && !S.session ? `<div class="banner warn pd-signin">${ic("key")} <b>To make the invoice at once:</b> sign in with your Regional Office Manila account first, then open this page again (scan the order paper). Without signing in, the invoice is made only when EMON HASAN approves the delivery.
+          ? "Not signed in · needs approval"
+          : "Invoice made by itself"}</small></div>
+        ${submitOnly && !S.session ? `<div class="banner warn pd-signin">${ic("key")} <b>Invoice now:</b> sign in first
           <div class="btnrow"><button type="button" class="btn primary" id="pdSignIn">${ic("user")} Sign In to Complete Now</button></div></div>` : ""}
       </section>
       <div class="btnrow">${orderLink}</div>`;
@@ -1351,7 +1350,7 @@
     const found = (raw, how) => addFound(raw, how, add, rpc, boxes);
     bindFind("pd", d.id, (v) => found(v, "typed"), reload);
     $("#pdScan").onclick = () => E.scanDialog((text) => found(readLabel(text).serial_no, "scan"), {
-      title: `Scan Boxes — ${d.order_no}`, hint: "Point the camera at the code of each box label (QR, PDF417 or barcode). Each box found in the box database is added at once: scan the next one. Press Close when done.", keep: true,
+      title: `Scan Boxes — ${d.order_no}`, hint: "Scan each box", keep: true,
       onClose: () => { if (added) { toast(`${added} box(es) added.`); reload(); } } });
     $("#pdLabel").onchange = async (e) => {
       const files = Array.from(e.target.files); e.target.value = "";
@@ -1439,5 +1438,5 @@
         { label: "Amount (₱)", num: true, get: (o) => peso(o.total_amount) }, { label: "Status", html: stPill }], rows, onRow: true, empty: "No customer orders yet." })}`;
   }
 
-  Object.assign(E, { customerOrdersOf: ordersOf, customerOrdersHtml: ordersHtml, readBoxLabel: readLabel, deliveryHashOf, orderTimeline: timelineHtml });
+  Object.assign(E, { customerOrdersOf: ordersOf, customerOrdersHtml: ordersHtml, deliveryHashOf, orderTimeline: timelineHtml });
 })();

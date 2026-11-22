@@ -76,7 +76,7 @@
     };
     const drawReview = () => {
       const list = steps();
-      review.innerHTML = `<p class="muted" style="margin:0 0 8px">Check everything. Press <b>Edit</b> to change a section, then <b>Submit</b> at the bottom.</p>` + list.map((p, i) => {
+      review.innerHTML = `` + list.map((p, i) => {
         const rows = summary(p);
         return `<div class="wz-sec"><div class="wz-sec-h"><b>${esc(titleOf(p))}</b><button type="button" class="btn small" data-edit="${i}">Edit</button></div>
           ${rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd${v == null ? ' class="wz-miss"' : ""}>${v == null ? "Missing" : esc(v)}</dd>`).join("")}</dl>` : `<div class="muted">Nothing written.</div>`}</div>`;

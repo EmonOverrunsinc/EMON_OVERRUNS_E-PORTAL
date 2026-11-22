@@ -246,5 +246,5 @@
     if (open) $("[data-open]", m.el).onclick = () => { m.close(); location.hash = "employee/" + r.data.employee_id; };
   }
 
-  Object.assign(E, { idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet });
+  Object.assign(E, { idCardTab, cardInfoBox, cardCheck, showCardCheck });
 })();

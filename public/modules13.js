@@ -327,9 +327,7 @@
 
   // ---------- Legal Terms page (menu OTHER) ----------
   V.legal = async () => {
-    E.shell("legal", "Legal Terms", `<div id="lgRes">${busy()}</div>`, isAdmin()
-      ? `Every login and customer agrees before using the portal. Each agreement is kept on the server for good: who, their IDs, date and time, device, IP address, location (when allowed) and the fingerprint of the exact text. Only the latest version (${REL}) shows here, one line per person; older agreements stay kept on the server. Press a line to open the person's signed agreements and download them as a PDF.`
-      : "The terms you accepted, and your acceptance record. Print or download it any time.");
+    E.shell("legal", "Legal Terms", `<div id="lgRes">${busy()}</div>`);
     const here = E.stillHere();
     await syncVersion();
     const [acc, profs, rej] = await Promise.all([

@@ -264,7 +264,7 @@
     // lot, QC form, order letter, employee, customer application, ID card, released notice, statement, contact message, correction
     doc: /\b(?:A-\d{4}-\d{4}-?\d{1,5}|BD\d{11,14}|EOC-\d{8,12}|CV-\d{6}-\d{1,5}|PS-\d{6}-\d{1,5}|SP-\d{6}-\d{1,5}|PP-\d{6}-\d{1,5}|PRJ-\d{4}-\d{1,5}|LOT-\d{6}-\d{1,5}|QC-\d{4}-\d{1,5}|EO-\d{4}-\d{2}-\d{1,5}|ORDER-\d{4}-\d{1,5}|EO-\d{8}|EO-\d{4}-\d{5}|EOID-\d{4}-\d{1,5}|RN-\d{6}-\d{1,5}|SOA-\d{6}-[A-Z]{1,4}-\d{6,10}|MS-\d{12,14}|CR-\d{4}-\d{1,5})\b/gi,
     ebill: /\b(?!QC-|CR-)[A-Z]{2}-20\d\d-\d{4}\b/gi, // an e-bill: the company's initials, the year and its number (MF-2026-0001)
-    order: /\b(?:OR|CO)-\d{6}-\d{1,6}\b/gi, invoice: /\bINV-\d{6}-\d{1,6}\b/gi, account: /\b[A-Z]{1,4}-\d{6,10}\b/gi, serial: /\b[A-Z]{1,2}\d{6,9}\b/gi, batch: /\b[A-Z]{1,3}-\d{1,3}\b/gi
+    order: /\b(?:PO|OR|CO)-\d{6}-\d{1,6}\b/gi, invoice: /\bINV-\d{6}-\d{1,6}\b/gi, account: /\b[A-Z]{1,4}-\d{6,10}\b/gi, serial: /\b[A-Z]{1,2}\d{6,9}\b/gi, batch: /\b[A-Z]{1,3}-\d{1,3}\b/gi
   };
   const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
   function periodOf(t) {
@@ -503,7 +503,7 @@
   async function aOrders(c, no, period) {
     const sel = "id, order_no, status, order_date, total_boxes, total_pcs, total_amount, invoice_id, customer_id, customers(id, first_name,middle_name, last_name, account_no)";
     if (no) {
-      const o = await one(sb.from("customer_orders").select(sel).in("order_no", [no, no.replace(/^CO-/, "OR-"), no.replace(/^OR-/, "CO-")]).limit(1).maybeSingle());
+      const o = await one(sb.from("customer_orders").select(sel).in("order_no", [no, no.replace(/^(CO|OR)-/, "PO-"), no.replace(/^(CO|PO)-/, "OR-"), no.replace(/^(OR|PO)-/, "CO-")]).limit(1).maybeSingle());
       if (!o) return { html: `Order ${esc(no)} is not found.` };
       const inv = o.invoice_id ? await one(sb.from("customer_invoices").select("id, invoice_no").eq("id", o.invoice_id).maybeSingle()) : null;
       return { cust: o.customers, html: `Order <a href="#custorder/${esc(o.id)}"><b>${esc(o.order_no)}</b></a> of ${o.customers ? custLink(o.customers) : ""}: <b>${esc(ORDER_ST[o.status] || o.status)}</b>
@@ -977,7 +977,7 @@
   const helpHtml = () => `I am <b>EVA</b>, your AI assistant. I read the records on your server and answer in a moment. Ask me in simple words, for example:
     <ul class="eva-ex"><li><b>Customers:</b> how much due <i>Precious Roman</i> · this customer due how much · total due · who has most due · overdue customers · last payment of <i>name</i> · gate pass <i>name</i> · credit limit <i>name</i></li>
     <li><b>Money:</b> business summary · what is waiting for me · collection today · sales this month</li>
-    <li><b>Orders and boxes:</b> open orders · OR-202610-0001 · INV-202610-0001 · U20261240 · stock L-13 · stock zara</li>
+    <li><b>Orders and boxes:</b> open orders · PO-202611-0001 · INV-202610-0001 · U20261240 · stock L-13 · stock zara</li>
     <li><b>Billing:</b> billing this month · <i>company name</i> (its bank accounts, vouchers and e-bills) · BD20261031001</li>
     <li><b>E-Bill:</b> ebill balance · MF-2026-0001 · ebill of batch I-17</li>
     <li><b>Payroll:</b> unpaid salary · salary this month · <i>employee name</i> salary · how many employees · PS-202610-001</li>
@@ -1002,7 +1002,7 @@
     const cust = (cid) => of("customer", ents.customer.find((c) => c.id === cid));
     switch (k) {
       case "customer": return cust(id);
-      case "custorder": return cust(await read("customer_orders", "customer_id", /^(CO|OR)-/i.test(id) ? "order_no" : "id"));
+      case "custorder": return cust(await read("customer_orders", "customer_id", /^(CO|OR|PO)-/i.test(id) ? "order_no" : "id"));
       case "invoice": return cust(await read("customer_invoices", "customer_id"));
       case "payment": return cust(await read("payments_received", "customer_id"));
       case "employee": return of("employee", ents.employee.find((x) => x.id === id));
@@ -1398,7 +1398,7 @@
       <div class="btnrow"><button type="button" class="btn primary" id="bsRead">${ic("download")} Read Sheet</button>
         <label class="btn" for="bsCsv">${ic("upload")} Read a CSV File</label><button type="button" class="btn" id="bsOut">${ic("download")} Download with Status</button><input type="file" id="bsCsv" accept=".csv,text/csv" hidden><span class="muted" id="bsStep"></span></div>
       <div class="tiles ai-tiles"><div class="tile"><span class="tile-ic">${ic("box")}</span><div class="k">Boxes in the Database</div><div class="v">${qtyText(cnt.count || 0)}</div><small>${last ? `read ${esc(E.dateTime(last.read_at))}` : "not read yet"}</small></div></div>
-      <small class="muted">The sheet must be shared: Share → General access → "Anyone with the link" (Viewer). Or download it (File → Download → CSV) and press Read a CSV File.</small>`;
+      <small class="muted">Sheet access: Anyone with the link (Viewer)</small>`;
     const step = (t) => { if ($("#bsStep")) $("#bsStep").textContent = t; };
     const done = (n, msg) => { HAS_ARR = null; toast(msg || `${qtyText(n)} boxes saved.`); boxSection(el); };
     // 3.99.52: the cost of one box (the box search shows the total cost: cost × boxes)

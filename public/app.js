@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.212"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.213"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.212"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.213"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1616,7 +1616,7 @@
     const mo = new MutationObserver(free), t = setTimeout(free, 15000);
     setTimeout(() => mo.observe(main, { childList: true, subtree: true }), 0); // after the page's own "Loading" boxes
   }
-  function shell(key, title, body, hint) {
+  function shell(key, title, body) {
     const cur = ACTIVE_OF[key] ?? (Array.isArray(MODULE_OF[key]) ? MODULE_OF[key][0] : MODULE_OF[key]) ?? key;
     const items = MENU.filter((m) => m.k === "dashboard" || (m.k === "regional" ? regionalItems().length > 0 : m.k === "eooffice" ? EO_MODULES.filter((x) => isStaff() || x !== "eooffice").some(hasModule) : hasModule(m.k)));
     const main = items.map((m, i) => `<a href="#${m.k}" style="--i:${i}" class="${m.k === cur ? "active" : ""}"><span class="num">${ic(m.icon)}</span><span class="lbl">${esc(m.label)}</span></a>`).join("");
@@ -1627,7 +1627,7 @@
     // 3.36: no "?" on any page; the dashboard has no title (its greeting stands in its place)
     const over = (MENU.find((m) => m.k === cur) || {}).label || `${C.company.name} E-Portal`; // 3.99.191 · 3.99.209: same section as the menu (a payment shows PAYMENTS)
     const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1 data-over="${esc(String(over).toUpperCase())}">${esc(title)}</h1></div>`;
-    const mainHtml = `<main id="main">${hint ? `<div class="hint"><b>Hint:</b> ${hint}</div>` : ""}${body}</main>${pageFoot()}`;
+    const mainHtml = `<main id="main">${body}</main>${pageFoot()}`; // 3.99.213: no Hint boxes
     // 2.7.2: moving between pages keeps the top bar and the side menu in place (no flash); only the page itself is
     // swapped, with a soft fade. The whole frame is drawn again only when the menu or the person changes.
     const frame = [S.session.user.id, who, av, newBuild, items.map((m) => m.k).join(","), OTHER.filter((o) => o[2]()).map((o) => o[0]).join(",")].join("|");
@@ -1951,7 +1951,7 @@
       if (key) { location.hash = "verify/" + encodeURIComponent(t); return; }
     }
     // 3.37: a customer order's barcode opens that order (3.38.1: OR-202610-0001; CO- on the orders printed before)
-    const co = /^EMONCO\|((?:CO|OR)-\d{6}-\d+)/i.exec(t);
+    const co = /^EMONCO\|((?:CO|OR|PO)-\d{6}-\d+)/i.exec(t);
     if (co && canOpen("custorder")) { location.hash = "custorder/" + co[1].toUpperCase(); return true; }
     // 3.99.56: the PDF417 of a box (the box search print) opens that box
     const bx = /^EMONBOX\|(.{1,60})$/i.exec(t);
@@ -2549,7 +2549,7 @@
     const url = URL.createObjectURL(file);
     const share = !!navigator.canShare?.({ files: [file] });
     const m = modal("PDF Ready", `<p style="margin-top:0"><b>${esc(file.name)}</b> · ${Math.max(1, Math.round(file.size / 1024))} KB</p>
-      ${share ? `<p class="muted">Press <b>Share / Print</b> to print it, save it to Files or send it.</p>` : ""}`,
+      `,
       `${share ? `<button type="button" class="btn primary" id="pdShare">${ic("upload")} Share / Print</button>` : ""}
        <a class="btn${share ? "" : " primary"}" id="pdSave" href="${url}" download="${esc(file.name)}">${ic("download")} Download</a>
        <button type="button" class="btn" id="pdClose">Close</button>`,
@@ -2747,7 +2747,7 @@
         </div><div class="fields wide"><label for="fmFile">File</label><input type="file" id="fmFile" required></div></div>
         <datalist id="fmCats"><option>General</option><option>HR</option><option>Accounts</option><option>Sales</option><option>Purchasing</option></datalist>
         <div class="btnrow"><button class="btn primary" type="submit">Upload Form</button></div></fieldset></form>` : ""}
-      <div id="fmList">${busy()}</div>`, `Blank company forms. Press <b>Download</b> to save a copy.${admin ? " <b>Hide</b> a form so only you see it; <b>Show</b> gives it back to everyone." : ""}`);
+      <div id="fmList">${busy()}</div>`);
     const card = (key, title, note, act, off) => `<div class="doccard${off ? " fm-off" : ""}" data-fm="${esc(key)}"><div class="dc-ic">${ic("doc")}</div>
       <div class="dc-main">${off ? `<span class="dc-tag">Hidden · only you see it</span>` : ""}<b>${esc(title)}</b><small>${note}</small></div>
       <div class="dc-act">${act}${admin ? `<button type="button" class="btn" data-vis="${esc(key)}" data-show="${off ? "1" : ""}">${ic("eye")} ${off ? "Show" : "Hide"}</button>` : ""}</div></div>`;
@@ -2821,8 +2821,7 @@
       <div class="options"><fieldset class="opt"><legend>Filter</legend><div class="fields">
         <label for="uStatus">Status</label><select id="uStatus"><option value="">All</option><option value="pending">Pending (applicants)</option><option value="active">Active</option><option value="disabled">Disabled</option></select>
       </div></fieldset></div>
-      <div id="uList">${busy()}</div>`,
-      "Everyone who signed up. New sign-ups are <b>Pending</b> applicants. When you approve their job application under <b>Employee → Job Applications</b>, they can use the portal. You can also change an access level or status here, or <b>Delete</b> an account when the person asks for it (their request arrives in <b>Contact Messages</b>).");
+      <div id="uList">${busy()}</div>`);
     const fresh = loadGuard();
     const load = async () => {
       const ok = fresh();

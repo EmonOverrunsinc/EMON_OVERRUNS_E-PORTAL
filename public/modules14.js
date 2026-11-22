@@ -97,7 +97,7 @@
   // ======================================================================
   V.insurance = async (id) => {
     if (id) return insPage(id);
-    E.shell("insurance", "Coverage", `${E.eoTabs("insurance")}<div id="insBody" class="insx">${busy()}</div>`, "Order coverage, added before delivery: boxes × ₱ 50 + 0.5% of the order value. Free exchange of mistaken items, free return of a mistaken delivery (shipping fee covered) and exchange of unsold sealed boxes, until 15 days after delivery.");
+    E.shell("insurance", "Coverage", `${E.eoTabs("insurance")}<div id="insBody" class="insx">${busy()}</div>`);
     const here = E.stillHere();
     await expireUnpaid();
     const [rs, s] = await Promise.all([sb.from("order_insurance").select("*").order("created_at", { ascending: false }).limit(1000), settings()]);
@@ -121,7 +121,7 @@
         <div class="tile"><span class="tile-ic">${ic("clock")}</span><div class="k">Payment in Review</div><div class="v">${rows.filter((r) => r.status === "review").length}</div></div>
         <div class="tile"><span class="tile-ic">${ic("clock")}</span><div class="k">Waiting for Payment</div><div class="v">${rows.filter((r) => r.status === "unpaid" || r.status === "rejected").length}</div></div>
         ${S.hideMoney ? "" : `<div class="tile"><span class="tile-ic">${ic("doc")}</span><div class="k">Premiums Collected</div><div class="v">₱ ${peso(collected)}</div></div>`}</div>
-      ${canW() ? `<fieldset class="opt"><legend>New Coverage</legend><div class="ins-find"><input type="text" id="insNo" placeholder="Order No, e.g. OR-202611-0002" autocapitalize="characters" spellcheck="false">
+      ${canW() ? `<fieldset class="opt"><legend>New Coverage</legend><div class="ins-find"><input type="text" id="insNo" placeholder="Order No, e.g. PO-202611-0002" autocapitalize="characters" spellcheck="false">
         <button type="button" class="btn" id="insScan">${ic("camera")} Scan</button><button type="button" class="btn primary" id="insFind">${ic("search")} Find Order</button></div><div id="insOrder"></div></fieldset>` : ""}
       ${isAdmin() ? settingsHtml(s) : ""}
       <h3 class="sec">Coverages <small class="muted">valid first</small></h3>
@@ -218,7 +218,7 @@
         <div class="ins-paygrid"><div class="ins-qr"><button type="button" class="ins-qr-btn" id="ipQrBig" aria-label="Show the QR code big"><img src="${esc(q)}" alt="EMON OVERRUNS payment QR code"></button>
           <div class="btnrow center"><button type="button" class="btn small" id="ipQrZoom">${ic("eye")} Big QR</button><a class="btn small" href="${esc(q)}" download="EMON-OVERRUNS-InstaPay-QR.png">${ic("download")} Save QR</a></div>
           <div class="ins-amt"><small>SCAN WITH ANY BANK OR E-WALLET APP (INSTAPAY) · AMOUNT TO PAY</small><b>₱ ${peso(i.amount)}</b>${s.pay_qr_note ? `<span>${esc(s.pay_qr_note)}</span>` : ""}<span class="mono">Ref: ${esc(i.ins_no)}</span></div></div>
-          <div><ol class="ins-steps"><li>Scan the QR code and pay <b>₱ ${peso(i.amount)}</b>.</li><li>Save the payment receipt (screenshot).</li><li>Choose the receipt in <b>Proof of Payment</b>: EVA reads the amount and the reference no, then press <b>Submit</b>.</li><li>EMON HASAN checks the payment: the coverage is issued by itself.</li></ol>
+          <div><ol class="ins-steps"><li>Scan · Pay <b>₱ ${peso(i.amount)}</b></li><li>Screenshot</li><li>Proof of Payment · Submit</li></ol>
             <div id="ipEva"></div>
             <div class="fields wide"><label for="ipFile">Proof of Payment *</label><input type="file" id="ipFile" accept="image/*,application/pdf" data-scan="1">
               <label for="ipMethod">Paid By</label><select id="ipMethod">${Object.entries(METHODS).map(([k, l]) => `<option value="${k}" ${k === (i.pay_method || "gcash") ? "selected" : ""}>${l}</option>`).join("")}</select>
@@ -241,7 +241,7 @@
         ${o ? E.cell("Boxes (order now)", E.qtyText(o.total_boxes)) + (o.status === "completed" ? "" : E.cell("Order Amount now (₱)", peso(o.total_amount))) : ""}</div></fieldset>
       <fieldset class="opt"><legend>Coverage Charge (fixed)</legend>${calcHtml(i.boxes, i.order_amount, i.box_price, i.rate_pct)}<p class="muted">${esc(E.words(i.amount, "PESOS"))}</p>
         <div class="ins-due"><small>PAYMENT DUE WITH THIS COVERAGE</small><b>${esc(dueSum(o?.payment_terms))}</b><span>counted from the invoice date · benefits expire 15 days after the delivery</span></div>
-        ${o && (num(o.total_amount) !== num(i.order_amount) || num(o.total_boxes) !== num(i.boxes)) ? `<div class="banner info">The order was changed after the coverage was added: now ${E.qtyText(o.total_boxes)} box(es) · ₱ ${peso(o.total_amount)}. The coverage charge stays the same (₱ ${peso(i.amount)}), fixed when it was added.</div>` : `<p class="muted">The coverage charge is fixed when it is added: it stays the same if the order changes later.</p>`}</fieldset>
+        ${o && (num(o.total_amount) !== num(i.order_amount) || num(o.total_boxes) !== num(i.boxes)) ? `<div class="banner info">Order changed: ${E.qtyText(o.total_boxes)} box(es) · ₱ ${peso(o.total_amount)} · charge fixed ₱ ${peso(i.amount)}</div>` : ""}</fieldset>
       ${payBox}${proofBox}
       <fieldset class="opt"><legend>Benefits and Terms</legend>${benefitsHtml(i)}</fieldset>
       <div class="btnrow">${isAdmin() && i.status !== "active" && i.status !== "cancelled" ? `<button type="button" class="btn danger" id="ipCancel">${ic("trash")} Cancel</button>` : ""}<a class="btn" href="#insurance">Back</a></div></div>`;
@@ -462,7 +462,7 @@
   // ---------- 3.72: ADD COVERAGE on the new order form (below all the items) ----------
   async function insOffer(el, readLines, onToggle) {
     if (!el || !canW()) return;
-    if (!isAdmin()) { el.innerHTML = `<div class="ins-strip none"><span class="ins-seal">${ic("shield")}</span><span><small>COVERAGE</small><b>Add coverage when EMON HASAN approves this order (CONFIRMED), before delivery</b></span></div>`; return; }
+    if (!isAdmin()) { el.innerHTML = `<div class="ins-strip none"><span class="ins-seal">${ic("shield")}</span><span><small>COVERAGE</small><b>After approval · before delivery</b></span></div>`; return; }
     const { data: s, error } = await sb.from("company_settings").select("ins_box_price, ins_rate_pct").eq("id", 1).maybeSingle();
     if (error || !s || !el.isConnected) return; // the server has not 077 yet
     el.innerHTML = `<label class="ins-offer" for="coInsOn"><input type="checkbox" id="coInsOn"><span class="ins-seal">${ic("shield")}</span>
@@ -517,5 +517,5 @@
       <small>PAYMENT DUE: ${esc(due ? `${mdy(due)} (+${DUE} DAYS)` : dueSum(terms))}</small><small>CLAIMS UNTIL: ${esc(i.valid_until ? mdy(i.valid_until) : "15 DAYS AFTER DELIVERY")}</small></span></a>`;
   }
 
-  Object.assign(E, { insMini, insCert: printCert, insDueOf: dueOf, insOrderStrip, insVerify, insOffer, insForOrder, insForInvoice, insBox, insPrintBox });
+  Object.assign(E, { insMini, insOrderStrip, insVerify, insOffer, insForOrder, insForInvoice, insBox, insPrintBox });
 })();

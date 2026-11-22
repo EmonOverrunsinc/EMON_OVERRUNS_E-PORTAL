@@ -144,9 +144,8 @@
     if (!fields) return toast("This record cannot be corrected.", true);
     const admin = correctsAtOnce(table), boss = "EMON HASAN";
     const m = E.modal(`${admin ? "Edit" : "Request Correction"} — ${label}`, `
-      <div class="hint">${admin ? `Saved at once by you (${esc(S.profile?.full_name || "")}): the record shows the new details straight away.` : `Sent to the ${boss} for approval. When the ${boss} approves, the record takes the new details and you are told who approved it.`}</div>
       <div class="fields wide edit-grid">${fields.map((f) => fieldInput(f, row[f.k])).join("")}</div>
-      ${MONEY.includes(table) && table !== "customer_invoices" ? `<small class="muted">Amounts and transaction dates cannot be changed here. If they are wrong, ${isAdmin() ? "delete this record" : "ask EMON HASAN to delete this record"} and record it again.</small>` : ""}
+      ${MONEY.includes(table) && table !== "customer_invoices" ? `<small class="muted">Amounts and dates locked</small>` : ""}
       ${admin ? "" : `<label class="fl" for="edReason">Note for the ${boss} (optional)</label><textarea id="edReason" rows="2" placeholder="Optional"></textarea>`}`,
       `<button type="button" class="btn" data-x>Close</button><button type="button" class="btn primary" data-ok>${admin ? `${ic("check")} Save Changes` : "Send for Approval"}</button>`, { wide: true });
     $("[data-x]", m.el).onclick = m.close;
@@ -218,8 +217,7 @@
     if (!isAdmin()) { location.hash = "dashboard"; return; }
     E.shell("changes", "Corrections", `
       <div class="tabs" id="crF"><button type="button" class="on" data-f="pending">Waiting for Approval</button><button type="button" data-f="log">Change Log</button></div>
-      <div id="crRes">${busy()}</div>`,
-      "Employees send <b>corrections</b> (wrong details) here. <b>Approve</b> puts the new details on the record; <b>Reject</b> leaves the record as it is. Either way the person who asked is told, with your name, and the correction is removed: the record keeps only a line naming the details changed and that you approved them (no old details). You edit records yourself with <b>Edit</b>: the record changes straight away. A customer's details are changed by EMON HASAN only (<b>Edit Customer</b> on the customer).");
+      <div id="crRes">${busy()}</div>`);
     const fresh = E.loadGuard();
     const run = async (f) => {
       const ok = fresh(); // 3.35: the tab chosen last wins
@@ -374,7 +372,7 @@
       <section class="verify-hero">
         <div class="vh-badge">${ic("shield")}</div>
         <h2>Verify a Record</h2>
-        <p>Type the record number, or scan its QR code or barcode, then press <b>Verify</b>. Anyone can check a record.</p>
+        <p>Type · Scan · Verify</p>
         <form id="vfForm" class="vf-form" autocomplete="off">
           <input type="text" id="vfCode" aria-label="Record number" placeholder="e.g. INV-202610-0001 · A-2026-1004-001 · BD20261004001 · EO-2026-10-0001" value="${esc(code || "")}" autocapitalize="characters" spellcheck="false">
           <button type="submit" class="btn primary">${ic("check")} Verify</button>
@@ -455,7 +453,7 @@
         <div class="vf-sub">VERIFIED BY ${esc(C.company.name)}</div>
         <div class="vf-type">${esc(data.type)} · <b class="mono">${esc(data.number)}</b> ${data.status ? pill(data.status) : ""}</div>
         <table class="vf-fields"><tbody>${(data.fields || []).map(([k, v]) => `<tr class="${/^Net (Profit|Loss)/.test(k) ? "vf-hl" : ""}"><th>${esc(k)}</th><td>${esc(E.fixDates(v))}</td></tr>`).join("")}</tbody></table>
-        ${data.limited ? `<div class="vf-limited">${ic("shield")} Private details (names, account numbers, amounts) show only to ${esc(C.company.name)} staff signed in to the ${esc(E.APP)}.</div>` : ""}
+        ${data.limited ? `<div class="vf-limited">${ic("shield")} Details: staff only</div>` : ""}
         <div class="vf-when">Checked ${esc(E.dateTime(checked.toISOString()))}</div>
         ${inside ? `<div class="btnrow center"><button type="button" class="btn primary" id="vfPrint">${ic("print")} Validated Print</button>${OPEN[data.type] ? `<button type="button" class="btn" id="vfOpen">${ic("eye")} Open Record</button>` : ""}</div>` : ""}</div>`;
       if ($("#vfPrint")) $("#vfPrint").onclick = () => validatedPrint(data, checked);
@@ -516,7 +514,7 @@
       <section class="verify-hero contact-hero">
         <div class="vh-badge">${ic("mail")}</div>
         <h2>Contact Us</h2>
-        <p>Send us a message and tell us how to reply. You get a reference number for your message.</p>
+
         <form id="ctForm" class="ct-form" novalidate>
           <label class="fl" for="ctName">Your Name *</label><input type="text" id="ctName" maxlength="120" autocomplete="name" required>
           <span class="fl">How Should We Reply? *</span>
@@ -583,8 +581,7 @@
     if (!isAdmin()) { location.hash = "dashboard"; return; }
     E.shell("contacts", "Contact Messages", `
       <div class="tabs" id="ctF"><button type="button" class="on" data-f="new">New</button><button type="button" data-f="replied">Replied</button><button type="button" data-f="">All</button></div>
-      <div id="ctRes">${busy()}</div>`,
-      "Messages sent with <b>Contact Us</b> on the sign-in page, each with its reference number. Reply the way the person asked (press the email, number or Facebook link), then press <b>Mark Replied</b>.");
+      <div id="ctRes">${busy()}</div>`);
     const fresh = E.loadGuard();
     const run = async (f) => {
       const ok = fresh(); // 3.35: the tab chosen last wins

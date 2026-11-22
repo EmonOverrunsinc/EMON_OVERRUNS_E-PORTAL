@@ -40,8 +40,7 @@
     E.shell("employees", "Employees", `${E.eoTabs("employees")}
       <div class="tabs" id="emF"><button type="button" class="on" data-f="current">Current</button><button type="button" data-f="terminated">Terminated</button><button type="button" data-f="">All</button></div>
       <div class="btnrow">${isAdmin() ? `<a class="btn primary" href="#newemployee">+ New Employee</a>` : ""}</div>
-      <div id="emRes">${busy()}</div>`,
-      "Employees come from approved job applications, or EMON HASAN adds them here. Open an employee to record salary or advance payments, change access, or terminate them.");
+      <div id="emRes">${busy()}</div>`);
     const here = E.stillHere();
     const [{ data, error }, att] = await Promise.all([
       sb.from("employees").select("*").order("created_at", { ascending: false }),
@@ -75,7 +74,7 @@
       <option value="viewer" ${role === "viewer" ? "selected" : ""}>Viewer — can only look</option>
       <option value="admin" ${role === "admin" ? "selected" : ""}>Full Access — can do everything and approve</option></select>
     <span>Menu Access</span><div><div class="checks access">${MODULES.map(([k, l]) => `<label><input type="checkbox" name="emMod" value="${k}" ${mods.includes(k) ? "checked" : ""}> ${l}</label>`).join("")}</div>
-      <small class="muted">Dashboard, Community, Messages, Verification and Download Forms are open to everyone.</small></div>`;
+</div>`;
   const readAccess = () => ({ role: $("#emRole").value, modules: $$("input[name=emMod]:checked").map((x) => x.value) });
 
   // 3.27: one form for New Employee and Edit Employee (the Director edits every detail of an employee)
@@ -137,8 +136,7 @@
           ${E.fileField("neSig", "Signature Form", 'accept="image/*,application/pdf"')}
           <span></span><small>Documents can also be uploaded later from the employee profile.</small></div></fieldset>
         <fieldset class="opt"><legend>Access</legend><div class="fields wide">${accessFields("staff", ["customers"])}</div></fieldset>`}
-      </div><div class="wfoot"><a class="btn" href="#${ed ? "employee/" + x.id : "employees"}">Cancel</a><button type="submit" class="btn primary">${ed ? "Save Changes" : "Save Employee"}</button></div></form>`,
-      ed ? "Change any detail of the employee, then press Save Changes. The photo is changed with Change Photo, the access on Access &amp; Status." : "The employee then signs up with the same email (Create Account) and can sign in immediately with the access chosen here.");
+      </div><div class="wfoot"><a class="btn" href="#${ed ? "employee/" + x.id : "employees"}">Cancel</a><button type="submit" class="btn primary">${ed ? "Save Changes" : "Save Employee"}</button></div></form>`);
     // work experience rows (as on the paper job application; 3.29: no education)
     const bindRemove = () => $$("#neExp button").forEach((b) => (b.onclick = () => b.closest("tr").remove()));
     bindRemove();
@@ -220,7 +218,7 @@
       ${em.status === "terminated" ? `<div class="banner closed">TERMINATED on ${mdy(em.termination_date)} — ${esc(em.termination_reason || "")}. The login is disabled.</div>` : ""}
       ${em.status === "suspended" ? `<div class="banner warn">⚠ SUSPENDED — the login is blocked until the employee is reactivated by an approved order.</div>` : ""}
       ${em.approval_status === "pending" ? `<div class="banner warn">⚠ WAITING FOR APPROVAL — check the details and the portal access (Access &amp; Status). ${isAdmin() ? "Then press <b>Approve Employee</b>: the employee ID card is made and the login opens." : "EMON HASAN approves it."}</div>` : ""}
-      ${em.status === "waiting" && em.approval_status !== "pending" ? `<div class="banner warn">No login yet. Ask ${esc(em.first_name)} to open the portal, tap <b>Create Account</b> and use <b>${esc(em.email)}</b>. They can sign in immediately with the access below.</div>` : ""}
+      ${em.status === "waiting" && em.approval_status !== "pending" ? `<div class="banner warn">No login yet · Create Account with <b>${esc(em.email)}</b></div>` : ""}
       <section class="cust-hero st-${esc(em.status)}">${photoBox(photo, (em.first_name[0] || "") + (em.last_name[0] || ""))}
         <div class="ch-main"><div class="ch-name"><h2>${esc(fullName(em))}</h2>${verifiedBadge(verified)}${em.status === "waiting" ? `<span class="pill pending">WAITING SIGN-UP</span>` : pill(em.status)}</div>
           <div class="ch-sub">${esc(em.position || "—")} · ${esc(em.email)}${em.phone ? " · " + esc(em.phone) : ""}</div>
@@ -259,7 +257,7 @@
           <div class="btnrow"><button type="button" class="btn primary" id="emSave">Save Access</button></div></fieldset>
           <fieldset class="opt"><legend>Login Account</legend>${em.profile_id ? `<p>${ic("check")} Linked to a login account. The link cannot be removed, and this employee cannot be deleted.</p>`
             : em.status === "terminated" ? `<p class="muted">A terminated employee cannot be linked.</p>`
-            : `<p class="muted" style="margin-top:0">No login yet. Link an existing login account to this employee (once only: the link cannot be removed afterwards).</p>
+            : `<p class="muted" style="margin-top:0">No login · link once</p>
             <div class="fields wide"><label for="emLinkSel">Login Account</label><select id="emLinkSel"><option value="">Loading…</option></select></div>
             <div class="btnrow"><button type="button" class="btn" id="emLink">${ic("key")} Link Login Account</button></div>`}</fieldset></div>` : ""}
         ${isAdmin() ? `<div data-p="5" hidden id="emCard"></div>` : ""}
@@ -500,7 +498,7 @@
         </div>
       </div>
       <div class="netbox"><span>NET SALARY</span><b id="psNet">₱ 0.00</b><small id="psWords"></small></div>
-      <p class="muted" style="margin:6px 0 0">The net salary goes on the employee's account as <b>UNPAID SALARY</b>. Pay it on Payroll &gt; <b>Pay Salary</b> (the employee's ID card is scanned).</p>`,
+      `,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-save>${ic("check")} Issue Payslip</button>`, { wide: true });
     const d = m.el;
     let type = "salary";
@@ -717,8 +715,7 @@
       <div class="tiles" id="prTiles"></div>
       <h3 class="sec-h">Employees</h3><div id="prActive">${busy()}</div>
       <h3 class="sec-h">Salary Paid This Month</h3><div id="prPays">${busy()}</div>
-      <h3 class="sec-h">Payslips of the Month</h3><div id="prRes">${busy()}</div>`,
-      "1 <b>Issue Payslip</b>: the employee, the month, earnings less deductions = net salary. It is the employee's <b>unpaid salary</b>. 2 <b>Pay Salary</b>: the employee, the date and the payslip; scan the employee's ID card and submit. Open a row to see the employee or the payslip.");
+      <h3 class="sec-h">Payslips of the Month</h3><div id="prRes">${busy()}</div>`);
     let rows = [], staff = [], payRows = [], missing = false;
     const fresh = E.loadGuard();
     const load = async () => {
@@ -797,7 +794,7 @@
           <label for="poHrs">Duty Hours</label><input type="text" id="poHrs" placeholder="e.g. 12 HOURS DAILY">
           <label for="poDesc">Description</label><input type="text" id="poDesc"></div></div></div>
         <div class="wfoot"><button type="submit" class="btn primary">Add Position</button></div></form>` : ""}
-      <div id="poRes">${busy()}</div>`, "Open positions are shown to people who create an account, so they can apply. Application numbers start with the company code, e.g. <b>MF20261001</b>.");
+      <div id="poRes">${busy()}</div>`);
     const fresh = E.loadGuard();
     const load = async () => {
       const ok = fresh();
@@ -841,7 +838,7 @@
   V.jobapps = async () => {
     E.shell("jobapps", "Job Applications", `${E.eoTabs("jobapps")}
       <div class="tabs" id="jaF"><button type="button" class="on" data-f="submitted">Waiting for Review</button><button type="button" data-f="approved">Approved</button><button type="button" data-f="rejected">Rejected</button><button type="button" data-f="">All</button></div>
-      <div id="jaRes">${busy()}</div>`, "People who created an account and applied for a job. Open one, print the form, have the applicant sign it, upload the signed copy, choose the access and approve. Your signature is printed on the form when you approve.");
+      <div id="jaRes">${busy()}</div>`);
     const fresh = E.loadGuard();
     const run = async (f) => {
       const ok = fresh(); // 3.35: the tab chosen last wins
@@ -919,7 +916,7 @@
       <div class="docgrid">${E.docCard({ key: "ja", title: `Job Application Form ${a.application_no}`, sub: "Print, have the applicant sign it, then upload the signed copy", ownerType: "job_application", ownerId: a.id, att, print: () => printJobApp(a), canUpload: isAdmin(),
         approved: jaApproved(a) ? { name: a.approved_by_name, at: a.approved_at } : null })}</div>
       ${isAdmin() && a.status === "submitted" ? `<fieldset class="opt review"><legend>EMON HASAN's Approval</legend><ol class="steps">
-        <li><b>Print</b> the job application form above and have the applicant sign it. You do not sign it by hand: your signature is printed on it when you approve.</li>
+        <li><b>Print</b> · applicant signs</li>
         <li><b>Upload the form signed by the applicant:</b> ${signed ? `<span class="ok-txt">✔ Uploaded.</span>` : `<span class="bad-txt">not uploaded yet</span> — press <b>Upload Signed Copy</b> on the form card.`}</li>
         <li><b>Choose access</b> for the new employee:<div class="fields wide" style="margin-top:6px">${accessFields("staff", ["customers"])}</div></li>
         <li><b>Decide:</b><div class="fields wide"><label for="jaNote">Note</label><input type="text" id="jaNote" placeholder="Optional"></div>
@@ -967,8 +964,7 @@
   V.projects = async () => {
     E.shell("projects", "Projects", `${E.eoTabs("projects")}
       <div class="tabs" id="pjTabs"><button type="button" class="on" data-f="approved">Approved</button><button type="button" data-f="pending">Waiting for Approval</button><button type="button" data-f="completed">Completed</button><button type="button" data-f="rejected">Rejected</button><button type="button" data-f="">All</button></div>
-      <div class="btnrow">${E.canWrite("projects") ? `<a class="btn primary" href="#newproject">+ New Project Application</a>` : ""}</div><div id="pjRes">${busy()}</div>`,
-      "Submit a project with its budget: each line with its amount (the qty is optional). Once EMON HASAN approves it, the project moves to <b>Approved</b> and payments can be recorded against its total cost.");
+      <div class="btnrow">${E.canWrite("projects") ? `<a class="btn primary" href="#newproject">+ New Project Application</a>` : ""}</div><div id="pjRes">${busy()}</div>`);
     const fresh = E.loadGuard();
     const run = async (f) => {
       const ok = fresh(); // 3.35: the tab chosen last wins
@@ -1167,8 +1163,7 @@
     E.shell(O.list, off === "manila" ? "Billing › Manila" : "Billing", `${off === "manila" ? (E.eoTabs ? E.eoTabs("mbilling") : "") : E.regTabs ? E.regTabs("billing") : ""}
       <div class="tiles" id="blTiles">${["Companies", "Total Paid (PHP)", "Total Paid (BDT)", "This Month (BDT)"].map((k) => `<div class="tile"><div class="k">${k}</div><div class="v"><span class="spin sm"></span></div></div>`).join("")}</div>
       <div class="btnrow">${w ? `<a class="btn primary" href="#newvoucher/${off}">${ic("plus")} New Payment</a><a class="btn" href="#newpaycompany/${off}">${ic("plus")} Add Company</a>` : ""}</div>
-      <div id="blRes">${busy()}</div>`,
-      "Add a company and choose its currency: PHP, BDT, or both. <b>New Payment</b> records the amount in that currency (for both: PHP × rate = BDT) and creates a payment voucher. E-bills are paid with a memo in EMON HASAN Portal.");
+      <div id="blRes">${busy()}</div>`);
     const here = E.stillHere();
     // 3.99.127: the vouchers too: this month's (PAID / NOT PAID YET) and the last voucher of each company
     const ym = E.isoToday().slice(0, 7);
@@ -1201,7 +1196,7 @@
 
   // Two tick boxes: tick PHP, BDT or both.
   const curChoice = (name, on = "BOTH") => `<div class="subj-grid">${["PHP", "BDT"].map((k) => `<label class="subj"><input type="checkbox" name="${name}" value="${k}" ${on === k || on === "BOTH" ? "checked" : ""}><span>${k}</span></label>`).join("")}</div>
-    <small class="muted">Tick one: you type the amount in that currency. Tick both: you type PHP and the exchange rate, and the BDT amount is calculated.</small>`;
+    `;
   const curPicked = (name) => { const on = [...document.querySelectorAll(`input[name=${name}]:checked`)].map((i) => i.value); return on.length === 2 ? "BOTH" : on[0] || ""; };
   V.newpaycompany = (office) => {
     const off = office === "manila" ? "manila" : "dhaka", O = OFF[off];
