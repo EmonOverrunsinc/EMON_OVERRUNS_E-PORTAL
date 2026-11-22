@@ -127,7 +127,7 @@
   // 3.99.178: the month's rank (Top 10 by net sales) on each shop
   const rankCards = (holder, m) => E.outletRanks(m).then((rk) => holder?.querySelectorAll(".ol-rk").forEach((el) => {
     const r = rk.get(el.dataset.oid);
-    if (r) el.innerHTML = E.rankNo(r.rank);
+    if (r) el.innerHTML = E.rankTag(r.rank); // 3.99.201: #1, #2 (not a round number)
   }));
   const kpi = (k, v, cls = "") => `<div class="ol-kpi ${cls}${num(v) < 0 ? " neg" : ""}"><small>${esc(k)}</small><b>₱ ${peso(v)}</b></div>`;
 
