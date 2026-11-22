@@ -619,24 +619,24 @@
     const at = cancelled ? -1 : steps.findIndex((x) => !x[1]);
     const bar = `<ol class="og-steps">${steps.map(([t, d], i) => `<li class="${d ? "done" : i === at ? "on" : ""}"><span>${d ? "✔" : i + 1}</span>${esc(t)}</li>`).join("")}</ol>`;
     const big = (attrs, label, cls = "primary", icon = "check") => `<button type="button" class="btn ${cls} big og-go" ${attrs}>${ic(icon)} ${esc(label)}</button>`;
-    const more = ser && ser < total && !waiting && w ? `<button type="button" class="btn og-more" data-trk-go="1">${ic("box")} Add More Boxes (${ser} of ${qtyText(total)})</button>` : "";
+    const more = ser && ser < total && !waiting && w ? `<button type="button" class="btn og-more" data-trk-go="1">${ic("box")} Add More (${ser} of ${qtyText(total)})</button>` : "";
     let n = at + 1, title, say, btn = "";
     if (cancelled) { n = "✖"; title = "This order is cancelled"; say = o.cancel_note ? esc(o.cancel_note) : "Nothing more to do."; }
-    else if (done) { n = "✔"; title = "Order finished"; say = `Delivered${o.delivered_at ? " on " + esc(mdy(o.delivered_at)) : ""}.${inv ? ` Invoice <b class="nw">${esc(inv.invoice_no)}</b> was made for the customer.` : ""}`;
+    else if (done) { n = "✔"; title = "Order finished"; say = `Delivered${o.delivered_at ? " " + esc(mdy(o.delivered_at)) : ""}`;
       btn = inv && E.canOpen("invoice") ? `<a class="btn primary big og-go" href="#invoice/${inv.id}">${ic("doc")} Open Invoice</a>` : ""; }
     else if (o.status === "pending") {
-      if (isAdmin()) { title = "Approve this order"; say = "Check the order lines below. If they are correct, press Approve."; btn = big('data-og="#coApprove"', "Approve Order", "ok") + `<button type="button" class="btn og-more" data-og="#coCancelO">Cancel Order</button>`; }
-      else { title = "Waiting for EMON HASAN"; say = "EMON HASAN must approve this order first. You have nothing to do now."; }
+      if (isAdmin()) { title = "Approve this order"; say = "Check the lines below"; btn = big('data-og="#coApprove"', "Approve Order", "ok") + `<button type="button" class="btn og-more" data-og="#coCancelO">Cancel Order</button>`; }
+      else { title = "Waiting for approval"; say = "EMON HASAN approves this order"; }
     } else if (waiting) {
-      if (isAdmin()) { title = "Approve the delivery"; say = `The delivery was submitted by ${esc(o.delivery_request_by || "the order paper")}. Check the boxes and photos, then approve. The invoice is made by itself.`; btn = big('data-og="#coDvOk"', "Approve Delivery", "ok") + `<button type="button" class="btn og-more" data-og="#coDvNo">Send Back</button>`; }
-      else { title = "Waiting for EMON HASAN"; say = "The delivery is submitted. EMON HASAN approves it, then the invoice is made."; }
-    } else if (!w) { title = steps[at][0]; say = "This step is done by the office."; }
-    else if (!ser) { title = "Add the boxes"; say = `Scan the sticker of each box, or type its serial number. <b>0 of ${qtyText(total)}</b> added.`; btn = big('data-trk-go="1"', "Add Boxes", "primary", "box"); }
-    else if (o._trkOn && !sorted) { title = "Mark as Sorting"; say = `<b>${ser} of ${qtyText(total)}</b> box(es) added. Press when the boxes are being packed for the delivery.`; btn = big('data-trk="sorting"', "Mark as Sorting", "primary", "next") + more; }
-    else { title = "Complete the delivery"; say = "Press when the customer has received the boxes. The car plate no and the photo are optional. The invoice is made by itself.";
+      if (isAdmin()) { title = "Approve the delivery"; say = `Sent by ${esc(o.delivery_request_by || "the order paper")}`; btn = big('data-og="#coDvOk"', "Approve Delivery", "ok") + `<button type="button" class="btn og-more" data-og="#coDvNo">Send Back</button>`; }
+      else { title = "Waiting for approval"; say = "EMON HASAN approves the delivery"; }
+    } else if (!w) { title = steps[at][0]; say = "Done by the office"; }
+    else if (!ser) { title = "Add the boxes"; say = `<b>0 of ${qtyText(total)}</b> added`; btn = big('data-trk-go="1"', "Add Boxes", "primary", "box"); }
+    else if (o._trkOn && !sorted) { title = "Mark as Sorting"; say = `<b>${ser} of ${qtyText(total)}</b> added`; btn = big('data-trk="sorting"', "Mark as Sorting", "primary", "next") + more; }
+    else { title = "Complete the delivery"; say = "When the customer has the boxes";
       btn = (go || big('data-trk-go="2"', "Complete Delivery", "ok")) + more; }
     return `<section class="og${done ? " og-done" : cancelled ? " og-bad" : ""}">${bar}
-      <div class="og-now"><div class="og-n">${n}</div><div class="og-txt"><small>${done || cancelled ? "STATUS" : "WHAT TO DO NOW"}</small><b>${esc(title)}</b><p>${say}</p></div><div class="og-btns">${btn}</div></div></section>`;
+      <div class="og-now"><div class="og-txt"><b>${esc(title)}</b><p>${say}</p></div><div class="og-btns">${btn}</div></div></section>`; // 3.99.211: small, button at the side
   }
 
   function draw(o, boxes, inv, urls) {
