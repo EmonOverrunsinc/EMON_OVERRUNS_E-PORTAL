@@ -84,7 +84,7 @@
     const val = (k, d = "") => esc(x[k] ?? d);
     const opt = (list, cur) => list.map((g) => `<option${g === (cur || "") ? " selected" : ""}>${g}</option>`).join("");
     const linked = ed && !!x.profile_id;
-    E.shell(ed ? "editemployee" : "newemployee", ed ? `Edit Employee — ${x.employee_no}` : "New Employee", `
+    E.shell(ed ? "editemployee" : "newemployee", ed ? `Edit Employee › ${x.employee_no}` : "New Employee", `
       <form class="window" id="neForm" novalidate><div class="wtitle">Employee Information</div><div class="wbody">
         <div class="summary-box"><div class="fields wide"><span>Employee No</span><b>${ed ? esc(x.employee_no) : "Assigned on save (EO-YYYYMM##)"}</b><span>${ed ? "Edited By" : "Created By"}</span><b>${esc(S.profile.full_name || "")}</b></div></div>
         <fieldset class="opt"><legend>Personal Details</legend><div class="formgrid">
@@ -215,7 +215,7 @@
     const canPay = E.canWrite("employees") && em.status !== "terminated";
     const st = salaryTotals(slips, pays.rows), acct = salaryAccount(slips, pays.rows);
     const empApproved = em.approval_status === "approved" && !!em.approved_by_name;
-    $(".band h1").textContent = `Employee — ${fullName(em)}`;
+    $(".band h1").textContent = `Employee › ${fullName(em)}`;
     $("#main").innerHTML = `
       ${em.status === "terminated" ? `<div class="banner closed">TERMINATED on ${mdy(em.termination_date)} — ${esc(em.termination_reason || "")}. The login is disabled.</div>` : ""}
       ${em.status === "suspended" ? `<div class="banner warn">⚠ SUSPENDED — the login is blocked until the employee is reactivated by an approved order.</div>` : ""}
@@ -678,7 +678,7 @@
     }
     const hr = E.hasModule("employees");
     const canPay = E.canWrite("employees") && p.balance > 0;
-    $(".band h1").textContent = `Payslip — ${p.payslip_no}`;
+    $(".band h1").textContent = `Payslip › ${p.payslip_no}`;
     $("#main").innerHTML = `
       ${p.issued_at ? `<div class="banner ${p.status === "paid" ? "ok" : "warn"}">${p.status === "paid" ? `✔ PAID IN FULL — ₱ ${peso(p.paid)}` : p.status === "partial" ? `PART PAID — ₱ ${peso(p.paid)} paid, <b>₱ ${peso(p.balance)} unpaid</b>` : `UNPAID — <b>₱ ${peso(p.balance)}</b> is the employee's unpaid salary`}</div>` : ""}
       <div class="window"><div class="wtitle">${esc(p.payslip_no)} · ${esc(PAY_TYPE[p.pay_type])} ${slipPill(p)}</div><div class="wbody">
@@ -908,7 +908,7 @@
     if (!here()) return;
     const signed = att.some((x) => x.kind === "signed_form");
     const exp = Array.isArray(a.experience) ? a.experience : [];
-    $(".band h1").textContent = `Job Application — ${a.application_no}`;
+    $(".band h1").textContent = `Job Application › ${a.application_no}`;
     $("#main").innerHTML = `
       ${a.status === "approved" ? `<div class="banner ok">✔ APPROVED ${esc(a.approval_no || "")} on ${mdy(a.approved_at)} by ${esc(a.approved_by_name || "")}${a.employee_id ? ` — <a href="#employee/${a.employee_id}">open employee record</a>` : ""}</div>` : ""}
       ${a.status === "rejected" ? `<div class="banner closed">NOT APPROVED${a.review_note ? " — " + esc(a.review_note) : ""}</div>` : ""}
@@ -1066,7 +1066,7 @@
         <tr class="grand"><td colspan="2" class="num">TOTAL PROJECT COST (₱)</td><td class="num">${peso(pr.total_cost)}</td></tr></tbody></table>
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(pr.total_cost))}</div></div>`)}
       ${E.sigs(`Prepared by: ${esc(pr.created_by_name || "")}${E.eoidOf?.(pr.created_by) ? ` · ${esc(E.eoidOf(pr.created_by))}` : ""}`, signed ? "Approved by" : "Approved by / Date", signed ? E.approvedBy(null, pr.approved_by_name, pr.approved_at) : null, E.signerBy(pr.created_by))}`]);
-    $(".band h1").textContent = `Project — ${pr.project_no}`;
+    $(".band h1").textContent = `Project › ${pr.project_no}`;
     $("#main").innerHTML = `
       <div class="window"><div class="wtitle">${esc(pr.project_no)} — ${esc(pr.title)} ${pill(pr.status)}</div><div class="wbody">
         <div class="formgrid"><div class="fields wide"><span>Location</span><span>${esc(pr.location || "—")}</span><span>Description</span><span>${esc(pr.description || "—")}</span>
@@ -1164,7 +1164,7 @@
   V.billing = async (office) => {
     const off = office === "manila" ? "manila" : "dhaka", O = OFF[off];
     const w = E.canWrite(O.mod);
-    E.shell(O.list, off === "manila" ? "Billing — Manila" : "Billing", `${off === "manila" ? (E.eoTabs ? E.eoTabs("mbilling") : "") : E.regTabs ? E.regTabs("billing") : ""}
+    E.shell(O.list, off === "manila" ? "Billing › Manila" : "Billing", `${off === "manila" ? (E.eoTabs ? E.eoTabs("mbilling") : "") : E.regTabs ? E.regTabs("billing") : ""}
       <div class="tiles" id="blTiles">${["Companies", "Total Paid (PHP)", "Total Paid (BDT)", "This Month (BDT)"].map((k) => `<div class="tile"><div class="k">${k}</div><div class="v"><span class="spin sm"></span></div></div>`).join("")}</div>
       <div class="btnrow">${w ? `<a class="btn primary" href="#newvoucher/${off}">${ic("plus")} New Payment</a><a class="btn" href="#newpaycompany/${off}">${ic("plus")} Add Company</a>` : ""}</div>
       <div id="blRes">${busy()}</div>`,
@@ -1220,7 +1220,7 @@
           <div class="fields wide"><label for="paName">Account Name</label><input type="text" id="paName"><label for="paNo">Account Number</label><input type="text" id="paNo"></div>
           <div class="fields wide"><label for="paBank">Bank Name</label><input type="text" id="paBank"><label for="paBranch">Branch</label><input type="text" id="paBranch"></div></div></fieldset>
       </div><div class="wfoot"><a class="btn" href="#${O.list}">Cancel</a><button type="submit" class="btn primary">Save Company</button></div></form>`);
-    $(".band h1") && ($(".band h1").textContent = `Add Company — ${off === "manila" ? "Manila" : "Dhaka"}`); markOffice(off);
+    $(".band h1") && ($(".band h1").textContent = `Add Company › ${off === "manila" ? "Manila" : "Dhaka"}`); markOffice(off);
     $("#pcPhoto").onchange = (e) => {
       const f = e.target.files[0];
       $("#pcPrev").innerHTML = f ? `<img src="${URL.createObjectURL(f)}" alt="Photo preview">` : "No photo chosen";
@@ -1277,7 +1277,7 @@
     const tiles = [
       // 3.22: the profile shows this month's payments only (no all-time total)
       ...(showPhp(cur) ? [["", "This Month (PHP)", "₱ " + peso(c.month_php)]] : []), ...(showBdt(cur) ? [["ok", "This Month (BDT)", bdt(c.month_bdt)]] : [])];
-    $(".band h1").textContent = `Billing — ${c.name}`;
+    $(".band h1").textContent = `Billing › ${c.name}`;
     $("#main").innerHTML = `
       ${suspended ? `<div class="banner warn">⚠ SUSPENDED — new payments are blocked until the company is reactivated by an approved order.${c.status_note ? " " + esc(c.status_note) : ""}</div>` : ""}
       <section class="cust-hero">${photoBox(photo, E.initials(c.name))}
@@ -1520,7 +1520,7 @@
     const rcpt = att.find((a) => a.kind === "receipt" && E.isImage(a));
     const print = async () => E.openPreview(`Voucher ${v.voucher_no}`, [voucherPage(v, rcpt ? await E.signedUrl(rcpt.storage_path, 1800) : "")]);
     const a = v.pay_accounts || {};
-    $(".band h1").textContent = `Payment Voucher — ${v.voucher_no}`;
+    $(".band h1").textContent = `Payment Voucher › ${v.voucher_no}`;
     $("#main").innerHTML = `<div class="window"><div class="wtitle">${esc(v.voucher_no)} · ${esc(v.pay_companies?.name || "")}</div><div class="wbody">
       <div class="formgrid"><div class="fields wide">
         <span>Paid To</span><span><a href="#paycompany/${v.company_id}"><b>${esc(v.pay_companies?.name || "")}</b></a></span>

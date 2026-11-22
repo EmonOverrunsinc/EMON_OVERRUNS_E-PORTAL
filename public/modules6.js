@@ -241,7 +241,7 @@
     if (!t) { $("#main").innerHTML = `<div class="empty">QC test not found. <a href="#eooffice">Back to Regional Office Manila</a></div>`; return; }
     if (rq.error && /qc_results|permission/i.test(rq.error.message || "")) { $("#main").innerHTML = `<div class="empty">QC Test needs the database update <b>025_qc_simple.sql</b>. Run it in the Supabase SQL Editor.</div>`; return; }
     const r = rq.data || { checks: {}, numbers: {}, docs: [] };
-    $(".band h1") && ($(".band h1").textContent = `QC Test — ${t.qc_no}`);
+    $(".band h1") && ($(".band h1").textContent = `QC Test › ${t.qc_no}`);
     draw(t, r);
     if (FRESH.delete(id) && t.status === "done") openStickers(t, r);
     E.setRecords(`QC test: ${t.qc_no}`);
@@ -662,7 +662,7 @@
     const url = v.receipt_path ? (await E.signedMap([v.receipt_path])).get(v.receipt_path) || "" : "";
     if (!here()) return;
     const isPdf = /\.pdf$/i.test(v.receipt_path || "");
-    $(".band h1") && ($(".band h1").textContent = `Collection Voucher — ${v.cv_no}`);
+    $(".band h1") && ($(".band h1").textContent = `Collection Voucher › ${v.cv_no}`);
     $("#main").innerHTML = `<div class="window"><div class="wtitle">${esc(v.cv_no)} · ₱ ${peso(v.amount)} ${cvState(v)}</div><div class="wbody">
       ${unpaid(v) ? `<div class="banner ${overdue(v) ? "closed" : "warn"}">${ic("clock")} <b>UNPAID${overdue(v) ? " — EXPIRED" : ""}</b> · issued ${esc(mdy(v.issued_on || v.cv_date))} · <b>pay before ${esc(mdy(v.pay_by))}</b>. Not counted in the collection until the payment is received: press <b>Receive Payment</b> and scan the QR code of the printed voucher (no scan for the Customer Account).</div>`
         : v.paid_at ? `<div class="banner ok">${ic("check")} <b>PAID</b> on ${esc(mdy(v.cv_date))}${v.received_by ? ` · received by ${esc(v.received_by)}` : ""} · recorded by ${esc(v.paid_by_name || "")} · issued ${esc(mdy(v.issued_on))}</div>` : ""}

@@ -208,7 +208,7 @@
     const prem = i.invoice_id ? (await sb.from("customer_invoices").select("id, invoice_no").eq("id", i.invoice_id).maybeSingle()).data : null; // 3.77: billed to the account
     if (!here()) return;
     const st = stateOf(i), q = qrUrl(s), isPdf = /\.pdf$/i.test(i.proof_path || "");
-    $(".band h1") && ($(".band h1").textContent = `Coverage — ${i.ins_no}`);
+    $(".band h1") && ($(".band h1").textContent = `Coverage › ${i.ins_no}`);
     const payBox = ["unpaid", "rejected"].includes(i.status) && canW() ? `<fieldset class="opt ins-pay"><legend>Payment</legend>
         ${i.status === "rejected" ? `<div class="banner warn"><b>Payment not accepted</b>${i.review_note ? `: ${esc(i.review_note)}` : ""}. Submit the right proof again.</div>` : ""}
         ${i.pay_by && i.status === "unpaid" ? `<div class="banner warn ins-payby">${ic("clock")} <b>PAY BY ${esc(mdy(i.pay_by))}</b> — not paid within 3 days, this coverage is <b>CANCELLED automatically</b>.</div>` : ""}

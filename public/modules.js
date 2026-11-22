@@ -1064,7 +1064,7 @@
     if (showOrders) tabs.push("Customer Orders");
     const achAt = isStaff() ? tabs.push("Achieved") - 1 : -1; // 3.99.180/200: medals and the prize pool
     const infoAt = tabs.push("Info") - 1; // 3.99.208: the Customer Details paper, the signed form, the notes
-    $(".band h1").textContent = `Customer — ${fullName(c)}`;
+    $(".band h1").textContent = `Customer › ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c)}
       <section class="cust-hero st-${esc(c.status)}">
@@ -1723,7 +1723,7 @@
     const returned = num(inv.amount_returned), bal = num(inv.balance);
     // what the invoice still needs from linked payments (other payments pay it only through the oldest-first order)
     const need = num(inv.total_amount) - returned - active.reduce((s, l) => s + num(l.amount), 0);
-    $(".band h1").textContent = `Invoice — ${inv.invoice_no}`;
+    $(".band h1").textContent = `Invoice › ${inv.invoice_no}`;
     $("#main").innerHTML = `<div class="window"><div class="wtitle">${esc(inv.invoice_no)} ${payPill(inv)}<span id="invInsMini"></span></div><div class="wbody">
       <div class="rec-tiles"><div class="rec-tile"><small>Total Amount</small><b>₱ ${peso(inv.total_amount)}</b></div>
         <div class="rec-tile ok"><small>Paid</small><b>₱ ${peso(inv.amount_paid)}</b></div>
@@ -2009,7 +2009,7 @@
     if (!here()) return; // another page was opened while this one loaded
     if (!p) { $("#main").innerHTML = `<div class="empty">Payment not found. <a href="#payments">Back to Payments</a></div>`; return; }
     const links = lk.data || [], linked = links.reduce((s, l) => s + num(l.amount), 0);
-    $(".band h1").textContent = `Payment — ${p.receipt_no}`;
+    $(".band h1").textContent = `Payment › ${p.receipt_no}`;
     $("#main").innerHTML = `
       ${extra === "done" ? `<div class="banner ok">✔ Payment successfully recorded — Receipt No <b>${esc(p.receipt_no)}</b>. It has been added to ${esc(fullName(p.customers))}'s account.</div>` : ""}
       <div class="window"><div class="wtitle">${esc(p.receipt_no)}</div><div class="wbody">
@@ -2179,7 +2179,7 @@
     const [{ data: m }, att] = await Promise.all([sb.from("credit_memos").select("*, customers(*)").eq("id", id).maybeSingle(), attachmentsOf("credit_memo", id)]);
     if (!here()) return; // another page was opened while this one loaded
     if (!m) { $("#main").innerHTML = `<div class="empty">Credit memo not found. <a href="#creditmemos">Back to Credit Memos</a></div>`; return; }
-    $(".band h1").textContent = `Credit Memo — ${m.memo_no}`;
+    $(".band h1").textContent = `Credit Memo › ${m.memo_no}`;
     $("#main").innerHTML = `<div class="window"><div class="wtitle">${esc(m.memo_no)} ${pill(m.status)}</div><div class="wbody">
       <div class="formgrid"><div class="fields wide">
         <span>Customer</span><span><a href="#customer/${m.customer_id}"><b>${esc(fullName(m.customers))}</b> (${esc(m.customers.account_no)})</a> ${m.customers.status !== "active" ? pill(m.customers.status) : ""}</span>
