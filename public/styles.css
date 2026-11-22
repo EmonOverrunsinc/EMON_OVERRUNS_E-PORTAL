@@ -4810,3 +4810,19 @@ a.qa-plus { text-decoration: none; }
 #main .cust-hero .ch-tags .stand small { border: 0 !important; padding: 0 !important; margin: 0 !important; }
 #main .cust-hero .ch-tags .stand small::before { content: none !important; }
 #main .cust-hero .ch-pic { min-width: 0; }
+/* 3.99.183: the shop's rank, VIP and stars grouped like a customer's: beside the month (iPad / PC), at the top (phone) */
+.os-hero { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "top ach month" "chips chips chips"; }
+.os-hero .os-ach { grid-area: ach; align-items: center; justify-self: center; align-self: center; }
+@media (max-width: 760px) {
+  .os-hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "ach" "top" "chips" "month"; }
+  .os-hero .os-ach { margin-bottom: 2px; }
+}
+@media (min-width: 761px) and (max-width: 1180px) { .os-hero { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "ach ach" "top month" "chips chips"; } }
+/* 3.99.184: the customers list numbered by rank: the Top 10 numbers in their colours */
+.rk-no { display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: 999px; font-weight: 800; font-size: 12px; line-height: 1; border: 1px solid transparent; }
+.rk-no.rk1 { background: linear-gradient(135deg, #fff4b8, #f5c542 45%, #d89e1c); color: #4a3200; border-color: #f0d27a; box-shadow: 0 0 0 2px rgba(245, 197, 66, .3); }
+.rk-no.rk2 { background: linear-gradient(135deg, #f9df86, #e3b53c); color: #4a3200; border-color: #f0d27a; }
+.rk-no.rk3 { background: linear-gradient(135deg, #d6a24a, #a2701d); color: #fff7e0; }
+.rk-no.rk4 { background: linear-gradient(135deg, #f6f8fc, #cfd8e6 50%, #b6c2d6); color: #1f2a44; border-color: #d6dde9; }
+.rk-no.rk5 { background: linear-gradient(135deg, #e4e6e9, #b3b7be); color: #262b33; }
+.rk-no.rk6 { background: #eaf0fb; color: #1e3a8a; border-color: #c9d6f0; }

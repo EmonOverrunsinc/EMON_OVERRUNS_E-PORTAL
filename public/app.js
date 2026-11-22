@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.182"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.184"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.182"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.184"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1991,7 +1991,7 @@
     const footHtml = foot ? `<tfoot><tr>${cols.map((c) => `<td class="${cls(c)}">${foot[c.key] ?? ""}</td>`).join("")}</tr></tfoot>` : "";
     return `<div class="grid-wrap">${onRow ? `<div class="grid-group">Click a row to open it</div>` : ""}
       <div class="grid-scroll"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${bodyHtml}</tbody>${footHtml}</table></div>
-      ${cap ? `<div class="grid-foot g-cap"><span>Showing the latest ${limit} of ${rows.length} · search at the top to find the others</span><button type="button" class="btn small g-all">Show All ${rows.length}</button></div>` : ""}</div>`;
+      ${cap ? `<div class="grid-foot g-cap"><span>Showing ${limit} of ${rows.length} · search at the top to find the others</span><button type="button" class="btn small g-all">Show All ${rows.length}</button></div>` : ""}</div>`;
   }
   document.addEventListener("click", (e) => {
     const b = e.target.closest?.(".g-all");
