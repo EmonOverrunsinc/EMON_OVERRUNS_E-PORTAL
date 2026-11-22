@@ -4848,3 +4848,25 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 .rk-no.lg { min-width: 38px; height: 38px; font-size: 16px; }
 .os-hero .medal-area, .cu-ach.medal-area { min-height: 44px; }
 .grid-scroll { overscroll-behavior: auto; overscroll-behavior-x: contain; }
+/* 3.99.186: smaller medals, under the customer's photo and under the shop's address; the VIP box smaller, all gold */
+.os-hero { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "top month" "chips chips"; }
+@media (min-width: 761px) and (max-width: 1180px) { .os-hero { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "top month" "chips chips"; } }
+@media (max-width: 760px) { .os-hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "chips" "month"; } }
+.medal-area { display: flex; gap: 8px; min-height: 0 !important; }
+.medal-area[hidden] { display: none; }
+.os-medals { margin-top: 8px; justify-content: flex-start; }
+.pf-medals { margin-top: 8px; justify-content: center; width: 100%; }
+.mslot { width: 30px; height: 30px; }
+.mslot b { font-size: 14px; }
+.mslot em { right: -8px; bottom: -6px; min-width: 18px; padding: 1px 4px; font-size: 9px; border-width: 1px; }
+.mslot.md1 { box-shadow: 0 0 0 2px rgba(245, 197, 66, .35), 0 2px 6px rgba(0, 0, 0, .22); }
+.mslot.md2 { box-shadow: 0 0 0 2px rgba(207, 216, 230, .35), 0 2px 6px rgba(0, 0, 0, .22); }
+.mslot.md3 { box-shadow: 0 0 0 2px rgba(196, 140, 60, .35), 0 2px 6px rgba(0, 0, 0, .22); }
+.mslot.empty { border: 1.5px dashed #b9c7e2; background: #f5f8fd; }
+.os-hero .mslot.empty { border-color: rgba(255, 255, 255, .5); background: rgba(255, 255, 255, .06); }
+.vip-box { padding: 4px 10px 4px 7px; gap: 5px; border-radius: 7px; font-size: 13.5px; letter-spacing: .16em; color: #3d2a00; border: 1.5px solid #fbe38a;
+  background: linear-gradient(135deg, #fff4b8, #f5c542 30%, #c8920f 55%, #f7d867 80%, #b8860b); animation: vipGold 2.4s ease-in-out infinite; }
+.vip-box .ic { width: 16px; height: 16px; stroke: #5a3d00; fill: rgba(255, 255, 255, .45); }
+.vip-box::after { background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .85) 48%, transparent 66%); }
+@keyframes vipGold { 0%, 100% { box-shadow: 0 0 0 2px rgba(245, 197, 66, .3), 0 3px 10px rgba(184, 134, 11, .35); } 50% { box-shadow: 0 0 0 4px rgba(245, 197, 66, .5), 0 3px 16px rgba(245, 197, 66, .6); } }
+@media (max-width: 760px) { .pf-medals { gap: 4px; } .pf-medals .mslot { width: 26px; height: 26px; } .pf-medals .mslot b { font-size: 12px; } .pf-medals .mslot em { right: -6px; font-size: 8.5px; min-width: 16px; } }

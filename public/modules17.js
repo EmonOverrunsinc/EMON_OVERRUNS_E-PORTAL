@@ -263,9 +263,8 @@
           return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · OFFICIAL OUTLET IDENTITY`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
             <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">OFFICIAL · EMON OVERRUNS</text></svg>`;
         })()}
-        <div class="ach-corner medal-area os-ach" id="osAch" data-oid="${esc(o.id)}" hidden></div>
         <div class="os-hero-top">${storeLogo(o, "big")}
-          <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
+          <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}<div class="medal-area os-medals" id="osAch" data-oid="${esc(o.id)}" hidden></div></div></div>
         <div class="os-chips"><span class="os-rank" id="osRankChip" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
