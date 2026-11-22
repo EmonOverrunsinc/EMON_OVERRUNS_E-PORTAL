@@ -5019,3 +5019,9 @@ body.os-info-open > .band-back { display: none !important; }
 .os-info .tabs button em { font-style: normal; display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: #e2b33c; color: #0f2a66; font-size: 11.5px; font-weight: 800; }
 .ol-card-seal .seal-id { top: calc(50% - 64px); }
 @media (max-width: 760px) { .ol-card-seal .seal-id { top: calc(50% - 54px); } }
+/* 3.99.225: the microtext on the shop cards fainter (security, not reading) */
+.ol-card-seal text { fill: rgba(255, 255, 255, .15); }
+.ol-card-seal text:nth-of-type(2) { fill: rgba(243, 201, 75, .22); }
+.ol-top-micro { color: rgba(255, 255, 255, .14); } .ol-top-micro i:nth-child(3n+2) { color: rgba(243, 201, 75, .22); }
+.ol-card-seal .seal-id { color: rgba(243, 201, 75, .38); }
+.ol-card-seal .store-logo.seal-logo { opacity: .4; }
