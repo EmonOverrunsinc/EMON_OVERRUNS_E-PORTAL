@@ -4935,3 +4935,7 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
   .lg-head .btn { padding: 0 12px; } .lg-seg b { font-size: 18px; } .lg-seg small { font-size: 9.5px; letter-spacing: .05em; gap: 4px; }
 }
 @media (max-width: 760px) { .lg-head select { flex: 1 1 100%; } .lg-head .btn { flex: 1 1 0; justify-content: center; } }
+/* 3.99.191: the page header: a small gold section line above the title (company style) */
+.band h1[data-over]::before { content: attr(data-over); display: block; margin-bottom: 4px; font-size: 11px; font-weight: 800; letter-spacing: .16em; line-height: 1.2; color: #b8860b; }
+@media (max-width: 760px) { .band h1[data-over]::before { font-size: 10px; letter-spacing: .12em; } }
+@media print { .band h1[data-over]::before { content: none; } }

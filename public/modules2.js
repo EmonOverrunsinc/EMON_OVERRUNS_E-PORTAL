@@ -965,7 +965,7 @@
   // A budget line's qty is optional: empty when it was left out.
   const qtyOf = (l) => (l.qty == null ? "" : Number(l.qty).toLocaleString("en-PH", { maximumFractionDigits: 2 }));
   V.projects = async () => {
-    E.shell("projects", "Project", `${E.eoTabs("projects")}
+    E.shell("projects", "Projects", `${E.eoTabs("projects")}
       <div class="tabs" id="pjTabs"><button type="button" class="on" data-f="approved">Approved</button><button type="button" data-f="pending">Waiting for Approval</button><button type="button" data-f="completed">Completed</button><button type="button" data-f="rejected">Rejected</button><button type="button" data-f="">All</button></div>
       <div class="btnrow">${E.canWrite("projects") ? `<a class="btn primary" href="#newproject">+ New Project Application</a>` : ""}</div><div id="pjRes">${busy()}</div>`,
       "Submit a project with its budget: each line with its amount (the qty is optional). Once EMON HASAN approves it, the project moves to <b>Approved</b> and payments can be recorded against its total cost.");
@@ -1246,7 +1246,7 @@
   };
 
   V.paycompany = async (id) => {
-    E.shell("paycompany", "Billing — Company", busy());
+    E.shell("paycompany", "Billing Company", busy());
     const here = E.stillHere();
     const [co, accs, vs, ebs, stf, oq] = await Promise.all([
       sb.from("pay_company_totals").select("*").eq("id", id).maybeSingle(),

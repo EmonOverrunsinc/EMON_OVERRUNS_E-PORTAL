@@ -22,7 +22,7 @@
 
   // ---------- list: review box, requests, approved by month, cancelled ----------
   V.purchase = async (tab, month) => {
-    E.shell("purchase", "Purchase Order", `${E.regTabs ? E.regTabs("purchase") : ""}<div class="btnrow"><a class="btn primary" href="#newpurchase">${ic("plus")} New Purchase Order</a></div>
+    E.shell("purchase", "Purchase Orders", `${E.regTabs ? E.regTabs("purchase") : ""}<div class="btnrow"><a class="btn primary" href="#newpurchase">${ic("plus")} New Purchase Order</a></div>
       <div id="poBody">${busy()}</div>`, "Requests to buy a lot. EMON HASAN approves, asks for a new price (negotiation) or cancels. Approved lots are listed by month with their quantity and average price.");
     // 3.32: not the small photo copies kept for the PDF (print_photos, up to 5 per approved order): only the order page needs them
     const { data, error } = await sb.from("purchase_orders").select("id, po_no, po_date, lot_name, total_qty, total_amount, created_by_name, created_at, status, arrived_at, pending_update, photos, approved_at")

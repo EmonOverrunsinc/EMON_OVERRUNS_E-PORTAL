@@ -561,22 +561,22 @@
   V.dashboard = async () => {
     const H = E.hasModule, here = E.stillHere();
     const quick = [
-      [E.canWrite("customers"), "#newcustomer", "New Customer", "user", "blue"],
-      [E.canWrite("invoices"), "#newinvoice", "Record Invoice", "doc", "indigo"],
-      [E.canWrite("payments") || E.canWrite("invoices"), "#newpayment", "Record Payment", "wallet", "green"],
-      [E.canWrite("creditmemos"), "#newcreditmemo", "Credit Memo", "tag", "orange"],
+      [E.canWrite("customers"), "#newcustomer", "New Customer Account", "user", "blue"],
+      [E.canWrite("invoices"), "#newinvoice", "Create Invoice", "doc", "indigo"],
+      [E.canWrite("payments") || E.canWrite("invoices"), "#newpayment", "Receive Payment", "wallet", "green"],
+      [E.canWrite("creditmemos"), "#newcreditmemo", "Issue Credit Memo", "tag", "orange"],
       [E.canWrite("billing"), "#newvoucher", "Payment Voucher", "receipt", "teal"],
-      [isStaff() && H("purchase"), "#newpurchase", "Purchase Order", "order", "pink"],
-      [E.canWrite("eooffice"), "#newcustorder", "Customer Order", "box", "purple"],
-      [true, "#verify", "Verify a Record", "shield", "gray"]
+      [isStaff() && H("purchase"), "#newpurchase", "New Purchase Order", "order", "pink"],
+      [E.canWrite("eooffice"), "#newcustorder", "New Customer Order", "box", "purple"],
+      [true, "#verify", "Document Verification", "shield", "gray"]
     ].filter((q) => q[0]);
     const now = new Date(), today = `${now.toLocaleDateString("en-US", { weekday: "long" })}, ${mdy(isoToday())}`;
     // 2.7: a greeting by the time of day (Manila time, as every date in the portal)
     const hr = now.getHours(), greet = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
     const first = String(myName() || "").trim().split(/\s+/)[0] || "";
     // the key numbers: [name, icon, the list it opens, the line under the number]
-    const tiles = [["Active Customers", "users", "customers", "Open accounts"], ["Applications to Review", "order", "customers", "Waiting for a decision"],
-      ["Unpaid This Month", "wallet", "invoices", `Invoices of ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`], ["Payments This Month", "check", "payments", `Received in ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`]];
+    const tiles = [["Active Customers", "users", "customers", "Open accounts"], ["Pending Applications", "order", "customers", "Awaiting approval"],
+      ["Unpaid This Month", "wallet", "invoices", `Billed in ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`], ["Collections This Month", "check", "payments", `Received in ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`]];
     const tile = ([k, icon, page, sub]) => {
       const tag = E.canOpen(page) ? "a" : "div";
       return `<${tag} class="tile"${tag === "a" ? ` href="#${page}"` : ""}><div class="tile-top"><span class="k">${k}</span><span class="tile-ic">${ic(icon)}</span></div>
@@ -592,11 +592,11 @@
       ${H("customers") ? `<div class="tiles" id="dTiles">${tiles.map(tile).join("")}</div>` : ""}
       <h3 class="home-h">Quick Actions</h3>
       <div class="quick">${quick.map((q) => `<a class="qa qa-${q[4]}" href="${q[1]}"><span class="qa-ic">${ic(q[3])}</span><span class="qa-l">${esc(q[2])}</span></a>`).join("")}</div>
-      ${H("outlets") ? `<div class="box ol-dash-box"><h3>${ic("building")} Outlets<a href="#outlets" class="box-link">View all ${ic("next")}</a></h3><div class="in" id="dOutlets">${busy()}</div></div>` : ""}
+      ${H("outlets") ? `<div class="box ol-dash-box"><h3>${ic("building")} Retail Outlets<a href="#outlets" class="box-link">View all ${ic("next")}</a></h3><div class="in" id="dOutlets">${busy()}</div></div>` : ""}
       <div class="dash-grid">
-        ${H("invoices") ? box("dInv", "Latest Invoices", "invoices") : ""}
-        ${H("payments") ? box("dPay", "Latest Payments", "payments") : ""}
-        ${H("customers") ? box("dApps", "Applications to Review", "", ` id="dAppsBox" hidden`) : ""}
+        ${H("invoices") ? box("dInv", "Recent Invoices", "invoices") : ""}
+        ${H("payments") ? box("dPay", "Recent Collections", "payments") : ""}
+        ${H("customers") ? box("dApps", "Pending Applications", "", ` id="dAppsBox" hidden`) : ""}
         ${isStaff() && H("purchase") ? box("dComm", "Purchase Orders", "purchase") : ""}
       </div>`);
     E.outletsBox?.($("#dOutlets")); // 3.99.116: the shops' sales on the Dashboard
@@ -704,7 +704,7 @@
     ]);
     return [[apps, "Customer application", "#customers"], [jobs, "Job application", "#jobapps"], [changes, "Correction", "#changes"], [memos, "Credit memo", "#creditmemos"],
       [contacts, "Contact message", "#contacts"], [pos, "Purchase order", "#purchase"], [cords, "Customer order", "#custorders"], [prints, "Print request", "#printreqs"],
-      [dlv.n, "Delivery approval", dlv.id ? `#custorder/${dlv.id}` : "#custorders"], [insr, "Coverage payment", "#insurance"], [devs, "New device approval", "#devices"], [copies.length, "New upload to approve", copies.length ? `#${copies[0].owner_type}/${copies[0].owner_id}` : ""]].filter(([n]) => n > 0);
+      [dlv.n, "Delivery approval", dlv.id ? `#custorder/${dlv.id}` : "#custorders"], [insr, "Coverage payment", "#insurance"], [devs, "New device approval", "#devices"], [copies.length, "New upload", copies.length ? `#${copies[0].owner_type}/${copies[0].owner_id}` : ""]].filter(([n]) => n > 0);
   }
   E.todoItems = todoItems;
 
@@ -761,7 +761,7 @@
   // 1. Customer
   // ======================================================================
   V.customers = async () => {
-    E.shell("customers", "Customer", `
+    E.shell("customers", "Customer Accounts", `
       <div class="options"><fieldset class="opt" style="flex:1 1 320px"><legend>Search Customer</legend>
         <form id="cuForm" class="fields wide">
           <label for="cuQ">Name / Account</label><input type="search" id="cuQ" placeholder="Name, account no, business or phone">
@@ -1565,7 +1565,7 @@
   const INV_TABS = [["", "All"], ["unpaid", "Unpaid"], ["partial", "Partial Payment"], ["overdue", "Overdue"], ["paid", "Paid"]];
   const invPick = (all, f) => (f === "overdue" ? all.filter(isOverdue) : f ? all.filter((r) => r.pay_status === f) : all);
   V.invoices = async () => {
-    E.shell("invoices", "Invoice", `
+    E.shell("invoices", "Invoices", `
       <div class="tabs" id="ivTabs">${INV_TABS.map(([f, l], i) => `<button type="button" class="${i ? "" : "on"}" data-f="${f}">${l} <span data-n="${f}"></span></button>`).join("")}</div>
       <div id="ivRes">${busy()}</div>`, "Every invoice is <b>PAID</b> (in full), <b>PARTIAL PAYMENT</b> or <b>UNPAID</b> (nothing paid yet). Payments, credit memos, discounts and settlement adjustments are for the customer's account: they pay the oldest invoices first. Press <b>+</b> at the bottom right to add a sale for an ACTIVE customer.");
     const here = E.stillHere();
@@ -1884,7 +1884,7 @@
     { label: "Amount (₱)", key: "amount", num: true, get: (r) => peso(r.amount) }, { label: "Verified By", phone: false, wrap: true, get: (r) => r.created_by_name || "" }
   ];
   V.payments = async () => {
-    E.shell("payments", "Payment", `
+    E.shell("payments", "Payments Received", `
       <div id="pyRes">${busy()}</div>`,
       "All payments received. Each payment gets a receipt number like <b>A-2026-1003-001</b> and a printable acknowledgment.");
     const here = E.stillHere();
@@ -2044,7 +2044,7 @@
     { label: "Invoice No", get: (r) => r.po_number || "" }, { label: "Amount (₱)", num: true, get: (r) => peso(r.request_amount) },
     MEMO_STATUS_COL];
   V.creditmemos = async () => {
-    E.shell("creditmemos", "Credit Memo", `${E.eoTabs("creditmemos")}
+    E.shell("creditmemos", "Credit Memos", `${E.eoTabs("creditmemos")}
       <div class="btnrow">${E.canWrite("creditmemos") ? `<a class="btn primary" href="#newcreditmemo">+ New Credit Memo</a>` : ""}</div><div id="cmRes">${busy()}</div>`,
       "Customer complaints and defect claims. Approved <b>Credit</b> and <b>Discount</b> memos reduce the customer's balance due.");
     const here = E.stillHere();
