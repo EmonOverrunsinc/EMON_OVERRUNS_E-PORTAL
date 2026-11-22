@@ -536,6 +536,8 @@
   // ---------- the monthly statement (SOA): a ledger of the month ----------
   // 3.99.175: the DAILY SALES REPORT of one shop for ONE day: the sales (cash, GCash), the day's expenses and cash out, the cash
   // left, who recorded it, and the signatures. Report No DSR-<shop>-<date>.
+  // 3.99.195: the sales reports end with two equal name boxes: PREPARED BY (the employee) and APPROVED BY (EMON HASAN)
+  const nameBoxes = (prep) => `<div class="name-boxes"><div class="nbox"><small>PREPARED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b><em>${/^EMON HASAN$/i.test(String(prep || "").trim()) ? "OPERATIONAL DIRECTOR" : "OUTLET STAFF"}</em></div><div class="nbox"><small>APPROVED BY</small><b>EMON HASAN</b><em>OPERATIONAL DIRECTOR</em></div></div>`;
   async function printDay(o, date, sales, exps, mine) {
     await Promise.all([E.loadSignatures?.().catch(() => {}), E.loadSigners?.([S.profile?.id]).catch(() => {})]);
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
@@ -545,7 +547,6 @@
     const no = `DSR-${String(o.code || "").replace(/[^A-Z0-9]/gi, "").toUpperCase()}-${date.replace(/-/g, "")}`;
     const row = (k, v, cls = "") => `<tr class="${cls}"><td>${k}</td><td class="num">${v}</td></tr>`;
     const list = (title, rows, cols) => `<div class="soa-sec"><h4>${title}</h4>${rows.length ? `<table class="soa-t"><thead><tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>` : `<div class="soa-none">None this day.</div>`}</div>`;
-    const dirSig = (() => { const x = E.approvedBy?.(null, "EMON HASAN"); return x?.pic ? `<img src="${esc(x.pic)}" alt="Signature">` : ""; })();
     const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Report No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small></div>`)}
       <div class="soa-info"><div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div><div><small>Date</small><b>${esc(mdy(date))}</b></div>
         <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div><div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div><div><small>Recorded By</small><b>${esc(r.created_by_name || "—")}</b></div>
@@ -555,7 +556,7 @@
       ${list("Expenses", xp.map((x) => `<tr><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc([x.payee, x.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Type"], ["Paid To / Note"], ["Amount (₱)", 1]])}
       ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td>${esc(x.note || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Note"], ["Amount (₱)", 1]])}
       <div class="soa-result"><span>Total Sales ₱ ${P(tot)} − Expenses ₱ ${P(ex)} − Cash Out ₱ ${P(cash)}</span><b class="${left < 0 ? "neg" : ""}">CASH LEFT ₱ ${P(left)}</b></div>
-      <div class="inv-sealsig soa-sign">${E.sigCol(`Prepared by: ${esc(r.created_by_name || me() || "")}`, E.signerBy?.(r.created_by))}<div class="inv-dir"><div class="inv-dir-sig">${dirSig}</div><div class="line"></div><b>EMON HASAN</b><small>OPERATIONAL DIRECTOR</small></div></div></div>`;
+      ${nameBoxes(r.created_by_name || me() || "")}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
 
@@ -610,9 +611,8 @@
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the result and the signatures
-    const dirSig = (() => { const x = E.approvedBy?.(null, "EMON HASAN"); return x?.pic ? `<img src="${esc(x.pic)}" alt="Signature">` : ""; })();
     blocks.push({ h: 9, html: `<div class="soa-result"><span>Net Sales ₱ ${P(d.net)} − Expenses ₱ ${P(d.out)} − Cash Out ₱ ${P(d.cash || 0)} − Stock Payments ₱ ${P(d.paid)}</span><b class="${d.bal < 0 ? "neg" : ""}">BALANCE ₱ ${P(d.bal)}</b></div>
-      <div class="inv-sealsig soa-sign">${E.sigCol(`Prepared by: ${esc(me() || "")}`, E.signerBy?.(S.profile?.id))}<div class="inv-dir"><div class="inv-dir-sig">${dirSig}</div><div class="line"></div><b>EMON HASAN</b><small>OPERATIONAL DIRECTOR</small></div></div>` });
+      ${nameBoxes(me() || "")}` });
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;
