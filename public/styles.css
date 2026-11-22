@@ -4968,3 +4968,16 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 .pf-rank { display: flex; justify-content: center; margin-top: 6px; } .pf-rank[hidden] { display: none; }
 .os-logo-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none; }
 .os-logo-col .os-rk { display: inline-flex; } .os-logo-col .os-rk[hidden] { display: none; }
+/* 3.99.195: Box List "More"; printed lists in Times New Roman; the name boxes of the sales reports */
+.lg-seg.min { grid-template-columns: minmax(0, 1fr) 92px; }
+.lg-seg .lg-more-btn { border: 0; border-left: 1px solid #e8edf6; background: #f5f8fd; display: grid; justify-items: center; gap: 2px; padding: 8px 6px; cursor: pointer; color: #1d4fb0; }
+.lg-seg .lg-more-btn b { font-size: 20px; line-height: .8; } .lg-seg .lg-more-btn small { font-size: 10px; font-weight: 800; letter-spacing: .1em; }
+.page:has(.rp-title), .page:has(.rp-title) * { font-family: "Times New Roman", Times, serif !important; }
+.name-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin: 7mm 0 2mm; break-inside: avoid; }
+.nbox { height: 22mm; border: 1px solid #b9c7e2; border-radius: 3mm; display: grid; align-content: center; justify-items: center; gap: 1.2mm; text-align: center; padding: 2mm; }
+.nbox small { font-size: 7.5pt; font-weight: 800; letter-spacing: .14em; color: #5b6b8c; }
+.nbox b { font-size: 10.5pt; color: #0b1f4d; letter-spacing: .03em; }
+.nbox em { font-style: normal; font-size: 7.5pt; font-weight: 700; letter-spacing: .08em; color: #a87a22; }
+.lg-seg .lg-more-btn small::before { content: none; }
+.co-trackbar { display: flex; margin: 10px 0 6px; } .co-trackbar .btn { min-width: 160px; justify-content: center; font-weight: 800; }
+@media (max-width: 760px) { .co-trackbar .btn { flex: 1; } }

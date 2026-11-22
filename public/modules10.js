@@ -122,7 +122,7 @@
         hay: [b.serial_no, b.batch, b.product, b.brand, b.ctn, b.style, o?.order_no, sl?.invoice_no || b.sheet_invoice].map(keyOf).join(" ") };
     }).sort((a, b) => String(a.batch || "~").localeCompare(String(b.batch || "~"), "en", { numeric: true }) || String(a.serial_no).localeCompare(String(b.serial_no), "en", { numeric: true }));
     const isAvail = (r) => r.k === "stock" || r.k === "shipped";
-    let filter = "all", q = "", batch = batchArg ? decodeURIComponent(batchArg) : "";
+    let filter = "avail", q = "", batch = batchArg ? decodeURIComponent(batchArg) : "", moreF = false; // 3.99.195: AVAILABLE first
     // 3.99.188: a SIMPLE LOG: one search row (search, batch, download, print / PDF), filter chips with their counts, then the
     // boxes as plain log lines under their batch (2 lines on a phone, never sideways)
     const allBatches = [...new Set(all.map((r) => r.batch || "—"))];
@@ -145,10 +145,14 @@
     let more = false;
     const draw = () => {
       const scope = inScope(), rows = shown();
-      // 3.99.190: one clean bar of 4 equal parts, each with its count
-      $("#blxChips").innerHTML = [["all", "ALL", scope.length], ["avail", "AVAILABLE", cnt(scope, isAvail)], ["order", "ON ORDER", cnt(scope, (r) => r.k === "order")], ["sold", "SOLD", cnt(scope, (r) => r.k === "sold")]]
-        .map(([k, l, n]) => `<button type="button" class="c-${k}${filter === k ? " on" : ""}" data-f="${k}" aria-pressed="${filter === k}"><small>${l}</small><b>${qtyText(n)}</b></button>`).join("");
-      $$("#blxChips button").forEach((b) => (b.onclick = () => { filter = b.dataset.f; more = false; draw(); }));
+      // 3.99.190: one clean bar with the counts. 3.99.195: AVAILABLE only; ALL, ON ORDER and SOLD come with "More"
+      const segs = [["avail", "AVAILABLE", cnt(scope, isAvail)], ["all", "ALL", scope.length], ["order", "ON ORDER", cnt(scope, (r) => r.k === "order")], ["sold", "SOLD", cnt(scope, (r) => r.k === "sold")]];
+      const open = moreF || filter !== "avail";
+      $("#blxChips").className = `lg-seg${open ? "" : " min"}`;
+      $("#blxChips").innerHTML = (open ? segs : segs.slice(0, 1)).map(([k, l, n]) => `<button type="button" class="c-${k}${filter === k ? " on" : ""}" data-f="${k}" aria-pressed="${filter === k}"><small>${l}</small><b>${qtyText(n)}</b></button>`).join("")
+        + (open ? "" : `<button type="button" class="lg-more-btn" id="blxMoreF" aria-label="More: all, on order and sold"><b>⋯</b><small>MORE</small></button>`);
+      $$("#blxChips button[data-f]").forEach((b) => (b.onclick = () => { filter = b.dataset.f; more = false; draw(); }));
+      if ($("#blxMoreF")) $("#blxMoreF").onclick = () => { moreF = true; draw(); };
       const v = $("#blxView");
       if (!rows.length) { v.innerHTML = `<div class="empty">${all.length ? "No box matches." : "No box in the box database yet."}</div>`; return; }
       const part = more ? rows : rows.slice(0, LIMIT);
@@ -671,7 +675,7 @@
           <div class="pcell co-invstat"><div class="pl">Status</div><div class="pv">${payPill(inv)}</div></div></div>
           <div id="coInvIns"></div>
           ${o._dl?.has_pcs && nBoxes(boxes) ? `<div class="banner ok co-verified">✅ VERIFIED WITH SERIAL NO — the invoice charges the delivery list: ${esc(boxesText(nBoxes(boxes)))} · ${qtyText(o._dl.pcs)} pcs</div>` : ""}` : `<div class="empty small">The invoice is on the customer's account.</div>`;
-    const tabs = ["Order Lines", `Boxes (${nBoxes(boxes)})`, "Delivery", ...(o.status === "completed" ? ["Invoice"] : []), "History"];
+    const tabs = ["Order Lines", `Boxes (${nBoxes(boxes)})`, "Delivery", ...(o.status === "completed" ? ["Invoice"] : []), "Tracking"];
     void banner; // 3.99.30: the guide says it
     // 3.99.31: no Delivery tab while it would only repeat the guide's Complete Delivery button (or has nothing to show)
     const noDelTab = o.status === "pending" || o.status === "cancelled" || (deliverNow && !o.delivery_request_at && !(o.delivery_photos || []).length);
@@ -679,6 +683,7 @@
       ${isAdmin() && o.status === "approved" && o.delivery_request_at ? `<fieldset class="opt review"><legend>Delivery Approval</legend><p class="muted" style="margin:0 0 8px">${vsText(o.total_boxes, nBoxes(boxes), false)} · ${(o.delivery_photos || []).length} photo(s): see the Boxes and Delivery tabs.</p><div class="btnrow"><button type="button" class="btn ok" id="coDvOk">${ic("check")} Approve Delivery · COMPLETE</button><button type="button" class="btn danger" id="coDvNo">Reject</button></div></fieldset>` : ""}
       ${isAdmin() && o.status === "pending" ? `<fieldset class="opt review"><legend>EMON HASAN's Decision</legend><div class="btnrow"><button type="button" class="btn ok" id="coApprove">${ic("check")} Approve · CONFIRM</button><button type="button" class="btn danger" id="coCancelO">Cancel Order</button></div></fieldset>` : ""}
       </div><div class="due-card co-amt"><div><div class="k">Order Amount</div><div class="v">₱ ${peso(o.total_amount)}</div></div><small>${esc(E.words(o.total_amount))}${o.note ? ` · Note: ${esc(o.note)}` : ""}</small></div>
+      <div class="co-trackbar"><button type="button" class="btn ok" id="coTrack">${ic("pin")} Tracking</button></div>
       <div class="actionbar">
         <button type="button" class="btn primary" id="coAll">${ic("download")} Download All Details (PDF)</button>
         ${deliverNow ? deliverBtn() : ""}
@@ -696,6 +701,7 @@
         ${o.status === "completed" ? `<div data-p="3" hidden>${invHtml}</div>` : ""}
         <div data-p="${tabs.length - 1}" hidden>${stepper}</div>
       </div>`;
+    if ($("#coTrack")) $("#coTrack").onclick = () => { const t = $(`#coPfTabs button[data-t="${tabs.length - 1}"]`); t?.click(); t?.scrollIntoView({ behavior: "smooth", block: "start" }); }; // 3.99.195
     $$("#coPfTabs button").forEach((b) => (b.onclick = () => {
       $$("#coPfTabs button").forEach((x) => x.classList.toggle("on", x === b));
       $$(".tabpanes > div").forEach((x) => (x.hidden = x.dataset.p !== b.dataset.t));
