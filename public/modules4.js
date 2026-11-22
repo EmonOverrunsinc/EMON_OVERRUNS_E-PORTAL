@@ -59,8 +59,7 @@
       <div class="btnrow">${w ? `<a class="btn primary" href="#newstockbill">${ic("plus")} Add E-Bill</a>` : ""}</div>
       <div class="tabs" id="ivF"><button type="button" class="on" data-f="">All</button>${STATUS.map((s) => `<button type="button" data-f="${s}">${STATUS_NAME[s].toUpperCase()}</button>`).join("")}</div>
       <div class="inv-find"><input type="search" id="ivQ" placeholder="Search by e-bill no, company, batch no, bill no, system record no or shipping company" aria-label="Search e-bills"></div>
-      <div id="ivRes">${busy()}</div>`,
-      "E-bills of the goods bought, in BDT. <b>Add E-Bill</b> records the bill with its items. Add the <b>Sales Report</b>, then EMON HASAN marks it <b>PAID</b>: the profit or loss shows after that.");
+      <div id="ivRes">${busy()}</div>`);
     const here = E.stillHere();
     // 3.35: every e-bill (also past the 1000 rows the server sends at once), so the tiles count them all
     const { data, error } = await E.allRows(() => sb.from("stock_bill_totals")
@@ -260,7 +259,7 @@
     const opCost = entries.filter((x) => x.entry_type === "operational").reduce((t, x) => t + num(x.amount), 0);
     const reload = () => V.stockbill(id);
     $(".band h1").textContent = `E-Bill ${b.bill_no}`;
-    const banner = st === "paid" ? `<div class="banner ok">✔ PAID — marked by ${esc(b.paid_by_name || "")} on ${mdy(b.paid_at)}. The profit or loss and the secret code are on the E-Bill. More sales reports can still be added.</div>` : "";
+    const banner = st === "paid" ? `<div class="banner ok">✔ PAID · ${esc(b.paid_by_name || "")} · ${mdy(b.paid_at)}</div>` : "";
     const profitTile = st === "paid"
       ? [profitOf(b) < 0 ? "bad" : "ok", profitOf(b) < 0 ? "Net Loss (BDT)" : "Net Profit (BDT)", peso(Math.abs(profitOf(b)))]
       : ["muted", "Net Profit / Loss", "Shown after PAID"];
@@ -322,7 +321,7 @@
       <div class="tabpanes" id="sbPanes">
         <div data-p="0">${(b.items || []).length === 1 && /^TOTAL BILL AMOUNT$/.test(String((b.items[0] || [])[0])) ? `<div class="sb-sum"><div class="ok"><small>Total Bill Amount (BDT)</small><b>${peso(b.total_cost)}</b></div><div><small>Total Boxes</small><b>${esc(b.total_boxes ?? 0)}</b></div><div><small>Serials</small><b class="mono">${esc(sb2.serial_from || "—")}${sb2.serial_to ? ` – ${esc(sb2.serial_to)}` : ""}</b></div></div>` : itemsGrid(b)}${b.notes ? `<p class="muted"><b>Notes:</b> ${esc(b.notes)}</p>` : ""}</div>
         <div data-p="1" hidden><div class="sb-sum">${sum4.map(([k, v, c]) => `<div class="${c || ""}"><small>${k} (BDT)</small><b>${peso(v)}</b></div>`).join("")}</div>
-          <div id="sbEntries">${E.grid({ cols: entryCols, rows: entries, empty: isOpen(st) ? "No sales report yet. Net sales can be added after the e-bill is released; EOO fees, other fees and penalties at any time." : "No sales report yet." })}</div></div>
+          <div id="sbEntries">${E.grid({ cols: entryCols, rows: entries, empty: isOpen(st) ? "No sales report" : "No sales report" })}</div></div>
         <div data-p="2" hidden><div id="sbOrders">${E.grid({ cols: [{ label: "Notice No", get: (r) => r.order_no }, { label: "Date", get: (r) => mdy(r.order_date) }, { label: "Released", get: (r) => mdy(r.release_date) },
           { label: "Charge (BDT)", num: true, get: (r) => (r.release_bdt == null ? "" : peso(r.release_bdt)) }, { label: "Shipping (BDT)", num: true, get: (r) => (r.shipping_cost == null ? "" : peso(r.shipping_cost)) }], rows: orders, empty: "No Released Notice yet. Press Released Notice to write it." })}</div>
           ${orders.length ? `<div class="btnrow"><button type="button" class="btn" id="sbNoticePrint">${ic("print")} Print Released Notice</button></div>` : w && isOpen(st) ? `<div class="btnrow"><button type="button" class="btn primary" data-release>${ic("doc")} Released Notice</button></div>` : ""}</div>
@@ -413,7 +412,7 @@
       const price = num($("#rnPrice", m.el).value), rt = num($("#rnRate", m.el).value), ship = num($("#rnShip", m.el).value);
       const php = Math.round(price * boxes * 100) / 100, chg = Math.round(php * rt * 100) / 100;
       $("#rnCalc", m.el).innerHTML = price > 0 && rt > 0 ? `${boxes} boxes × PHP ${peso(price)} = <b>PHP ${peso(php)}</b> × ${rate(rt)} = <b>BDT ${peso(chg)}</b> released charge<br>+ shipping fee BDT ${peso(ship)}
-        → total cost <b>BDT ${peso(num(b.total_cost) + chg + ship)}</b>` : `<span class="muted">Write the price per box and the exchange rate: the released charge is worked out here.</span>`;
+        → total cost <b>BDT ${peso(num(b.total_cost) + chg + ship)}</b>` : `<span class="muted">Price per box · rate</span>`;
     };
     $$("input", m.el).forEach((i) => (i.oninput = calc)); calc();
     $("[data-x]", m.el).onclick = m.close;
@@ -452,9 +451,9 @@
     const body = action === "paid" ? `<p>Mark <b>${esc(b.bill_no)}</b> as <b>PAID</b>?</p>
         <table class="kv-sum"><tbody><tr><th>Net Sales</th><td>${bdt(b.net_sales)}</td></tr><tr><th>Total Cost (bill + released charge + shipping fee)</th><td>− ${bdt(totalCost(b))}</td></tr>
           <tr><th>EOO Fees, Other Fees and Penalties</th><td>− ${bdt(feesOf(b))}</td></tr><tr class="${p < 0 ? "loss" : "gain"}"><th>${p < 0 ? "Net Loss" : "Net Profit"}</th><td>${bdt(Math.abs(p))}</td></tr></tbody></table>
-        <p class="muted">After PAID, the profit or loss is shown and the E-Bill gets its secret code. More sales reports can still be added. No payment is needed to mark it PAID.</p>
+
         ${bal > 0 ? `<div class="hint">Paid so far: ${bdt(b.paid_bdt)} · balance ${bdt(bal)}.</div>` : ""}`
-      : `<p>Mark <b>${esc(b.bill_no)}</b> as <b>SALES</b>? Net sales so far: <b>${bdt(b.net_sales)}</b>.</p><p class="muted">Sales reports, fees and penalties can still be added until EMON HASAN marks it PAID.</p>`;
+      : `<p>Mark <b>${esc(b.bill_no)}</b> as <b>SALES</b>? Net sales so far: <b>${bdt(b.net_sales)}</b>.</p>`;
     const m = E.modal(`Mark as ${what} — ${b.bill_no}`, `${body}<label class="fl" for="stNote">Note (optional)</label><input type="text" id="stNote">`,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>Mark as ${what}</button>`);
     $("[data-x]", m.el).onclick = m.close;
@@ -480,7 +479,7 @@
         <label for="slEoo">EOO Fees (BDT)</label><input type="number" id="slEoo" min="0" step="0.01" placeholder="Leave empty if none">
         <label for="slNote">Note</label><input type="text" id="slNote" placeholder="e.g. Sales report, week 1">
         ${E.fileField("slFile", "Sales Report File", 'accept="image/*,application/pdf"')}
-      </div><p class="muted">Net sales: the amount sold after returns and discounts. More sales reports can be added at any time, also after the e-bill is marked PAID.</p>`,
+      </div>`,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>Save Sales Report</button>`);
     $("[data-x]", m.el).onclick = m.close;
     $("[data-ok]", m.el).onclick = async () => {

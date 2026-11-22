@@ -88,8 +88,7 @@
   const fmt = (t) => (t ? E.dateTime(t) : "");
   V.devices = async (filter = "pending") => {
     if (!isAdmin()) { location.hash = "dashboard"; return; }
-    E.shell("devices", "Devices", `<div id="dvSet"></div><div class="tabs" id="dvF">${[["pending", "Waiting for Approval"], ["approved", "Approved"], ["blocked", "Blocked"], ["removed", "Removed"], ["", "All"]].map(([k, l]) => `<button type="button" data-f="${k}" class="${k === filter ? "on" : ""}">${l}</button>`).join("")}</div><div id="dvRes">${busy()}</div>`,
-      "The device every login uses. The devices in use were registered automatically; a sign in on a <b>new device</b> waits here until you approve it. <b>Block</b> a device that is not theirs; <b>Remove</b> signs a device out (it then needs approval again).");
+    E.shell("devices", "Devices", `<div id="dvSet"></div><div class="tabs" id="dvF">${[["pending", "Waiting for Approval"], ["approved", "Approved"], ["blocked", "Blocked"], ["removed", "Removed"], ["", "All"]].map(([k, l]) => `<button type="button" data-f="${k}" class="${k === filter ? "on" : ""}">${l}</button>`).join("")}</div><div id="dvRes">${busy()}</div>`);
     const here = E.stillHere();
     let q = sb.from("user_devices_list").select("*").order("last_seen", { ascending: false }).limit(500);
     if (filter) q = q.eq("status", filter);
@@ -99,7 +98,7 @@
     if (error) { $("#dvRes").innerHTML = `<div class="empty">Run the database update <b>085_devices.sql</b> first.</div>`; return; }
     const st = set.data || {}, on = st.device_approval !== false, grace = st.device_grace_until && new Date(st.device_grace_until) > new Date() ? st.device_grace_until : null;
     $("#dvSet").innerHTML = `<div class="dev-set ${on ? "on" : "off"}">${ic(on ? "shield" : "x")}<div><b>NEW DEVICE APPROVAL: ${on ? "ON" : "OFF"}</b>
-        <small>${on ? (grace ? `Devices in use are registered automatically until ${esc(fmt(grace))}; after that a new device waits for your approval.` : "A sign in on a new device waits for your approval.") : "Every device is registered automatically (no approval)."}</small></div>
+        <small>${on ? (grace ? `Auto until ${esc(fmt(grace))}` : "New device · needs approval") : "Auto (no approval)"}</small></div>
       <span class="grow"></span>${on && grace ? `<button type="button" class="btn" id="dvEnd">${ic("clock")} Start Approval Now</button>` : ""}
       <button type="button" class="btn ${on ? "danger" : "ok"}" id="dvTog">${on ? "Turn Off" : `${ic("check")} Turn On`}</button></div>`;
     const setIt = async (p) => {
@@ -153,7 +152,7 @@
     if (error) { el.hidden = true; return; }
     el.hidden = false;
     const rows = data || [];
-    el.innerHTML = `<legend>My Devices</legend><p class="muted">The devices you sign in on. A new device waits for approval by EMON HASAN. Remove a device you no longer use.</p>
+    el.innerHTML = `<legend>My Devices</legend>
       <div class="dev-list">${rows.map((r) => `<div class="dev-row">${ic("device")}<div><b>${esc(r.name || "UNKNOWN DEVICE")}${r.device_id === E.deviceId ? ` <span class="pill approved">THIS DEVICE</span>` : ""}</b>
         <small>${pill(r.status)} · last used ${esc(fmt(r.last_seen))}</small></div>${r.device_id !== E.deviceId ? `<button type="button" class="btn small" data-rm="${esc(r.id)}">${ic("trash")} Remove</button>` : ""}</div>`).join("") || `<div class="muted">No devices yet.</div>`}</div>`;
     $$("[data-rm]", el).forEach((b) => (b.onclick = async () => {

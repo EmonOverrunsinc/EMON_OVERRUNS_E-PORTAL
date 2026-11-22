@@ -23,7 +23,7 @@
   // ---------- list: review box, requests, approved by month, cancelled ----------
   V.purchase = async (tab, month) => {
     E.shell("purchase", "Purchase Orders", `${E.regTabs ? E.regTabs("purchase") : ""}<div class="btnrow"><a class="btn primary" href="#newpurchase">${ic("plus")} New Purchase Order</a></div>
-      <div id="poBody">${busy()}</div>`, "Requests to buy a lot. EMON HASAN approves, asks for a new price (negotiation) or cancels. Approved lots are listed by month with their quantity and average price.");
+      <div id="poBody">${busy()}</div>`);
     // 3.32: not the small photo copies kept for the PDF (print_photos, up to 5 per approved order): only the order page needs them
     const { data, error } = await sb.from("purchase_orders").select("id, po_no, po_date, lot_name, total_qty, total_amount, created_by_name, created_at, status, arrived_at, pending_update, photos, approved_at")
       .order("created_at", { ascending: false }).limit(2000);
@@ -110,7 +110,7 @@
     box.innerHTML = `<div class="vo-bar"><button type="button" class="btn primary vo-rec">${ic("mic")} Record</button><button type="button" class="btn danger vo-stop" hidden>■ Stop</button>
         <span class="vo-time" aria-live="polite"></span><label class="btn vo-attach" for="voFile">${ic("clip")} Attach audio file</label><input type="file" id="voFile" accept="audio/*" multiple hidden></div>
       <div class="vo-list"></div>
-      <small class="muted">Up to ${MAX_VOICES} voice notes (${MAX_SECONDS / 60} minutes each). Press <b>Record</b>, speak, press <b>Stop</b>, then listen. EMON HASAN listens before deciding; the voice notes are deleted from the server when the order is approved.</small>`;
+      <small class="muted">Max ${MAX_VOICES} · ${MAX_SECONDS / 60} min each</small>`;
     const list = $(".vo-list", box), recBtn = $(".vo-rec", box), stopBtn = $(".vo-stop", box), clock = $(".vo-time", box);
     const total = () => keep.length + picked.length;
     const render = () => {
@@ -329,7 +329,7 @@
         ${E.grid({ cols: [{ label: "Item", get: (l) => l.item }, { label: "Brand", get: (l) => l.brand || "" }, { label: "Price (BDT)", num: true, get: (l) => peso(l.price) }, { label: "Quantity", num: true, get: (l) => qtyText(l.qty) }, { label: "Total (BDT)", num: true, get: (l) => peso(l.amount) }], rows: p.pending_update.items || [] })}
         ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn ok" data-up="accept_update">${ic("check")} Approve Update</button><button type="button" class="btn danger" data-up="refuse_update">Refuse</button></div>` : ""}</div>` : ""}
       ${isAdmin() && open ? `<fieldset class="opt review"><legend>EMON HASAN's Decision</legend><div class="fields wide"><label for="poNote">Note</label><input type="text" id="poNote" placeholder="Optional; sent with a negotiation or a cancel"></div>
-        <p class="muted" style="margin:4px 0">To negotiate, change the prices in the table above, then press <b>Negotiate</b>: ${esc(p.created_by_name || "the maker")} is told (notice and message) and submits again.</p>
+        <p class="muted" style="margin:4px 0">Change prices · Negotiate</p>
         <div class="btnrow"><button type="button" class="btn ok" data-d="approve">${ic("check")} Approve</button><button type="button" class="btn" data-d="negotiate">${ic("edit")} Negotiate</button><button type="button" class="btn danger" data-d="cancel">Cancel Order</button></div></fieldset>` : ""}
       </div><div class="wfoot">
         ${open && (mine || isAdmin()) ? `<a class="btn" href="#editpo/${p.id}">${ic("edit")} Edit</a>` : ""}${isAdmin() ? `<button type="button" class="btn danger" id="poDel">${ic("trash")} Delete</button>` : ""}
@@ -375,7 +375,7 @@
       toast("Marked arrived at the warehouse."); V.po(id);
     };
     if ($("#poUpd")) $("#poUpd").onclick = () => {
-      const m = E.modal(`Request Update — ${p.po_no}`, `<p class="muted" style="margin-top:0">The market price can go up or down. Change the items and prices; EMON HASAN approves the update and the purchase order then shows the new details.</p>
+      const m = E.modal(`Request Update — ${p.po_no}`, `<p class="muted" style="margin-top:0">Needs approval</p>
         <div id="upLines"></div><div class="fields wide"><label for="upProc">Processing Time</label><input type="text" id="upProc" value="${esc(p.processing_time || "")}"><label for="upNotes">Notes</label><input type="text" id="upNotes" value="${esc(p.notes || "")}"></div>`,
         `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>Send to EMON HASAN</button>`, { wide: true });
       const ed = linesEditor($("#upLines", m.el), p.items || []);

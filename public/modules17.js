@@ -318,7 +318,7 @@
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
       ${o._closed ? `<div class="banner warn os-nwd">${ic("clock")} <span><b>TODAY IS A NON-WORKING DAY</b> · the store is closed and opens again tomorrow.</span></div>` : ""}
-      ${mine ? `<div class="banner info os-mine">${ic("shield")} You see only the sales, expenses and cash out you recorded. The totals and the balance are for EMON HASAN.</div>` : ""}
+      ${mine ? `<div class="banner info os-mine">${ic("shield")} Your records only</div>` : ""}
       <div class="os-kpis"${mine ? " hidden" : ""}>${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", out, `${xps.length} expense(s)`)}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("pay", "Stock Payments", paid, cust ? `To pay ₱ ${peso(owed)}` : "")}
         <div class="os-kpi bal${bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(bal)}</b><span class="${allBal < 0 ? "neg" : ""}">In all ₱ ${peso(allBal)}</span></div></div>
       <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button><button type="button" class="btn" id="olExp">${ic("plus")} Expense / Bill</button><button type="button" class="btn" id="olCash">${ic("wallet")} Cash Out</button>` : ""}
@@ -482,7 +482,7 @@
   }
   function leaseForm(o) {
     const pages = [];
-    const m = E.modal(`${o.code} · Contract of Lease`, `<p class="muted" style="margin-top:0">Add every page of the contract (photos, scanned pages or a PDF). The pages are saved as <b>one document</b>, in this order.</p>
+    const m = E.modal(`${o.code} · Contract of Lease`, `<p class="muted" style="margin-top:0">All pages · one document</p>
         <div class="btnrow"><label class="btn" for="lfAdd">${ic("image")} Add Pages</label><input id="lfAdd" type="file" accept="image/*,application/pdf" multiple hidden>
           <label class="btn" for="lfCam">${ic("camera")} Take Photo</label><input id="lfCam" type="file" accept="image/*" capture="environment" hidden>
           ${window.EOApp?.scan ? `<button type="button" class="btn" id="lfScan">${ic("scan")} Scan Page</button>` : ""}</div>
@@ -556,7 +556,7 @@
     const cos = cs.filter((r) => r.status !== "closed").map((r) => opt("company", r, r.name)).join("");
     const m = E.modal(`Transfer ${empName(x.employees)}`, `<div class="ol-from">From <b>${esc(place.label)}</b></div>
       <label for="otTo">Transfer To</label><select id="otTo"><option value="office:">EO OFFICE</option>${shops ? `<optgroup label="Shops">${shops}</optgroup>` : ""}${cos ? `<optgroup label="Companies">${cos}</optgroup>` : ""}</select>
-      <small class="muted">The employee gets a notification, and the Assigned Location changes.</small>`,
+      `,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="otSave">${ic("check")} Transfer</button>`);
     $("[data-x]", m.el).onclick = () => m.close();
     $("#otSave", m.el).onclick = async (e) => {
@@ -578,7 +578,7 @@
     const nowHM = () => new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Manila", hour: "2-digit", minute: "2-digit", hour12: false });
     const op = to24(o._today?.opens || o.opens), cl = to24(o._today?.closes || o.closes);
     const md = E.modal(`${o.code} · Today's Hours`, `
-      <p class="muted" style="margin:0 0 10px">Normal hours: <b>${esc(hoursOf(o) || "not set")}</b>. A change is for <b>today only</b>; tomorrow the normal hours come back.</p>
+      <p class="muted" style="margin:0 0 10px">Normal: <b>${esc(hoursOf(o) || "not set")}</b> · Today only</p>
       <div class="btnrow hr-quick"><button type="button" class="btn" id="hrOpenNow">${ic("check")} Open Now</button><button type="button" class="btn danger" id="hrCloseNow">${ic("x")} Close Now</button></div>
       <div class="formgrid ol-form"><div><label for="hrOpen">Open today at</label><input type="time" id="hrOpen" value="${esc(op || "")}"></div>
         <div><label for="hrClose">Close today at</label><input type="time" id="hrClose" value="${esc(cl || "")}"></div>

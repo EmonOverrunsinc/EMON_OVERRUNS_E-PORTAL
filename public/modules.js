@@ -283,13 +283,13 @@
     DC.set(key, { att, print, kind, copyName });
     const signed = latestSigned(att, kind);
     // 3.98: an approved, system-generated document is one button: press to view or print it
-    if (approved) return `<div class="doc-btns"><button type="button" class="btn doc-btn" data-dc-print="${esc(key)}" title="Approved${approved.name ? ` by ${esc(approved.name)}` : ""}${approved.at ? ` on ${mdy(approved.at)}` : ""}">${ic("doc")}<span><b>${esc(title)}</b><small>Press to view or print</small></span>${ic("print")}</button>
+    if (approved) return `<div class="doc-btns"><button type="button" class="btn doc-btn" data-dc-print="${esc(key)}" title="Approved${approved.name ? ` by ${esc(approved.name)}` : ""}${approved.at ? ` on ${mdy(approved.at)}` : ""}">${ic("doc")}<span><b>${esc(title)}</b><small>View · Print</small></span>${ic("print")}</button>
         ${signed ? `<button type="button" class="btn" data-dc-view="${esc(key)}">${ic("eye")} ${esc(copyName)}</button>` : ""}</div>`;
     const upId = `dcUp_${key.replace(/\W/g, "_")}`;
     const mayUpload = signed ? isAdmin() : canUpload;
     return `<div class="doccard${signed ? " signed" : ""}">
       <div class="dc-ic">${ic("doc")}${signed ? `<span class="dc-ok">${ic("check")}</span>` : ""}</div>
-      <div class="dc-main">${tg}<b>${esc(title)}</b><small>${signed ? `${esc(copyName)} · uploaded ${mdy(signed.created_at)}` : esc(sub || "Print it, have it signed, then upload the signed copy")}</small></div>
+      <div class="dc-main">${tg}<b>${esc(title)}</b><small>${signed ? `${esc(copyName)} · uploaded ${mdy(signed.created_at)}` : esc(sub || "Print · Sign · Upload")}</small></div>
       <div class="dc-act">
         ${signed ? `<button type="button" class="btn primary" data-dc-view="${esc(key)}">${ic("eye")} View</button>${rmBtn(signed)}`
           : `<button type="button" class="btn primary" data-dc-print="${esc(key)}">${ic("print")} ${esc(printLabel)}</button>`}
@@ -427,7 +427,7 @@
     if (!rows.length) return "";
     const first = rows.find((r) => r.blocked);
     const head = first ? `<div class="addr-msg bad">✖ BLOCKED — ${esc(blockReason(first))}</div>`
-      : `<div class="addr-msg warn">⚠ ${rows.length} account(s) with the same name, Facebook name or phone. Check that it is not the same person.</div>`;
+      : `<div class="addr-msg warn">⚠ ${rows.length} similar account(s) · check</div>`;
     return head + E.grid({ cols: [{ label: "Account No", get: (r) => r.account_no || "" }, { label: "Name", get: fullName }, { label: "Facebook Name", get: (r) => r.facebook_name || "" },
       { label: "Status", html: (r) => pill(r.status) }, { label: "Same", get: (r) => r.matched_on || "" },
       { label: "Check", html: (r) => (r.blocked ? `<b class="bad-txt">BLOCKED</b>` : "Similar") }], rows });
@@ -444,8 +444,6 @@
     const day = (x) => String(x || "").slice(0, 10);
     const yes = (on, name, a, b) => `<div class="checks"><label><input type="radio" name="${name}" value="no" ${on ? "" : "checked"}> ${a}</label><label><input type="radio" name="${name}" value="yes" ${on ? "checked" : ""}> ${b}</label></div>`;
     const m = E.modal(`Edit Customer — ${fullName(c)}`, `
-      <div class="hint">Change any detail, then press <b>Save</b>. The customer shows the new details at once, and the customer's History shows only that you edited these details (not the old ones).
-        Account No <b>${esc(c.account_no || "")}</b>, the application number and the Public ID stay the same.</div>
       <fieldset class="opt"><legend>Personal Details</legend><div class="fields wide">
         <label for="ecFirst">First Name *</label><input type="text" id="ecFirst" value="${v(c.first_name)}" autocomplete="off">
         <label for="ecMiddle" class="mid-row"${c.no_middle_name ? " hidden" : ""}>Middle Name</label><input type="text" id="ecMiddle" class="mid-row"${c.no_middle_name ? " hidden" : ""} autocomplete="off" value="${v(c.middle_name)}">
@@ -462,7 +460,7 @@
         <label for="ecDate">Opening Date *</label><input type="date" id="ecDate" value="${day(c.application_date)}" max="${isoToday()}">
         <label for="ecCredit">Credit Limit (₱)</label><input type="number" id="ecCredit" min="0" step="0.01" inputmode="decimal" value="${c.credit_limit ?? ""}" placeholder="None">
         <label for="ecOpen">Opening Balance (₱)</label><input type="number" id="ecOpen" min="0" step="0.01" inputmode="decimal" value="${Number(c.opening_balance) ? c.opening_balance : ""}" placeholder="None">
-      </div><small>The first SOA is the month of the opening date. After <b>Save</b>, the account, the SOA and the balance are all updated.</small></fieldset>
+      </div></fieldset>
       <fieldset class="opt"><legend>Business</legend><div class="fields wide">
         <label for="ecStart">Business Start Date</label><input type="date" id="ecStart" value="${day(c.business_start_date)}">
         <label for="ecBiz">Business Name</label><input type="text" id="ecBiz" value="${v(c.business_name)}">
@@ -743,7 +741,7 @@
   // EMON HASAN's Print Requests page
   V.printreqs = async () => {
     if (!isAdmin()) { location.hash = "dashboard"; return; }
-    E.shell("printreqs", "Print Requests", `<div id="prqRes">${busy()}</div>`, "An employee who wants to print or download an invoice, a payment or a statement of account asks here first. <b>Approve</b>: they can print it once within 24 hours.");
+    E.shell("printreqs", "Print Requests", `<div id="prqRes">${busy()}</div>`);
     const here = E.stillHere();
     const { data, error } = await sb.from("print_requests").select("*").order("created_at", { ascending: false }).limit(300);
     if (!here()) return;
@@ -781,7 +779,7 @@
         </form></fieldset></div>
       <div class="btnrow"><button type="button" class="btn primary" id="cuGo">${ic("search")} Search</button><button type="button" class="btn" id="cuScan">${ic("scan")} Scan QR</button>${isStaff() ? `<button type="button" class="btn" id="cuTop">${ic("crown")} Rank</button>` : ""}
 </div>
-      <div id="cuRes">${busy("Searching")}</div>`, "All customer accounts. Closed accounts are shown here with a <b>CLOSED</b> mark but are hidden from the top search bar.");
+      <div id="cuRes">${busy("Searching")}</div>`);
     const fresh = E.loadGuard();
     const run = async () => {
       const ok = fresh(); // 3.35: a newer search wins over a slower older one
@@ -853,7 +851,7 @@
           <fieldset class="opt"><legend>Account</legend><div class="fields wide">
             <label for="ncCredit">Credit Limit (₱)</label><input type="number" id="ncCredit" min="0" step="0.01" inputmode="decimal" placeholder="Optional">
             <label for="ncOpen">Opening Balance (₱)</label><input type="number" id="ncOpen" min="0" step="0.01" inputmode="decimal" placeholder="Optional — leave empty if none">
-          </div><small>Credit Limit is kept on the customer record. Opening Balance is an amount the customer already owes when the account is opened: it becomes the account's starting balance.</small></fieldset>
+          </div></fieldset>
           <fieldset class="opt"><legend>Business</legend><div class="fields wide">
             <label for="ncStart">Business Start Date</label><input type="date" id="ncStart">
             <label for="ncBiz">Business Name</label><input type="text" id="ncBiz">
@@ -864,13 +862,13 @@
             <span>Additional Facebook Account?</span><div class="checks"><label><input type="radio" name="ncFbx" value="no" checked> No</label><label><input type="radio" name="ncFbx" value="yes"> Yes</label></div>
             <label for="ncFb2" class="fb2" hidden>Additional Facebook Name</label><input type="text" id="ncFb2" class="fb2" hidden>
             <span>Facebook Account</span><div class="checks"><label><input type="radio" name="ncFbv" value="no" checked> Not Verified</label><label><input type="radio" name="ncFbv" value="yes"> Verified</label></div>
-          </div><small>Facebook Account Link is optional: copy the link of the customer's Facebook profile. One person can have only one account: a person whose account was CLOSED, or whose Facebook link is already on another account, cannot open an account.</small></fieldset>
+          </div><small>Facebook: optional · one account per person</small></fieldset>
           <fieldset class="opt"><legend>Requirements</legend>
             <div class="fields wide">${fileField("ncReq", "Upload Requirements", 'multiple accept="image/*,application/pdf"')}</div>
-            <small>Valid ID, business permit, proof of address, or any other requirement. You can add more later from the customer profile.</small></fieldset>
+            <small>Valid ID · permit · proof of address</small></fieldset>
         </div>
         <div class="wfoot"><button type="button" class="btn" id="ncCancel">Cancel</button><button type="submit" class="btn primary">Submit Application</button></div>
-      </form>`, "Fill in the application and press <b>Submit Application</b>. The account number, application number and QR code are created automatically.");
+      </form>`);
     // Preview of the account number and application number (the final numbers are given on submit).
     let pvTimer = null, pvSeq = 0;
     const preview = async () => {
@@ -1014,7 +1012,7 @@
   // Suspended / closed accounts are marked for everyone who opens them.
   function statusBanner(c) {
     if (c.status === "closed") return `<div class="banner closed">${ic("x")} CLOSED ACCOUNT — new invoices cannot be recorded; payments can still be recorded. ${c.status_note ? " " + esc(c.status_note) : ""}</div>`;
-    if (c.status === "suspended") return `<div class="banner warn">⚠ SUSPENDED ACCOUNT — new invoices are blocked while the account is suspended; payments can still be recorded.${c.status_note ? " " + esc(c.status_note) : ""}</div>`;
+    if (c.status === "suspended") return `<div class="banner warn">⚠ SUSPENDED · no new invoices · payments OK${c.status_note ? " " + esc(c.status_note) : ""}</div>`;
     if (c.status === "rejected") return `<div class="banner closed">REJECTED APPLICATION${c.status_note ? " — " + esc(c.status_note) : ""}</div>`;
     return "";
   }
@@ -1092,7 +1090,7 @@
         ${tools("customers", c, `${c.account_no || c.application_no} ${fullName(c)}`, { reload: () => V.customer(c.id), afterDelete: () => (location.hash = "customers"), noFix: isApprovedAccount(c) && isStaff() && !S.mainDirector })}
       </div>
       ${isApprovedAccount(c) && isStaff() ? E.requestsHtml(c, orders) : ""}
-      <div class="docgrid">${signed.length && !att.pending.some((a) => ["signed_form", "application"].includes(a.kind)) ? "" : copyCard({ key: "appcopy", title: "Customer Application Form", tag: "Upload", sub: "Upload the form signed by the customer", ownerType: "customer", ownerId: c.id, att, kind: "signed_form", kinds: ["signed_form", "application"], canUpload: isStaff() && c.status !== "closed" })}</div>
+      <div class="docgrid">${signed.length && !att.pending.some((a) => ["signed_form", "application"].includes(a.kind)) ? "" : copyCard({ key: "appcopy", title: "Customer Application Form", tag: "Upload", sub: "Signed form", ownerType: "customer", ownerId: c.id, att, kind: "signed_form", kinds: ["signed_form", "application"], canUpload: isStaff() && c.status !== "closed" })}</div>
       ${isAdmin() && ["pending", "verified"].includes(c.status) ? reviewPanel(c, signed, att.length) : ""}
       <div class="tabs" id="pfTabs">${tabs.map((t, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}"${i === 9 ? " hidden" : ""}>${esc(t)}</button>`).join("")}</div>
       <div class="tabpanes">
@@ -1109,7 +1107,7 @@
         ${achAt >= 0 ? `<div data-p="${achAt}" hidden id="pfAchTab" data-cid="${esc(c.id)}">${busy()}</div>` : ""}
         <div data-p="${infoAt}" hidden class="pf-info">
           <div class="docgrid">${docCard({ key: "app", title: isApprovedAccount(c) ? "Customer Details" : "Customer Application Form", tag: "System Generated",
-        sub: isApprovedAccount(c) ? `${c.account_no || c.application_no} · made by the E-Portal · no signature needed` : `${c.application_no} · made by the E-Portal · print it for the customer to sign`, ownerType: "customer", ownerId: c.id, att, kind: "__system", canUpload: false, print: () => printApplication(c),
+        sub: isApprovedAccount(c) ? `${c.account_no || c.application_no} · System`: `${c.application_no} · Print · Sign`, ownerType: "customer", ownerId: c.id, att, kind: "__system", canUpload: false, print: () => printApplication(c),
         approved: isApprovedAccount(c) ? (() => { const a = [...(ev.data || [])].reverse().find((x) => x.action === "approve"); return { name: a?.actor_name || "", at: a?.created_at || c.reviewed_at }; })() : null })}</div>
           ${signed.length ? `<div class="info-sec"><h4>${ic("doc")} Customer Application Form · signed</h4>${filesHtml(signed, "")}</div>` : ""}
           <div class="info-sec" id="pfFree" hidden></div>
@@ -1160,7 +1158,7 @@
     // 3.64: a staff login without "13 See Balances & History" sees no purchase history (statements, invoices, payments, memos, overdue, returns)
     if (S.hideMoney) {
       [1, 2, 3, 4, 7, 8].forEach((i) => { $(`#pfTabs [data-t="${i}"]`)?.remove(); $(`.tabpanes [data-p="${i}"]`)?.remove(); });
-      $("#pfTabs")?.insertAdjacentHTML("beforebegin", `<div class="banner info">${ic("shield")} The balance and the purchase history of this customer are for EMON HASAN only. You can still record invoices, payments and orders.</div>`);
+      $("#pfTabs")?.insertAdjacentHTML("beforebegin", `<div class="banner info">${ic("shield")} Balance: EMON HASAN only</div>`);
     }
     $('#pfTabs [data-t="9"]')?.remove(); $('.tabpanes [data-p="9"]')?.remove(); // 3.97: no Gate Pass tab any more
     E.keepTab("#pfTabs", "customer:" + c.id);
@@ -1274,7 +1272,7 @@
         <li><b>What the customer wrote</b><span class="rv-say">Everything on the application form.</span>
           <div class="rv-facts">${facts.map(([k, v, html]) => `<div><small>${esc(k)}</small><b>${html || esc(v || "—")}</b></div>`).join("")}</div>
           ${nDocs ? `<button type="button" class="btn small" id="rvDocs">${ic("doc")} Documents (${nDocs})</button>` : ""}</li>
-        <li><b>Check records</b><span class="rv-say">The portal looks for the same name, Facebook or phone number in other accounts. A person with a CLOSED account cannot open a new one.</span>
+        <li><b>Check records</b><span class="rv-say">Same name · Facebook · phone</span>
           <div class="btnrow"><button type="button" class="btn primary" id="rvCheck">Check &amp; Verify</button>
           <button type="button" class="btn" id="rvFb">${c.facebook_verified ? "Mark Facebook NOT verified" : "Mark Facebook verified"}</button>
 </div><div id="rvResult">${verified ? `<div class="addr-msg ok">✔ Verification successful (already verified).</div>` : ""}</div></li>
@@ -1282,7 +1280,7 @@
           <div class="fields wide"><label for="rvNote">Note</label><input type="text" id="rvNote" placeholder="Optional note (shown in history)"></div>
           <div class="btnrow"><button type="button" class="btn ok" id="rvApprove"${verified ? "" : ' disabled title="Press Check &amp; Verify first"'}>Approve — Activate Account</button>
           <button type="button" class="btn danger" id="rvReject">Reject</button><small class="muted" id="rvFirst"${verified ? " hidden" : ""}>Press <b>Check &amp; Verify</b> first.</small></div>
-          <small class="muted">The signed form is not needed to approve${signed.length ? " (it is on file)" : "; you can still upload it on the Customer Application Form card"}. Your signature is printed on the form when you approve.</small></li>
+          <small class="muted">Signed form: ${signed.length ? "On file" : "Optional"}</small></li>
       </ol></fieldset>`;
   }
   function bindReview(c) {
@@ -1320,7 +1318,7 @@
           E.bindGrid(out, data, (r) => (location.hash = "customer/" + r.id));
           approveOpen(false, "BLOCKED: this person cannot open an account (see the check above).");
         } else {
-          out.innerHTML = `<div class="addr-msg warn">⚠ ${data.length} account(s) with the same name, Facebook name or phone. Check that it is not the same person:</div>` +
+          out.innerHTML = `<div class="addr-msg warn">⚠ ${data.length} similar account(s) · check:</div>` +
             E.grid({ cols: [{ label: "Account No", get: (r) => r.account_no }, { label: "Name", get: fullName }, { label: "Phone", get: (r) => r.phone || "" }, { label: "Status", html: (r) => pill(r.status) }, { label: "Matched On", get: (r) => (r.matched_on || "").replace(/\b\w/g, (x) => x.toUpperCase()) }], rows: data, onRow: true })
             + `<div class="btnrow"><button type="button" class="btn" id="rvAnyway">Not the same person — Verify anyway</button></div>`;
           E.bindGrid(out, data, (r) => (location.hash = "customer/" + r.id));
@@ -1364,7 +1362,6 @@
           <span>Status</span><span>${pill(c.status)}</span>
         </div>
         <div class="sub-qr"><canvas id="subQr"></canvas><small>Scan to open this account</small></div></div>
-        <div class="hint">Next: press <b>Print / Download Application</b>, have the customer sign it, and submit the signed paper to the office. EMON HASAN has been notified.</div>
       </div>
       <div class="wfoot"><button type="button" class="btn primary" id="subPrint">${ic("print")} Print / Download Application</button><a class="btn" href="#customer/${c.id}">Open Customer Profile</a><a class="btn" href="#newcustomer">New Customer</a></div></div>`;
     E.drawQr($("#subQr"), custQr(c));
@@ -1505,7 +1502,7 @@
         { label: "Opening (₱)", num: true, get: (r) => peso(r.opening) }, { label: "Debit (₱)", num: true, get: (r) => peso(r.debit) },
         { label: "Credit (₱)", num: true, get: (r) => peso(r.credit) }, { label: "Closing (₱)", num: true, get: (r) => peso(r.closing) },
         { label: "", html: () => `<span class="btn">Print SOA</span>` }], rows, onRow: true })}
-      <small>One statement a month, made automatically on the 1st for the month just ended. The first is the month the account was opened (with any earlier entries); each month's closing balance is the next month's opening balance.</small>`;
+      `;
     E.bindGrid(box, rows, (r) => gatePrint("soa", c.id, `SOA ${r.no || monthText(r.start)} · ${fullName(c)}`, () => printSoa(c, r, txns, invs)));
     $("#soaAll", box).onclick = () => gatePrint("soa", c.id, `All Transactions · ${fullName(c)}`, () => {
       const start = txns.length ? monthStart(txns[0].date) : monthStart(c.application_date);
@@ -1520,7 +1517,7 @@
     E.shell("statements", "Statements of Account", `
       <div class="options"><fieldset class="opt"><legend>Month</legend><div class="fields"><label for="stMonth">Statement Month</label><input type="month" id="stMonth" value="${last.slice(0, 7)}"></div></fieldset></div>
       <div class="btnrow"><button type="button" class="btn primary" id="stGo">Show</button><button type="button" class="btn" id="stPrintAll">${ic("print")} Print All for Month</button><a class="btn" href="#customers">Close</a></div>
-      <div id="stRes">${busy()}</div>`, "Statements are created automatically on the 1st of each month for the month just ended. Click a row to print it or upload a copy.");
+      <div id="stRes">${busy()}</div>`);
     let rows = [];
     const fresh = E.loadGuard();
     const load = async () => {
@@ -1594,7 +1591,7 @@
   V.invoices = async () => {
     E.shell("invoices", "Invoices", `
       <div class="tabs" id="ivTabs">${INV_TABS.map(([f, l], i) => `<button type="button" class="${i ? "" : "on"}" data-f="${f}">${l} <span data-n="${f}"></span></button>`).join("")}</div>
-      <div id="ivRes">${busy()}</div>`, "Every invoice is <b>PAID</b> (in full), <b>PARTIAL</b> (part paid) or <b>UNPAID</b> (nothing paid yet). Payments, credit memos, discounts and settlement adjustments are for the customer's account: they pay the oldest invoices first. Press <b>+</b> at the bottom right to add a sale for an ACTIVE customer.");
+      <div id="ivRes">${busy()}</div>`);
     const here = E.stillHere();
     // 3.35: every invoice (also past the 1000 rows the server sends at once), so the tabs and the totals count them all
     const { data, error } = await E.allRows(() => sb.from("invoice_balances").select("*").order("invoice_date", { ascending: false }).order("created_at", { ascending: false }).order("id"));
@@ -1602,7 +1599,7 @@
     if (error) return fail(error, "Could not load invoices");
     // 3.64: a staff login without "13 See Balances & History" sees only the invoices it recorded
     const all = S.hideMoney ? (data || []).filter((r) => r.created_by === E.meId()) : data || [];
-    if (S.hideMoney) $("#ivRes").insertAdjacentHTML("beforebegin", `<div class="banner info">${ic("shield")} You see only the invoices you recorded. The other invoices are for EMON HASAN only.</div>`);
+    if (S.hideMoney) $("#ivRes").insertAdjacentHTML("beforebegin", `<div class="banner info">${ic("shield")} Your invoices only</div>`);
     $$("#ivTabs [data-n]").forEach((x) => (x.textContent = `(${invPick(all, x.dataset.n).length})`));
     const run = (f) => {
       const rows = invPick(all, f);
@@ -1637,15 +1634,15 @@
             <label for="niTerms">Terms of Payment *</label><select id="niTerms" required><option value="">— Choose the terms —</option>${E.TERMS.map((t) => `<option>${t}</option>`).join("")}<option value="OTHER">OTHER (type the terms)</option></select>
             <label for="niTermsX" class="nitx" hidden>Other Terms *</label><input type="text" id="niTermsX" class="nitx" maxlength="60" placeholder="e.g. 2 POST-DATED CHECKS" hidden>
             <span>Due Date</span><b id="niDue">—</b></div>
-            <small class="muted">Payments are recorded with <b>Record Payment</b> for the customer's account: they pay the oldest invoices first.</small></fieldset>
+</fieldset>
           <fieldset class="opt"><legend>Customer Order</legend><div class="fields wide">
-            <label for="niPo">Order No</label><input type="text" id="niPo" maxlength="60" placeholder="e.g. OR-202610-0001"></div></fieldset>
+            <label for="niPo">Order No</label><input type="text" id="niPo" maxlength="60" placeholder="e.g. PO-202611-0001"></div></fieldset>
           <fieldset class="opt"><legend>Documents</legend><div class="fields wide">
             ${fileField("niInvF", "Upload Invoice Copy", 'accept="image/*,application/pdf"')}
             ${fileField("niDr", "Delivery Receipt", 'multiple accept="image/*,application/pdf"')}</div></fieldset>
         </div>
         <div class="wfoot"><button type="button" class="btn" id="niCancel">Cancel</button><button type="submit" class="btn primary">Submit Invoice</button></div>
-      </form>`, "The invoice is saved to the customer's account and added to their balance due. Choose its <b>Terms of Payment</b>: the due date follows from it.");
+      </form>`);
     let cust = null;
     const showCredit = async (c) => {
       const el = $("#niCredit"); if (!el) return;
@@ -1713,7 +1710,7 @@
     const inv = ib.data;
     if (!inv) { $("#main").innerHTML = `<div class="empty">Invoice not found. <a href="#invoices">Back to Invoices</a></div>`; return; }
     // an older invoice without the order's link: the order is found by its Order No
-    if (!ord && /^(CO|OR)-\d{6}-\d+$/.test(inv.po_number || "")) { ord = await invOrder(null, inv.po_number); if (!here()) return; }
+    if (!ord && /^(CO|OR|PO)-\d{6}-\d+$/.test(inv.po_number || "")) { ord = await invOrder(null, inv.po_number); if (!here()) return; }
     const rets = (rt.data || []).filter((m) => m.is_return);
     // 3.14: what was taken off this invoice: approved returns and credit / discount memos of this invoice
     const deds = (rt.data || []).filter((m) => ["approved", "paid"].includes(m.status) && offBalance(m));
@@ -1732,14 +1729,14 @@
       <div class="formgrid"><div class="fields wide">
         <span>Customer</span><span><a href="#customer/${inv.customer_id}"><b>${esc(fullName(inv))}</b> (${esc(inv.account_no)})</a> ${inv.customer_status !== "active" ? pill(inv.customer_status) : ""}</span>
         <span>Invoice Date</span><span>${mdy(inv.invoice_date)}</span>
-        <span>Order No</span><span>${/^(CO|OR)-\d{6}-\d+$/.test(inv.po_number || "") && E.canOpen("custorder") ? `<a href="#custorder/${esc(inv.po_number)}">${esc(inv.po_number)}</a> <small class="muted">Customer Order</small>` : esc(inv.po_number || "—")}</span>
+        <span>Order No</span><span>${/^(CO|OR|PO)-\d{6}-\d+$/.test(inv.po_number || "") && E.canOpen("custorder") ? `<a href="#custorder/${esc(inv.po_number)}">${esc(inv.po_number)}</a> <small class="muted">Customer Order</small>` : esc(inv.po_number || "—")}</span>
         <span>Terms of Payment</span><span>${esc(inv.payment_terms || "—")}</span><span>Due Date</span><span>${mdy(inv.due_date) || "—"}${ins?.status === "active" && inv.due_date ? " (EXTENDED BY COVERAGE)" : ""}</span>
         <span>Recorded By</span><span>${esc(inv.created_by_name || "")}</span></div>
       <div class="fields wide"><span>Total Boxes</span><b>${qtyText(inv.total_boxes)}</b><span>Total Pcs</span><b>${qtyText(inv.total_pcs)}</b>
         ${returned > 0 ? `<span>Returned</span><b>− ₱ ${peso(returned)}</b>` : ""}
         <span>Payment Status</span><span>${payPill(inv)}${isOverdue(inv) ? ` <small class="muted">${daysOver(inv)} day(s) overdue</small>` : ""}${bal < 0 ? ` <small class="muted">overpaid ₱ ${peso(-bal)}</small>` : ""}</span></div></div>
       ${ord ? `<div class="linked-pays"><div class="lp-head"><b>Order Items · ${esc(ord.order_no)}</b></div>${orderItems(ord, false)}</div>` : ""}
-      <small class="muted">A linked payment pays this invoice first. Other payments, discounts and orders pay the customer's oldest invoices first.${bal < 0 ? " A negative balance means the customer has paid more than everything owed." : ""}</small>
+${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       <div class="linked-pays"><div class="lp-head"><b>Returns</b>${canReturn ? `<button type="button" class="btn small" id="ivReturn">${ic("back")} Record Return</button>` : ""}</div>
         ${rets.length ? rets.map((r) => `<div class="lp-row lp-ret"><a href="#creditmemo/${r.id}"><b>${esc(r.memo_no || "")}</b></a><span>${mdy(r.memo_date)} · ${esc(r.serial_no || "")}${r.qty ? ` · ${r.qty} pcs` : ""}</span><b>− ₱ ${peso(r.request_amount)}</b>
           ${r.status === "pending" ? `<span class="pill pending">WAITING FOR APPROVAL</span>` : r.status === "rejected" ? pill("rejected") : `<span class="pill active">TAKEN OFF</span>`}${r.warehouse_status ? ` <span class="pill ${r.warehouse_status === "received" ? "active" : "pending"}">${WAREHOUSE[r.warehouse_status] || ""}</span>` : ""}</div>`).join("")
@@ -1792,7 +1789,7 @@
         $("#rtTB", m.el).textContent = tb; $("#rtTP", m.el).textContent = tp; $("#rtTA", m.el).textContent = peso(ta);
         if (!amtTyped && ta > 0) $("#rtAmt", m.el).value = ta.toFixed(2);
         $("#rtAdd", m.el).disabled = $$("#rtLines .rt-line", m.el).length >= 20;
-        $("#rtHint", m.el).textContent = `${kind() === "return" ? "The items come back: the return shows NOT RECEIVED until the warehouse marks it RECEIVED. " : "No goods come back (the warehouse status is not needed). "}The amount is taken off this invoice and the customer's balance, and shows as RETURN on the statement of account.${isAdmin() ? "" : " It waits for EMON HASAN's approval."}`;
+        $("#rtHint", m.el).textContent = `${kind() === "return" ? "Items come back · warehouse receives" : "No items back"} · off the invoice and balance${isAdmin() ? "" : " · needs approval"}`;
       };
       const bindLines = () => $$("#rtLines .rt-line", m.el).forEach((tr) => {
         $$("input", tr).forEach((x) => (x.oninput = sum));
@@ -1832,13 +1829,13 @@
       if (error) return fail(error, "Could not load the payments");
       const opts = av || [];
       const m = E.modal(`Link a Payment — ${inv.invoice_no}`, opts.length
-        ? `<p class="muted" style="margin-top:0">Choose the payment of ${esc(fullName(inv))} that paid this invoice. It still needs <b>₱ ${peso(need)}</b> from a linked payment; only that is taken and the rest of the payment stays available.</p>
+        ? `<p class="muted" style="margin-top:0">Needs <b>₱ ${peso(need)}</b></p>
           <div class="pay-free">All payments of this customer with money left (any date): ${opts.length} · <b>₱ ${peso(opts.reduce((t, r) => t + num(r.available), 0))}</b> ready for invoices.</div>
           <div class="lp-pick">${opts.map((p) => `<div class="lp-opt" data-pay="${p.id}"><b>${esc(p.receipt_no || "")}</b><span>${mdy(p.paid_date)}</span><b>₱ ${peso(p.amount)}</b>
             <small>Available to link: <b>₱ ${peso(p.available)}</b>${num(p.linked) > 0 ? ` (₱ ${peso(p.linked)} already linked to other invoices)` : ""}</small>
             <div class="lp-amt"><label for="lpA${p.id}">Amount to link (₱)</label><input type="number" id="lpA${p.id}" min="0.01" step="0.01" inputmode="decimal" value="${Math.min(num(p.available), need).toFixed(2)}">
               <button type="button" class="btn small primary" data-go="${p.id}">${ic("check")} Link</button></div></div>`).join("")}</div>`
-        : `<div class="empty">No payment of ${esc(fullName(inv))} has an amount left to link: every payment is fully linked. Record the payment first.</div>`);
+        : `<div class="empty">No payment to link</div>`);
       $$("[data-go]", m.el).forEach((b) => (b.onclick = async () => {
         const p = opts.find((x) => x.id === b.dataset.go), amt = num($(`#lpA${p.id}`, m.el).value);
         if (!(amt > 0)) return toast("Enter the amount to link.", true);
@@ -1912,8 +1909,7 @@
   ];
   V.payments = async () => {
     E.shell("payments", "Payments Received", `
-      <div id="pyRes">${busy()}</div>`,
-      "All payments received. Each payment gets a receipt number like <b>A-2026-1003-001</b> and a printable acknowledgment.");
+      <div id="pyRes">${busy()}</div>`);
     const here = E.stillHere();
     // 3.35: every payment (also past the 1000 rows the server sends at once), so the total counts them all
     const { data, error } = await E.allRows(() => sb.from("payments_received").select("*, customers(first_name,middle_name,last_name,account_no)").order("created_at", { ascending: false }).order("id"));
@@ -1921,7 +1917,7 @@
     if (error) return fail(error, "Could not load payments");
     // 3.64: a staff login without "13 See Balances & History" sees only the payments it recorded
     const rows = S.hideMoney ? (data || []).filter((r) => r.created_by === E.meId()) : data || [];
-    if (S.hideMoney) $("#pyRes").insertAdjacentHTML("beforebegin", `<div class="banner info">${ic("shield")} You see only the payments you recorded. The other payments are for EMON HASAN only.</div>`);
+    if (S.hideMoney) $("#pyRes").insertAdjacentHTML("beforebegin", `<div class="banner info">${ic("shield")} Your payments only</div>`);
     $("#pyRes").innerHTML = E.grid({ cols: PAY_COLS, rows, onRow: true, foot: { amount: peso(rows.reduce((s, r) => s + num(r.amount), 0)) }, empty: "No payments yet." });
     E.bindGrid($("#pyRes"), rows, (r) => (location.hash = "payment/" + r.id));
     E.setRecords(`Payments: ${rows.length}`);
@@ -2023,7 +2019,7 @@
         <span>Verified By</span><span>${esc(p.created_by_name || "")}</span></div></div>
       ${lk.error ? "" : `<div class="linked-pays"><div class="lp-head"><b>Linked to Invoices</b></div>
         ${links.length ? links.map((l) => `<div class="lp-row"><a href="#invoice/${l.invoice_id}"><b>${esc(l.customer_invoices?.invoice_no || "")}</b></a><span>Linked ${esc(E.dateTime(l.linked_at))}${l.linked_by_name ? ` by ${esc(l.linked_by_name)}` : ""}</span><b>₱ ${peso(l.amount)}</b><span class="pill active">LINKED</span></div>`).join("")
-          : `<div class="empty small">Not linked to an invoice: it pays the customer's oldest invoices first. Link it on the invoice page (Link a Payment).</div>`}
+          : `<div class="empty small">Not linked</div>`}
         <div class="lp-sum"><span>Available to link</span><b>₱ ${peso(num(p.amount) - linked)}</b></div></div>`}
       <div class="docgrid">${docCard({ key: "ack", title: `Acknowledgment Receipt ${p.receipt_no}`, sub: `₱ ${peso(p.amount)} · ${mdy(p.paid_date)}`, ownerType: "payment", ownerId: p.id, att, print: () => gatePrint("payment", p.id, `Payment ${p.receipt_no}`, async () => { await E.sealCode("receipt", p.receipt_no); E.openPreview(`Acknowledgment ${p.receipt_no}`, [ackPage(p)], { customerId: p.customer_id }); }), uploadLabel: "Upload Copy", copyName: "Copy" })}</div>
       <div><b>Uploaded Receipts &amp; Files</b>${filesHtml(att.filter((a) => a.kind !== "signed_form"), "No receipts uploaded.")}</div>
@@ -2072,8 +2068,7 @@
     MEMO_STATUS_COL];
   V.creditmemos = async () => {
     E.shell("creditmemos", "Credit Memos", `${E.eoTabs("creditmemos")}
-      <div class="btnrow">${E.canWrite("creditmemos") ? `<a class="btn primary" href="#newcreditmemo">+ New Credit Memo</a>` : ""}</div><div id="cmRes">${busy()}</div>`,
-      "Customer complaints and defect claims. Approved <b>Credit</b> and <b>Discount</b> memos reduce the customer's balance due.");
+      <div class="btnrow">${E.canWrite("creditmemos") ? `<a class="btn primary" href="#newcreditmemo">+ New Credit Memo</a>` : ""}</div><div id="cmRes">${busy()}</div>`);
     const here = E.stillHere();
     const { data, error } = await E.allRows(() => sb.from("credit_memos").select("*, customers(first_name,middle_name,last_name,account_no)").order("created_at", { ascending: false }).order("id"));
     if (!here()) return;
@@ -2125,7 +2120,7 @@
             ${fileField("cmProof", "Proof (photos / video)", 'multiple accept="image/*,video/*,application/pdf"')}</div></fieldset>
         </div>
         <div class="wfoot"><button type="button" class="btn" id="cmCancel">Cancel</button><button type="submit" class="btn primary">Submit for Approval</button></div>
-      </form>`, "After you submit it, EMON HASAN reviews and approves it. Approved <b>Credit</b> / <b>Discount</b> amounts are deducted from the account balance.");
+      </form>`);
     let cust = null;
     const freshPays = E.loadGuard();
     const loadPays = async () => {
@@ -2148,7 +2143,7 @@
       acc.closest("label").hidden = act === "refund";
       if (act === "refund" && acc.checked) $("input[name=cmSet][value=bank_transfer]").checked = true;
       const set = $("input[name=cmSet]:checked").value;
-      $("#cmSetNote").textContent = set === "account_credit" ? "Once approved, the amount is taken off the customer's balance." : `Once approved, the amount is given back to the customer by ${SETTLE[set].toLowerCase()}; the balance does not change.`;
+      $("#cmSetNote").textContent = set === "account_credit" ? "Off the balance after approval" : `Given back by ${SETTLE[set].toLowerCase()} · balance same`;
     };
     $$("input[name=cmAct], input[name=cmSet]").forEach((x) => (x.onchange = settleUi)); settleUi();
     $("#cmCancel").onclick = () => history.back();
@@ -2642,8 +2637,7 @@
       <fieldset class="opt sigset" id="mpSigBox"><legend>My Signature</legend>
         ${myPic ? `<div class="sig-show"><img src="${esc(myPic)}" alt="My signature"></div><div class="sig-st">${sigPill(sp.signature_status)}${sp.signature_status === "approved" && sp.signature_approved_by_name ? ` <small>by ${esc(sp.signature_approved_by_name)} on ${mdy(sp.signature_approved_at)}</small>` : ""}</div>` : `<p><b>No signature yet.</b></p>`}
         ${sp.signature_status === "rejected" && sp.signature_note ? `<div class="hint err">Not approved: ${esc(sp.signature_note)}. Upload a clearer signature.</div>` : ""}
-        <p class="muted">${isAdmin() ? "Your signature is printed by itself on every document you approve (applications, credit memos, projects and signature forms)."
-          : "Upload your signature; EMON HASAN approves it, then your Signature Verification Form is ready."} Sign on white paper with dark ink, take a clear photo and upload it: the white paper is taken away for you.</p>
+        <p class="muted">White paper · dark ink · clear photo</p>
         <div class="btnrow"><label class="btn primary" for="mpSig">${ic("upload")} ${myPic ? "Change Signature" : "Upload Signature"}</label><input type="file" id="mpSig" accept="image/*" hidden data-save-now="preview">
           ${sp.signature_path ? `<button type="button" class="btn" id="mpSigForm">${ic("print")} Signature Verification Form</button><button type="button" class="btn danger" id="mpSigRm">${ic("trash")} Remove</button>`
             : `<button type="button" class="btn" id="mpSigBlank">${ic("print")} Blank Signature Verification Form</button>`}</div>
@@ -2667,7 +2661,7 @@
       $("#mpDel").disabled = true;
       const ref = await E.requestDeletion(emp?.position);
       if (!ref) { $("#mpDel").disabled = false; return; }
-      $("#mpDelDone").innerHTML = `<div class="hint ok">Request sent. Reference No <b class="mono">${esc(ref)}</b>. EMON HASAN will reply to ${esc(S.session.user.email)} and delete your account within 30 days.</div>`;
+      $("#mpDelDone").innerHTML = `<div class="hint ok">Sent · Ref <b class="mono">${esc(ref)}</b> · within 30 days</div>`;
     };
     pickSignature($("#mpSig"), sp.id, "My Signature", async (path) => {
       const r = await sb.rpc("set_my_signature", { p_path: path });
@@ -2715,7 +2709,7 @@
       if (!$("#pkBody")) return;
       const w = error ? E.pkWhy(error) : "";
       const list = data || [];
-      $("#pkBody").innerHTML = `<p class="muted" style="margin-top:0">Sign in with <b>Face ID, your fingerprint or your phone PIN</b> instead of the password.</p>
+      $("#pkBody").innerHTML = `<p class="muted" style="margin-top:0">Face ID · fingerprint · PIN</p>
         ${w ? `<div class="empty">${esc(w)}</div>` : list.length ? `<div class="pk-list">${list.map((k) => `<div class="pk-row"><span>${ic("key")} <b>${esc(k.friendly_name || "Passkey")}</b><small>saved ${esc(E.dateTime(k.created_at))}${k.last_used_at ? ` · last used ${esc(E.dateTime(k.last_used_at))}` : ""}</small></span>
           <button type="button" class="btn small danger" data-pkdel="${esc(k.id)}">Remove</button></div>`).join("")}</div>` : `<div class="empty">No passkey yet.</div>`}
         <div class="btnrow"><button type="button" class="btn primary" id="pkAdd">${ic("plus")} Add a Passkey on This Device</button></div>`;
@@ -2739,7 +2733,7 @@
     E.shell("settings", "Company Logo", `<div class="window"><div class="wtitle">Company Logo</div><div class="wbody">
       <div class="profile-photo logo">${E.logoHtml("hero-logo")}</div>
       <div class="fields wide"><label for="lgFile">Upload Logo</label><input type="file" id="lgFile" accept="image/*"></div>
-      <small>PNG with a transparent background looks best. The logo shows on the login page, every page header, the dashboard and all printouts.</small></div></div>`);
+      <small>PNG · transparent</small></div></div>`);
     $("#lgFile").onchange = async (e) => {
       const f = e.target.files[0]; if (!f) return;
       const path = `Logo_${Date.now()}.${extOf(f)}`;
