@@ -5078,3 +5078,6 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
   #main .cust-hero .ch-tags .stand { padding: 4px 6px; gap: 1px; border-radius: 10px; }
   #main .cust-hero .ch-tags .stand b { font-size: 9.5px; letter-spacing: .03em; } #main .cust-hero .ch-tags .stand .ic { width: 12px; height: 12px; } #main .cust-hero .ch-tags .stand small { display: none; }
 }
+/* 3.99.205: every chip of the shop head on one line */
+.os-chips .r-left, .os-chips .os-todayh, .os-chips .os-live { flex-direction: row !important; align-items: center !important; flex-wrap: nowrap !important; white-space: nowrap; }
+.os-chips .os-live small { display: none; }

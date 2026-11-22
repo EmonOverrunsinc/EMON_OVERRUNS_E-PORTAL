@@ -92,7 +92,7 @@
   };
   const todayText = (o) => `${hourText(o._today?.opens || o.opens) || "—"} – ${hourText(o._today?.closes || o.closes) || "—"}`;
   const cardLive = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}` : ""; };
-  const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}${s.sales ? `<small>Sales hours ${o._today ? "today" : ""} ${esc(s.sales)}${o._today ? "" : " a day"}</small>` : ""}` : ""; };
+  const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}` : ""; }; // 3.99.205: one line (the sales hours in the tip)
 
   // the money of the shops for a month (and today): sales, expenses, payments of their customer accounts
   async function monthMoney(outlets, m) {
@@ -313,7 +313,7 @@
         })()}
         <div class="os-hero-top"><div class="os-logo-col">${storeLogo(o, "big")}<span class="os-rk" id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span></div>
           <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
-        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive">${liveHtml(o)}</span>` : ""}${!mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<span class="r-left">${ic("receipt")} Unpaid Rent ₱ ${peso(rs.left)}${rs.paidAmt > 0 ? `<small>Paid ₱ ${peso(rs.paidAmt)} of ₱ ${peso(rs.rent)}</small>` : ""}</span>` : ""}${o._today ? `<span class="os-todayh">${ic("clock")} Today ${esc(todayText(o))}<small>changed${o._today.set_by_name ? ` by ${esc(o._today.set_by_name)}` : ""}</small></span>` : ""}
+        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive" title="${storeNow(o).sales ? `Sales hours ${o._today ? "today" : "a day"}: ${storeNow(o).sales}` : ""}">${liveHtml(o)}</span>` : ""}${!mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<span class="r-left" title="${rs.paidAmt > 0 ? `Paid ₱ ${peso(rs.paidAmt)} of ₱ ${peso(rs.rent)}` : `Rent ₱ ${peso(rs.rent)}`}">${ic("receipt")} Unpaid Rent ₱ ${peso(rs.left)}</span>` : ""}${o._today ? `<span class="os-todayh" title="Changed for today${o._today.set_by_name ? ` by ${esc(o._today.set_by_name)}` : ""}${o._today.note ? ` · ${esc(o._today.note)}` : ""}">${ic("clock")} Today ${esc(todayText(o))}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(rs.last))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
