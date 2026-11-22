@@ -5081,3 +5081,5 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 /* 3.99.205: every chip of the shop head on one line */
 .os-chips .r-left, .os-chips .os-todayh, .os-chips .os-live { flex-direction: row !important; align-items: center !important; flex-wrap: nowrap !important; white-space: nowrap; }
 .os-chips .os-live small { display: none; }
+/* 3.99.206: the customer's name always on its own line; the status, rank and VIP always on the line under it (every screen) */
+#main .cust-hero .ch-name h2 { flex: 0 0 100%; }
