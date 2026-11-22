@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.225"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.226"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.225"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.226"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -89,6 +89,8 @@
     return p;
   };
   const outletRanks = (month) => rankList(`o${month}`, () => sb.rpc("outlet_ranks", { p_month: month }));
+  // 3.99.226: the shops' rank of THIS WEEK (Monday to Sunday); a new rank every Monday
+  const outletWeekRanks = () => rankList("ow", () => sb.rpc("outlet_week_ranks").then((r) => (r.error ? sb.rpc("outlet_ranks", { p_month: isoToday().slice(0, 7) }) : r)));
   // 3.99.180: ACHIEVEMENTS (SQL 126): the medals (gold, silver, bronze)
   const MEDAL_NAME = ["", "GOLD", "SILVER", "BRONZE"];
   const medalHtml = (k) => `<span class="medal md${k}" title="${MEDAL_NAME[k] || ""} medal">${MEDAL}</span>`;
@@ -111,7 +113,7 @@
     return `<div class="ach-head">
         <div class="ach-stars"><b>MEDALS ACHIEVED</b><small>${num(a.gold) + num(a.silver) + num(a.bronze)} in all</small></div>
         <div class="ach-count">${[1, 2, 3].map((k) => `<div class="ach-c md${k}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b><small>${MEDAL_NAME[k]}</small></div>`).join("")}</div></div>
-      ${list.length ? `<div class="ach-list">${list.map((x, n) => `<div class="ach-row md${x.rank}${x.claimed ? " claimed" : ""}"><span class="ach-no">${n + 1}</span>${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} MEDAL · ${shop ? `#${x.rank} OF THE DAY` : esc(weekOf(x.period))}</b><small>Date of activity: ${esc(mdy(x.period))}</small></div><span class="ach-end">${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}${x.claimed ? `<span class="ach-claim" title="${esc(x.ref || "")}">CLAIMED ✔</span>` : ""}</span></div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
+      ${list.length ? `<div class="ach-list">${list.map((x, n) => `<div class="ach-row md${x.rank}${x.claimed ? " claimed" : ""}"><span class="ach-no">${n + 1}</span>${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} MEDAL · ${shop ? (x.monthly ? `#${x.rank} OF THE MONTH` : `#${x.rank} OF THE DAY`) : esc(weekOf(x.period))}</b><small>${x.monthly ? `${esc(monthText(String(x.period).slice(0, 7)))}${x.given ? ` · given ${esc(mdy(x.given))}` : ""}` : `Date of activity: ${esc(mdy(x.period))}`}</small></div><span class="ach-end">${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}${x.claimed ? `<span class="ach-claim" title="${esc(x.ref || "")}">CLAIMED ✔</span>` : ""}</span></div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
       ${pool}
 `;
   };
@@ -269,7 +271,8 @@
   const ebillPill = (s) => pill(s, ebillStep(s));
   // The top role is called Director in the portal (stored as "admin"); everyone else is shown with their job position.
   const roleName = (r) => ({ admin: "Full Access", staff: "Employee", viewer: "Viewer" })[r] || r || "";
-  const personTitle = (role, position) => role === "admin" ? "Managing Director" : position || roleName(role);
+  const personTitle = (role, position) => role === "admin" ? "Operational Director" : position || roleName(role);
+  const titleHtml = (role, position) => role === "admin" ? `<span class="dir-gold">OPERATIONAL DIRECTOR</span>` : esc(String(position || roleName(role) || "").toUpperCase());
   // Seen in the last 3 minutes = active now.
   const online = (ts) => !!ts && Date.now() - new Date(ts).getTime() < 3 * 60 * 1000;
   function timeAgo(iso) {
@@ -1672,7 +1675,7 @@
         </div>
         <div class="pop" id="mailPop" hidden><div class="pop-head">Notifications</div><div id="mailList">${busy()}</div></div>
         <div class="pop" id="userPop" hidden>
-          <div class="pop-head">${esc(S.profile.full_name || "")}<small>${S.profile.username ? "@" + esc(S.profile.username) + " · " : ""}${esc(S.session.user.email)} · ${esc(personTitle(S.profile.role, S.position).toUpperCase())}</small></div>
+          <div class="pop-head">${esc(S.profile.full_name || "")}<small>${S.profile.username ? "@" + esc(S.profile.username) + " · " : ""}${esc(S.session.user.email)} · ${titleHtml(S.profile.role, S.position)}</small></div>
           <a href="#profile">${ic("user")} My Profile</a>
           <button type="button" id="chPw">${ic("key")} Change Password</button>
           ${window.EOApp?.menu ? `<button type="button" id="upAppMenu">${ic("box")} App Menu (scanner, about)</button>` : ""}
@@ -1746,16 +1749,54 @@
     paintBadges();
   }
   const refreshBadge = () => refreshBadges(true);
+  // 3.99.226: who sent a notification: the E-Portal (✔) or a person (the Director ✔ in gold)
+  const noteFrom = (n) => {
+    const sys = !n.sender_name || n.sender_role === "system", boss = n.sender_role === "admin";
+    return `<span class="mail-from${sys ? " sys" : ""}">${sys ? "EMON OVERRUNS E-PORTAL" : esc(n.sender_name)}${sys || boss ? ` <i class="vf" title="Verified">${ic("check")}</i>` : ""}${boss ? ` <span class="dir-gold">OPERATIONAL DIRECTOR</span>` : ""}</span>`;
+  };
+  // Approve / Reject right in the notification (EMON HASAN) when the record can be decided from here
+  const noteAction = (n) => {
+    if (!isAdmin()) return null;
+    const l = String(n.link || ""), id = l.split("/")[1] || "", t = String(n.title || "");
+    if (/^custorder\//.test(l) && /to review/i.test(t)) return { ok: () => sb.rpc("decide_customer_order", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_customer_order", { p_id: id, p_action: "cancel" }), noLabel: "Cancel Order" };
+    if (/^insurance\//.test(l) && /to review/i.test(t)) return { ok: () => sb.rpc("decide_insurance", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_insurance", { p_id: id, p_action: "reject" }) };
+    if (/^po\//.test(l) && /to review/i.test(t) && !/update/i.test(t)) return { ok: () => sb.rpc("decide_purchase_order", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_purchase_order", { p_id: id, p_action: "cancel" }), noLabel: "Cancel" };
+    if (/^outlet\//.test(l) && /non-working day request/i.test(t)) {
+      const all = async (okv) => { const { data } = await sb.from("outlet_closures").select("id").eq("outlet_id", id).eq("status", "pending"); if (!data?.length) return { error: { message: "Nothing is waiting any more." } };
+        for (const c of data) { const r = await sb.rpc("outlet_closure_decide", { p_id: c.id, p_ok: okv }); if (r.error) return r; } return {}; };
+      return { ok: () => all(true), no: () => all(false), noLabel: "Refuse" };
+    }
+    if (l === "devices" && /device waiting/i.test(t)) {
+      const one = async (act) => { const { data } = await sb.from("user_devices").select("id").eq("status", "pending"); if (!data?.length) return { error: { message: "No device is waiting any more." } };
+        if (data.length > 1) { location.hash = "devices"; return { error: { message: `${data.length} devices are waiting: choose on Devices.` } }; } return sb.rpc("device_decide", { p_id: data[0].id, p_action: act }); };
+      return { ok: () => one("approve"), no: () => one("block"), noLabel: "Block" };
+    }
+    return null;
+  };
   async function loadMail() {
-    const { data, error } = await sb.from("notifications").select("*").order("created_at", { ascending: false }).limit(30);
+    const since = new Date(Date.now() - 30 * 864e5).toISOString(); // 3.99.226: the last 30 days
+    const { data, error } = await sb.from("notifications").select("*").gte("created_at", since).order("created_at", { ascending: false }).limit(300);
     const box = $("#mailList"); if (!box) return;
     if (error) { box.innerHTML = `<div class="empty">Notifications could not be loaded.</div>`; return; }
     if (!data.length) { box.innerHTML = `<div class="empty">No notifications yet.</div>`; return; }
     // 3.97: Mark all as read stays at the top of the list (it was below the last notification)
     const unread = data.filter((n) => !n.is_read).length;
     box.innerHTML = `<div class="mail-top"><span>${unread ? `${unread} unread` : "All read"}</span><button type="button" class="btn small" id="mailAllRead"${unread ? "" : " disabled"}>${ic("check")} Mark all as read</button></div>`
-      + data.map((n) => `<a class="mail-item ${n.is_read ? "" : "unread"}" href="#${esc(n.link || "dashboard")}" data-n="${n.id}">
-      <b>${esc(n.title)}</b><span>${esc(n.body || "")}</span><small>${esc(timeAgo(n.created_at))}</small></a>`).join("");
+      + data.map((n) => { const a = noteAction(n);
+        return `<div class="mail-wrap"><a class="mail-item ${n.is_read ? "" : "unread"}" href="#${esc(n.link || "dashboard")}" data-n="${n.id}">${noteFrom(n)}
+      <b>${esc(n.title)}</b><span>${esc(n.body || "")}</span><small>${esc(timeAgo(n.created_at))}</small></a>${a ? `<div class="mail-act"><button type="button" class="btn small ok" data-nok="${n.id}">${ic("check")} Approve</button><button type="button" class="btn small" data-nno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button></div>` : ""}</div>`; }).join("");
+    const byId = new Map(data.map((n) => [String(n.id), n]));
+    const decide = async (b, ok) => {
+      const n = byId.get(b.dataset.nok || b.dataset.nno), a = n && noteAction(n); if (!a) return;
+      if (!ok && !(await confirmBox(`${esc(a.noLabel || "Reject")}: <b>${esc(n.title)}</b>?`, { title: "Notification", ok: a.noLabel || "Reject" }))) return;
+      b.disabled = true;
+      const r = await (ok ? a.ok() : a.no()).catch((e) => ({ error: e }));
+      if (r?.error) { b.disabled = false; return fail(r.error, "Could not do it"); }
+      await sb.from("notifications").update({ is_read: true }).eq("id", n.id);
+      toast(ok ? "Approved." : "Done."); loadMail(); refreshBadge();
+    };
+    $$("[data-nok]", box).forEach((b) => (b.onclick = () => decide(b, true)));
+    $$("[data-nno]", box).forEach((b) => (b.onclick = () => decide(b, false)));
     $$(".mail-item", box).forEach((a) => (a.onclick = () => { sb.from("notifications").update({ is_read: true }).eq("id", Number(a.dataset.n)).then(refreshBadge); }));
     $("#mailAllRead").onclick = async () => { await sb.from("notifications").update({ is_read: true }).eq("is_read", false); loadMail(); refreshBadge(); };
   }
@@ -3121,7 +3162,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, customerRanks, medalHtml, achHtml, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, outletWeekRanks, titleHtml, customerRanks, medalHtml, achHtml, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)

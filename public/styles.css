@@ -5025,3 +5025,26 @@ body.os-info-open > .band-back { display: none !important; }
 .ol-top-micro { color: rgba(255, 255, 255, .14); } .ol-top-micro i:nth-child(3n+2) { color: rgba(243, 201, 75, .22); }
 .ol-card-seal .seal-id { color: rgba(243, 201, 75, .38); }
 .ol-card-seal .store-logo.seal-logo { opacity: .4; }
+/* 3.99.226: the Director's position in gold, animated (screens) */
+.dir-gold { display: inline-block; font-weight: 900; letter-spacing: .08em; background: linear-gradient(100deg, #8a6100 0%, #c8920f 20%, #fff2b0 40%, #e2b33c 55%, #a87a00 75%, #f7d867 100%);
+  background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; animation: dirGold 3s linear infinite; }
+@keyframes dirGold { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+@media (prefers-reduced-motion: reduce) { .dir-gold { animation: dirGold 3s linear infinite !important; } }
+@media print { .dir-gold { animation: none; color: #8a6100; -webkit-text-fill-color: #8a6100; background: none; } }
+/* notifications: who sent it, the verified mark, Approve / Reject */
+.mail-wrap { position: relative; }
+.mail-from { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 11px; font-weight: 800; letter-spacing: .05em; color: #0f2a66; margin-bottom: 2px; }
+.mail-from.sys { color: #0f3a8c; }
+.mail-from .vf { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #1877f2; color: #fff; }
+.mail-from .vf .ic { width: 10px; height: 10px; stroke-width: 3.4; }
+.mail-from .dir-gold { font-size: 10px; }
+.mail-act { display: flex; gap: 6px; padding: 0 12px 10px; margin-top: -4px; }
+.mail-act .btn.small { min-height: 30px; padding: 0 12px; font-size: 12.5px; }
+/* the card seal: no logo, more microtext rings and the identity number in the middle */
+.ol-card-seal .seal-no { font: 800 17px Arial, Helvetica, sans-serif; letter-spacing: .12em; fill: rgba(243, 201, 75, .3); }
+.ol-card-seal .seal-sub { font: 700 8px Arial, Helvetica, sans-serif; letter-spacing: .2em; fill: rgba(255, 255, 255, .2); }
+.ol-card-seal .seal-id, .ol-card-seal .store-logo { display: none !important; }
+/* the daily report: activities and employees on duty */
+.dsr-acts .soa-t td { font-size: 8pt; } .dsr-trx { font-size: 6.4pt !important; letter-spacing: .02em; color: #42506b; white-space: nowrap; }
+.dsr-names { display: flex; flex-wrap: wrap; gap: 2mm 6mm; padding: 1.5mm 2mm; font-size: 8.5pt; color: #1d2b4f; }
+.mail-wrap:has(> .mail-item.unread) { background: #eef6ff; } .mail-wrap:has(> .mail-act) > .mail-item { padding-bottom: 6px; }
