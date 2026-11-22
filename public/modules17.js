@@ -49,7 +49,7 @@
   };
   let logoN = 0;
   function storeLogo(o, cls = "") {
-    const k = `sl${++logoN}`, top = `EMON OVERRUNS OUTLET · ${String(o.code || "").toUpperCase()}`, bot = `${branchOf(o)} BRANCH`;
+    const k = `sl${++logoN}`, top = `${String(o.code || "").toUpperCase()} · ${bidText(o)}`, bot = branchOf(o); // 3.99.227: code · identity no / address
     const fit = (t, max) => Math.min(t.length * 5.1, max).toFixed(1);
     return `<span class="store-logo ${cls}" aria-label="${esc(top)} · ${esc(bot)}"><svg viewBox="0 0 120 120" aria-hidden="true">
       <defs><path id="${k}t" d="M18.7 75 A44 44 0 1 1 101.3 75"/><path id="${k}b" d="M11.7 68.5 A49 49 0 0 0 108.3 68.5"/></defs>
@@ -58,6 +58,19 @@
       <text class="sl-b"><textPath href="#${k}b" startOffset="50%" text-anchor="middle" textLength="${fit(bot, 128)}" lengthAdjust="spacingAndGlyphs">${esc(bot)}</textPath></text></svg>${E.logoHtml("sl-img")}</span>`;
   }
   E.storeLogo = storeLogo;
+  // 3.99.227: THE SHOP ON GOOGLE MAPS: the exact place from the pasted link (or the address); "Open in Google Maps"
+  const mapQuery = (o) => {
+    const u = String(o.map_url || "");
+    const at = u.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/) || u.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/) || u.match(/[?&](?:q|query|ll)=(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/);
+    return at ? `${at[1]},${at[2]}` : String(o.address || "").trim();
+  };
+  const mapBox = (o) => {
+    const q = mapQuery(o); if (!q) return "";
+    const open = o.map_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+    return `<section class="os-map"><div class="os-daily-h"><b>${ic("pin")} Location</b><a class="btn small" href="${esc(open)}" target="_blank" rel="noopener">${ic("globe")} Open in Google Maps</a></div>
+      <div class="os-map-frame"><iframe title="Map of ${esc(o.code)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=16&output=embed"></iframe></div>
+      ${o.address ? `<small class="os-map-ad">${esc(o.address)}</small>` : ""}</section>`;
+  };
   // 3.99.223: the round seal on a shop card: rings of microtext (company, shop, branch ID, branch) and the shop's own logo
   let sealN = 0;
   const cardSeal = (o) => {
@@ -240,6 +253,7 @@
         <div><label for="olCode">Branch Code</label><input id="olCode" maxlength="30" value="${esc(o ? o.code : code || `SHOP-${count + 1}`)}" readonly class="ro" title="Given by the system"></div>
         <div><label for="olName">Store Name *</label><input id="olName" maxlength="120" value="${v("name", "RETAIL OUTLET")}" required></div>
         <div class="span2"><label for="olAddr">Address</label><input id="olAddr" maxlength="300" value="${v("address")}"></div>
+        <div class="span2"><label for="olMap">Google Maps Location <button type="button" class="linkbtn" id="olMapTry">Check on Google Maps</button></label><input id="olMap" maxlength="1000" data-case="keep" placeholder="Paste the Google Maps link of the shop" value="${v("map_url")}"></div>
         <div><label for="olOpen">Opening Hours</label><input id="olOpen" type="time" step="300" value="${esc(to24(o?.opens) || (o ? "" : "09:00"))}"></div>
         <div><label for="olClose">Closing Hours</label><input id="olClose" type="time" step="300" value="${esc(to24(o?.closes) || (o ? "" : "21:00"))}"></div>
         <div><label for="olRent">Monthly Rental (₱)</label><input id="olRent" type="number" min="0" step="0.01" value="${v("monthly_rent", "0")}"></div>
@@ -252,13 +266,21 @@
     let cust = o?.customer_id || null;
     E.customerPicker($("#olCust", m.el), { statuses: ["active", "suspended"], preset: preset || undefined, onPick: (c) => (cust = c?.id || null) });
     $("[data-x]", m.el).onclick = () => m.close();
+    if ($("#olMapTry", m.el)) $("#olMapTry", m.el).onclick = () => { const u = $("#olMap", m.el).value.trim(), ad = $("#olAddr", m.el).value.trim(); window.open(u || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ad || "")}`, "_blank", "noopener"); };
     $("#olSave", m.el).onclick = async (e) => {
       const row = { code: $("#olCode", m.el).value.trim().toUpperCase(), name: $("#olName", m.el).value.trim().toUpperCase(), address: $("#olAddr", m.el).value.trim().toUpperCase() || null,
         opens: hourText($("#olOpen", m.el).value) || null, closes: hourText($("#olClose", m.el).value) || null, monthly_rent: num($("#olRent", m.el).value),
         rent_day: Number($("#olDay", m.el).value) || null, customer_id: cust, notes: $("#olNote", m.el).value.trim() || null, ...(o ? { status: $("#olSt", m.el).value } : {}) };
+      const mapUrl = $("#olMap", m.el)?.value.trim() || null;
+      if (mapUrl && !/^https:\/\/([a-z0-9-]+\.)*(google\.[a-z.]+|goo\.gl|maps\.app\.goo\.gl)\//i.test(mapUrl)) return toast("Paste a Google Maps link (https://maps.google.com/… or https://maps.app.goo.gl/…).", true);
+      if (mapUrl || o?.map_url) row.map_url = mapUrl;
       if (!row.code || !row.name) return toast("Type the outlet code and name.", true);
       e.target.disabled = true;
-      const r = o ? await sb.from("outlets").update(row).eq("id", o.id).select().single() : await sb.from("outlets").insert(row).select().single();
+      let r = o ? await sb.from("outlets").update(row).eq("id", o.id).select().single() : await sb.from("outlets").insert(row).select().single();
+      if (r.error && "map_url" in row && /map_url|schema cache|PGRST204/i.test(r.error.message || "")) { // the map needs SQL 137: the rest is saved
+        delete row.map_url; toast("The map link needs the database update 137; the rest is saved.", true);
+        r = o ? await sb.from("outlets").update(row).eq("id", o.id).select().single() : await sb.from("outlets").insert(row).select().single();
+      }
       e.target.disabled = false;
       if (r.error) return fail(r.error, /duplicate|unique/i.test(r.error.message) ? `The code ${row.code} is already used.` : "Could not save the outlet");
       const lease = o ? [] : Array.from($("#olLease", m.el)?.files || []);
@@ -384,6 +406,7 @@
         <div class="os-kpi bal${pool < 0 ? " neg" : ""}"><small>Net Balance</small><b>₱ ${peso(pool)}</b><span>Cash out not used yet · used this month ₱ ${peso(usedM)} (rent · stock · bank · bills)</span></div></div>
       <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button>` : ""}</div>
       <section class="os-daily"><div class="os-daily-h"><b>Daily Sales · ${esc(E.monthText(m))}</b>${mine ? "" : `<button type="button" class="btn small" id="olSoa2">${ic("print")} Print</button>`}</div>${salesTab}</section>
+      ${mapBox(o)}
       <section class="os-info" id="osInfo" hidden><div class="os-info-head"><b>${ic("folder")} Info · ${esc(o.code)}</b><button type="button" class="btn small" id="osInfoClose">${ic("x")} Close</button></div>
         <div class="tabs os-tabs" id="osTabs">${tabs.map(([t, n], k) => `<button type="button" class="${k ? "" : "on"}" data-t="${k}">${esc(t)}${n ? ` <em>${n}</em>` : ""}</button>`).join("")}</div>
         <div class="tabpanes os-panes" id="osPanes">${tabs.map(([, , html], k) => `<div data-p="${k}" class="os-pane"${k ? " hidden" : ""}>${html}</div>`).join("")}</div></section>`;

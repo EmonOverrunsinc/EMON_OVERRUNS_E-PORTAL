@@ -5048,3 +5048,20 @@ body.os-info-open > .band-back { display: none !important; }
 .dsr-acts .soa-t td { font-size: 8pt; } .dsr-trx { font-size: 6.4pt !important; letter-spacing: .02em; color: #42506b; white-space: nowrap; }
 .dsr-names { display: flex; flex-wrap: wrap; gap: 2mm 6mm; padding: 1.5mm 2mm; font-size: 8.5pt; color: #1d2b4f; }
 .mail-wrap:has(> .mail-item.unread) { background: #eef6ff; } .mail-wrap:has(> .mail-act) > .mail-item { padding-bottom: 6px; }
+/* 3.99.227: the shop on Google Maps */
+.os-map { margin-top: 14px; }
+.os-map-frame { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid #dfe5ef; background: #eef2f8; aspect-ratio: 16 / 9; max-height: 340px; }
+.os-map-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.os-map-ad { display: block; margin: 6px 2px 0; color: #6b7a99; font-size: 12px; }
+/* the Director: verified mark after OPERATIONAL DIRECTOR; a gold crown on top of the name */
+.dir-gold + .vf, .mail-from .vf { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; border-radius: 50%; background: #1877f2; color: #fff; vertical-align: -2px; }
+.dir-gold + .vf .ic { width: 10px; height: 10px; stroke-width: 3.4; }
+.boss-name { position: relative; display: inline-block; padding-top: .55em; }
+.boss-crown { position: absolute; left: 50%; top: -.1em; transform: translateX(-50%) rotate(-8deg); line-height: 0; animation: bossCrown 2.6s ease-in-out infinite; }
+.boss-crown .ic { width: .72em; height: .72em; min-width: 12px; min-height: 12px; stroke: #b8860b; fill: #f5c542; stroke-width: 1.6; filter: drop-shadow(0 1px 1.5px rgba(120, 80, 0, .35)); }
+@keyframes bossCrown { 0%, 100% { transform: translateX(-50%) rotate(-8deg) translateY(0); } 50% { transform: translateX(-50%) rotate(6deg) translateY(-1px); } }
+.pop-head .boss-name { padding-top: 12px; } .pop-head .boss-crown .ic { width: 14px; height: 14px; }
+.mail-from .boss-name { padding-top: 0; padding-left: 16px; } .mail-from .boss-crown { left: 0; top: 50%; transform: translateY(-55%) rotate(-8deg); animation: none; } .mail-from .boss-crown .ic { width: 13px; height: 13px; min-width: 0; min-height: 0; }
+/* the Verify page: the TRX ID that was checked */
+.vf-trx { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; margin: 0 auto 10px; padding: 8px 12px; max-width: 640px; border-radius: 10px; background: #eef6ff; border: 1px solid #cfe0fb; color: #0f2a66; font-size: 12.5px; font-weight: 700; }
+.vf-trx .ic { width: 15px; height: 15px; color: #1877f2; } .vf-trx b { word-break: break-all; }
