@@ -4905,3 +4905,49 @@ a.qa-plus { text-decoration: none; }
 .so-ok em { display: block; font-style: normal; font-size: 7.5pt; font-weight: 700; letter-spacing: .08em; color: #a87a22; margin-top: .6mm; }
 .so-ok span { display: block; font: 700 7.5pt/1.3 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; color: #42506b; margin-top: .4mm; }
 .so-issued { display: flex; align-items: baseline; gap: 2.5mm; padding-bottom: 6mm; } .so-issued b { margin-top: 0; }
+/* 3.99.220: the PDF417 of the report no above ISSUED BY */
+.so-left { display: grid; gap: 3mm; align-content: end; }
+.so-bar { display: grid; justify-items: start; gap: .8mm; }
+.so-bar img { height: 11mm; width: auto; max-width: 62mm; image-rendering: pixelated; }
+.so-bar span { font: 700 7pt/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; color: #42506b; }
+.so-left .so-issued { padding-bottom: 6mm; }
+/* 3.99.220: the cash carried from yesterday */
+.ol-prev { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; background: #f3f6fc; border: 1px dashed #c7d3ea; color: #33415e; font-weight: 600; }
+.ol-prev .ic { width: 15px; height: 15px; color: #a87a22; } .ol-prev b { margin-left: auto; color: #0f2a66; } .ol-prev small { flex-basis: 100%; color: #6b7a99; font-weight: 500; font-size: 11.5px; }
+.ol-left small { display: block; font-size: 11px; color: #6b7a99; font-weight: 500; } .ol-left b.neg { color: #c41e3a; }
+input.locked { background: #f1f4f9; color: #42506b; font-weight: 700; letter-spacing: .03em; }
+.os-all { margin-left: 6px; font-size: 12px; }
+.os-t td.os-prev { color: #6b7a99; }
+.soa-tiles.t5 { grid-template-columns: repeat(5, 1fr); }
+.soa-no .soa-trx { display: block; margin-top: .8mm; font: 600 6.3pt/1.2 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .02em; color: #42506b; word-break: break-all; }
+/* 3.99.220: the tags under the photo right under Add Photo (every screen) */
+#main .cust-hero .ch-pic-tools { margin-top: 2px; }
+#main .cust-hero .ch-tags { margin-top: 3px; gap: 4px; }
+.banner.sus-b b { letter-spacing: .06em; }
+/* 3.99.220: the TRX ID at the bottom of every printed page of a transaction */
+.page > .pg-trx { position: absolute; left: 14mm; bottom: 3.5mm; max-width: 120mm; font: 700 6.5px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; color: #6b7a99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 3.99.220: box list: SOLD green · AVAILABLE red · SHIPPED / ON ORDER gold */
+.lg-row.k-sold .lg-dot { background: #16a34a; } .lg-row.k-sold .lg-st { color: #15803d; } .lg-row.k-sold .lg-sn { color: inherit; }
+.lg-row.k-stock .lg-dot { background: #dc2626; } .lg-row.k-stock .lg-st { color: #b91c1c; }
+.lg-row.k-shipped .lg-dot, .lg-row.k-order .lg-dot { background: #d4a017; } .lg-row.k-shipped .lg-st, .lg-row.k-order .lg-st { color: #a87a00; }
+.pill.bx-ship { color: #8a6100; border-color: #d4a017; background: #fff6d6; }
+/* 3.99.220: shop cards: the head in the blue theme of the shop profile */
+.ol-card .ol-card-top { margin: -14px -14px 10px; padding: 14px 14px 12px; border-radius: 16px 16px 0 0; background: linear-gradient(135deg, #0f2a66, #1a4aa8 70%, #2457c5); color: #fff; position: relative; z-index: 1; }
+.ol-card .ol-card-top .ol-card-h > div > span { color: #e6edff; }
+.ol-card .ol-card-top small.ol-bid { color: #f2c94c; }
+.ol-card .ol-card-top .ol-card-a, .ol-card .ol-card-top .ol-card-t { color: #e6edff; }
+.ol-card .ol-card-top .ol-card-a .ic, .ol-card .ol-card-top .ol-card-t .ic { color: #f2c94c; }
+.ol-card .ol-card-top .ol-hours { color: #fff; }
+.ol-card .ol-card-top .store-logo { box-shadow: 0 0 0 2px rgba(255, 255, 255, .55); border-radius: 50%; }
+.ol-card .ol-card-top .ol-card-s .pill.paid { background: #e8f7ec; }
+.ol-card-s .pill.ol-rent b { white-space: nowrap; }
+/* 3.99.220: VIP and the ranks #1 #2 #3 shine all the time (also with Reduce Motion on) */
+.rk-no.rk-tag.tier-gold, .rk-no.rk-tag.tier-silver, .rk-no.rk-tag.tier-bronze, .rk-no.rk-tag.rk1, .rk-no.rk-tag.rk2, .rk-no.rk-tag.rk3 { position: relative; overflow: hidden; isolation: isolate; animation: rkGlow 2.4s ease-in-out infinite; }
+.rk-no.rk-tag.tier-gold::after, .rk-no.rk-tag.tier-silver::after, .rk-no.rk-tag.tier-bronze::after, .rk-no.rk-tag.rk1::after, .rk-no.rk-tag.rk2::after, .rk-no.rk-tag.rk3::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .8) 48%, transparent 66%); transform: translateX(-120%); animation: rkShine 2.4s ease-in-out infinite; }
+@keyframes rkGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(255, 255, 255, .3), 0 2px 6px rgba(15, 42, 102, .22); } 50% { box-shadow: 0 0 0 3px rgba(245, 197, 66, .35), 0 3px 10px rgba(15, 42, 102, .28); } }
+@media (prefers-reduced-motion: reduce) {
+  .vip-box { animation: vipGold 2.4s ease-in-out infinite !important; } .vip-box .ic { animation: vipCrown 2.4s ease-in-out infinite !important; } .vip-box::after { animation: rkShine 2.4s ease-in-out infinite !important; }
+  .rk-no.rk-tag.tier-gold, .rk-no.rk-tag.tier-silver, .rk-no.rk-tag.tier-bronze, .rk-no.rk-tag.rk1, .rk-no.rk-tag.rk2, .rk-no.rk-tag.rk3 { animation: rkGlow 2.4s ease-in-out infinite !important; }
+  .rk-no.rk-tag.tier-gold::after, .rk-no.rk-tag.tier-silver::after, .rk-no.rk-tag.tier-bronze::after, .rk-no.rk-tag.rk1::after, .rk-no.rk-tag.rk2::after, .rk-no.rk-tag.rk3::after { animation: rkShine 2.4s ease-in-out infinite !important; }
+}

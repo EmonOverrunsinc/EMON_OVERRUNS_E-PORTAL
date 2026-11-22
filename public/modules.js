@@ -965,7 +965,7 @@
         <div class="pphoto pqr"><img src="${qr}" alt="Customer QR code"><div class="mono key">${esc(c.public_id)}</div></div>
         <div class="pgrid2">${cell("First Name", c.first_name)}${c.middle_name ? cell("Middle Name", c.middle_name) : ""}
           ${cell("Last Name", c.last_name)}${cell("Phone Number", c.phone)}
-          ${cell("Email Address", c.email, "span2")}
+          ${cell("Email Address", c.email, c.middle_name ? "span2" : "")}
           ${cell("Delivery Address", c.address, "span2")}</div></div>`)}
       ${box("Requirements Submitted", `<div class="pv preq">${reqs.length ? reqs.map((r) => `<div><span class="ok-mark">✔</span> ${esc(r.file_name)}</div>`).join("") : "None uploaded yet"}</div>`)}
       ${box("For Office Use", `<div class="pgrid2">${cell("Issued By", c.issued_by_name)}${cell("Status", c.status.toUpperCase())}
@@ -998,7 +998,7 @@
         <div class="pphoto pqr"><img src="${E.qrDataUrl(custQr(c))}" alt="Customer QR code"><div class="mono key">${esc(c.public_id)}</div></div>
         <div class="pgrid2">${cell("First Name", c.first_name)}${c.middle_name ? cell("Middle Name", c.middle_name) : ""}
           ${cell("Last Name", c.last_name)}${cell("Phone Number", c.phone)}
-          ${cell("Email Address", c.email, "span2")}
+          ${cell("Email Address", c.email, c.middle_name ? "span2" : "")}
           ${c.business_name ? cell("Business Name", c.business_name, "span2") : ""}
           ${cell("Delivery Address", c.address, "span2")}</div></div>`)}
       ${box("Account", `<div class="pgrid2">${cell("Status", String(c.status).toUpperCase())}${cell("Issued By", c.issued_by_name)}
@@ -1012,9 +1012,15 @@
   }
 
   // Suspended / closed accounts are marked for everyone who opens them.
-  function statusBanner(c) {
+  function statusBanner(c, orders = [], evs = []) {
     if (c.status === "closed") return `<div class="banner closed">${ic("x")} CLOSED ACCOUNT — new invoices cannot be recorded; payments can still be recorded. ${c.status_note ? " " + esc(c.status_note) : ""}</div>`;
-    if (c.status === "suspended") return `<div class="banner warn">⚠ SUSPENDED · no new invoices · payments OK${c.status_note ? " " + esc(c.status_note) : ""}</div>`;
+    if (c.status === "suspended") { // 3.99.220: SUSPENDED · the action no (EO-…) · the date
+      const note = String(c.status_note || ""), no = (note.match(/\b[A-Z]{2,4}-\d{4}-\d{2}-\d{2,6}\b/) || note.match(/\b[A-Z]{2,4}-[0-9A-Z]+-[0-9A-Z-]{3,}\b/) || [])[0] || "";
+      const l = no ? (orders || []).find((x) => x.order_no === no) : null;
+      const e = [...(evs || [])].reverse().find((x) => /suspend|restrict/i.test(`${x.action} ${x.note || ""}`));
+      const at = l?.applied_at || l?.approved_at || l?.created_at || e?.created_at || "";
+      return `<div class="banner warn sus-b">⚠ <b>SUSPENDED</b>${no ? ` · <span class="mono">${esc(no)}</span>` : ""}${at ? ` · ${esc(mdy(at))}` : ""}${!no && note ? ` · ${esc(note)}` : ""}</div>`;
+    }
     if (c.status === "rejected") return `<div class="banner closed">REJECTED APPLICATION${c.status_note ? " — " + esc(c.status_note) : ""}</div>`;
     return "";
   }
@@ -1062,11 +1068,15 @@
     const tabs = ["Details", "Statement of Account", `Invoices (${(invs.data || []).length})`, `Payments (${(pays.data || []).length})`, `Credit Memos (${cms.length})`, `Documents (${att.length})`, "History", `Overdue (${overdue.length})`, `Returns (${rets.length})`, `Gate Pass (${E.gateHistoryRows ? E.gateHistoryRows(orders, ev.data || [], aiLog.data || []).length : 0})`];
     const showOrders = isStaff() && !!E.customerOrdersOf; // 3.37: the customer's orders (tab 10)
     if (showOrders) tabs.push("Customer Orders");
-    const achAt = isStaff() ? tabs.push("Achieved") - 1 : -1; // 3.99.180/200: medals and the prize pool
-    const infoAt = tabs.push("Info") - 1; // 3.99.208: the Customer Details paper, the signed form, the notes
+    const boss = isAdmin(); // 3.99.220: INFO only for the Director: the bio data, documents, medals history and forms
+    const achAt = isStaff() && !boss ? tabs.push("Achieved") - 1 : -1; // 3.99.180/200: medals and the prize pool (staff)
+    const infoAt = boss ? tabs.push("Info") - 1 : -1;
+    const histHtml = E.grid({ cols: [{ label: "Date / Time", get: (r) => stamp(new Date(r.at)) }, { label: "Action", get: (r) => r.action }, { label: "By", get: (r) => r.by }, { label: "Note", get: (r) => r.note },
+          ...(isAdmin() ? [{ label: "", html: (r) => `<button type="button" class="btn small danger" data-hdel="${r.src}:${r.id}" aria-label="Delete this history line">${ic("trash")}</button>` }] : [])], rows: history });
+    const docsHtml = `${filesHtml(att.map((a) => a.kind === "signed_form" ? { ...a, kind: "application" } : a), "No documents yet.")}${isStaff() && c.status !== "closed" ? `<div class="fields wide" style="margin-top:8px">${fileField("pfAdd", "Add Requirement", "multiple data-save-now")}</div>` : ""}`;
     $(".band h1").textContent = `Customer › ${fullName(c)}`;
     $("#main").innerHTML = `
-      ${statusBanner(c)}
+      ${statusBanner(c, orders, ev.data || [])}
       <section class="cust-hero st-${esc(c.status)}">
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
@@ -1094,29 +1104,31 @@
       ${isApprovedAccount(c) && isStaff() ? E.requestsHtml(c, orders) : ""}
       <div class="docgrid">${signed.length && !att.pending.some((a) => ["signed_form", "application"].includes(a.kind)) ? "" : copyCard({ key: "appcopy", title: "Customer Application Form", tag: "Upload", sub: "Signed form", ownerType: "customer", ownerId: c.id, att, kind: "signed_form", kinds: ["signed_form", "application"], canUpload: isStaff() && c.status !== "closed" })}</div>
       ${isAdmin() && ["pending", "verified"].includes(c.status) ? reviewPanel(c, signed, att.length) : ""}
-      <div class="tabs" id="pfTabs">${tabs.map((t, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}"${i === 9 ? " hidden" : ""}>${esc(t)}</button>`).join("")}</div>
+      <div class="tabs" id="pfTabs">${tabs.map((t, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}"${i === 9 || (boss && (i === 5 || i === 6)) ? " hidden" : ""}>${esc(t)}</button>`).join("")}</div>
       <div class="tabpanes">
         <div data-p="0">${detailsTable(c, b)}</div>
         <div data-p="1" hidden id="pfSoa">${busy("Loading statements")}</div>
         <div data-p="2" hidden>${E.grid({ cols: INV_COLS.filter((x) => x.label !== "Customer" && x.label !== "Account No"), rows: invs.data || [], onRow: true, empty: "No invoices yet." })}</div>
         <div data-p="3" hidden>${E.grid({ cols: PAY_COLS.filter((x) => x.label !== "Customer" && x.label !== "Account No"), rows: pays.data || [], onRow: true, empty: "No payments yet." })}</div>
         <div data-p="4" hidden>${cms.length ? `<div class="btnrow"><button type="button" class="btn small" data-hprint="cm">${ic("print")} Print</button></div>` : ""}${E.grid({ cols: CM_HIST, rows: cms, onRow: true, empty: "No credit memos." })}</div>
-        <div data-p="5" hidden>${filesHtml(att.map((a) => a.kind === "signed_form" ? { ...a, kind: "application" } : a), "No documents yet.")}${isStaff() && c.status !== "closed" ? `<div class="fields wide" style="margin-top:8px">${fileField("pfAdd", "Add Requirement", "multiple data-save-now")}</div>` : ""}</div>
+        <div data-p="5" hidden>${boss ? "" : docsHtml}</div>
         <div data-p="7" hidden>${overdue.length ? `<div class="btnrow"><button type="button" class="btn small" data-hprint="od">${ic("print")} Print</button></div>` : ""}${E.grid({ cols: OD_HIST, rows: overdue, onRow: true, empty: "No overdue invoice." })}</div>
         <div data-p="8" hidden>${rets.length ? `<div class="btnrow"><button type="button" class="btn small" data-hprint="rt">${ic("print")} Print</button></div>` : ""}${E.grid({ cols: RET_HIST, rows: rets, onRow: true, empty: "No returns." })}</div>
         <div data-p="9" hidden>${E.gateHistoryHtml ? E.gateHistoryHtml(orders, ev.data || [], aiLog.data || []) : ""}</div>
         ${showOrders ? `<div data-p="10" hidden id="pfOrders">${busy()}</div>` : ""}
         ${achAt >= 0 ? `<div data-p="${achAt}" hidden id="pfAchTab" data-cid="${esc(c.id)}">${busy()}</div>` : ""}
-        <div data-p="${infoAt}" hidden class="pf-info">
+        ${boss ? `<div data-p="${infoAt}" hidden class="pf-info">
+          <div class="info-sec"><h4>${ic("user")} Bio Data</h4>${bioTable(c)}</div>
           <div class="docgrid">${docCard({ key: "app", title: isApprovedAccount(c) ? "Customer Details" : "Customer Application Form", tag: "System Generated",
         sub: isApprovedAccount(c) ? `${c.account_no || c.application_no} · System`: `${c.application_no} · Print · Sign`, ownerType: "customer", ownerId: c.id, att, kind: "__system", canUpload: false, print: () => printApplication(c),
         approved: isApprovedAccount(c) ? (() => { const a = [...(ev.data || [])].reverse().find((x) => x.action === "approve"); return { name: a?.actor_name || "", at: a?.created_at || c.reviewed_at }; })() : null })}</div>
           ${signed.length ? `<div class="info-sec"><h4>${ic("doc")} Customer Application Form · signed</h4>${filesHtml(signed, "")}</div>` : ""}
+          <div class="info-sec"><h4>${ic("folder")} Documents (${att.length})</h4>${docsHtml}</div>
+          <div class="info-sec"><h4>${ic("crown")} Achieved History</h4><div id="pfAchTab" data-cid="${esc(c.id)}">${busy()}</div>${E.medalRules()}</div>
+          <div class="info-sec"><h4>${ic("clock")} History</h4>${histHtml}</div>
           <div class="info-sec" id="pfFree" hidden></div>
-          ${isStaff() ? `<div class="info-sec"><h4>${ic("crown")} Medals and prizes</h4>${E.medalRules()}</div>` : ""}
-        </div>
-        <div data-p="6" hidden>${E.grid({ cols: [{ label: "Date / Time", get: (r) => stamp(new Date(r.at)) }, { label: "Action", get: (r) => r.action }, { label: "By", get: (r) => r.by }, { label: "Note", get: (r) => r.note },
-          ...(isAdmin() ? [{ label: "", html: (r) => `<button type="button" class="btn small danger" data-hdel="${r.src}:${r.id}" aria-label="Delete this history line">${ic("trash")}</button>` }] : [])], rows: history })}</div>
+        </div>` : ""}
+        <div data-p="6" hidden>${boss ? "" : histHtml}</div>
       </div>`;
     E.drawQr($("#pfQr"), custQr(c));
     // Change or remove the profile photo. The new photo is kept in Files; the old one leaves Files (and, for the
@@ -1254,12 +1266,21 @@
       ["Settlement Adjustment", `${st < 0 ? "− " : st > 0 ? "+ " : ""}₱ ${peso(Math.abs(st))}`], ["Total Paid", "₱ " + peso(b.total_paid)],
       ["Credits / Discounts", "₱ " + peso(b.total_credits)], ["Balance Due", "₱ " + peso(b.balance_due)]] : [];
     const a = appRows(c);
-    const rows = [
-      ["First Name", c.first_name], ...(c.middle_name ? [["Middle Name", c.middle_name]] : []), ["Last Name", c.last_name], a.phone, a.email, a.address, a.credit, a.opening, ...money,
-      a.business, a.start, a.fb, a.fbLink, a.fbExtra,
-      [["pending", "verified", "rejected"].includes(c.status) ? "Application Date" : "Opening Date", mdy(c.application_date)], a.issued, ["Account Status", c.status.toUpperCase()], ["Status Note", c.status_note]
+    const rows = [ // 3.99.220: the account figures only (the bio data is in the Director's Info tab)
+      ["Account No", c.account_no], a.credit, a.opening, ...money,
+      [["pending", "verified", "rejected"].includes(c.status) ? "Application Date" : "Opening Date", mdy(c.application_date)], ["Account Status", c.status.toUpperCase()], ["Status Note", c.status_note]
     ];
     return E.kvTable(rows);
+  }
+  // 3.99.220: all the bio data of the customer (Director's Info tab)
+  function bioTable(c) {
+    const a = appRows(c);
+    return E.kvTable([
+      ["Account No", c.account_no], ["Application No", c.application_no], ["Public Identification", c.public_ident],
+      ["First Name", c.first_name], ...(c.middle_name ? [["Middle Name", c.middle_name]] : []), ["Last Name", c.last_name],
+      a.phone, a.email, a.address, a.business, a.start, a.fb, a.fbLink, a.fbExtra,
+      ["Application Date", mdy(c.application_date)], a.issued, ["Account Status", c.status.toUpperCase()]
+    ]);
   }
 
   // 3.34: the Director sees all the data of the application, checks the records (verification), then approves or rejects.
@@ -1446,7 +1467,6 @@
         <tr class="soa-end"><td>${mdy(p.end)}</td><td></td><td>ENDING BALANCE</td><td></td><td></td><td class="num">${peso(closing)}</td></tr>
         <tr class="soa-total"><td><b>TOTAL</b></td><td>${rows.length} TRANSACTION${rows.length === 1 ? "" : "S"}</td><td>${esc(copiesSummary(images))}</td><td class="num">${peso(deb)}</td><td class="num">${peso(cre)}</td><td></td></tr></tbody></table>
       <div class="soa-due"><span>AMOUNT DUE</span><b>₱ ${peso(closing)}</b><small>${esc(closing < 0 ? `OVERPAID — ${words(-closing)}` : words(closing))}</small></div>
-      <div class="soa-note">PLEASE EXAMINE THIS STATEMENT. REPORT ANY DISCREPANCY TO ${esc(C.company.name.toUpperCase())} WITHIN 10 DAYS; OTHERWISE, IT IS CONSIDERED CORRECT.<br>PAYMENTS: ${esc(C.company.email)}</div>
       <div class="soa-sys">SYSTEM-GENERATED STATEMENT. NO SIGNATURE REQUIRED.</div>
       <div class="soa-thanks">THANK YOU FOR YOUR BUSINESS.</div>`;
     const pages = [page1];
@@ -1498,7 +1518,7 @@
       rows.push({ start: m, from, end, opening, debit, credit, closing: opening + debit - credit, no: soaNo(m, c), live: m === cm });
     }
     rows.reverse();
-    box.innerHTML = `<div class="btnrow"><button type="button" class="btn" id="soaAll">${ic("print")} Print All Transactions</button>${isAdmin() ? `<a class="btn" href="#statements">All Statements (SOA)</a>` : ""}</div>
+    box.innerHTML = `<div class="btnrow"><button type="button" class="btn" id="soaAll">${ic("print")} Print All Transactions</button></div>
       ${E.grid({ cols: [
         { label: "Period", get: (r) => (r.live ? `${monthText(r.start)} (to date)` : monthText(r.start)).toUpperCase() }, { label: "Statement No", get: (r) => r.no },
         { label: "Opening (₱)", num: true, get: (r) => peso(r.opening) }, { label: "Debit (₱)", num: true, get: (r) => peso(r.debit) },
@@ -1512,59 +1532,8 @@
     });
   }
 
-  // Admin: every customer's SOA for a month.
-  V.statements = async () => {
-    if (!isAdmin()) { location.hash = "customers"; return; }
-    const last = monthStart(new Date(new Date().setDate(0)).toISOString().slice(0, 10));
-    E.shell("statements", "Statements of Account", `
-      <div class="options"><fieldset class="opt"><legend>Month</legend><div class="fields"><label for="stMonth">Statement Month</label><input type="month" id="stMonth" value="${last.slice(0, 7)}"></div></fieldset></div>
-      <div class="btnrow"><button type="button" class="btn primary" id="stGo">Show</button><button type="button" class="btn" id="stPrintAll">${ic("print")} Print All for Month</button><a class="btn" href="#customers">Close</a></div>
-      <div id="stRes">${busy()}</div>`);
-    let rows = [];
-    const fresh = E.loadGuard();
-    const load = async () => {
-      const ok = fresh(); // 3.35: the month chosen last wins
-      $("#stRes").innerHTML = busy();
-      const m = $("#stMonth").value + "-01";
-      const { data, error } = await sb.from("statements").select("*, customers(*)").eq("period_start", m).order("statement_no");
-      if (!ok()) return;
-      if (error) return fail(error, "Could not load statements");
-      rows = data || [];
-      const sum = (k) => peso(rows.reduce((s, r) => s + num(r[k]), 0));
-      $("#stRes").innerHTML = E.grid({ cols: [
-        { label: "Statement No", get: (r) => r.statement_no }, { label: "Account No", get: (r) => r.customers?.account_no || "" }, { label: "Customer", get: (r) => E.shortName(r.customers || {}) },
-        { label: "Opening (₱)", key: "opening_balance", num: true, get: (r) => peso(r.opening_balance) }, { label: "Debit (₱)", key: "total_debit", num: true, get: (r) => peso(r.total_debit) },
-        { label: "Credit (₱)", key: "total_credit", num: true, get: (r) => peso(r.total_credit) }, { label: "Closing (₱)", key: "closing_balance", num: true, get: (r) => peso(r.closing_balance) }],
-        rows, onRow: true, foot: { opening_balance: sum("opening_balance"), total_debit: sum("total_debit"), total_credit: sum("total_credit"), closing_balance: sum("closing_balance") }, empty: `No statements for ${monthText(m)} yet.` });
-      E.bindGrid($("#stRes"), rows, statementDialog);
-      E.setRecords(`Statements: ${rows.length}`);
-    };
-    const dataFor = async (cid) => {
-      const [i, p, m, o, cu] = await Promise.all([
-        sb.from("invoice_balances").select("*").eq("customer_id", cid), sb.from("payments_received").select("*").eq("customer_id", cid), sb.from("credit_memos").select("*").eq("customer_id", cid),
-        sb.from("order_letters").select("*").eq("customer_id", cid).in("subject_type", ["charge", "settlement"]).eq("status", "applied"),
-        sb.from("customers").select("account_no, application_date, opening_balance").eq("id", cid).maybeSingle()]);
-      return { invs: i.data || [], txns: txnsOf(i.data || [], p.data || [], m.data || [], o.data || [], cu.data) };
-    };
-    const asPeriod = (r) => ({ start: r.period_start, end: r.period_end, opening: num(r.opening_balance), closing: num(r.closing_balance), no: r.statement_no });
-    async function statementDialog(r) {
-      const att = await attachmentsOf("statement", r.id);
-      const m = E.modal(`${r.statement_no} — ${fullName(r.customers || {})}`,
-        `<div class="docgrid">${docCard({ key: "soa-" + r.id, title: `Statement of Account ${r.statement_no}`, sub: monthText(r.period_start), ownerType: "statement", ownerId: r.id, att,
-          print: async () => { m.close(); const x = await dataFor(r.customer_id); printSoa(r.customers, asPeriod(r), x.txns, x.invs); }, uploadLabel: "Upload Copy", copyName: "Copy" })}</div>`,
-        `<button type="button" class="btn" data-x>Close</button>`);
-      $("[data-x]", m.el).onclick = m.close;
-      bindDocCards(m.el, () => { m.close(); statementDialog(r); });
-    }
-    $("#stGo").onclick = load; $("#stMonth").onchange = load;
-    $("#stPrintAll").onclick = async () => {
-      if (!rows.length) return toast("No statements for this month.", true);
-      const pages = [];
-      for (const r of rows) { const x = await dataFor(r.customer_id); const p = asPeriod(r); p.from = coveredFrom(r.customers, p.start, x.txns); pages.push(...soaPages(r.customers, p, within(x.txns, p.from, p.end), [])); }
-      E.openPreview(`All SOA ${monthText(rows[0].period_start)}`, pages);
-    };
-    load();
-  };
+  // 3.99.220: no All Statements page: each customer's SOA is on the profile
+  V.statements = () => { location.hash = "customers"; };
 
   // ======================================================================
   // 2. Invoice
@@ -2041,7 +2010,6 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         <div class="prow3">${cell("Bank", p.bank_name)}${cell("Deposit Account", p.bank_account)}${cell("Description", "PAYMENT RECEIVED")}</div>
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(p.amount))}</div></div>`)}
       <p class="pdecl">This acknowledges that ${esc(C.company.name)} has received the payment above. Receipt No ${esc(p.receipt_no)}.</p>
-      <div class="trx-p">TRX ID <b>${esc(String(p.id || "").toUpperCase())}</b></div>
       <div class="doc-seal mid">${E.secSeal(p.receipt_no, { code: E.sealCached("receipt", p.receipt_no) })}</div>
       <div class="soa-sys">This is a system-generated receipt. No signature is required.</div>`; // 3.99.113: the note under the seal
   }
@@ -2374,7 +2342,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       const r = rows[0];
       // 3.99.56: ONE box: a PDF417 of its serial no, its TRACKING (shipped, released, arrived, on order, sold, returned),
       // its details and a SUGGESTED price (the average price, by pcs, of the boxes of the same product + brand in the sheet)
-      const ser = r.serial_no.replace(/[%_,()*\\]/g, "");
+      const ser = String(r.serial_no || "").replace(/[%_,()*\\]/g, "");
       const pr = String(r.product || ""), br = r.brand && r.brand !== "-" ? String(r.brand) : "";
       const [rets, same] = await Promise.all([
         sb.from("credit_memos").select("id, memo_no, memo_date, status, is_return, qty, serial_no").ilike("serial_no", `%${ser}%`).order("memo_date", { ascending: false }).limit(20)
@@ -2478,6 +2446,15 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
   }
   let findAll = ""; // "Search all records" after a box result: the normal search of the same words
 
+  // 3.99.220: a TRX ID (the server ID of a record) typed or pasted in the search opens that record
+  const TRX_TABLES = [["customers", "customer"], ["customer_invoices", "invoice"], ["payments_received", "payment"], ["customer_orders", "custorder"], ["credit_memos", "creditmemo"],
+    ["order_insurance", "insurance"], ["collection_vouchers", "collection"], ["pay_vouchers", "voucher"], ["purchase_orders", "po"], ["stock_bills", "stockbill"], ["payslips", "payslip"],
+    ["projects", "project"], ["qc_tests", "qc"], ["employees", "employee"], ["outlet_sales", "outlet", "outlet_id"], ["outlet_expenses", "outlet", "outlet_id"], ["outlets", "outlet"]];
+  async function findTrx(id) {
+    const hits = await Promise.all(TRX_TABLES.map(([t, route, via]) => sb.from(t).select(via ? `id, ${via}` : "id").eq("id", id).maybeSingle()
+      .then(({ data }) => (data ? `${route}/${via ? data[via] : data.id}` : ""), () => "")));
+    return hits.find(Boolean) || "";
+  }
   V.find = async (q) => {
     const t = cleanQ(q);
     E.shell("find", `Search: ${t}`, `<div id="fdRes">${busy("Searching")}</div>`);
@@ -2490,6 +2467,8 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     const H = E.hasModule;
     const none = Promise.resolve({ data: [] });
     if (/^EMONQCK?\|/i.test(t) && (await E.openScanned(t)) !== false) { done(); return; }
+    const trx = (t.replace(/^TRX\s*(ID)?\s*/i, "").match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) || [])[0];
+    if (trx) { const hit = await findTrx(trx.toLowerCase()); if (!here()) return; if (hit) { done(); location.hash = hit; return; } }
     if (findAll === t) findAll = ""; else if (isStaff() && (await findBoxes(t, here))) { done(); return; } // 3.99.35: a box serial no or batch no // a QC form code opens that form (if there is none, the search goes on) // a typed or pasted QC form code opens the (locked) QC form
     const [cs, iv, py, vo, em, qc, cv] = await Promise.all([
       H("customers") ? sb.from("customers").select("*").neq("status", "closed").or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,public_id.ilike.%${w}%,public_ident.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%`).limit(100) : none,
@@ -2503,10 +2482,10 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     if (!here()) return; // another search or page came after this one
     done();
     const ws = t.toLowerCase().split(/\s+/);
-    const custs = (cs.data || []).filter((c) => ws.every((x) => `${fullName(c)} ${c.account_no || ""} ${c.public_id} ${c.business_name || ""} ${c.phone || ""}`.toLowerCase().includes(x)));
+    const custs = (cs.data || []).filter((c) => ws.every((x) => `${fullName(c)} ${c.account_no || ""} ${c.public_id} ${c.public_ident || ""} ${c.business_name || ""} ${c.phone || ""}`.toLowerCase().includes(x.replace(/\*/g, "")) || String(c.public_ident || "").toLowerCase().includes(x)));
     const pays = (py.data || []).filter((p) => p.customers?.status !== "closed");
     const sections = [];
-    if (H("customers")) sections.push(["Customers", custs, [{ label: "Account No", get: (r) => r.account_no }, { label: "Name", get: fullName }, { label: "Business", get: (r) => r.business_name || "" }, { label: "Phone", get: (r) => r.phone || "" }, { label: "Status", html: (r) => pill(r.status) }], (r) => "customer/" + r.id]);
+    if (H("customers")) sections.push(["Customers", custs, [{ label: "Account No", get: (r) => r.account_no }, { label: "Name", get: fullName }, { label: "Public ID", get: (r) => r.public_ident || "" }, { label: "Business", get: (r) => r.business_name || "" }, { label: "Phone", get: (r) => r.phone || "" }, { label: "Status", html: (r) => pill(r.status) }], (r) => "customer/" + r.id]);
     if (H("invoices")) sections.push(["Invoices", iv.data || [], INV_COLS, (r) => "invoice/" + r.id]);
     if (H("payments")) sections.push(["Payments", pays, PAY_COLS, (r) => "payment/" + r.id]);
     if ((vo.data || []).length) sections.push(["Payment Vouchers", vo.data, [{ label: "Voucher No", get: (r) => r.voucher_no }, { label: "Company", get: (r) => r.pay_companies?.name || "" }, { label: "Date", get: (r) => mdy(r.pay_date) }, { label: "PHP", num: true, get: (r) => r.amount_php == null ? "—" : peso(r.amount_php) }, { label: "BDT", num: true, get: (r) => r.amount_bdt == null ? "—" : peso(r.amount_bdt) }], (r) => "voucher/" + r.id]);

@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.219"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.220"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.219"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.220"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1447,7 +1447,7 @@
     const C_ = [canWrite("customers"), "#newcustomer", "New Customer Account", "user"], INV = [canWrite("invoices"), "#newinvoice", "Add Invoice", "receipt"],
       PAY = [canWrite("payments") || canWrite("invoices"), "#newpayment", "Add Payment", "wallet"], ORD = [canWrite("eooffice"), "#newcustorder", "Add Order", "box"];
     // 3.99.182: the Invoices page: invoice and order; Payments: payment; Customer Orders: order; Customers: all of them
-    const items = ({ customers: [C_, INV, PAY, ORD, [true, "#verify", "Verification", "shield"], [isAdmin(), "#statements", "All Statements (SOA)", "doc"]],
+    const items = ({ customers: [C_, INV, PAY, ORD, [true, "#verify", "Verification", "shield"]],
       invoices: [INV, ORD], payments: [PAY], custorders: [ORD] }[page] || []).filter((x) => x[0]);
     if (!items.length) return;
     if (items.length === 1) { // one choice: the + goes straight there
@@ -2116,10 +2116,11 @@
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   let trxSet = { id: "", at: "" };
   const setTrx = (id) => { trxSet = { id: UUID_RE.test(String(id || "")) ? String(id) : "", at: location.hash }; markTrx(); };
+  // the TRX ID of the transaction page open now ("" on other pages)
+  const trxNow = () => { const [key, arg] = location.hash.slice(1).split("/"); return !TRX_KEYS.has(key) ? "" : UUID_RE.test(arg || "") ? arg : trxSet.at === location.hash ? trxSet.id : ""; };
   const markTrx = () => {
     const h = document.querySelector(".band h1"); if (!h) return;
-    const [key, arg] = location.hash.slice(1).split("/");
-    const id = !TRX_KEYS.has(key) ? "" : UUID_RE.test(arg || "") ? arg : trxSet.at === location.hash ? trxSet.id : "";
+    const id = trxNow();
     const el = document.querySelector(".band .trx-line");
     if (el && el.dataset.id === id) return;
     el?.remove();
@@ -2613,6 +2614,7 @@
     return pages.map((p) => String(p).replace(re, esc(c.public_ident)));
   };
   function openPreview(title, pages, opts = {}) {
+    const trx = opts.noTrx ? "" : opts.trx || trxNow(); // 3.99.220: the TRX ID on every page of a transaction's paper
     // the barcodes are drawn first: a print made while the barcode maker was still loading opens when it is there
     if (!window.bwipjs) { need("bwip").then(() => openPreview(title, pages, opts), (e) => toast(e.message, true)); return; }
     if (opts.customerId && !docCust.has(opts.customerId)) { loadDocCust(opts.customerId).then(() => openPreview(title, pages, opts)); return; }
@@ -2637,7 +2639,7 @@
         <select id="pvZoom" style="width:auto"><option value="fit">Fit</option><option>50</option><option>75</option><option selected>100</option><option>125</option><option>150</option></select>
         <button type="button" class="btn" id="pvClose">Close</button>
       </div>
-      <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${onePage ? `<div class="pg-fit">${p}</div>` : p}<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div><div class="pg-sec" aria-hidden="true" style="background-image:${band} !important"></div></div>`)).join("")}</div>
+      <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${onePage ? `<div class="pg-fit">${p}</div>` : p}${trx ? `<div class="pg-trx">TRX ID ${esc(trx.toUpperCase())}</div>` : ""}<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div><div class="pg-sec" aria-hidden="true" style="background-image:${band} !important"></div></div>`)).join("")}</div>
       <div class="statusbar"><span id="pvCur">Current Page No: 1</span><span>Total Page No: ${pages.length}</span><span id="pvZf">Zoom Factor: 100%</span></div>`;
     document.body.appendChild(pv);
     bwPictures($("#pvDesk", pv)); // 3.99.15

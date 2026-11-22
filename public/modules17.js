@@ -12,7 +12,7 @@
   const { sb, S, C, esc, $, $$, isAdmin, toast, fail, ic, busy, peso, num, mdy } = E;
 
   const PAY = [["cash", "Cash"], ["gcash", "GCash"]]; // 3.99.117: only Cash and GCash (the server keeps the other columns at 0)
-  const KIND = { daily: "Daily Expense", rent: "Monthly Rental", supplier: "Supplier Payment", bills: "Bills / Utilities", salary: "Salary", other: "Other Expense", cashout: "Cash Out" };
+  const KIND = { daily: "Daily Operation Cost", rent: "Monthly Rental", supplier: "Supplier Payment", bills: "Bills / Utilities", salary: "Salary", other: "Other Expense", cashout: "Cash Out" };
   const missing = (e) => /outlet|does not exist|schema cache|PGRST20[25]|42P01/.test(`${e?.message || ""} ${e?.code || ""}`);
   const needSql = `<div class="empty">The Outlets need the database update <b>109</b>. Run it on the updates page, then open this page again.</div>`;
   const today = () => E.isoToday();
@@ -154,10 +154,11 @@
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(r.o))}</span><span>${esc(r.o.code)}</span>`).join("")}</div>
-          <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div></div>
+          <div class="ol-card-top"><div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div></div>
           <div class="ol-card-s">${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.k === "paid" ? E.pill("paid", "RENT PAID") : rs.k === "unpaid" || rs.k === "overdue" ? `<span class="pill ol-rent ${rs.k === "overdue" ? "overdue" : "pending"}" title="${esc(rs.label)}"><small>UNPAID</small><b>PHP ${phpAmt(rs.left)}</b></span>` : ""}</div>
           ${r.o.address ? `<div class="ol-card-a">${ic("pin")} ${esc(r.o.address)}</div>` : ""}
           ${hoursOf(r.o) ? `<div class="ol-card-t">${ic("clock")}<span class="ol-hours" data-oid="${esc(r.o.id)}">${esc(hoursOf(r.o))}</span>${r.o.status !== "closed" && storeNow(r.o) ? `<span class="ol-live st-${storeNow(r.o).k}" data-oid="${esc(r.o.id)}">${cardLive(r.o)}</span>` : ""}</div>` : ""}
+          </div>
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
       }).join("") : `<div class="empty">${isAdmin() ? "No store yet. Press <b>⋯</b> at the top right, then <b>Add Store</b>: it gets SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
@@ -244,8 +245,8 @@
       o.customer_id ? sb.from("payments_received").select("id, receipt_no, paid_date, amount, method").eq("customer_id", o.customer_id).gte("paid_date", first).lte("paid_date", last).order("paid_date", { ascending: false }).then((r) => r.data || []) : [],
       o.customer_id ? sb.from("invoice_balances").select("id, invoice_no, invoice_date, due_date, total_amount, balance, pay_status").eq("customer_id", o.customer_id).gt("balance", 0).order("invoice_date").then((r) => r.data || []) : [],
       o.customer_id ? sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").eq("id", o.customer_id).maybeSingle().then((r) => r.data) : null,
-      E.allRows(() => sb.from("outlet_sales").select("total").eq("outlet_id", id)).then((r) => r.data || []),
-      E.allRows(() => sb.from("outlet_expenses").select("amount").eq("outlet_id", id)).then((r) => r.data || []),
+      E.allRows(() => sb.from("outlet_sales").select("total, sale_date").eq("outlet_id", id)).then((r) => r.data || []),
+      E.allRows(() => sb.from("outlet_expenses").select("amount, kind, exp_date").eq("outlet_id", id)).then((r) => r.data || []),
       o.customer_id ? E.allRows(() => sb.from("payments_received").select("amount").eq("customer_id", o.customer_id).gte("paid_date", start)).then((r) => r.data || []) : [],
       sb.from("outlet_closures").select("*").eq("outlet_id", id).gte("day", first < today() ? first : today()).order("day").limit(120).then((r) => (r.error ? null : r.data || []), () => null),
       sb.from("outlet_day_hours").select("*").eq("outlet_id", id).eq("day", today()).maybeSingle().then((r) => (r.error ? undefined : r.data), () => undefined)]);
@@ -274,13 +275,16 @@
     // Stock Account · Employees · Documents). Daily Sales is a day by day table: sales, the day's expenses, cash out, cash left.
     const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" ? (edit ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : "") : isAdmin() ? `<button type="button" class="btn small" data-eexp="${esc(r.id)}" title="Edit (Director only)">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
     const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
-    const days = [...new Set([...sales.map((r) => r.sale_date), ...exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort().reverse()
-      .map((d) => { const r = sales.find((x) => x.sale_date === d), t = num(r?.total), ex = dayOf(d, "daily"), co = dayOf(d, "cashout"); return { d, r, t, ex, co, left: t - ex - co }; });
+    // 3.99.220: CASH LEFT goes on to the next day: the cash left of yesterday + today's sales − the daily operation cost − the cash out
+    const carry0 = sum(allS.filter((x) => x.sale_date < first), "total") - sum(allX.filter((x) => x.exp_date < first && (x.kind === "daily" || x.kind === "cashout")), "amount");
+    const days = chainDays(sales, exps, carry0).reverse().map((x) => ({ ...x, d: x.dt }));
+    const prevOf = (date) => prevLeft(sales, exps, carry0, date);
+    const cashNow = days.length ? days[0].left : carry0;
     const dEx = sum(days, "ex"), dCo = sum(days, "co");
     const pc = (v) => (num(v) ? peso(v) : "");
-    const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th>${PAY.map(([, l]) => `<th class="num">${esc(l.toUpperCase())}</th>`).join("")}<th class="num">TOTAL SALES</th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">CASH LEFT</th><th></th></tr></thead><tbody>
-        ${days.map((x) => `<tr><td><b>${esc(mdy(x.d))}</b>${x.r?.note ? `<small>${esc(x.r.note)}</small>` : ""}</td>${PAY.map(([k]) => `<td class="num">${pc(x.r?.[k])}</td>`).join("")}<td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : ""}</span></td></tr>`).join("")}</tbody>
-        <tfoot><tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${peso(sum(sales, k))}</td>`).join("")}<td class="num">${peso(net)}</td><td class="num">${peso(dEx)}</td><td class="num">${peso(dCo)}</td><td class="num">${peso(net - dEx - dCo)}</td><td></td></tr></tfoot></table></div>`
+    const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th>${PAY.map(([, l]) => `<th class="num">${esc(l.toUpperCase())}</th>`).join("")}<th class="num">TOTAL SALES</th><th class="num">FROM YESTERDAY</th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">CASH LEFT</th><th></th></tr></thead><tbody>
+        ${days.map((x) => `<tr><td><b>${esc(mdy(x.d))}</b>${x.r?.note ? `<small>${esc(x.r.note)}</small>` : ""}</td>${PAY.map(([k]) => `<td class="num">${pc(x.r?.[k])}</td>`).join("")}<td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num os-prev">${pc(x.prev)}</td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : ""}</span></td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${peso(sum(sales, k))}</td>`).join("")}<td class="num">${peso(net)}</td><td class="num">${peso(carry0)}</td><td class="num">${peso(dEx)}</td><td class="num">${peso(dCo)}</td><td class="num">${peso(carry0 + net - dEx - dCo)}</td><td></td></tr></tfoot></table></div>`
       : empty("No sales recorded this month.");
     const xps = exps.filter((r) => r.kind !== "cashout"), cos = exps.filter((r) => r.kind === "cashout");
     const expTab = xps.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>TYPE</th><th>PAID TO / NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
@@ -315,7 +319,7 @@
         })()}
         <div class="os-hero-top"><div class="os-logo-col">${storeLogo(o, "big")}<span class="os-rk" id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span></div>
           <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
-        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive" title="${storeNow(o).sales ? `Sales hours ${o._today ? "today" : "a day"}: ${storeNow(o).sales}` : ""}">${liveHtml(o)}</span>` : ""}${!mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<span class="r-left" title="${rs.paidAmt > 0 ? `Paid ₱ ${peso(rs.paidAmt)} of ₱ ${peso(rs.rent)}` : `Rent ₱ ${peso(rs.rent)}`}">${ic("receipt")} UNPAID PHP ${phpAmt(rs.left)}</span>` : ""}${o._today ? `<span class="os-todayh" title="Changed for today${o._today.set_by_name ? ` by ${esc(o._today.set_by_name)}` : ""}${o._today.note ? ` · ${esc(o._today.note)}` : ""}">${ic("clock")} Today ${esc(todayText(o))}</span>` : ""}
+        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span>${o._today ? "" : `<span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>`}${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive" title="${storeNow(o).sales ? `Sales hours ${o._today ? "today" : "a day"}: ${storeNow(o).sales}` : ""}">${liveHtml(o)}</span>` : ""}${!mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<span class="r-left" title="${rs.paidAmt > 0 ? `Paid ₱ ${peso(rs.paidAmt)} of ₱ ${peso(rs.rent)}` : `Rent ₱ ${peso(rs.rent)}`}">${ic("receipt")} UNPAID PHP ${phpAmt(rs.left)}</span>` : ""}${o._today ? `<span class="os-todayh" title="Changed for today${o._today.set_by_name ? ` by ${esc(o._today.set_by_name)}` : ""}${o._today.note ? ` · ${esc(o._today.note)}` : ""}">${ic("clock")} Today ${esc(todayText(o))}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(rs.last))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
@@ -336,10 +340,10 @@
       toast(f ? `${f} file(s) could not be uploaded.` : "Document saved.", !!f); E.route();
     };
     E.bindFiles($("#olBody"));
-    if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales);
-    $$("[data-esale]").forEach((b) => (b.onclick = () => saleForm(o, sales.find((r) => r.id === b.dataset.esale), sales)));
+    if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales, prevOf, exps);
+    $$("[data-esale]").forEach((b) => (b.onclick = () => saleForm(o, sales.find((r) => r.id === b.dataset.esale), sales, prevOf, exps)));
     if ($("#olExp")) $("#olExp").onclick = () => expenseForm(o);
-    if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout");
+    if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout", cashNow > 0 ? { amount: cashNow.toFixed(2), cashNow } : { cashNow });
     $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
     // the store status counts by itself (every 30 seconds while this page is open)
@@ -361,32 +365,53 @@
       const mm = E.modal("Files", `<div id="olFiles">${E.filesHtml(list)}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
       $("[data-x]", mm.el).onclick = () => mm.close(); E.bindFiles(mm.el);
     }));
-    $$("[data-day]").forEach((b) => (b.onclick = () => printDay(o, b.dataset.day, sales, exps, mine)));
+    $$("[data-day]").forEach((b) => (b.onclick = () => printDay(o, b.dataset.day, sales, exps, mine, prevOf(b.dataset.day))));
     if ($("#olNwd")) $("#olNwd").onclick = () => nwdForm(o, clos, m);
     if ($("#olHours")) $("#olHours").onclick = () => hoursForm(o, m);
     if ($("#olPayRent")) $("#olPayRent").onclick = () => expenseForm(o, null, "", { kind: "rent", amount: rs.left.toFixed(2), payee: "Landlord", note: `Rent ${E.monthText(m)}${rs.paidAmt > 0 ? " (the rest)" : ""}` });
-    if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null });
+    if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null, carry0 });
     E.setRecords(`Outlet: ${o.code}`);
   };
 
+  // 3.99.220: the days of a month in order, each with the cash left of the day before (prev) and its own cash left
+  function chainDays(sales, exps, carry0) {
+    const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
+    let prev = carry0;
+    return [...new Set([...sales.map((r) => r.sale_date), ...exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort()
+      .map((dt) => { const r = sales.find((x) => x.sale_date === dt), t = num(r?.total), ex = dayOf(dt, "daily"), co = dayOf(dt, "cashout"), x = { dt, r, t, ex, co, prev, left: prev + t - ex - co }; prev = x.left; return x; });
+  }
+  const prevLeft = (sales, exps, carry0, date) => { const before = chainDays(sales, exps, carry0).filter((x) => x.dt < date); return before.length ? before[before.length - 1].left : carry0; };
+
   // ---------- daily sales: the cash breakdown and the report photo ----------
-  function saleForm(o, row, existing) {
+  function saleForm(o, row, existing, prevOf = () => 0, exps = []) {
     const m = E.modal(`${o.code} · Daily Sales`, `<div class="formgrid ol-form">
         <div><label for="osDate">Date *</label><input id="osDate" type="date" value="${esc(row?.sale_date || today())}" ${row ? "disabled" : ""}></div><div></div>
         ${PAY.map(([k, l]) => `<div><label for="os_${k}">${esc(l)} (₱)</label><input id="os_${k}" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row[k]) ? esc(row[k]) : ""}" placeholder="0.00"></div>`).join("")}
         <div class="span2 ol-total">Total Net Sales <b id="osTot">₱ 0.00</b></div>
-        ${row ? "" : `<div><label for="osExp">Daily Expenses (₱)</label><input id="osExp" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
-        <div><label for="osExpN">Expenses For</label><input id="osExpN" maxlength="300" placeholder="e.g. Snacks, transport, plastic bags"></div>
-        <div><label for="osOut">Cash Out (₱)</label><input id="osOut" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        ${row ? "" : `<div class="span2 ol-prev">${ic("lock")} Cash Left from Yesterday <b id="osPrev">₱ 0.00</b></div>
+        <div><label for="osExp">Daily Operation Cost (₱)</label><input id="osExp" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        <div><label for="osExpN">Description</label><input id="osExpN" value="DAILY OPERATION COST" readonly class="locked"></div>
+        <div><label for="osOut">Cash Out (₱) <button type="button" class="linkbtn os-all" id="osAll">All</button></label><input id="osOut" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
         <div><label for="osOutN">Cash Out To</label><input id="osOutN" maxlength="120" placeholder="e.g. EMON HASAN / bank deposit"></div>
-        <div class="span2 ol-left">Cash Left in the Shop <b id="osLeft">₱ 0.00</b></div>`}
+        <div class="span2 ol-left">Cash Left in the Shop <b id="osLeft">₱ 0.00</b><small>goes on to the next day</small></div>`}
         <div class="span2"><label for="osNote">Note</label><input id="osNote" maxlength="500" value="${esc(row?.note || "")}"></div>
         <div class="span2"><label for="osPic">Sales Report Photo</label><input id="osPic" type="file" accept="image/*,application/pdf" multiple></div>
       </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="osSave">${ic("check")} Save</button>`, { wide: true });
     const total = () => PAY.reduce((s, [k]) => s + num($(`#os_${k}`, m.el).value), 0);
     const val = (id) => num($("#" + id, m.el)?.value);
-    const show = () => { $("#osTot", m.el).textContent = `₱ ${peso(total())}`; if ($("#osLeft", m.el)) $("#osLeft", m.el).textContent = `₱ ${peso(total() - val("osExp") - val("osOut"))}`; };
+    // 3.99.220: the cash left of the day before is added by itself (locked); the day's expenses and cash out already saved count too
+    const dateNow = () => $("#osDate", m.el).value || today();
+    const dayX = (k) => sum(exps.filter((x) => x.exp_date === dateNow() && x.kind === k), "amount");
+    const prev = () => num(prevOf(dateNow()));
+    const avail = () => prev() + total() - dayX("daily") - dayX("cashout") - val("osExp");
+    const show = () => {
+      $("#osTot", m.el).textContent = `₱ ${peso(total())}`;
+      if ($("#osPrev", m.el)) $("#osPrev", m.el).textContent = `₱ ${peso(prev())}`;
+      if ($("#osLeft", m.el)) { const left = avail() - val("osOut"); $("#osLeft", m.el).textContent = `₱ ${peso(left)}`; $("#osLeft", m.el).classList.toggle("neg", left < 0); }
+    };
     $$(".os-amt", m.el).forEach((i) => (i.oninput = show)); show();
+    if ($("#osDate", m.el)) $("#osDate", m.el).onchange = show;
+    if ($("#osAll", m.el)) $("#osAll", m.el).onclick = () => { $("#osOut", m.el).value = Math.max(0, avail()).toFixed(2); show(); };
     $("[data-x]", m.el).onclick = () => m.close();
     $("#osSave", m.el).onclick = async (e) => {
       const date = $("#osDate", m.el).value;
@@ -402,7 +427,7 @@
       const r = target ? await sb.from("outlet_sales").update(data).eq("id", target.id).select().single() : await sb.from("outlet_sales").insert(data).select().single();
       if (r.error) { e.target.disabled = false; return fail(r.error, /duplicate|unique/i.test(r.error.message) ? `${mdy(date)} has its sales already.` : "Could not save the sales"); }
       // 3.99.140: the day's expenses and the cash taken out, saved with the sales
-      const outs = row ? [] : [["daily", val("osExp"), null, $("#osExpN", m.el).value.trim() || null], ["cashout", val("osOut"), $("#osOutN", m.el).value.trim().toUpperCase() || null, null]].filter((x) => x[1] > 0);
+      const outs = row ? [] : [["daily", val("osExp"), null, "DAILY OPERATION COST"], ["cashout", val("osOut"), $("#osOutN", m.el).value.trim().toUpperCase() || null, null]].filter((x) => x[1] > 0);
       let bad = null;
       for (const [kind, amount, payee, note] of outs) {
         const x = await sb.from("outlet_expenses").insert({ outlet_id: o.id, exp_date: date, kind, amount, payee, note, created_by_name: me() });
@@ -425,7 +450,7 @@
     const kinds = Object.entries(KIND).filter(([k]) => k !== "cashout");
     const m = E.modal(`${o.code} · ${isCash ? (row ? "Edit Cash Out" : "Cash Out") : row ? "Edit Expense" : "Expense / Bill"}`, `<div class="formgrid ol-form">
         <div><label for="oxDate">Date *</label><input id="oxDate" type="date" value="${row ? v("exp_date") : today()}"></div>
-        ${isCash ? `<input type="hidden" id="oxKind" value="cashout"><div><label for="oxAmt">Amount (₱) *</label><input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>
+        ${isCash ? `<input type="hidden" id="oxKind" value="cashout">${!row && pre?.cashNow != null ? `<div class="span2 ol-prev">${ic("wallet")} Cash in the Shop <b>₱ ${peso(pre.cashNow)}</b><small>less than all: the rest goes on to the next day</small></div>` : ""}<div><label for="oxAmt">Amount (₱) *</label><input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>
         <div class="span2"><label for="oxPayee">Cash Out To *</label><input id="oxPayee" maxlength="120" placeholder="e.g. EMON HASAN / bank deposit" value="${v("payee")}"></div>`
         : `<div><label for="oxKind">Type *</label><select id="oxKind">${kinds.map(([k, l]) => `<option value="${k}"${row?.kind === k ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
         <div><label for="oxPayee">Paid To</label><input id="oxPayee" maxlength="120" placeholder="Supplier / landlord / company" value="${v("payee")}"></div>
@@ -648,28 +673,30 @@
   // position and the EOID of EMON HASAN. No boxes.
   const BOSS = "EMON HASAN";
   const loadBoss = async () => { await E.loadSignatures?.().catch(() => {}); const id = E.directorId?.(BOSS); if (id) await E.loadSigners?.([id]).catch(() => {}); return id; };
-  const nameBoxes = (prep, _id, bossId) => { const eo = bossId ? E.eoidOf?.(bossId) : "";
-    return `<div class="sign-off"><div class="so-issued"><small>ISSUED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b></div>
+  // 3.99.220: a PDF417 barcode of the report no above ISSUED BY
+  const nameBoxes = (prep, no, bossId) => { const eo = bossId ? E.eoidOf?.(bossId) : "";
+    let bar = ""; try { bar = no && E.pdf417DataUrl ? E.pdf417DataUrl(String(no)) : ""; } catch (_) { bar = ""; }
+    return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}<div class="so-issued"><small>ISSUED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b></div></div>
       <div class="so-ok"><small>APPROVED BY</small><div class="so-line"></div><b>${BOSS}</b><em>OPERATIONAL DIRECTOR</em>${eo ? `<span>${esc(eo)}</span>` : ""}</div></div>`; };
-  async function printDay(o, date, sales, exps, mine) {
+  async function printDay(o, date, sales, exps, mine, prev = 0) {
     const bossId = await loadBoss();
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
-    const xp = day.filter((x) => x.kind !== "cashout"), co = day.filter((x) => x.kind === "cashout");
+    const xp = day.filter((x) => x.kind === "daily"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), cash = sum(co, "amount"), left = tot - ex - cash;
+    const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), cash = sum(co, "amount"), left = num(prev) + tot - ex - cash;
     const no = `DSR-${String(o.code || "").replace(/[^A-Z0-9]/gi, "").toUpperCase()}-${date.replace(/-/g, "")}`;
     const row = (k, v, cls = "") => `<tr class="${cls}"><td>${k}</td><td class="num">${v}</td></tr>`;
     const list = (title, rows, cols) => `<div class="soa-sec"><h4>${title}</h4>${rows.length ? `<table class="soa-t"><thead><tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>` : `<div class="soa-none">None this day.</div>`}</div>`;
-    const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Report No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small></div>`)}
+    const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small>${r.id ? `<small class="soa-trx">TRX ID ${esc(String(r.id).toUpperCase())}</small>` : ""}</div>`)}
       <div class="soa-info"><div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div><div><small>Date</small><b>${esc(mdy(date))}</b></div>
         <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div><div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div><div><small>Recorded By</small><b>${esc(r.created_by_name || "—")}</b></div>
         <div class="w2"><small>Note</small><b>${esc(r.note || "—")}</b></div></div>
-      <div class="soa-tiles">${[["Total Sales", tot, "in"], ["Expenses", ex, "out"], ["Cash Out", cash, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
+      <div class="soa-tiles t5">${[["Total Sales", tot, "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash Out", cash, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
-      ${list("Expenses", xp.map((x) => `<tr><td>${esc(KIND[x.kind] || x.kind)}</td><td>${esc([x.payee, x.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Type"], ["Paid To / Note"], ["Amount (₱)", 1]])}
-      ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td>${esc(x.note || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Note"], ["Amount (₱)", 1]])}
-      <div class="soa-result"><span>Total Sales ₱ ${P(tot)} − Expenses ₱ ${P(ex)} − Cash Out ₱ ${P(cash)}</span><b class="${left < 0 ? "neg" : ""}">CASH LEFT ₱ ${P(left)}</b></div>
-      ${nameBoxes(r.created_by_name || me() || "", null, bossId)}</div>`;
+      ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
+      ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
+      <div class="soa-result"><span>From Yesterday ₱ ${P(prev)} + Sales ₱ ${P(tot)} − Expenses ₱ ${P(ex)} − Cash Out ₱ ${P(cash)}</span><b class="${left < 0 ? "neg" : ""}">CASH LEFT ₱ ${P(left)}</b></div>
+      ${nameBoxes(r.created_by_name || me() || "", no, bossId)}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
 
@@ -678,9 +705,7 @@
   // goes on to the next page (the table head is repeated there).
   async function printSoa(o, m, d) {
     const bossId = await loadBoss();
-    const dayOf = (dt, k) => sum(d.exps.filter((x) => x.exp_date === dt && x.kind === k), "amount");
-    const days = [...new Set([...d.sales.map((r) => r.sale_date), ...d.exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort()
-      .map((dt) => { const r = d.sales.find((x) => x.sale_date === dt), t = num(r?.total), ex = dayOf(dt, "daily"), co = dayOf(dt, "cashout"); return { dt, r, t, ex, co, left: t - ex - co }; });
+    const days = chainDays(d.sales, d.exps, num(d.carry0)); // 3.99.220: the cash left goes on to the next day
     const xps = d.exps.filter((r) => r.kind !== "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
     const cos = d.exps.filter((r) => r.kind === "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
     const pays = [...d.pays].sort((a, b) => (a.paid_date < b.paid_date ? -1 : 1));
@@ -713,7 +738,7 @@
     };
     table("Daily Sales", [["Date"], ...PAY.map(([, l]) => [l, 1]), ["Total Sales", 1], ["Expenses", 1], ["Cash Out", 1], ["Cash Left", 1]],
       days.map((x) => `<tr><td>${esc(sdate(x.dt))}</td>${PAY.map(([k]) => `<td class="num">${Z(x.r?.[k])}</td>`).join("")}<td class="num"><b>${Z(x.t)}</b></td><td class="num">${Z(x.ex)}</td><td class="num">${Z(x.co)}</td><td class="num"><b>${P(x.left)}</b></td></tr>`),
-      `<tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${P(sum(d.sales, k))}</td>`).join("")}<td class="num">${P(d.net)}</td><td class="num">${P(sum(days, "ex"))}</td><td class="num">${P(sum(days, "co"))}</td><td class="num">${P(d.net - sum(days, "ex") - sum(days, "co"))}</td></tr>`);
+      `<tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${P(sum(d.sales, k))}</td>`).join("")}<td class="num">${P(d.net)}</td><td class="num">${P(sum(days, "ex"))}</td><td class="num">${P(sum(days, "co"))}</td><td class="num">${P(num(d.carry0) + d.net - sum(days, "ex") - sum(days, "co"))}</td></tr>`);
     table("Expenses &amp; Bills", [["Date"], ["Type"], ["Paid To / Note"], ["Amount (₱)", 1]],
       xps.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc([r.payee, r.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${P(d.out)}</td></tr>`);
@@ -725,7 +750,7 @@
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the result and the signatures
     blocks.push({ h: 9, html: `<div class="soa-result"><span>Net Sales ₱ ${P(d.net)} − Expenses ₱ ${P(d.out)} − Cash Out ₱ ${P(d.cash || 0)} − Stock Payments ₱ ${P(d.paid)}</span><b class="${d.bal < 0 ? "neg" : ""}">BALANCE ₱ ${P(d.bal)}</b></div>
-      ${nameBoxes(me() || "", null, bossId)}` });
+      ${nameBoxes(me() || "", soaNo, bossId)}` });
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;
