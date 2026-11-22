@@ -4963,3 +4963,8 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .os-live i { animation: none; } }
 .os-chips .r-left { background: #fff1f0 !important; color: #b42318 !important; font-weight: 800; }
+/* 3.99.194: the rank (#1, #2 …) under the customer's picture and under the store logo */
+.rk-no.rk-tag { min-width: 0; height: 26px; padding: 0 12px; font-size: 14px; font-weight: 900; letter-spacing: .02em; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+.pf-rank { display: flex; justify-content: center; margin-top: 6px; } .pf-rank[hidden] { display: none; }
+.os-logo-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none; }
+.os-logo-col .os-rk { display: inline-flex; } .os-logo-col .os-rk[hidden] { display: none; }

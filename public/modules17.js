@@ -283,8 +283,8 @@
           return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · ${o.code} · EMON OVERRUNS`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
             <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">EMON OVERRUNS · ${esc(o.code)}</text></svg>`;
         })()}
-        <div class="os-hero-top">${storeLogo(o, "big")}
-          <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span><span class="os-rk" id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
+        <div class="os-hero-top"><div class="os-logo-col">${storeLogo(o, "big")}<span class="os-rk" id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span></div>
+          <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
         <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive">${liveHtml(o)}</span>` : ""}${!mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<span class="r-left">${ic("receipt")} Unpaid Rent ₱ ${peso(rs.left)}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(rs.last))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
@@ -313,10 +313,10 @@
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
     // the store status counts by itself (every 30 seconds while this page is open)
     const live = setInterval(() => { const el = $("#osLive"), s = storeNow(o); if (!el || !s) { clearInterval(live); return; } el.className = `os-live st-${s.k}`; el.innerHTML = liveHtml(o); }, 30000);
-    E.outletRanks(m).then((rk) => { // 3.99.192: the rank of the month shown: a round circle beside the branch code (no word)
+    E.outletRanks(m).then((rk) => { // 3.99.194: the rank of the month shown: #1, #2 … under the store logo
       const el = $("#osRank"), r = rk.get(o.id);
       if (!r || !el || el.dataset.oid !== o.id || el.dataset.m !== m) return;
-      el.innerHTML = E.rankNo(r.rank, "xl"); el.title = `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}`; el.hidden = false;
+      el.innerHTML = E.rankTag(r.rank); el.title = `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}`; el.hidden = false;
     });
     E.achievements("outlet", o.id).then((a) => { const p = $("#osAchTab"); if (p && p.dataset.oid === o.id) p.innerHTML = E.achHtml(a, "outlet"); });
     $$("[data-del]").forEach((b) => (b.onclick = async () => {
