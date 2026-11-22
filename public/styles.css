@@ -4889,3 +4889,7 @@ a.qa-plus { text-decoration: none; }
 .trx-p b { color: #0f2a66; }
 /* the rent tag on one line */
 .ol-card-s .pill.ol-rent { white-space: nowrap; }
+/* 3.99.217: the unpaid rent tag on 2 lines: UNPAID / PHP 10,000.00 */
+.ol-card-s .pill.ol-rent { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 4px 11px; border-radius: 10px; line-height: 1.1; }
+.ol-card-s .pill.ol-rent small { font-size: 9.5px; font-weight: 800; letter-spacing: .12em; opacity: .85; }
+.ol-card-s .pill.ol-rent b { font-size: 12.5px; font-weight: 800; letter-spacing: .02em; color: inherit; display: block; padding: 0; background: none; }

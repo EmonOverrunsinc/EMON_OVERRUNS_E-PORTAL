@@ -63,7 +63,7 @@
   const empty = (t) => `<div class="ol-empty">${t}</div>`; // 3.99.153: for every part of the page (the employee list too)
   // the rental of a month: paid (a rental expense in the month) or its due date
   // 3.99.193: the rent is PAID only when the month's rent payments reach the monthly rent; until then: the amount still unpaid
-  const phpAmt = (v) => peso(v).replace(/\.00$/, ""); // 3.99.216: PHP 10,000
+  const phpAmt = (v) => peso(v); // 3.99.217: PHP 10,000.00
   const rentState = (o, exps, m) => {
     const rents = exps.filter((x) => x.kind === "rent"), paidAmt = rents.reduce((s, x) => s + num(x.amount), 0), rent = num(o.monthly_rent);
     const last = rents.map((x) => x.exp_date).sort().pop();
@@ -155,7 +155,7 @@
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(r.o))}</span><span>${esc(r.o.code)}</span>`).join("")}</div>
           <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div></div>
-          <div class="ol-card-s">${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.k === "paid" ? E.pill("paid", "RENT PAID") : rs.k === "unpaid" || rs.k === "overdue" ? `<span class="pill ol-rent ${rs.k === "overdue" ? "overdue" : "pending"}" title="${esc(rs.label)}">UNPAID PHP ${phpAmt(rs.left)}</span>` : ""}</div>
+          <div class="ol-card-s">${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.k === "paid" ? E.pill("paid", "RENT PAID") : rs.k === "unpaid" || rs.k === "overdue" ? `<span class="pill ol-rent ${rs.k === "overdue" ? "overdue" : "pending"}" title="${esc(rs.label)}"><small>UNPAID</small><b>PHP ${phpAmt(rs.left)}</b></span>` : ""}</div>
           ${r.o.address ? `<div class="ol-card-a">${ic("pin")} ${esc(r.o.address)}</div>` : ""}
           ${hoursOf(r.o) ? `<div class="ol-card-t">${ic("clock")}<span class="ol-hours" data-oid="${esc(r.o.id)}">${esc(hoursOf(r.o))}</span>${r.o.status !== "closed" && storeNow(r.o) ? `<span class="ol-live st-${storeNow(r.o).k}" data-oid="${esc(r.o.id)}">${cardLive(r.o)}</span>` : ""}</div>` : ""}
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
