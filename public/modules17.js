@@ -90,6 +90,7 @@
     else [k, t] = ["closed", `Opens in ${dur(op + 1440 - now)}`];
     return { k, word: { open: "OPEN", lunch: "LUNCH BREAK", closed: "CLOSED" }[k], t, sales: dur(sales) };
   };
+  const cardLive = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}` : ""; };
   const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}${s.sales ? `<small>Sales hours ${esc(s.sales)} a day</small>` : ""}` : ""; };
 
   // the money of the shops for a month (and today): sales, expenses, payments of their customer accounts
@@ -151,15 +152,25 @@
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(r.o))}</span><span>${esc(r.o.code)}</span>`).join("")}</div>
-          <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.short ? E.pill(rs.k === "paid" ? "paid" : rs.k === "overdue" ? "overdue" : "pending", rs.short) : ""}</div>
-          <div class="ol-card-a">${r.o.address ? `${ic("pin")} ${esc(r.o.address)}` : ""}${r.o.address && hoursOf(r.o) ? " · " : ""}${hoursOf(r.o) ? esc(hoursOf(r.o)) : ""}</div>
+          <div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div>${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rs.k === "paid" ? E.pill("paid", "RENT PAID") : rs.k === "unpaid" || rs.k === "overdue" ? `<span class="pill ol-rent ${rs.k === "overdue" ? "overdue" : "pending"}" title="${esc(rs.label)}">UNPAID ₱ ${peso(rs.left)}</span>` : ""}</div>
+          ${r.o.address ? `<div class="ol-card-a">${ic("pin")} ${esc(r.o.address)}</div>` : ""}
+          ${hoursOf(r.o) ? `<div class="ol-card-t">${ic("clock")}<span>${esc(hoursOf(r.o))}</span>${r.o.status !== "closed" && storeNow(r.o) ? `<span class="ol-live st-${storeNow(r.o).k}" data-oid="${esc(r.o.id)}">${cardLive(r.o)}</span>` : ""}</div>` : ""}
           <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.out)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Stock Payments</small><b>₱ ${peso(r.paid)}</b></div><div class="bal${r.bal < 0 ? " neg" : ""}"><small>Balance</small><b>₱ ${peso(r.bal)}</b></div></div></a>`;
       }).join("") : `<div class="empty">${isAdmin() ? "No store yet. Press <b>⋯</b> at the top right, then <b>Add Store</b>: it gets SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
     rankCards($("#olBody"), m);
+    // 3.99.202: the store now on each card, counting by itself (every 30 seconds while the list is open)
+    const tick = setInterval(() => {
+      const els = $$("#olBody .ol-live");
+      if (!els.length) { clearInterval(tick); return; }
+      els.forEach((el) => { const o = outlets.find((x) => x.id === el.dataset.oid), s = o && storeNow(o); if (s) { el.className = `ol-live st-${s.k}`; el.innerHTML = cardLive(o); } });
+    }, 30000);
     sb.from("outlet_closures").select("outlet_id").eq("day", today()).eq("status", "approved").then(({ data }) => (data || []).forEach((c) => {
       const h = document.querySelector(`#olBody .ol-card[href="#outlet/${c.outlet_id}"] .ol-card-h`);
       if (h && !h.querySelector(".nwd-pill")) h.insertAdjacentHTML("beforeend", `<span class="nwd-pill">${E.pill("overdue", "CLOSED TODAY")}</span>`);
+      const o = outlets.find((x) => x.id === c.outlet_id), lv = document.querySelector(`#olBody .ol-live[data-oid="${c.outlet_id}"]`);
+      if (o) o._closed = true;
+      if (o && lv) { lv.className = "ol-live st-closed"; lv.innerHTML = cardLive(o); }
     }), () => {});
     if ($("#olMore")) {
       const list = $("#olMoreList"), close = () => { list.hidden = true; document.removeEventListener("click", away, true); };
