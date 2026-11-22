@@ -797,7 +797,7 @@
         { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r) }, // 3.99.159: CLOSED once (in Status)
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
-        { label: "Balance Due (₱)", key: "due", num: true, get: (r) => peso(r.due) }],
+        { label: "Balance Due", key: "due", num: true, get: (r) => peso(r.due) }],
         rows, onRow: true, foot: { due: peso(rows.reduce((s, r) => s + r.due, 0)) }, empty: "No customers found." });
       E.bindGrid($("#cuRes"), rows, (r) => (location.hash = "customer/" + r.id));
       E.setRecords(`Customers: ${rows.length}`);
@@ -1053,9 +1053,9 @@
     $(".band h1").textContent = `Customer — ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c)}
-      <section class="cust-hero st-${esc(c.status)}">${isStaff() ? `<div class="ach-corner medal-area cu-ach" id="pfAch" data-cid="${esc(c.id)}" hidden></div>` : ""}
+      <section class="cust-hero st-${esc(c.status)}">
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
-          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
+          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isStaff() ? `<div class="medal-area pf-medals" id="pfAch" data-cid="${esc(c.id)}" hidden></div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
         <div class="ch-main">
           <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${isStaff() ? `<span class="rank-chip" id="pfRankChip" data-cid="${esc(c.id)}" hidden></span>` : ""}${E.vipBox(c.credit_limit)}</div>
           <div class="ch-sub">${[c.credit_limit != null ? `CREDIT LIMIT ₱ ${peso(c.credit_limit)}` : "", c.email].filter(Boolean).map(esc).join(" · ") || "—"}</div>
