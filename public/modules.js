@@ -1063,6 +1063,7 @@
     const showOrders = isStaff() && !!E.customerOrdersOf; // 3.37: the customer's orders (tab 10)
     if (showOrders) tabs.push("Customer Orders");
     const achAt = isStaff() ? tabs.push("Achieved") - 1 : -1; // 3.99.180/200: medals and the prize pool
+    const infoAt = tabs.push("Info") - 1; // 3.99.208: the Customer Details paper, the signed form, the notes
     $(".band h1").textContent = `Customer — ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c)}
@@ -1071,7 +1072,7 @@
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
         <div class="ch-main">
           <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
-          <div class="ch-sub">${[c.credit_limit != null ? `<span class="cl-hi">CREDIT LIMIT <b>₱ ${esc(peso(c.credit_limit))}</b></span>` : "", c.email ? esc(c.email) : ""].filter(Boolean).join(" · ") || "—"}</div>
+          <div class="ch-sub">${[c.credit_limit != null ? `<span class="cl-hi">CREDIT LIMIT <b>₱ ${esc(peso(c.credit_limit))}</b></span>` : "", c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""].filter(Boolean).join(`<span class="ch-dot"> · </span>`) || "—"}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
           </div>
@@ -1091,17 +1092,14 @@
         ${tools("customers", c, `${c.account_no || c.application_no} ${fullName(c)}`, { reload: () => V.customer(c.id), afterDelete: () => (location.hash = "customers"), noFix: isApprovedAccount(c) && isStaff() && !S.mainDirector })}
       </div>
       ${isApprovedAccount(c) && isStaff() ? E.requestsHtml(c, orders) : ""}
-      <div class="docgrid">${docCard({ key: "app", title: isApprovedAccount(c) ? "Customer Details" : "Customer Application Form", tag: "System Generated",
-        sub: isApprovedAccount(c) ? `${c.account_no || c.application_no} · made by the E-Portal · no signature needed` : `${c.application_no} · made by the E-Portal · print it for the customer to sign`, ownerType: "customer", ownerId: c.id, att, kind: "__system", canUpload: false, print: () => printApplication(c),
-        approved: isApprovedAccount(c) ? (() => { const a = [...(ev.data || [])].reverse().find((x) => x.action === "approve"); return { name: a?.actor_name || "", at: a?.created_at || c.reviewed_at }; })() : null })}
-        ${signed.length && !att.pending.some((a) => ["signed_form", "application"].includes(a.kind)) ? "" : copyCard({ key: "appcopy", title: "Customer Application Form", tag: "Upload", sub: "Upload the form signed by the customer", ownerType: "customer", ownerId: c.id, att, kind: "signed_form", kinds: ["signed_form", "application"], canUpload: isStaff() && c.status !== "closed" })}</div>
+      <div class="docgrid">${signed.length && !att.pending.some((a) => ["signed_form", "application"].includes(a.kind)) ? "" : copyCard({ key: "appcopy", title: "Customer Application Form", tag: "Upload", sub: "Upload the form signed by the customer", ownerType: "customer", ownerId: c.id, att, kind: "signed_form", kinds: ["signed_form", "application"], canUpload: isStaff() && c.status !== "closed" })}</div>
       ${isAdmin() && ["pending", "verified"].includes(c.status) ? reviewPanel(c, signed, att.length) : ""}
       <div class="tabs" id="pfTabs">${tabs.map((t, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}"${i === 9 ? " hidden" : ""}>${esc(t)}</button>`).join("")}</div>
       <div class="tabpanes">
         <div data-p="0">${detailsTable(c, b)}</div>
         <div data-p="1" hidden id="pfSoa">${busy("Loading statements")}</div>
         <div data-p="2" hidden>${E.grid({ cols: INV_COLS.filter((x) => x.label !== "Customer" && x.label !== "Account No"), rows: invs.data || [], onRow: true, empty: "No invoices yet." })}</div>
-        <div data-p="3" hidden><div id="pfFree"></div>${E.grid({ cols: PAY_COLS.filter((x) => x.label !== "Customer" && x.label !== "Account No"), rows: pays.data || [], onRow: true, empty: "No payments yet." })}</div>
+        <div data-p="3" hidden>${E.grid({ cols: PAY_COLS.filter((x) => x.label !== "Customer" && x.label !== "Account No"), rows: pays.data || [], onRow: true, empty: "No payments yet." })}</div>
         <div data-p="4" hidden>${cms.length ? `<div class="btnrow"><button type="button" class="btn small" data-hprint="cm">${ic("print")} Print</button></div>` : ""}${E.grid({ cols: CM_HIST, rows: cms, onRow: true, empty: "No credit memos." })}</div>
         <div data-p="5" hidden>${filesHtml(att.map((a) => a.kind === "signed_form" ? { ...a, kind: "application" } : a), "No documents yet.")}${isStaff() && c.status !== "closed" ? `<div class="fields wide" style="margin-top:8px">${fileField("pfAdd", "Add Requirement", "multiple data-save-now")}</div>` : ""}</div>
         <div data-p="7" hidden>${overdue.length ? `<div class="btnrow"><button type="button" class="btn small" data-hprint="od">${ic("print")} Print</button></div>` : ""}${E.grid({ cols: OD_HIST, rows: overdue, onRow: true, empty: "No overdue invoice." })}</div>
@@ -1109,6 +1107,14 @@
         <div data-p="9" hidden>${E.gateHistoryHtml ? E.gateHistoryHtml(orders, ev.data || [], aiLog.data || []) : ""}</div>
         ${showOrders ? `<div data-p="10" hidden id="pfOrders">${busy()}</div>` : ""}
         ${achAt >= 0 ? `<div data-p="${achAt}" hidden id="pfAchTab" data-cid="${esc(c.id)}">${busy()}</div>` : ""}
+        <div data-p="${infoAt}" hidden class="pf-info">
+          <div class="docgrid">${docCard({ key: "app", title: isApprovedAccount(c) ? "Customer Details" : "Customer Application Form", tag: "System Generated",
+        sub: isApprovedAccount(c) ? `${c.account_no || c.application_no} · made by the E-Portal · no signature needed` : `${c.application_no} · made by the E-Portal · print it for the customer to sign`, ownerType: "customer", ownerId: c.id, att, kind: "__system", canUpload: false, print: () => printApplication(c),
+        approved: isApprovedAccount(c) ? (() => { const a = [...(ev.data || [])].reverse().find((x) => x.action === "approve"); return { name: a?.actor_name || "", at: a?.created_at || c.reviewed_at }; })() : null })}</div>
+          ${signed.length ? `<div class="info-sec"><h4>${ic("doc")} Customer Application Form · signed</h4>${filesHtml(signed, "")}</div>` : ""}
+          <div class="info-sec" id="pfFree" hidden></div>
+          ${isStaff() ? `<div class="info-sec"><h4>${ic("crown")} Medals and prizes</h4>${E.medalRules()}</div>` : ""}
+        </div>
         <div data-p="6" hidden>${E.grid({ cols: [{ label: "Date / Time", get: (r) => stamp(new Date(r.at)) }, { label: "Action", get: (r) => r.action }, { label: "By", get: (r) => r.by }, { label: "Note", get: (r) => r.note },
           ...(isAdmin() ? [{ label: "", html: (r) => `<button type="button" class="btn small danger" data-hdel="${r.src}:${r.id}" aria-label="Delete this history line">${ic("trash")}</button>` }] : [])], rows: history })}</div>
       </div>`;
@@ -1170,8 +1176,9 @@
     // payments with money not yet linked to an invoice, and the credit (overpaid) that is ready for other invoices
     sb.from("payment_available").select("receipt_no, available").eq("customer_id", c.id).gt("available", 0.004).then(({ data, error }) => {
       const el = $("#pfFree"); if (!el || error || !data?.length) return;
+      el.hidden = false;
       const sum = data.reduce((t, r) => t + num(r.available), 0);
-      el.innerHTML = `<div class="pay-free">${data.length} payment${data.length === 1 ? "" : "s"} not linked to an invoice yet: <b>₱ ${peso(sum)}</b> (${data.slice(0, 6).map((r) => esc(r.receipt_no || "")).join(", ")}${data.length > 6 ? " …" : ""}). They pay the oldest invoices first, or link them on an invoice (Link a Payment).${num(b.balance_due) < 0 ? ` Overpaid credit ready for other invoices: <b>₱ ${peso(-num(b.balance_due))}</b>.` : ""}</div>`;
+      el.innerHTML = `<h4>${ic("wallet")} Payments not linked to an invoice</h4><div class="pay-free"><b>₱ ${peso(sum)}</b> · ${data.length} payment${data.length === 1 ? "" : "s"} (${data.slice(0, 6).map((r) => esc(r.receipt_no || "")).join(", ")}${data.length > 6 ? " …" : ""})${num(b.balance_due) < 0 ? ` · Overpaid credit <b>₱ ${peso(-num(b.balance_due))}</b>` : ""}</div>`;
     }, () => {});
     E.bindGrid($('[data-p="4"]'), cms, (r) => (location.hash = "creditmemo/" + r.id));
     E.bindGrid($('[data-p="7"]'), overdue, (r) => (location.hash = "invoice/" + r.id));
