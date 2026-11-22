@@ -5083,3 +5083,4 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 .os-chips .os-live small { display: none; }
 /* 3.99.206: the customer's name always on its own line; the status, rank and VIP always on the line under it (every screen) */
 #main .cust-hero .ch-name h2 { flex: 0 0 100%; }
+#main .cust-hero .ch-name h2 { min-width: 0; max-width: 100%; overflow: hidden; } #main .cust-hero .ch-main, #main .cust-hero .ch-name { min-width: 0; }
