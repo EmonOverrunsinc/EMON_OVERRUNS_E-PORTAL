@@ -386,6 +386,18 @@
       if (!t) return toast("Type a record number or scan its code.", true);
       const dv = E.deliveryHashOf?.(t); // 3.39: an order paper: its Complete Delivery page
       if (dv) { location.hash = dv; return; }
+      // 3.99.227: a TRX ID (printed at the bottom of every paper): the record it belongs to, checked like its number
+      const trx = (t.replace(/^TRX\s*(ID)?\s*/i, "").match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) || [])[0];
+      if (trx) {
+        $("#vfResult").innerHTML = `<div class="vf-wait">${busy("Checking the TRX ID")}</div>`;
+        const { data: no, error: te } = await sb.rpc("verify_trx", { p_id: trx.toLowerCase() }).then((r) => r, (e) => ({ error: e }));
+        if (te || !no) {
+          const out = $("#vfResult"); if (!out) return;
+          out.innerHTML = `<div class="vf-bad"><div class="vf-seal">${te ? "!" : "✖"}</div><div class="vf-title">${te ? "CANNOT CHECK RIGHT NOW" : "NO RECORD FOUND"}</div><div class="vf-sub">${te ? "Please try again in a moment." : `TRX ID ${esc(trx.toUpperCase())} is not a record in the ${esc(E.APP)}.`}</div></div>`;
+          return;
+        }
+        t = String(no); E.vfTrx = trx.toUpperCase();
+      } else E.vfTrx = "";
       // 3.21: an employee ID card is checked by its full code; only the card no shows (the code never goes into the address)
       if (/^EMONID\|/i.test(t) && E.cardCheck) {
         $("#vfCode").value = (t.split("|")[1] || "").toUpperCase();
@@ -442,6 +454,7 @@
         return;
       }
       const checked = new Date();
+      if (E.vfTrx) setTimeout(() => { const o2 = $("#vfResult"); if (o2 && !o2.querySelector(".vf-trx")) o2.insertAdjacentHTML("afterbegin", `<div class="vf-trx">${ic("check")} TRX ID <b class="mono">${esc(E.vfTrx)}</b> · ${esc(shown)}</div>`); }, 0);
       // A found record shows on its own (no search box above it). Verification in the menu, or the
       // E-Portal name on the public page, opens the search again.
       $(".verify-hero").hidden = true;

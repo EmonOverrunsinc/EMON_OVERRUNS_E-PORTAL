@@ -589,7 +589,7 @@
     E.shell("dashboard", "Dashboard", `
       <section class="hero home-hero">${E.logoHtml("hero-logo")}<div>
         <p class="hero-date">${esc(today)}</p>
-        <h2>${esc(greet)}${first ? `, ${esc(first.charAt(0) + first.slice(1).toLowerCase())}` : ""}</h2>
+        <h2>${esc(greet)}${first ? `, ${E.bossName(first.charAt(0) + first.slice(1).toLowerCase(), S.profile.role)}` : ""}</h2>
         <p class="welcome">${esc(C.company.name)} <span class="hero-tag">E-PORTAL</span> · <b>${E.titleHtml(S.profile.role, S.position)}</b></p></div></section>
       ${H("outlets") ? `<section class="nwd-notice" id="dClosed" hidden></section>` : ""}
       ${isAdmin() ? `<section class="todo" id="dTodo" hidden></section>` : ""}
@@ -2601,7 +2601,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       <section class="me-card">
         <div class="me-photo">${av ? `<img src="${esc(av)}" alt="Your photo">` : `<span>${esc(E.initials(myName()))}</span>`}
           <label class="btn small" for="mpFile">${ic("camera")} Change Photo</label><input type="file" id="mpFile" accept="image/*" hidden></div>
-        <div class="me-main"><h2>${esc(myName())}</h2>
+        <div class="me-main"><h2>${E.bossName(myName(), S.profile.role)}</h2>
           <div class="me-sub">${S.profile.username ? `@${esc(S.profile.username)} · ` : ""}${esc(S.session.user.email)} · ${E.titleHtml(S.profile.role, emp?.position)}</div>
           ${emp ? `<div class="ch-ids">${idBox("Employee No", emp.employee_no)}${idBox("Position", emp.position)}${idBox("Date Hired", mdy(emp.date_hired))}${idBox("Monthly Salary (₱)", peso(emp.monthly_salary))}</div>` : ""}
         </div>
