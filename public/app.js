@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.206"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.207"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.206"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.207"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2079,6 +2079,11 @@
     if (box.classList.contains("idbox") && box.parentElement?.matches(".ch-ids")) { box.classList.add("ib-wide"); b.style.fontSize = ""; if (shrink(b, 12)) return; }
     if (!shrink(b, 11)) b.style.whiteSpace = "normal";
   });
+  // 3.99.207: a profile name fits ONE line (smaller writing, down to 15 px); only a very long name goes on 2 lines
+  const fitNames = () => $$("#main .cust-hero .ch-name h2").forEach((h) => {
+    h.style.fontSize = ""; h.style.whiteSpace = "nowrap";
+    if (!shrink(h, 15)) h.style.whiteSpace = "normal";
+  });
   // 3.99.18: a record number or a word with a hyphen (MS-202611001, INV-202611-0001, E-Bill) is never broken at its hyphen
   // (MS- / 202611001): it is kept whole on one line (only the words on the page are wrapped, nothing else changes)
   const CODE_RE = /[A-Za-z0-9#]+(?:-[A-Za-z0-9#]+)+/g;
@@ -2108,6 +2113,7 @@
     alignFields();
     noBreakCodes();
     fitBoxes();
+    fitNames();
     const floor = window.innerWidth <= 1194 ? 0.72 : 0.8;
     $$(FIT).forEach((s) => fitTable(s, s.querySelector("table"), floor));
     // 3.85.2: also the tables made by hand in a list box (purchase order items, order lines, return items, gate passes …)
