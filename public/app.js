@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.190"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.191"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.190"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.191"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1449,9 +1449,9 @@
   // ---------- shell: company header, top bar, slide-out menu ----------
   const MENU = [
     { k: "dashboard", icon: "home", label: "Dashboard" },
-    { k: "customers", icon: "user", label: "Customer" },
-    { k: "invoices", icon: "doc", label: "Invoice" },
-    { k: "payments", icon: "wallet", label: "Payment" },
+    { k: "customers", icon: "user", label: "Customers" },
+    { k: "invoices", icon: "doc", label: "Invoices" },
+    { k: "payments", icon: "wallet", label: "Payments" },
     { k: "eooffice", icon: "shield", label: "Regional Office Manila" }, // 3.99.158: was EO-Office
     { k: "regional", icon: "globe", label: "Regional Office Dhaka" }, // 3.99.156: Purchase Order, Billing and E-Bill are inside
     { k: "outlets", icon: "building", label: "Outlets" } // 3.99.116: the shops
@@ -1580,7 +1580,8 @@
     const who = S.profile.full_name || S.session.user.email;
     const currency = ["inventory", "newstockbill", "stockbill", "ebill"].includes(key) ? "BDT" : "PHP (₱)";
     // 3.36: no "?" on any page; the dashboard has no title (its greeting stands in its place)
-    const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1>${esc(title)}</h1></div>`;
+    const over = (MENU.find((m) => m.k === (ACTIVE_OF[key] ?? key)) || {}).label || `${C.company.name} E-Portal`; // 3.99.191
+    const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1 data-over="${esc(String(over).toUpperCase())}">${esc(title)}</h1></div>`;
     const mainHtml = `<main id="main">${hint ? `<div class="hint"><b>Hint:</b> ${hint}</div>` : ""}${body}</main>${pageFoot()}`;
     // 2.7.2: moving between pages keeps the top bar and the side menu in place (no flash); only the page itself is
     // swapped, with a soft fade. The whole frame is drawn again only when the menu or the person changes.

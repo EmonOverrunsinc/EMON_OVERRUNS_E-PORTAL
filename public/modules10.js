@@ -184,7 +184,7 @@
   };
 
   V.custorders = async () => {
-    E.shell("custorders", "Customer Order", `${E.eoTabs("custorders")}<div id="coBody">${busy()}</div>`);
+    E.shell("custorders", "Customer Orders", `${E.eoTabs("custorders")}<div id="coBody">${busy()}</div>`);
     if (!E.hasModule("eooffice") || !E.isStaff()) { location.hash = "eooffice"; return; }
     const here = E.stillHere();
     const { data, error } = await E.allRows(() => sb.from("customer_orders").select("*, customers(first_name,middle_name, last_name, account_no)")

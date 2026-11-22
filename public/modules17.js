@@ -112,7 +112,7 @@
 
   // ---------- Outlets: the list of the shops ----------
   V.outlets = async () => {
-    E.shell("outlets", "Outlets", `<div id="olBody">${busy()}</div>`);
+    E.shell("outlets", "Retail Outlets", `<div id="olBody">${busy()}</div>`);
     const here = E.stillHere();
     const { data: outlets, error } = await sb.from("outlets").select("*").order("code");
     if (!here()) return;
@@ -184,7 +184,7 @@
 
   // ---------- a shop's profile ----------
   V.outlet = async (id, month) => {
-    E.shell("outlets", "Outlets", `<div id="olBody">${busy()}</div>`);
+    E.shell("outlets", "Retail Outlets", `<div id="olBody">${busy()}</div>`);
     const here = E.stillHere();
     const m = /^\d{4}-\d{2}$/.test(month || "") ? month : monthNow();
     const { data: o, error } = await sb.from("outlets").select("*").eq("id", id).maybeSingle();
