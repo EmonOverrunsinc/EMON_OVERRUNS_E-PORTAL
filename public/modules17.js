@@ -62,14 +62,34 @@
   const empName = (e) => [e?.first_name, e?.middle_name, e?.last_name].filter(Boolean).join(" ").toUpperCase();
   const empty = (t) => `<div class="ol-empty">${t}</div>`; // 3.99.153: for every part of the page (the employee list too)
   // the rental of a month: paid (a rental expense in the month) or its due date
+  // 3.99.193: the rent is PAID only when the month's rent payments reach the monthly rent; until then: the amount still unpaid
   const rentState = (o, exps, m) => {
-    const paid = exps.find((x) => x.kind === "rent");
-    if (paid) return { k: "paid", label: `PAID ${mdy(paid.exp_date)}`, short: "RENT PAID" };
-    if (!num(o.monthly_rent)) return { k: "none", label: "NO RENTAL", short: "" };
+    const rents = exps.filter((x) => x.kind === "rent"), paidAmt = rents.reduce((s, x) => s + num(x.amount), 0), rent = num(o.monthly_rent);
+    const last = rents.map((x) => x.exp_date).sort().pop();
+    if (rents.length && (!rent || paidAmt >= rent - 0.005)) return { k: "paid", label: `PAID ${mdy(last)}`, short: "RENT PAID", left: 0, last };
+    if (!rent) return { k: "none", label: "NO RENTAL", short: "", left: 0 };
     const day = Math.min(Number(o.rent_day) || 1, Number(monthEnd(m).slice(8)));
-    const due = `${m}-${String(day).padStart(2, "0")}`;
-    return due < today() ? { k: "overdue", label: `DUE ${mdy(due)} · OVERDUE`, short: "RENT OVERDUE" } : { k: "unpaid", label: `DUE ${mdy(due)}`, short: "RENT NOT PAID" };
+    const due = `${m}-${String(day).padStart(2, "0")}`, left = rent - paidAmt, part = rents.length > 0;
+    return due < today() ? { k: "overdue", label: `DUE ${mdy(due)} · OVERDUE`, short: part ? "RENT PARTLY PAID" : "RENT OVERDUE", left }
+      : { k: "unpaid", label: `DUE ${mdy(due)}`, short: part ? "RENT PARTLY PAID" : "RENT NOT PAID", left };
   };
+  // 3.99.193: THE STORE NOW (Manila time): open, lunch break (1 to 2 PM) or closed, and how long until the next change
+  const minOf = (t) => { const v = to24(t); if (!v) return null; const [h, mi] = v.split(":").map(Number); return h * 60 + mi; };
+  const dur = (m) => { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60), mi = m % 60; return h ? `${h} Hr${mi ? ` ${mi} Min` : ""}` : `${mi} Min`; };
+  const storeNow = (o) => {
+    const op = minOf(o.opens), cl = minOf(o.closes);
+    if (op == null || cl == null || cl <= op) return null;
+    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" })), now = d.getHours() * 60 + d.getMinutes();
+    const ls = 13 * 60, le = 14 * 60, lunch = op < ls && cl > le, sales = cl - op - (lunch ? 60 : 0);
+    let k, t;
+    if (now < op) [k, t] = ["closed", `Opens in ${dur(op - now)}`];
+    else if (lunch && now < ls) [k, t] = ["open", `Lunch in ${dur(ls - now)}`];
+    else if (lunch && now < le) [k, t] = ["lunch", `Back in ${dur(le - now)}`];
+    else if (now < cl) [k, t] = ["open", `Closes in ${dur(cl - now)}`];
+    else [k, t] = ["closed", `Opens in ${dur(op + 1440 - now)}`];
+    return { k, word: { open: "OPEN", lunch: "LUNCH BREAK", closed: "CLOSED" }[k], t, sales: dur(sales) };
+  };
+  const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}<small>Sales hours ${esc(s.sales)} a day</small>` : ""; };
 
   // the money of the shops for a month (and today): sales, expenses, payments of their customer accounts
   async function monthMoney(outlets, m) {
@@ -265,8 +285,8 @@
         })()}
         <div class="os-hero-top">${storeLogo(o, "big")}
           <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span><span class="os-rk" id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
-        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${num(o.monthly_rent) && !mine ? `<span>${ic("receipt")} Rent ₱ ${peso(o.monthly_rent)}</span>` : ""}
-          ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(exps.find((x) => x.kind === "rent")?.exp_date))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
+        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span><span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive">${liveHtml(o)}</span>` : ""}${!mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<span class="r-left">${ic("receipt")} Unpaid Rent ₱ ${peso(rs.left)}</span>` : ""}
+          ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? `${ic("check")} PAID ${esc(shortDay(rs.last))}` : esc(rs.label)}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
       ${mine ? `<div class="banner info os-mine">${ic("shield")} You see only the sales, expenses and cash out you recorded. The totals and the balance are for EMON HASAN.</div>` : ""}
@@ -291,6 +311,8 @@
     if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout");
     $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
+    // the store status counts by itself (every 30 seconds while this page is open)
+    const live = setInterval(() => { const el = $("#osLive"), s = storeNow(o); if (!el || !s) { clearInterval(live); return; } el.className = `os-live st-${s.k}`; el.innerHTML = liveHtml(o); }, 30000);
     E.outletRanks(m).then((rk) => { // 3.99.192: the rank of the month shown: a round circle beside the branch code (no word)
       const el = $("#osRank"), r = rk.get(o.id);
       if (!r || !el || el.dataset.oid !== o.id || el.dataset.m !== m) return;
