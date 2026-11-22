@@ -4953,3 +4953,13 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 @media (max-width: 760px) { .cu-rank { top: 14px; } .rk-no.xl { min-width: 38px; height: 38px; font-size: 16px; } }
 .cl-hi { white-space: nowrap; }
 @media (max-width: 760px) { .cl-hi { font-size: 12.5px; padding: 2px 8px; gap: 4px; } }
+/* 3.99.193: the store now (open / lunch break / closed, counting by itself); the unpaid rent */
+.os-chips .os-live { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.os-live i { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, .3); animation: livePulse 2s ease-in-out infinite; }
+.os-live b { letter-spacing: .06em; }
+.os-live small { flex-basis: 100%; padding-left: 15px; font-size: 11px; font-weight: 700; opacity: .8; letter-spacing: .03em; }
+.os-live.st-lunch i { background: #f5c542; box-shadow: 0 0 0 3px rgba(245, 197, 66, .35); }
+.os-live.st-closed i { background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, .3); animation: none; }
+@keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .os-live i { animation: none; } }
+.os-chips .r-left { background: #fff1f0 !important; color: #b42318 !important; font-weight: 800; }
