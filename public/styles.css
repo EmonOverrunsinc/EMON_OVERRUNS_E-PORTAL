@@ -5053,3 +5053,10 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 .ol-cards .ol-card-n { grid-template-columns: minmax(0, 1fr); }
 .ol-card-t { font-size: 13.5px; font-weight: 600; } .ol-card-t > span:first-of-type { color: #33415c; }
 .ol-card-t > span:not(.ol-live) { font-size: 13.5px !important; font-weight: 600; }
+/* 3.99.203: phone: the credit limit right under the name and status (no gap when the column under the photo is tall) */
+@media (max-width: 760px) {
+  #main .cust-hero { grid-template-rows: auto auto 1fr; }
+  #main .cust-hero .ch-pic, #main .cust-hero > .ch-photo { grid-row: 1 / span 3; }
+  #main .cust-hero .ch-name { grid-row: 1; align-self: end; }
+  #main .cust-hero .ch-sub { grid-row: 2; align-self: start; }
+}
