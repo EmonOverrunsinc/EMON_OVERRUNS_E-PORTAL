@@ -1055,7 +1055,7 @@
       ${statusBanner(c)}
       <section class="cust-hero st-${esc(c.status)}">
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
-          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isStaff() ? `<div class="medal-area pf-medals" id="pfAch" data-cid="${esc(c.id)}" hidden></div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
+          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
         <div class="ch-main">
           <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${isStaff() ? `<span class="rank-chip" id="pfRankChip" data-cid="${esc(c.id)}" hidden></span>` : ""}${E.vipBox(c.credit_limit)}</div>
           <div class="ch-sub">${[c.credit_limit != null ? `CREDIT LIMIT ₱ ${peso(c.credit_limit)}` : "", c.email].filter(Boolean).map(esc).join(" · ") || "—"}</div>
@@ -1180,11 +1180,7 @@
       if (!r || !el || el.dataset.cid !== c.id) return;
       el.innerHTML = `RANK ${E.rankNo(r.rank)}`; el.title = `Rank ${r.rank} · total net sales up to Monday ${mdy(r.as_of)} · the rank changes every Monday`; el.hidden = false;
     });
-    if ($("#pfAch")) E.achievements("customer", c.id).then((a) => { // 3.99.185: the 3 medal places and the Achievements tab
-      const p = $("#pfAchTab"), el = $("#pfAch");
-      if (p && p.dataset.cid === c.id) p.innerHTML = E.achHtml(a, "customer");
-      if (el && el.dataset.cid === c.id) E.medalSlots(el, a, "customer", fullName(c));
-    });
+    if ($("#pfAchTab")) E.achievements("customer", c.id).then((a) => { const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) p.innerHTML = E.achHtml(a, "customer"); });
     E.custVerified?.($("#pfVerified"), c.id); // 3.69: the customer agreed to the legal terms
     // 3.12: the Director deletes a history line
     $$("[data-hdel]").forEach((b) => (b.onclick = async () => {

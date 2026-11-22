@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.186"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.187"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.186"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.187"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -98,21 +98,6 @@
       <p class="ach-note">${shop ? "Every day the 3 shops with the highest sales get a medal: gold, silver and bronze. The day's medals are saved at 12 noon the next day, so sales recorded late at night still count." : "Every week (Monday to Sunday) the 3 customers with the highest net sales of the week get a medal: gold, silver and bronze. They are saved on Monday."} A saved medal never changes.</p>`;
   };
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
-  // 3.99.185: THE MEDAL PLACES of a profile head: 3 round places (1 gold, 2 silver, 3 bronze), always in the same place. A place
-  // stays empty until that medal is won; a won medal shows how many, and pressing it shows the dates it was won
-  const MEDAL_KEY = ["", "gold", "silver", "bronze"];
-  const medalSlots = (el, a, kind, who) => {
-    if (!el) return;
-    el.innerHTML = [1, 2, 3].map((k) => { const n = num(a?.[MEDAL_KEY[k]]); return n ? `<button type="button" class="mslot md${k}" data-k="${k}" title="${MEDAL_NAME[k]} medal × ${n} · press to see the dates" aria-label="${MEDAL_NAME[k]} medal, ${n}"><b>${k}</b><em>×${n}</em></button>` : `<span class="mslot empty" aria-hidden="true"></span>`; }).join("");
-    el.hidden = false;
-    el.querySelectorAll("button.mslot").forEach((b) => (b.onclick = () => {
-      const k = Number(b.dataset.k), shop = kind === "outlet", list = (a.medals || []).filter((x) => x.rank === k);
-      const m = modal(`${MEDAL_NAME[k]} MEDALS · ${who}`, `<p class="rank-note">${ic("clock")} ${num(a[MEDAL_KEY[k]])} ${MEDAL_NAME[k].toLowerCase()} medal${num(a[MEDAL_KEY[k]]) === 1 ? "" : "s"} · #${k} of the ${shop ? "day" : "week"}</p>
-        <div class="ach-list">${list.map((x) => `<div class="ach-row md${k}">${medalHtml(k)}<div><b>${esc(shop ? mdy(x.period) : `WEEK OF ${mdy(x.period)}`)}</b><small>${MEDAL_NAME[k]} · #${k} OF THE ${shop ? "DAY" : "WEEK"}</small></div>${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}</div>`).join("")}</div>`,
-        `<button type="button" class="btn" data-x>Close</button>`);
-      m.el.querySelector("[data-x]").onclick = m.close;
-    }));
-  };
   // 3.99.185: VIP = a customer with a credit limit of ₱1,000,000 or more: a special box (animated) near the name
   const vipBox = (limit) => (num(limit) >= 1000000 ? `<span class="vip-box" title="VIP · credit limit ₱ ${peso(limit)}">${ic("crown")}<b>VIP</b></span>` : "");
   const customerRanks = () => rankList("c", () => sb.rpc("customer_ranks"));
@@ -3032,7 +3017,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, outletRanks, customerRanks, medalHtml, achHtml, achievements, medalSlots, vipBox, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, outletRanks, customerRanks, medalHtml, achHtml, achievements, vipBox, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
