@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.199"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.200"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.199"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.200"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -75,8 +75,11 @@
   const MEDAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="rk-rib" d="M6.6 1.8h4l2.1 5.6-2.6 2.4zM17.4 1.8h-4l-2.1 5.6 2.6 2.4z"/><circle class="rk-coin" cx="12" cy="15.2" r="6.8"/><path class="rk-star" d="m12 11 1.27 2.58 2.85.41-2.06 2.01.49 2.83L12 17.5l-2.55 1.34.49-2.83L7.88 14l2.85-.41z"/></svg>';
   // 3.99.185: the rank as a ROUND number (1 to 10 in their colours): lists, cards, the rank window and the status chip
   // 3.99.194: the rank under a profile picture / store logo: #1, #2 … (1 to 10 in their colours)
-  const rankTag = (k) => { k = Number(k); return k >= 1 ? `<span class="rk-no rk-tag ${k <= 10 ? `rk${Math.min(k, 6)}` : "rkx"}" title="Rank ${k}">#${k}</span>` : ""; };
-  const rankNo = (k, cls = "") => { k = Number(k); return k >= 1 ? `<span class="rk-no ${k <= 10 ? `rk${Math.min(k, 6)}` : "rkx"}${cls ? " " + cls : ""}" title="Rank ${k}">${k}</span>` : ""; };
+  // 3.99.200: tier given (a customer): the colour of the TIER (gold / silver / bronze; none: plain); no tier given (a shop): its place
+  const rkCls = (k, tier) => (tier !== undefined ? (tier ? `tier-${tier}` : "rkx") : k <= 10 ? `rk${Math.min(k, 6)}` : "rkx");
+  const tierTip = (tier) => (tier ? ` · ${tier.toUpperCase()} TIER` : "");
+  const rankTag = (k, tier) => { k = Number(k); return k >= 1 ? `<span class="rk-no rk-tag ${rkCls(k, tier)}" title="Rank ${k}${tierTip(tier)}">#${k}</span>` : ""; };
+  const rankNo = (k, cls = "", tier) => { k = Number(k); return k >= 1 ? `<span class="rk-no ${rkCls(k, tier)}${cls ? " " + cls : ""}" title="Rank ${k}${tierTip(tier)}">${k}</span>` : ""; };
   const rankMemo = new Map();
   const rankList = (key, call) => {
     const hit = rankMemo.get(key);
@@ -89,15 +92,26 @@
   // 3.99.180: ACHIEVEMENTS (SQL 126): the medals (gold, silver, bronze)
   const MEDAL_NAME = ["", "GOLD", "SILVER", "BRONZE"];
   const medalHtml = (k) => `<span class="medal md${k}" title="${MEDAL_NAME[k] || ""} medal">${MEDAL}</span>`;
-  // the Achievements tab of a shop (kind "outlet") or a customer ("customer")
+  // 3.99.200: THE ACHIEVED TAB of a shop (kind "outlet") or a customer ("customer"): the medals counted, every medal line by
+  // line (numbered) and, for a customer, the PRIZE POOL of the year (gold 10,000 · silver 6,000 · bronze 3,000 each)
+  const PRIZE = [0, 10000, 6000, 3000], MKEY = ["", "gold", "silver", "bronze"];
+  const amt = (v) => Number(v || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const achHtml = (a, kind) => {
-    if (!a) return `<div class="empty">No achievement yet. It needs the database update <b>126</b>.</div>`;
-    const shop = kind === "outlet", when = (p) => (shop ? mdy(p) : `WEEK OF ${mdy(p)}`);
+    if (!a) return `<div class="empty">No achievement yet. It needs the database updates <b>126</b> and <b>130</b>.</div>`;
+    const shop = kind === "outlet", when = (p) => (shop ? mdy(p) : `WEEK OF ${mdy(p)}`), list = a.medals || [];
+    const pool = shop ? "" : (() => {
+      const y = a.year || new Date().getFullYear(), lines = [1, 2, 3].map((k) => [k, num(a[`${MKEY[k]}_y`])]), tot = lines.reduce((s, [k, n]) => s + n * PRIZE[k], 0);
+      return `<div class="prize-pool"><div class="pp-h">${ic("crown")} PRIZE POOL ${y}</div>
+        ${lines.map(([k, n]) => `<div class="pp-row md${k}">${medalHtml(k)}<span class="pp-n">${MEDAL_NAME[k]}</span><span class="pp-x">${n} × ₱ ${amt(PRIZE[k])}</span><b>₱ ${amt(n * PRIZE[k])}</b></div>`).join("")}
+        <div class="pp-tot"><span>TOTAL PRIZE ${y}</span><b>₱ ${amt(tot)}</b></div></div>`;
+    })();
     return `<div class="ach-head">
-        <div class="ach-stars"><b>MEDALS WON</b><small>${num(a.gold) + num(a.silver) + num(a.bronze)} medal(s) in all · #1, #2 and #3 of the ${shop ? "day" : "week"}</small></div>
-        <div class="ach-count">${[1, 2, 3].map((k) => `<div class="ach-c md${k}">${medalHtml(k)}<b>${num(a[["", "gold", "silver", "bronze"][k]])}</b><small>${MEDAL_NAME[k]}</small></div>`).join("")}</div></div>
-      ${(a.medals || []).length ? `<div class="ach-list">${a.medals.map((x) => `<div class="ach-row md${x.rank}">${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} · #${x.rank} OF THE ${shop ? "DAY" : "WEEK"}</b><small>${esc(when(x.period))}</small></div>${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}</div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
-      <p class="ach-note">${shop ? "Every day the 3 shops with the highest sales get a medal: gold, silver and bronze. The day's medals are saved at 12 noon the next day, so sales recorded late at night still count." : "Every week (Monday to Sunday) the 3 customers with the highest net sales of the week get a medal: gold, silver and bronze. They are saved on Monday."} A saved medal never changes.</p>`;
+        <div class="ach-stars"><b>MEDALS ACHIEVED</b><small>${num(a.gold) + num(a.silver) + num(a.bronze)} medal(s) in all · #1, #2 and #3 of the ${shop ? "day" : "week"}</small></div>
+        <div class="ach-count">${[1, 2, 3].map((k) => `<div class="ach-c md${k}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b><small>${MEDAL_NAME[k]}</small></div>`).join("")}</div></div>
+      ${list.length ? `<div class="ach-list">${list.map((x, n) => `<div class="ach-row md${x.rank}"><span class="ach-no">${n + 1}</span>${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} · ${shop ? `#${x.rank} OF THE DAY` : "MEDAL OF THE WEEK"}</b><small>${esc(when(x.period))}</small></div>${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}</div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
+      ${pool}
+      <p class="ach-note">${shop ? "Every day the 3 shops with the highest sales get a medal: gold, silver and bronze. The day's medals are saved at 12 noon the next day, so sales recorded late at night still count."
+        : "Every week (Monday to Sunday) the 3 customers with the highest net purchases get a medal when they reach the minimum: GOLD ₱ 100,000 · SILVER ₱ 60,000 · BRONZE ₱ 25,000 (the #1 gets the best medal its amount reaches). Saved on Monday. Prize for each medal: gold ₱ 10,000 · silver ₱ 6,000 · bronze ₱ 3,000."} A saved medal never changes.</p>`;
   };
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
   // 3.99.185: VIP = a customer with a credit limit of ₱1,000,000 or more: a special box (animated) near the name
@@ -2564,18 +2578,12 @@
     if (opts.customerId && !docCust.has(opts.customerId)) { loadDocCust(opts.customerId).then(() => openPreview(title, pages, opts)); return; }
     const dc = opts.customerId ? docCust.get(opts.customerId) : null;
     pages = hideNames(pages.map(fillCodes), dc);
-    const { landscape = false, size = "", undated = false, bare = false, onePage = false } = opts; // bare: only the page itself (no date, no website footer, no page number)
+    const { landscape = false, size = "", bare = false, onePage = false } = opts; // bare: only the page itself (no date, no website footer, no page number)
     closePreview();
     const cls = size ? " " + size : landscape ? " landscape" : "";
     const band = secBand(opts.secId || docId(title), dc?.public_ident || "");
-    // Every printed page shows the date it was printed (report listings and statements already carry their own);
-    // a blank form (undated) does not.
-    const printed = dateTime(new Date().toISOString());
-    // 3.63: and who printed it
-    const by = S.profile?.full_name ? `Printed by: ${esc(String(S.profile.full_name).toUpperCase())}` : "";
-    // 3.99.25: the date printed and who printed it show ONCE on every page: in the box at the bottom (the report's own
-    // date line at the top and its "Printed …" footer are not shown)
-    const dated = () => (undated ? "" : `<div class="pg-date">Date Printed: ${esc(printed)}${by ? ` · ${by}` : ""}</div>`);
+    // 3.99.200: no "Date Printed / Printed by" line on the papers (the paper shows who PREPARED it, with the EOID)
+    const dated = () => "";
     S.docTitle = document.title;
     document.title = title; // "Save as PDF" uses this as the file name
     const pv = document.createElement("div");

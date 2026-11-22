@@ -645,7 +645,7 @@
         ${pays.length ? pays.map((x) => `<tr><td>${esc(x.payment_no)}</td><td>${esc(mdy(x.pay_date))}</td><td>${esc(x.method || "")}</td><td>${esc(x.card_no || "")}</td><td class="num">${peso(x.amount)}</td></tr>`).join("") : `<tr><td colspan="5">Not paid yet</td></tr>`}
         <tr class="sub"><td colspan="4">Paid</td><td class="num">${peso(p.paid)}</td></tr><tr class="sub"><td colspan="4">Unpaid</td><td class="num">${peso(p.balance)}</td></tr></tbody></table>`)}
       ${p.notes ? `<p class="pdecl"><b>Notes:</b> ${esc(p.notes)}</p>` : ""}
-      ${E.sigs("Received by (Employee Signature) / Date", `Prepared by: <b>${esc(p.created_by_name || "")}</b>`, E.signerBy(p.created_by))}`;
+      ${E.sigs("Received by (Employee Signature) / Date", `Prepared by: <b>${esc(p.created_by_name || "")}</b>${E.eoidOf?.(p.created_by) ? ` · ${esc(E.eoidOf(p.created_by))}` : ""}`, E.signerBy(p.created_by))}`;
   }
   // the receipt of one salary payment: the employee's ID card was scanned when it was paid
   function receiptPage(p, x) {
@@ -1065,7 +1065,7 @@
         ${lines.map((l) => `<tr><td>${esc(l.description)}</td><td class="num">${esc(qtyOf(l))}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}
         <tr class="grand"><td colspan="2" class="num">TOTAL PROJECT COST (₱)</td><td class="num">${peso(pr.total_cost)}</td></tr></tbody></table>
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(pr.total_cost))}</div></div>`)}
-      ${E.sigs(`Prepared by: ${esc(pr.created_by_name || "")}`, signed ? "Approved by" : "Approved by / Date", signed ? E.approvedBy(null, pr.approved_by_name, pr.approved_at) : null, E.signerBy(pr.created_by))}`]);
+      ${E.sigs(`Prepared by: ${esc(pr.created_by_name || "")}${E.eoidOf?.(pr.created_by) ? ` · ${esc(E.eoidOf(pr.created_by))}` : ""}`, signed ? "Approved by" : "Approved by / Date", signed ? E.approvedBy(null, pr.approved_by_name, pr.approved_at) : null, E.signerBy(pr.created_by))}`]);
     $(".band h1").textContent = `Project — ${pr.project_no}`;
     $("#main").innerHTML = `
       <div class="window"><div class="wtitle">${esc(pr.project_no)} — ${esc(pr.title)} ${pill(pr.status)}</div><div class="wbody">
