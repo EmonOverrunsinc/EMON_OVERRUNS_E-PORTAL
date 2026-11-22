@@ -4870,3 +4870,7 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 .vip-box::after { background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .85) 48%, transparent 66%); }
 @keyframes vipGold { 0%, 100% { box-shadow: 0 0 0 2px rgba(245, 197, 66, .3), 0 3px 10px rgba(184, 134, 11, .35); } 50% { box-shadow: 0 0 0 4px rgba(245, 197, 66, .5), 0 3px 16px rgba(245, 197, 66, .6); } }
 @media (max-width: 760px) { .pf-medals { gap: 4px; } .pf-medals .mslot { width: 26px; height: 26px; } .pf-medals .mslot b { font-size: 12px; } .pf-medals .mslot em { right: -6px; font-size: 8.5px; min-width: 16px; } }
+/* 3.99.187: the Public ID box has room: the code never touches its edge */
+#main .cust-hero .ch-qr { padding-right: 14px; }
+#main .cust-hero .ch-qr .key { word-break: break-all; overflow-wrap: anywhere; letter-spacing: .02em; }
+@media (max-width: 760px) { #main .cust-hero .ch-qr { padding: 10px 16px 10px 10px; } #main .cust-hero .ch-qr .key { font-size: 10.5px; line-height: 1.45; padding-right: 4px; } }
