@@ -64,7 +64,8 @@
     const k = `cs${++sealN}`, idNo = bidText(o);
     const ring = (r, txt, n) => `<path id="${k}r${r}" d="M150 ${150 - r} a${r} ${r} 0 1 1 -0.01 0"/><text><textPath href="#${k}r${r}" textLength="${(2 * Math.PI * r).toFixed(1)}" lengthAdjust="spacing">${esc(Array.from({ length: n }, () => txt).join(" · "))}</textPath></text>`;
     const line = (cls) => `<span class="ol-top-micro ${cls}">${Array.from({ length: 10 }, () => `<i>EMON OVERRUNS</i><i>${esc(idNo)}</i><i>${esc(o.code)}</i>`).join("")}</span>`;
-    return `${line("t")}${line("b")}<span class="ol-card-seal" aria-hidden="true"><svg viewBox="0 0 300 300"><g fill="none">${ring(142, `EMON OVERRUNS · ${o.code} · ${o.name || ""}`, 3)}${ring(121, `${idNo} · ${o.code} · EMON OVERRUNS`, 3)}${ring(100, `${branchOf(o)} BRANCH · ${o.code}`, 3)}</g></svg>${storeLogo(o, "seal-logo")}<b class="seal-id">${esc(idNo)}</b></span>`;
+    return `${line("t")}${line("b")}<span class="ol-card-seal" aria-hidden="true"><svg viewBox="0 0 300 300"><g fill="none">${ring(142, `EMON OVERRUNS · ${o.code} · ${o.name || ""}`, 3)}${ring(121, `${idNo} · ${o.code} · EMON OVERRUNS`, 3)}${ring(100, `${branchOf(o)} BRANCH · ${o.code}`, 3)}${ring(80, `${idNo} · EMON OVERRUNS · ${o.code}`, 2)}${ring(61, `${o.code} · ${idNo}`, 2)}${ring(43, `EMON OVERRUNS`, 2)}</g>
+      <text class="seal-no" x="150" y="148" text-anchor="middle">${esc(idNo)}</text><text class="seal-sub" x="150" y="164" text-anchor="middle">${esc(o.code)}</text></svg></span>`;
   };
   // the next branch code: SHOP-1, SHOP-2, SHOP-3 … (the highest number + 1)
   const nextCode = (list) => `SHOP-${Math.max(0, ...list.map((x) => Number((/(\d+)$/.exec(String(x.code || "")) || [])[1] || 0))) + 1}`;
@@ -166,7 +167,7 @@
     rankCards(holder, monthNow());
   };
   // 3.99.178: the month's rank (Top 10 by net sales) on each shop
-  const rankCards = (holder, m) => E.outletRanks(m).then((rk) => holder?.querySelectorAll(".ol-rk").forEach((el) => {
+  const rankCards = (holder) => (E.outletWeekRanks || E.outletRanks)(monthNow()).then((rk) => holder?.querySelectorAll(".ol-rk").forEach((el) => {
     const r = rk.get(el.dataset.oid);
     if (r) el.innerHTML = E.rankTag(r.rank); // 3.99.201: #1, #2 (not a round number)
   }));
@@ -205,7 +206,7 @@
       const o = outlets.find((x) => x.id === h.outlet_id); if (!o) return;
       o._today = h;
       const hs = document.querySelector(`#olBody .ol-hours[data-oid="${h.outlet_id}"]`), lv = document.querySelector(`#olBody .ol-live[data-oid="${h.outlet_id}"]`);
-      if (hs) hs.innerHTML = `Today ${esc(todayText(o))} <small class="ol-changed">changed</small>`;
+      if (hs) hs.innerHTML = `Today ${esc(todayText(o))}`; // 3.99.226: no "changed" word
       const s2 = storeNow(o); if (lv && s2) { lv.className = `ol-live st-${s2.k}`; lv.innerHTML = cardLive(o); }
     }), () => {});
     // 3.99.202: the store now on each card, counting by itself (every 30 seconds while the list is open)
@@ -422,10 +423,10 @@
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
     // the store status counts by itself (every 30 seconds while this page is open)
     const live = setInterval(() => { const el = $("#osLive"), s = storeNow(o); if (!el || !s) { clearInterval(live); return; } el.className = `os-live st-${s.k}`; el.innerHTML = liveHtml(o); }, 30000);
-    E.outletRanks(m).then((rk) => { // 3.99.194: the rank of the month shown: #1, #2 … under the store logo
+    (E.outletWeekRanks || E.outletRanks)(m).then((rk) => { // 3.99.226: the rank of THIS WEEK (Monday to Sunday) under the store logo
       const el = $("#osRank"), r = rk.get(o.id);
-      if (!r || !el || el.dataset.oid !== o.id || el.dataset.m !== m) return;
-      el.innerHTML = E.rankTag(r.rank); el.title = `Rank ${r.rank} of ${r.shops} shops · net sales ${E.monthText(m)}`; el.hidden = false;
+      if (!r || !el || el.dataset.oid !== o.id) return;
+      el.innerHTML = E.rankTag(r.rank); el.title = `Rank ${r.rank} of ${r.shops} shops · this week (Monday to Sunday)`; el.hidden = false;
     });
     E.achievements("outlet", o.id).then((a) => { const p = $("#osAchTab"); if (p && p.dataset.oid === o.id) p.innerHTML = E.achHtml(a, "outlet"); });
     $$("[data-del]").forEach((b) => (b.onclick = async () => {
@@ -439,8 +440,8 @@
       const mm = E.modal("Files", `<div id="olFiles">${E.filesHtml(list)}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
       $("[data-x]", mm.el).onclick = () => mm.close(); E.bindFiles(mm.el);
     }));
-    $$("[data-day]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); printDay(o, b.dataset.day, sales, exps, mine, prevOf(b.dataset.day)); }));
-    $$("[data-dayrow]").forEach((tr) => (tr.onclick = (e) => { if (!e.target.closest("button, a, label")) printDay(o, tr.dataset.dayrow, sales, exps, mine, prevOf(tr.dataset.dayrow)); })); // 3.99.221: press a day: its report
+    $$("[data-day]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); printDay(o, b.dataset.day, sales, exps, mine, prevOf(b.dataset.day), st); }));
+    $$("[data-dayrow]").forEach((tr) => (tr.onclick = (e) => { if (!e.target.closest("button, a, label")) printDay(o, tr.dataset.dayrow, sales, exps, mine, prevOf(tr.dataset.dayrow), st); })); // 3.99.221: press a day: its report
     if ($("#olNwd")) $("#olNwd").onclick = () => nwdForm(o, clos, m);
     if ($("#olHours")) $("#olHours").onclick = () => hoursForm(o, m);
     if ($("#olPayRent")) $("#olPayRent").onclick = () => expenseForm(o, null, "", { kind: "rent", amount: rs.left.toFixed(2), payee: "Landlord", note: `Rent ${E.monthText(m)}${rs.paidAmt > 0 ? " (the rest)" : ""}` });
@@ -682,25 +683,38 @@
     if (!o._dayHoursOk) { toast("Run the database update 131 first (Today's Hours).", true); return; }
     const nowHM = () => new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Manila", hour: "2-digit", minute: "2-digit", hour12: false });
     const op = to24(o._today?.opens || o.opens), cl = to24(o._today?.closes || o.closes);
+    const tmr = (() => { const d = new Date(`${today()}T00:00:00`); d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
     const md = E.modal(`${o.code} · Today's Hours`, `
-      <p class="muted" style="margin:0 0 10px">Normal: <b>${esc(hoursOf(o) || "not set")}</b> · Today only</p>
-      <div class="btnrow hr-quick"><button type="button" class="btn" id="hrOpenNow">${ic("check")} Open Now</button><button type="button" class="btn danger" id="hrCloseNow">${ic("x")} Close Now</button></div>
-      <div class="formgrid ol-form"><div><label for="hrOpen">Open today at</label><input type="time" id="hrOpen" value="${esc(op || "")}"></div>
-        <div><label for="hrClose">Close today at</label><input type="time" id="hrClose" value="${esc(cl || "")}"></div>
+      <p class="muted" style="margin:0 0 10px">Normal: <b>${esc(hoursOf(o) || "not set")}</b> · that day only</p>
+      <div class="formgrid ol-form"><div class="span2"><label for="hrDay">Day</label><select id="hrDay"><option value="${today()}">Today · ${esc(mdy(today()))}</option><option value="${tmr}">Tomorrow · ${esc(mdy(tmr))}</option></select></div></div>
+      <div class="btnrow hr-quick" id="hrQuick"><button type="button" class="btn" id="hrOpenNow">${ic("check")} Open Now</button><button type="button" class="btn danger" id="hrCloseNow">${ic("x")} Close Now</button></div>
+      <div class="formgrid ol-form"><div><label for="hrOpen">Opens at</label><input type="time" id="hrOpen" value="${esc(op || "")}"></div>
+        <div><label for="hrClose">Closes at</label><input type="time" id="hrClose" value="${esc(cl || "")}"></div>
         <div class="span2"><label for="hrNote">Reason</label><input id="hrNote" maxlength="200" placeholder="Opened late, closed early, power out …" value="${esc(o._today?.note || "")}"></div></div>`,
-      `${o._today ? `<button type="button" class="btn" id="hrReset">Normal Hours</button>` : ""}<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="hrSave">${ic("check")} Save</button>`);
+      `<button type="button" class="btn" id="hrReset"${o._today ? "" : " hidden"}>Normal Hours</button><button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="hrSave">${ic("check")} Save</button>`);
     const el = md.el, reload = () => { md.close(); V.outlet(o.id, m); };
     el.querySelector("[data-x]").onclick = md.close;
+    const day = () => el.querySelector("#hrDay").value, old = (e) => /outlet_set_day|outlet_clear_day|schema cache|PGRST202|function/i.test(`${e?.code} ${e?.message}`);
+    // tomorrow: its own hours (if any were set), no Open Now / Close Now
+    el.querySelector("#hrDay").onchange = async () => {
+      const t = day() === today(); el.querySelector("#hrQuick").hidden = !t;
+      const { data } = t ? { data: o._today } : await sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", day()).maybeSingle().then((r) => r, () => ({ data: null }));
+      el.querySelector("#hrOpen").value = to24(data?.opens || o.opens) || ""; el.querySelector("#hrClose").value = to24(data?.closes || o.closes) || "";
+      el.querySelector("#hrNote").value = data?.note || ""; el.querySelector("#hrReset").hidden = !data;
+    };
     const save = async (opens, closes) => {
-      const { error } = await sb.rpc("outlet_set_today", { p_outlet: o.id, p_opens: opens || null, p_closes: closes || null, p_note: el.querySelector("#hrNote").value });
-      if (error) return fail(error, "Could not save today's hours");
-      toast("Today's hours saved."); reload();
+      const args = { p_outlet: o.id, p_opens: opens || null, p_closes: closes || null, p_note: el.querySelector("#hrNote").value };
+      let { error } = await sb.rpc("outlet_set_day", { ...args, p_day: day() });
+      if (error && old(error) && day() === today()) ({ error } = await sb.rpc("outlet_set_today", args));
+      if (error) return fail(error, old(error) ? "Hours for tomorrow need the database update 136" : "Could not save the hours");
+      toast(day() === today() ? "Today's hours saved." : `Hours saved for ${mdy(day())}.`); reload();
     };
     el.querySelector("#hrOpenNow").onclick = () => save(nowHM(), el.querySelector("#hrClose").value);
     el.querySelector("#hrCloseNow").onclick = () => save(el.querySelector("#hrOpen").value, nowHM());
     el.querySelector("#hrSave").onclick = () => save(el.querySelector("#hrOpen").value, el.querySelector("#hrClose").value);
     if (el.querySelector("#hrReset")) el.querySelector("#hrReset").onclick = async () => {
-      const { error } = await sb.rpc("outlet_clear_today", { p_outlet: o.id });
+      let { error } = await sb.rpc("outlet_clear_day", { p_outlet: o.id, p_day: day() });
+      if (error && old(error) && day() === today()) ({ error } = await sb.rpc("outlet_clear_today", { p_outlet: o.id }));
       if (error) return fail(error, "Could not reset");
       toast("Normal hours again."); reload();
     };
@@ -756,8 +770,8 @@
     let bar = ""; try { bar = no && E.pdf417DataUrl ? E.pdf417DataUrl(String(no)) : ""; } catch (_) { bar = ""; }
     return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}<div class="so-issued"><small>ISSUED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b></div></div>
       <div class="so-ok"><small>APPROVED BY</small><div class="so-line"></div><b>${BOSS}</b><em>OPERATIONAL DIRECTOR</em>${eo ? `<span>${esc(eo)}</span>` : ""}</div></div>`; };
-  async function printDay(o, date, sales, exps, mine, prev = 0) {
-    const bossId = await loadBoss();
+  async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
+    const [bossId, dh] = await Promise.all([loadBoss(), sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", date).maybeSingle().then((r) => r.data, () => null)]);
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
     const xp = day.filter((x) => x.kind === "daily"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -774,6 +788,20 @@
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
       ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
       <div class="soa-result"><span>From Yesterday ₱ ${P(prev)} + Sales ₱ ${P(tot)} − Expenses ₱ ${P(ex)} − Cash Out ₱ ${P(cash)}</span><b class="${left < 0 ? "neg" : ""}">CASH LEFT ₱ ${P(left)}</b></div>
+      ${(() => { // 3.99.226: every activity of the day, each with its TRX ID; the employees on duty
+        const tm = (at) => (at ? new Date(at).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "—");
+        const acts = [
+          ...(r.id ? [{ at: r.created_at, what: `Sales recorded · ₱ ${P(tot)}`, by: r.created_by_name, id: r.id }] : []),
+          ...(r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? [{ at: r.updated_at, what: "Sales changed", by: "", id: r.id }] : []),
+          ...xp.map((x) => ({ at: x.created_at, what: `Daily operation cost · ₱ ${P(x.amount)}`, by: x.created_by_name, id: x.id })),
+          ...co.map((x) => ({ at: x.created_at, what: `Cash out to ${x.payee || "—"} · ₱ ${P(x.amount)}`, by: x.created_by_name, id: x.id })),
+          ...(dh ? [{ at: dh.updated_at, what: `Hours of the day · ${dh.opens || "—"} – ${dh.closes || "—"}${dh.note ? ` · ${dh.note}` : ""}`, by: dh.set_by_name, id: "" }] : [])
+        ].sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
+        const duty = (staff || []).map((x) => x.employees).filter(Boolean);
+        return `${acts.length ? `<div class="soa-sec dsr-acts"><h4>Activities</h4><table class="soa-t"><thead><tr><th>Time</th><th>Activity</th><th>By</th><th>TRX ID</th></tr></thead><tbody>
+          ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(a.what)}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
+          <div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>`;
+      })()}
       ${nameBoxes(r.created_by_name || me() || "", no, bossId)}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
