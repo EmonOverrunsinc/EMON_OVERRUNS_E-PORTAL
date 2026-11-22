@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.197"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.198"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.197"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.198"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -170,7 +170,14 @@
   // 3.99.166: every profile head gets a small holographic seal that slowly shines (our own design). 3.99.192: it carries the
   // record's own ID number (the first number box of the head: account no, order no, employee no …) with EMON OVERRUNS, and the
   // fine line of the head repeats them; no other words
-  const headId = (h) => String(h.querySelector(".ch-ids .idbox b, .idbox b")?.textContent || "").trim().replace(/\s+/g, " ").slice(0, 22);
+  // 3.99.198: the record's number: the head's title when it is a number (an order: OR-202608-0004), else the first "… No" box
+  const headId = (h) => {
+    const t = (el) => String(el?.textContent || "").trim().replace(/\s+/g, " ");
+    const title = t(h.querySelector("h2"));
+    if (/^[A-Z]{1,6}(?:-[A-Z0-9]+){1,4}$/.test(title)) return title.slice(0, 22);
+    const box = [...h.querySelectorAll(".idbox")].find((b) => /\bNO\b/i.test(t(b.querySelector("small")))) || h.querySelector(".idbox");
+    return t(box?.querySelector("b")).slice(0, 22);
+  };
   const authSticker = (id) => `<div class="auth-st" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><path id="authRing" d="M50 12 a38 38 0 1 1 -0.01 0"/></defs>
     <circle cx="50" cy="50" r="46" class="as-out"/><circle cx="50" cy="50" r="30" class="as-in"/>
     <text class="as-ring"><textPath href="#authRing" textLength="238" lengthAdjust="spacing">${esc(id ? `EMON OVERRUNS · ${id} · EMON OVERRUNS · ${id} ·` : "EMON OVERRUNS · EMON OVERRUNS · EMON OVERRUNS ·")}</textPath></text>

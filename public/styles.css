@@ -5001,3 +5001,13 @@ button.mslot { cursor: pointer; transition: transform .15s; } button.mslot:activ
 .rk-no.rk3 { background: linear-gradient(135deg, #f0c38a, #b8752c 55%, #8a5218); color: #fff8ee; border-color: #c48a4a; }
 .rk-no.rk4, .rk-no.rk5, .rk-no.rk6 { background: linear-gradient(135deg, #f6f8fc, #dde4ef 50%, #c3cede); color: #1f2a44; border-color: #d6dde9; }
 @media (max-width: 760px) { #main .cust-hero .ch-qr { margin-top: 10px !important; } }
+/* 3.99.198: the order's STATUS box compact */
+.og-steps { margin-bottom: 10px; } .og-steps li { font-size: 11px; gap: 4px; } .og-steps li span { width: 26px; height: 26px; font-size: 12px; }
+.og-steps li:not(:last-child)::after { top: 13px; left: calc(50% + 15px); right: calc(-50% + 15px); height: 2px; }
+.og-now { gap: 10px; padding: 10px 12px; border-radius: 12px; }
+.og-n { width: 36px; height: 36px; font-size: 16px; }
+.og-txt small { font-size: 10px; } .og-txt b { font-size: 16px; margin: 1px 0; } .og-txt p { font-size: 13px; line-height: 1.35; }
+.og-go { min-height: 40px; padding: 0 18px; font-size: 14.5px; border-radius: 11px; }
+@media (max-width: 760px) { .og-now { padding: 10px; } .og-n { width: 32px; height: 32px; font-size: 15px; } .og-txt b { font-size: 15px; } .og-txt p { font-size: 12.5px; } .og-go { min-height: 40px; } }
+/* 3.99.198: the coverage chip in an order head never runs off the screen */
+.ins-mini { max-width: 100%; box-sizing: border-box; } .ins-mini > span { min-width: 0; } .ins-mini b, .ins-mini small { white-space: normal; overflow-wrap: anywhere; }
