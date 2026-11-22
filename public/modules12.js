@@ -262,7 +262,7 @@
   const RE = {
     // 3.60: the other record numbers: receipt, voucher, credit memo, collection voucher, payslip, salary and project payment, project,
     // lot, QC form, order letter, employee, customer application, ID card, released notice, statement, contact message, correction
-    doc: /\b(?:A-\d{4}-\d{4}-?\d{1,5}|BD\d{11,14}|EOC-\d{8,12}|CV-\d{6}-\d{1,5}|PS-\d{6}-\d{1,5}|SP-\d{6}-\d{1,5}|PP-\d{6}-\d{1,5}|PRJ-\d{4}-\d{1,5}|LOT-\d{6}-\d{1,5}|QC-\d{4}-\d{1,5}|EO-\d{4}-\d{2}-\d{1,5}|ORDER-\d{4}-\d{1,5}|EO-\d{8}|EO-\d{4}-\d{5}|EOID-\d{4}-\d{1,5}|RN-\d{6}-\d{1,5}|SOA-\d{6}-[A-Z]{1,4}-\d{6,10}|MS-\d{12,14}|CR-\d{4}-\d{1,5})\b/gi,
+    doc: /\b(?:PAY-\d{6}-\d{1,6}|A-\d{4}-\d{4}-?\d{1,5}|BD\d{11,14}|EOC-\d{8,12}|CV-\d{6}-\d{1,5}|PS-\d{6}-\d{1,5}|SP-\d{6}-\d{1,5}|PP-\d{6}-\d{1,5}|PRJ-\d{4}-\d{1,5}|LOT-\d{6}-\d{1,5}|QC-\d{4}-\d{1,5}|EO-\d{4}-\d{2}-\d{1,5}|ORDER-\d{4}-\d{1,5}|EO-\d{8}|EO-\d{4}-\d{5}|EOID-\d{4}-\d{1,5}|RN-\d{6}-\d{1,5}|SOA-\d{6}-[A-Z]{1,4}-\d{6,10}|MS-\d{12,14}|CR-\d{4}-\d{1,5})\b/gi,
     ebill: /\b(?!QC-|CR-)[A-Z]{2}-20\d\d-\d{4}\b/gi, // an e-bill: the company's initials, the year and its number (MF-2026-0001)
     order: /\b(?:PO|OR|CO)-\d{6}-\d{1,6}\b/gi, invoice: /\bINV-\d{6}-\d{1,6}\b/gi, account: /\b[A-Z]{1,4}-\d{6,10}\b/gi, serial: /\b[A-Z]{1,2}\d{6,9}\b/gi, batch: /\b[A-Z]{1,3}-\d{1,3}\b/gi
   };

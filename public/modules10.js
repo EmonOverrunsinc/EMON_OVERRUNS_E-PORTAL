@@ -642,7 +642,7 @@
     const c = o.customers || {}, cols = o.extra_columns || [], w = canW();
     const sumPcs = boxes.reduce((s, b) => s + num(b.pcs), 0);
     const deliverNow = !!o.delivery_code && o.status === "approved"; // the paper's Complete Delivery page (048)
-    $(".band h1") && ($(".band h1").textContent = `Customer Order › ${o.order_no}`);
+    $(".band h1") && ($(".band h1").textContent = `Customer Order › ${o.order_no}`); E.setTrx(o.id);
     const banner = o.status === "pending" ? `<div class="banner warn">${ic("clock")} WAITING FOR APPROVAL — EMON HASAN approves the order. Then it is CONFIRMED and the delivery can start.</div>`
       : o.status === "cancelled" ? `<div class="banner closed">CANCELLED${o.cancelled_by_name ? ` by ${esc(o.cancelled_by_name)}` : ""}${o.cancelled_at ? ` on ${esc(mdy(o.cancelled_at))}` : ""}${o.cancel_note ? ` — ${esc(o.cancel_note)}` : ""}</div>`
       : o.status === "approved" && o.delivery_request_at ? `<div class="banner warn">${ic("clock")} DELIVERY SUBMITTED — ${esc(o.delivery_request_by || "ORDER PAPER")} · ${esc(E.dateTime(o.delivery_request_at))} · Waiting approval</div>`
