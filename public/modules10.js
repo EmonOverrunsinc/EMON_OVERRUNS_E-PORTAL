@@ -101,7 +101,7 @@
   // ======================================================================
   const keyOf = (v) => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); // QQ-13, QQ 13 and qq13 are the same
   E.boxKeyOf = keyOf;
-  const BL_ST = { stock: ["bx-stock", "IN STOCK"], shipped: ["bx-ship", "SHIPPED"], order: ["bx-order", "ON ORDER"], sold: ["bx-sold", "SOLD"] };
+  const BL_ST = { stock: ["bx-stock", "AVAILABLE"], shipped: ["bx-ship", "SHIPPED"], order: ["bx-order", "ON ORDER"], sold: ["bx-sold", "SOLD"] };
   V.boxlist = async (batchArg) => {
     E.shell("boxlist", "Box List", `${E.eoTabs("boxlist")}<div id="blxBody">${busy("Loading the boxes")}</div>`);
     const here = E.stillHere();
@@ -130,7 +130,7 @@
       <div class="lg-head"><div class="lg-find">${ic("search")}<input type="search" id="blxQ" placeholder="Search serial no, batch (QQ13 or QQ-13), product, brand, CTN" autocomplete="off" aria-label="Search the boxes"></div>
         <select id="blxBatch" aria-label="Batch"><option value="">All batches (${allBatches.length})</option>${allBatches.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join("")}</select>
         <button type="button" class="btn" id="blxCsv">${ic("download")} Download</button><button type="button" class="btn primary" id="blxPrint">${ic("print")} Print / PDF</button></div>
-      <div class="lg-chips" id="blxChips"></div>
+      <div class="lg-seg" id="blxChips" role="group" aria-label="Show"></div>
       <div class="lg-log" id="blxView"></div>`;
     if (batch && $("#blxBatch")) $("#blxBatch").value = allBatches.find((b) => keyOf(b) === keyOf(batch)) || "";
     const inScope = () => all.filter((r) => (!batch || keyOf(r.batch || "—") === keyOf(batch)) && (!q || q.split(/\s+/).every((w) => r.hay.includes(w))));
@@ -145,16 +145,17 @@
     let more = false;
     const draw = () => {
       const scope = inScope(), rows = shown();
-      $("#blxChips").innerHTML = [["all", "ALL", scope.length], ["avail", "IN STOCK", cnt(scope, isAvail)], ["order", "ON ORDER", cnt(scope, (r) => r.k === "order")], ["sold", "SOLD", cnt(scope, (r) => r.k === "sold")]]
-        .map(([k, l, n]) => `<button type="button" class="lg-chip c-${k}${filter === k ? " on" : ""}" data-f="${k}">${l} <b>${qtyText(n)}</b></button>`).join("")
-;
-      $$("#blxChips .lg-chip").forEach((b) => (b.onclick = () => { filter = b.dataset.f; more = false; draw(); }));
+      // 3.99.190: one clean bar of 4 equal parts, each with its count
+      $("#blxChips").innerHTML = [["all", "ALL", scope.length], ["avail", "AVAILABLE", cnt(scope, isAvail)], ["order", "ON ORDER", cnt(scope, (r) => r.k === "order")], ["sold", "SOLD", cnt(scope, (r) => r.k === "sold")]]
+        .map(([k, l, n]) => `<button type="button" class="c-${k}${filter === k ? " on" : ""}" data-f="${k}" aria-pressed="${filter === k}"><small>${l}</small><b>${qtyText(n)}</b></button>`).join("");
+      $$("#blxChips button").forEach((b) => (b.onclick = () => { filter = b.dataset.f; more = false; draw(); }));
       const v = $("#blxView");
       if (!rows.length) { v.innerHTML = `<div class="empty">${all.length ? "No box matches." : "No box in the box database yet."}</div>`; return; }
       const part = more ? rows : rows.slice(0, LIMIT);
       v.innerHTML = batchesOf(part).map(([b, list]) => {
         const full = rows.filter((r) => (r.batch || "—") === b);
-        return `<div class="lg-batch"><b>BATCH ${esc(b)}</b><span>${qtyText(full.length)} box${full.length === 1 ? "" : "es"}</span></div>${list.map(line).join("")}`;
+        const av = cnt(full, isAvail);
+        return `<div class="lg-batch"><b>BATCH ${esc(b)}</b><span class="${av ? "av" : "none"}">AVAILABLE ${qtyText(av)} BOX${av === 1 ? "" : "ES"}</span></div>${list.map(line).join("")}`;
       }).join("") + (rows.length > part.length ? `<div class="lg-more"><span>Showing ${qtyText(part.length)} of ${qtyText(rows.length)} boxes</span><button type="button" class="btn small" id="blxMore">Show All ${qtyText(rows.length)}</button></div>` : "");
       if ($("#blxMore")) $("#blxMore").onclick = () => { more = true; draw(); };
     };
@@ -171,12 +172,12 @@
     };
     // the same simple list on A4 (the preview has Print and Download PDF)
     $("#blxPrint").onclick = () => {
-      const rows = shown(), F = { all: "All boxes", avail: "Boxes in stock", order: "Boxes on order", sold: "Sold boxes" }[filter];
-      const sums = batchesOf(rows).map(([b, list]) => [b, `SOLD ${cnt(list, (r) => r.k === "sold")} · IN STOCK ${cnt(list, isAvail)} · TOTAL ${list.length} BOXES`]);
+      const rows = shown(), F = { all: "All boxes", avail: "Available boxes", order: "Boxes on order", sold: "Sold boxes" }[filter];
+      const sums = batchesOf(rows).map(([b, list]) => [b, `SOLD ${cnt(list, (r) => r.k === "sold")} · AVAILABLE ${cnt(list, isAvail)} · TOTAL ${list.length} BOXES`]);
       E.openPreview(`Box List${batch ? " " + batch : ""}`, E.listingPages({ title: batch ? `BOX LIST · BATCH ${batch}` : "BOX LIST", range: `${esc(F)} · ${esc(mdy(isoToday()))}${q ? ` · Search: ${esc(q)}` : ""}`, logo: true, perPage: 32,
         cols: [{ label: "Batch", get: (r) => r.batch || "" }, { label: "Serial No", get: (r) => r.serial_no }, { label: "Product", get: (r) => [r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · ") },
           { label: "CTN", get: (r) => r.ctn || "" }, { label: "Pcs", num: true, get: (r) => qtyText(r.qty) }, { label: "Status", get: label }, { label: "Invoice / Order", get: (r) => (r.k === "sold" ? r.invoice : r.order?.order_no || "") }],
-        rows, summary: { title: "BY BATCH", cols: ["Batch", "Boxes"], rows: sums, total: ["TOTAL", `SOLD ${cnt(rows, (r) => r.k === "sold")} · IN STOCK ${cnt(rows, isAvail)} · TOTAL ${rows.length} BOXES`] } }));
+        rows, summary: { title: "BY BATCH", cols: ["Batch", "Boxes"], rows: sums, total: ["TOTAL", `SOLD ${cnt(rows, (r) => r.k === "sold")} · AVAILABLE ${cnt(rows, isAvail)} · TOTAL ${rows.length} BOXES`] } }));
     };
     draw();
     E.setRecords(`Boxes: ${all.length}`);
