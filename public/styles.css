@@ -5129,3 +5129,9 @@ body.os-info-open > .band-back { display: none !important; }
 .dsr-tbar img { height: 8mm; width: auto; max-width: 52mm; image-rendering: pixelated; }
 .dsr-tbar span { font: 700 5.5pt/1 Arial, Helvetica, sans-serif; letter-spacing: .16em; color: #6b7a99; }
 .soa-info .dsr-note > div:first-child { align-self: flex-start; } .soa-info .dsr-note > .dsr-tbar { align-self: center; }
+.dsr-notetext { margin: 1.5mm 2mm 0; font-size: 8.5pt; color: #33415e; } .dsr-notetext small { font-size: 7pt; font-weight: 800; letter-spacing: .12em; color: #6b7a99; margin-right: 1.5mm; }
+/* 3.99.231: the TRX ID box: the label, the PDF417 under it (like the other boxes) */
+.soa-info .dsr-note { display: block; } .soa-info .dsr-note .dsr-tbar { justify-items: start; margin-top: 1.2mm; } .soa-info .dsr-note .dsr-tbar img { height: 7.5mm; }
+.so-ok .dsr-cash { justify-content: center; margin: 0 0 5mm; }
+.sign-off .eo-stamp:not(.vst) { min-height: 11mm; align-content: start; }
+.so-ok .eo-stamp.vst { padding: 1.8mm 3.2mm 1.6mm; } .so-ok .eo-stamp.vst i { font-size: 5.8pt; letter-spacing: .03em; } .so-ok .eo-stamp.vst small { font-size: 6.2pt; }
