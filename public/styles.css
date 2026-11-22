@@ -4951,3 +4951,18 @@ input.locked { background: #f1f4f9; color: #42506b; font-weight: 700; letter-spa
   .rk-no.rk-tag.tier-gold, .rk-no.rk-tag.tier-silver, .rk-no.rk-tag.tier-bronze, .rk-no.rk-tag.rk1, .rk-no.rk-tag.rk2, .rk-no.rk-tag.rk3 { animation: rkGlow 2.4s ease-in-out infinite !important; }
   .rk-no.rk-tag.tier-gold::after, .rk-no.rk-tag.tier-silver::after, .rk-no.rk-tag.tier-bronze::after, .rk-no.rk-tag.rk1::after, .rk-no.rk-tag.rk2::after, .rk-no.rk-tag.rk3::after { animation: rkShine 2.4s ease-in-out infinite !important; }
 }
+/* 3.99.221: rent tags (light), money boxes, the simple daily list */
+.ol-card-s .pill.ol-rent.paid { background: #e9f7ee; color: #15803d; border: 1px solid #bfe5cb; }
+.ol-card-s .pill.ol-rent.due { background: #fff8e6; color: #8a6100; border: 1px solid #f1d58a; }
+.ol-card-s .pill.ol-rent.overdue small { color: #b42318; }
+.os-kpi.left b { color: #0f2a66; }
+.ol-kpis.k4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 760px) { .ol-kpis.k4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.os-days td small { display: block; font-size: 10.5px; color: #6b7a99; font-weight: 600; margin-top: 2px; }
+.os-days tr.os-day { cursor: pointer; } .os-days tr.os-day:hover td { background: #f5f8fe; }
+.os-actions:empty { display: none; }
+/* 3.99.221: the ⋯ button: only the dots, transparent (every page) */
+.pg-more-btn, .lg-seg .lg-more-btn { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.pg-more-btn { color: #12306b; font-size: 28px; letter-spacing: .04em; }
+.pg-more-btn:focus-visible { outline: 2px solid #9db4e0; outline-offset: 2px; }
+.lg-seg .lg-more-btn { border-left: 0 !important; }
