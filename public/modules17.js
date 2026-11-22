@@ -787,23 +787,37 @@
   // 3.99.219: the sales reports end with ISSUED BY (the name only) and APPROVED BY: a signature line, the name, the
   // position and the EOID of EMON HASAN. No boxes.
   const BOSS = "EMON HASAN";
-  const loadBoss = async () => { await E.loadSignatures?.().catch(() => {}); const id = E.directorId?.(BOSS); if (id) await E.loadSigners?.([id]).catch(() => {}); return id; };
+  const loadBoss = async (more = []) => { await E.loadSignatures?.().catch(() => {}); const id = E.directorId?.(BOSS); await E.loadSigners?.([id, ...more].filter(Boolean)).catch(() => {}); return id; };
+  const dsrNo = (o, d) => `DSR-${String(o.code || "").replace(/[^A-Z0-9]/gi, "").toUpperCase()}-${String(d || "").replace(/-/g, "")}`;
   // 3.99.220: a PDF417 barcode of the report no above ISSUED BY
-  const nameBoxes = (prep, no, bossId, trx = "") => { const eo = bossId ? E.eoidOf?.(bossId) : "";
-    let tbar = ""; try { tbar = trx && E.pdf417DataUrl ? E.pdf417DataUrl(String(trx).toUpperCase()) : ""; } catch (_) { tbar = ""; } // 3.99.228: the TRX ID as a small PDF417
-    let bar = ""; try { bar = no && E.pdf417DataUrl ? E.pdf417DataUrl(String(no)) : ""; } catch (_) { bar = ""; }
-    return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}<div class="so-issued"><small>ISSUED BY</small><b>${esc(String(prep || "").toUpperCase() || "—")}</b></div></div>
-      <div class="so-ok">${tbar ? `<div class="so-tbar"><img src="${tbar}" alt=""><span>TRX ID</span></div>` : ""}<small>APPROVED BY</small><div class="so-line"></div><b>${BOSS}</b><em>OPERATIONAL DIRECTOR</em>${eo ? `<span>${esc(eo)}</span>` : ""}</div></div>`; };
+  const nameBoxes = (prep, no, bossId, trx = "", prepId = "") => {
+    const code = (t) => { try { return t && E.pdf417DataUrl ? E.pdf417DataUrl(String(t)) : ""; } catch (_) { return ""; } };
+    const bar = code(no), tbar = code(trx && String(trx).toUpperCase());
+    const st = prepId ? E.stampOf?.(prepId, prep) : null;
+    const issued = E.stampHtml?.(st && st.name ? st : { name: prep }) || `<b>${esc(String(prep || "").toUpperCase())}</b>`;
+    const boss = E.stampHtml?.(E.stampOf?.(bossId, BOSS, "Operational Director")) || `<b>${esc(BOSS)}</b>`;
+    return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>ISSUED BY</small><div class="so-sign"></div>${issued}</div></div>
+      <div class="so-ok">${tbar ? `<div class="so-tbar"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}<div class="so-sign"></div>${boss}</div></div>`; };
   async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
-    const [bossId, dh] = await Promise.all([loadBoss(), sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", date).maybeSingle().then((r) => r.data, () => null)]);
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
+    // 3.99.229: the sales records before and after this day (the cash left came from / went to)
+    const near = (op, asc) => sb.from("outlet_sales").select("id, sale_date, created_at").eq("outlet_id", o.id)[op]("sale_date", date).order("sale_date", { ascending: asc }).limit(1)
+      .then(({ data }) => (data || []).filter((x) => (asc ? x.sale_date > date : x.sale_date < date)).sort((a, b) => (asc ? 1 : -1) * String(a.sale_date).localeCompare(String(b.sale_date)))[0] || null, () => null);
+    const [bossId, dh, before, after] = await Promise.all([loadBoss([r.created_by]), sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", date).maybeSingle().then((r) => r.data, () => null), near("lt", false), near("gt", true)]);
     const xp = day.filter((x) => x.kind === "daily"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), cash = sum(co, "amount"), left = num(prev) + tot - ex - cash;
-    const no = `DSR-${String(o.code || "").replace(/[^A-Z0-9]/gi, "").toUpperCase()}-${date.replace(/-/g, "")}`;
+    const no = dsrNo(o, date);
     const row = (k, v, cls = "") => `<tr class="${cls}"><td>${k}</td><td class="num">${v}</td></tr>`;
+    // 3.99.229: the CASH LEFT stamp: nothing left: VERIFIED; cash left: VERIFIED once the next sales record took it (its date,
+    // record no, TRX ID and system time), PENDING until then; less than nothing: CASH SHORT
+    const vst = (cls, lines) => `<div class="dsr-cash"><span class="eo-stamp vst ${cls}">${lines}</span></div>`;
+    const cashStamp = !r.id ? "" : Math.abs(left) < 0.005 ? vst("ok", `<b>✔ VERIFIED</b><em>CASH LEFT ₱ ${P(0)}</em><small>NOTHING TO CARRY</small><small>${esc(mdy(date))}</small>`)
+      : left < 0 ? vst("bad", `<b>CASH SHORT</b><em>₱ ${P(-left)}</em><small>CHECK THIS DAY</small>`)
+      : after ? vst("ok", `<b>✔ VERIFIED</b><em>CASH LEFT ₱ ${P(left)}</em><small>ADDED TO ${esc(mdy(after.sale_date))} SALES</small><small>${esc(dsrNo(o, after.sale_date))}</small><i>TRX ID ${esc(String(after.id).toUpperCase())}</i><small>SYSTEM RECORD ${esc(mdy(after.created_at ? new Date(after.created_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) : after.sale_date))}</small>`)
+      : vst("wait", `<b>PENDING</b><em>CASH LEFT ₱ ${P(left)}</em><small>GOES TO THE NEXT SALES RECORD</small>`);
     const list = (title, rows, cols) => `<div class="soa-sec"><h4>${title}</h4>${rows.length ? `<table class="soa-t"><thead><tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>` : `<div class="soa-none">None this day.</div>`}</div>`;
-    const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small>${r.id ? `<small class="soa-trx">TRX ID ${esc(String(r.id).toUpperCase())}</small>` : ""}</div>`)}
+    const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small>${r.id ? `<small class="soa-trx">TRX ID<span>${esc(String(r.id).toUpperCase())}</span></small>` : ""}</div>`)}
       <div class="soa-info"><div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div><div><small>Date</small><b>${esc(mdy(date))}</b></div>
         <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div><div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div><div><small>Recorded By</small><b>${esc(r.created_by_name || "—")}</b></div>
         <div class="w2"><small>Note</small><b>${esc(r.note || "—")}</b></div></div>
@@ -811,9 +825,11 @@
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
       ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
+      ${cashStamp}
       ${(() => { // 3.99.226: every activity of the day, each with its TRX ID; the employees on duty
         const tm = (at) => (at ? new Date(at).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "—");
         const acts = [
+          ...(r.id && prev > 0.004 && before ? [{ at: r.created_at, what: `Cash left from ${mdy(before.sale_date)} added · ₱ ${P(prev)}`, by: "SYSTEM", id: before.id }] : []),
           ...(r.id ? [{ at: r.created_at, what: `Sales recorded · ₱ ${P(tot)}`, by: r.created_by_name, id: r.id }] : []),
           ...(r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? [{ at: r.updated_at, what: "Sales changed", by: "", id: r.id }] : []),
           ...xp.map((x) => ({ at: x.created_at, what: `Daily operation cost · ₱ ${P(x.amount)}`, by: x.created_by_name, id: x.id })),
@@ -825,7 +841,7 @@
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(a.what)}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
           <div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>`;
       })()}
-      ${nameBoxes(r.created_by_name || me() || "", no, bossId, r.id || "")}</div>`;
+      ${nameBoxes(r.created_by_name || me() || "", no, bossId, r.id || "", r.created_by || (r.id ? "" : S.profile?.id))}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
 
@@ -833,7 +849,7 @@
   // the expenses, the cash out and the stock payments (each a table with its total), and the signatures. A long month
   // goes on to the next page (the table head is repeated there).
   async function printSoa(o, m, d) {
-    const bossId = await loadBoss();
+    const bossId = await loadBoss([S.profile?.id]);
     const days = chainDays(d.sales, d.exps, num(d.carry0)); // 3.99.220: the cash left goes on to the next day
     const xps = d.exps.filter((r) => r.kind !== "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
     const cos = d.exps.filter((r) => r.kind === "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
@@ -878,7 +894,7 @@
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the signatures
-    blocks.push({ h: 7, html: nameBoxes(me() || "", soaNo, bossId) }); // 3.99.228: no sum line box; the tiles show it
+    blocks.push({ h: 7, html: nameBoxes(me() || "", soaNo, bossId, "", S.profile?.id) }); // 3.99.228: no sum line box; the tiles show it
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;

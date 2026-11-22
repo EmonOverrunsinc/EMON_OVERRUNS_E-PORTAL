@@ -421,7 +421,7 @@
       <footer class="cv3-sign">
         <div class="cv3-seal">${E.secSeal(i.ins_no, { code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
         <div class="cv3-inv">${invoice?.invoice_no ? `<img src="${E.pdf417DataUrl("EMONINV|" + invoice.invoice_no)}" alt="PDF417 barcode: ${esc(invoice.invoice_no)}">` : ""}<small>Invoice No</small><b class="mono">${v(invNo)}</b></div>
-        <div class="cv3-dir"><div class="cv3-dsig">${sign.pic ? `<img src="${esc(sign.pic)}" alt="Signature">` : ""}</div><i></i><b>${v(who.approver)}</b><small>Authorized Signatory${i.approved_at ? ` · ${esc(mdy(i.approved_at))}` : ""}</small></div>
+        <div class="cv3-dir"><div class="cv3-dsig"></div><i></i>${E.sigMark(sign) || `<b>${v(who.approver)}</b>`}<small>Authorized Signatory${i.approved_at ? ` · ${esc(mdy(i.approved_at))}` : ""}</small></div>
       </footer>
       </div>`;
     E.openPreview(`Coverage Certificate ${i.ins_no}`, [front], { bare: true }); // 3.78.3: 1 page, A4 portrait

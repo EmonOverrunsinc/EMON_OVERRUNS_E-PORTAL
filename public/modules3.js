@@ -468,8 +468,9 @@
         <table class="vf-fields"><tbody>${(data.fields || []).map(([k, v]) => `<tr class="${/^Net (Profit|Loss)/.test(k) ? "vf-hl" : ""}"><th>${esc(k)}</th><td>${esc(E.fixDates(v))}</td></tr>`).join("")}</tbody></table>
         ${data.limited ? `<div class="vf-limited">${ic("shield")} Details: staff only</div>` : ""}
         <div class="vf-when">Checked ${esc(E.dateTime(checked.toISOString()))}</div>
-        ${inside ? `<div class="btnrow center"><button type="button" class="btn primary" id="vfPrint">${ic("print")} Validated Print</button>${OPEN[data.type] ? `<button type="button" class="btn" id="vfOpen">${ic("eye")} Open Record</button>` : ""}</div>` : ""}</div>`;
+        ${inside ? `<div class="btnrow center"><button type="button" class="btn primary" id="vfPrint">${ic("print")} Validated Print</button>${isAdmin() ? `<button type="button" class="btn" id="vfCopy">${ic("shield")} Verification Copy</button>` : ""}${OPEN[data.type] ? `<button type="button" class="btn" id="vfOpen">${ic("eye")} Open Record</button>` : ""}</div>` : ""}</div>`;
       if ($("#vfPrint")) $("#vfPrint").onclick = () => validatedPrint(data, checked);
+      if ($("#vfCopy")) $("#vfCopy").onclick = async (e) => { e.currentTarget.disabled = true; try { await validatedPrint(data, checked, true); } finally { if ($("#vfCopy")) $("#vfCopy").disabled = false; } };
       if ($("#vfOpen")) $("#vfOpen").onclick = async () => {
         const [table, col, route, via] = OPEN[data.type];
         const { data: row } = await sb.from(table).select(via ? `id, ${via}` : "id").eq(col, data.number).maybeSingle();
@@ -490,7 +491,12 @@
   // Validated Print (A4), typewriter style: "VERIFIED BY …", RECORD FOUND with the search result, the record's details
   // (no amount due), then the validation number, time, the employee who printed it and a QR code to check it online
   // (for a customer, made from the Public ID key). System-generated: no signature.
-  function validatedPrint(d, when) {
+  // 3.99.229: signed (the Director only): the VERIFICATION COPY, with the Director's signature and stamp. Papers carry
+  // stamps only; the signature is shown here (and on the ID card), when a signed copy is needed.
+  async function validatedPrint(d, when, signed = false) {
+    signed = signed && isAdmin();
+    let sg = null;
+    if (signed) { await E.loadSignatures?.(true).catch(() => {}); await E.loadSigners?.([meId()]).catch(() => {}); sg = E.approvedBy?.(meId(), S.profile?.full_name || "", when.toISOString()); }
     const vno = "V" + when.toISOString().replace(/\D/g, "").slice(2, 14);
     const at = E.dateTime(when.toISOString());
     // Stored codes in plain words (cash → Cash); empty values are left out.
@@ -505,14 +511,15 @@
       : /^(E-Bill|E-Bill Statistics|Stock-Bill Statistics)$/.test(d.type) ? (fields.find(([k]) => k === "Secret Code") || [])[1] : null;
     const row = (k, v) => `<tr><th>${esc(k)}</th><td${k === "Public ID" ? ' class="key"' : ""}>${esc(v)}</td></tr>`;
     const rows = rest.map(([k, v]) => row(k, E.fixDates(plain(v)))).join("");
-    const page = `<div class="vp">${E.printHead(`VERIFIED BY ${C.company.name}`)}
+    const page = `<div class="vp${signed ? " vp-copy" : ""}">${E.printHead(signed ? "VERIFICATION COPY" : `VERIFIED BY ${C.company.name}`)}
       <div class="vp-true"><span class="vp-seal">✔</span><div><b>RECORD FOUND</b><small>Search result: ${esc(d.number)}${who ? " · " + esc(who[1]) : ""}</small><small>Checked in the ${esc(E.APP)} on ${esc(at)}</small></div></div>
       ${E.box("Record Details", `<table class="vp-fields${rest.length > 16 ? " many" : ""}"><tbody>${row("Record Type", d.type)}${row(idLabel, d.number)}${rows}
         ${d.status && !rest.some(([k]) => /status/i.test(k)) ? row("Status", String(d.status).toUpperCase()) : ""}</tbody></table>`)}
       ${E.box("Validation", `<div class="vp-valid"><table class="vp-fields"><tbody>${row("Validation No", vno)}${row("Validated On", at)}${row("Validated By", S.profile?.full_name || "")}</tbody></table>
         <div class="vp-qr"><img src="${E.qrDataUrl(verifyUrl(key || d.number))}" alt="Verification QR code"><small>Scan to verify online</small></div></div>`)}
-      <div class="vp-sys">This is a system-generated document. No signature is required.</div></div>`;
-    E.openPreview(`Validated ${d.number}`, [page]);
+      ${signed ? `<div class="vp-sign"><div class="vp-sig">${sg?.pic ? `<img src="${esc(sg.pic)}" alt="Signature">` : ""}</div><i></i>${E.stampHtml?.(sg?.stamp) || `<b>${esc(String(S.profile?.full_name || "").toUpperCase())}</b>`}<small>VERIFIED AND SIGNED · ${esc(mdy(when.toLocaleDateString("en-CA")))}</small></div>`
+        : `<div class="vp-sys">This is a system-generated document. No signature is required.</div>`}</div>`;
+    E.openPreview(`${signed ? "Verification Copy" : "Validated"} ${d.number}`, [page]);
   }
 
   // ======================================================================
