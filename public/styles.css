@@ -5073,3 +5073,52 @@ body.os-info-open > .band-back { display: none !important; }
 .so-tbar { display: grid; justify-items: center; gap: .6mm; margin: 0 auto 3mm; }
 .so-tbar img { height: 8mm; width: auto; max-width: 62mm; image-rendering: pixelated; }
 .so-tbar span { font: 700 6pt/1 Arial, Helvetica, sans-serif; letter-spacing: .16em; color: #6b7a99; }
+/* 3.99.229: who signs a paper, in blue words (name · position · EOID) under the signature line; the space above the
+   line is to sign by hand after printing. The CASH LEFT stamp of the sales report is a real stamp (a box). */
+.eo-stamp { --ink: #1f45b5; display: inline-grid; justify-items: center; gap: .45mm; color: var(--ink); font-family: Arial, Helvetica, sans-serif;
+  text-align: center; line-height: 1.12; white-space: nowrap; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.eo-stamp b { font-size: 9.5pt; font-weight: 900; letter-spacing: .06em; color: var(--ink); }
+.eo-stamp em { font-style: normal; font-size: 6.8pt; font-weight: 800; letter-spacing: .14em; color: var(--ink); margin: 0; }
+.eo-stamp i, .eo-stamp small { font-style: normal; font: 700 6.6pt/1.15 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .07em; color: var(--ink); }
+.eo-stamp small { font-family: Arial, Helvetica, sans-serif; letter-spacing: .1em; }
+/* the signature lines of the papers */
+.psig:has(.eo-stamp), .pbox .psig:has(.eo-stamp) { margin-top: 72px; }
+.psig .sig-on:has(.eo-stamp) { display: grid; justify-items: center; align-content: start; }
+.psig .sig-on .line { width: 100%; }
+.psig .sig-on .eo-stamp { margin-top: 1.2mm; }
+.psig .sig-role { display: block; margin-top: 1mm; font-size: 7pt; letter-spacing: .08em; color: #5b6b8c; text-transform: uppercase; }
+.ol-auth.has-sig .ol-auth-name { min-height: 16mm; }
+.ol-auth.has-sig .eo-stamp { display: grid; width: max-content; margin: 1mm auto 1mm; }
+.cv3-dir .eo-stamp { margin-top: .6mm; }
+/* the sales report sign-off: both sides the same, level at the bottom */
+.sign-off { align-items: end; }
+.so-left { align-content: end; }
+.so-bar span, .so-tbar span { display: block; }
+.so-tbar { margin: 0 auto 1mm; }
+.so-issued { display: grid; justify-items: stretch; gap: 0; margin-top: 3.5mm; padding-bottom: 0 !important; text-align: center; width: 70mm; }
+.so-issued small { margin: 0 0 0; text-align: left; }
+.so-sign { height: 15mm; border-bottom: 1px solid #0b1f4d; margin-bottom: 1.6mm; }
+.sign-off .eo-stamp { display: inline-grid; justify-self: center; margin: 0; font: 400 9pt/1.12 Arial, Helvetica, sans-serif; color: var(--ink); letter-spacing: 0; }
+.sign-off .eo-stamp b { display: block; margin: 0; font-size: 9.5pt; font-weight: 900; letter-spacing: .06em; color: var(--ink); }
+.sign-off .eo-stamp em { display: block; margin: 0; font-size: 6.8pt; font-weight: 800; letter-spacing: .14em; color: var(--ink); }
+.sign-off .eo-stamp i { display: block; margin: 0; font: 700 6.6pt/1.15 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .07em; color: var(--ink); }
+.sign-off .so-tbar span { display: block; text-align: center; margin: 0; font: 700 6pt/1.3 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; color: #42506b; }
+.sign-off .so-tbar span b { display: block; margin: 0; font: 700 6pt/1.3 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .02em; color: #0b1f4d; white-space: nowrap; }
+/* the TRX ID in the head box: the word on one line, the number whole on the next (the title keeps its room) */
+.soa-no .soa-trx span { display: block; white-space: nowrap; font-size: 5.4pt; letter-spacing: -.01em; }
+/* the CASH LEFT stamp of the day: a stamp in a box */
+.dsr-cash { display: flex; justify-content: flex-end; margin: 1mm 2mm 4mm; break-inside: avoid; }
+.eo-stamp.vst { padding: 2mm 4.2mm 1.8mm; border: .5mm solid var(--ink); border-radius: 1.6mm; box-shadow: inset 0 0 0 .45mm #fff, inset 0 0 0 .75mm var(--ink); transform: rotate(-4deg); opacity: .93; }
+.eo-stamp.vst b { font-size: 11pt; letter-spacing: .12em; }
+.eo-stamp.vst em { font-size: 8pt; border-top: .25mm solid var(--ink); border-bottom: .25mm solid var(--ink); padding: .45mm 1.4mm; }
+.eo-stamp.vst.wait { --ink: #6b7690; border-style: dashed; box-shadow: none; }
+.eo-stamp.vst.bad { --ink: #b42318; }
+/* My Profile: my blue words */
+.stamp-show { padding: 10px 6px 4px; }
+/* the Director's Verification Copy: the signature on the line, the blue words under it */
+.vp-sign { margin: auto 0 0 auto; width: 78mm; text-align: center; padding-top: 6mm; font-family: Arial, Helvetica, sans-serif; }
+.vp-sig { min-height: 20mm; display: flex; align-items: flex-end; justify-content: center; }
+.vp-sig img { max-height: 18mm; max-width: 80%; object-fit: contain; }
+.vp-sign > i { display: block; border-top: 1px solid #0b1f4d; margin: 1.5mm 0 1.4mm; }
+.vp-sign > b { display: block; font-size: 10pt; color: #0b1f4d; letter-spacing: .04em; }
+.vp-sign small { display: block; font-size: 7pt; font-weight: 700; letter-spacing: .1em; color: #5b6b8c; margin-top: .8mm; }

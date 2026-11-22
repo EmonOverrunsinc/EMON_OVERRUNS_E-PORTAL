@@ -217,32 +217,35 @@
     const { data, error } = await sb.rpc("director_signatures");
     if (error) return SIG.list || []; // 3.35: not kept for 5 minutes, so the next print asks again
     SIG.list = data || []; SIG.at = Date.now();
-    await Promise.all(SIG.list.map((x) => signaturePic(x.signature_path)));
+    await Promise.all([...SIG.list.map((x) => signaturePic(x.signature_path)), loadSigners(SIG.list.map((x) => x.id))]);
     return SIG.list;
   }
-  // 3.99.168: the approved signatures of the people who made documents (Request Created By, Prepared by, Paid by), loaded
-  // before a print; signerBy gives the picture only (the line already says the name). Needs 121_issuer_signatures.sql.
-  const SIGNERS = new Map();
+  // 3.99.229: every employee has a STAMP, made by the system: name · position · EOID, in blue ink. The papers carry the
+  // stamp of who prepared or approved them; a signature picture only goes on the ID card and on the Director's
+  // Verification Copy (Verify page). Loaded before a print. Needs 138_people_stamp.sql (before it: name and EOID only).
+  const SIGNERS = new Set(), STAMPS = new Map();
   async function loadSigners(ids) {
     const want = [...new Set((ids || []).filter((x) => x && !SIGNERS.has(x)))];
     if (!want.length || !S.session) return;
-    // 3.99.200: and their EOID (employee no) for "Prepared by" (both before the paper is drawn)
-    const [{ data, error }] = await Promise.all([sb.rpc("signatures_of", { p_ids: want }).then((r) => r, () => ({ error: true })),
-      sb.rpc("people_eoid", { p_ids: want }).then(({ data: ppl }) => (ppl || []).forEach((x) => x.employee_no && EOIDS.set(x.id, x.employee_no)), () => {})]);
-    if (error) return;
-    want.forEach((x) => SIGNERS.set(x, ""));
-    await Promise.all((data || []).map(async (x) => SIGNERS.set(x.id, await signaturePic(x.signature_path))));
+    const put = (x) => { want.forEach((w) => SIGNERS.add(w)); if (x.employee_no) EOIDS.set(x.id, x.employee_no); STAMPS.set(x.id, { name: x.full_name || "", pos: x.role || x.position ? E.personTitle?.(x.role, x.position) || x.position || "" : "", eoid: x.employee_no || "" }); };
+    const { data, error } = await sb.rpc("people_stamp", { p_ids: want }).then((r) => r, () => ({ error: true }));
+    if (!error) { want.forEach((w) => SIGNERS.add(w)); return (data || []).forEach(put); }
+    await sb.rpc("people_eoid", { p_ids: want }).then(({ data: ppl }) => (ppl || []).forEach(put), () => {});
   }
   const EOIDS = new Map(), eoidOf = (id) => (id && EOIDS.get(id)) || "";
+  const stampOf = (id, name = "", pos = "") => { const s = (id && STAMPS.get(id)) || {}; return { name: s.name || name, pos: s.pos || pos, eoid: s.eoid || eoidOf(id) }; };
+  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.pos ? `<em>${esc(String(s.pos).toUpperCase())}</em>` : ""}${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}</span>` : "");
+  // on a paper: the blue words of who signs, under the line (never the signature picture; they sign by hand after printing)
+  const sigMark = (sign) => (sign ? stampHtml(sign.stamp || (sign.name ? { name: sign.name } : null)) : "");
   // 3.99.219: the id of a Director by name (from the Directors' signatures list), e.g. to print EMON HASAN's EOID
   const directorId = (name) => ((SIG.list || []).find((d) => String(d.full_name || "").trim().toUpperCase() === String(name || "").trim().toUpperCase()) || {}).id || "";
-  const signerBy = (id) => { const pic = id ? SIGNERS.get(id) : ""; return pic ? { name: "", at: null, pic } : null; };
+  const signerBy = (id) => { const s = id && STAMPS.get(id); return s && s.name ? { name: "", at: null, pic: "", stamp: stampOf(id) } : null; };
   // The approval of a document by the Director, for its print: the name, the date and the signature picture (empty
   // until the Director's signature is uploaded). id: the Director's id; without it the name is used.
   function approvedBy(id, name, at) {
     if (!id && !name) return null;
-    const x = (SIG.list || []).find((d) => (id ? d.id === id : d.full_name === name));
-    return { name: name || x?.full_name || "", at, pic: x ? SIG.pics.get(x.signature_path) || "" : "" };
+    const x = (SIG.list || []).find((d) => (id ? d.id === id : d.full_name === name)), nm = name || x?.full_name || "";
+    return { name: nm, at, pic: x ? SIG.pics.get(x.signature_path) || "" : "", stamp: stampOf(id || x?.id, nm, "Operational Director") };
   }
   // A photo of a signature made ready to print: the paper made clear, the edges cut off, at most 900 × 320.
   async function cleanSignature(file) {
@@ -545,11 +548,14 @@
   const cell = (label, value, cls = "") => `<div class="pcell ${cls}"><div class="pl">${esc(label)}</div><div class="pv">${val(value)}</div></div>`;
   const box = (title, inner) => `<div class="pbox"><div class="pbox-h">${esc(title)}</div>${inner}</div>`;
 
-  // Two signature lines. sign (approvedBy): the Director approved the document, so the Director's signature picture stands
+  // Two signature lines. sign (approvedBy): the Director approved the document, so the Director's blue stamp stands
   // on the right line, with the name and the date under it.
-  const sigCol = (label, sign) => sign
-    ? `<div class="sig-on">${sign.pic ? `<img class="esig" src="${esc(sign.pic)}" alt="Signature">` : ""}<div class="line"></div>${label}${sign.name ? `: <b class="nw">${esc(sign.name)}</b>` : ""}${sign.at ? ` &nbsp;·&nbsp; <span class="nw">${esc(mdy(sign.at))}</span>` : ""}</div>`
-    : `<div><div class="line"></div>${label}</div>`;
+  const sigCol = (label, sign) => {
+    const mark = sigMark(sign);
+    if (mark) return `<div class="sig-on"><div class="line"></div>${mark}<small class="sig-role">${String(label).replace(/:[\s\S]*$/, "")}${sign.at ? ` &nbsp;·&nbsp; <span class="nw">${esc(mdy(sign.at))}</span>` : ""}</small></div>`;
+    return sign ? `<div class="sig-on"><div class="line"></div>${label}${sign.name ? `: <b class="nw">${esc(sign.name)}</b>` : ""}${sign.at ? ` &nbsp;·&nbsp; <span class="nw">${esc(mdy(sign.at))}</span>` : ""}</div>`
+      : `<div><div class="line"></div>${label}</div>`;
+  };
   const sigs = (left, right, sign = null, leftSign = null) => `<div class="psig">${sigCol(left, leftSign)}${sigCol(right, sign)}</div>`;
   // 3.17 certificate style: a top row (left · centre number · right), a thin section title and "Label : value" lines
   const cxTop = (items) => `<div class="cx-top">${items.map(([k, v]) => `<div><small>${esc(k)}</small><b>${val(v)}</b></div>`).join("")}</div>`;
@@ -2616,6 +2622,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         <fieldset class="opt dev-card" id="mpDev" hidden></fieldset>
       </div>
       ${emp ? `<div id="mpCard"></div>` : ""}
+      <fieldset class="opt stampset"><legend>My Stamp</legend><div class="stamp-show">${stampHtml({ name: S.profile.full_name || "", pos: E.personTitle?.(S.profile.role, emp?.position) || "", eoid: emp?.employee_no || "" })}</div><p class="muted">On papers · made by the system</p></fieldset>
       <fieldset class="opt sigset" id="mpSigBox"><legend>My Signature</legend>
         ${myPic ? `<div class="sig-show"><img src="${esc(myPic)}" alt="My signature"></div><div class="sig-st">${sigPill(sp.signature_status)}${sp.signature_status === "approved" && sp.signature_approved_by_name ? ` <small>by ${esc(sp.signature_approved_by_name)} on ${mdy(sp.signature_approved_at)}</small>` : ""}</div>` : `<p><b>No signature yet.</b></p>`}
         ${sp.signature_status === "rejected" && sp.signature_note ? `<div class="hint err">Not approved: ${esc(sp.signature_note)}. Upload a clearer signature.</div>` : ""}
@@ -2730,7 +2737,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
   Object.assign(E, {
     extOf, viewFile, latestSigned, uploadRecords, signedUrl, attachmentsOf, filesHtml, bindFiles, fileField, filesOf, isImage,
     docCard, bindDocCards, customerPicker, getCustomer, fullName, printHead, box, cell, sigs, sigCol, cxTop, cxSec, cxKv, uuid, cleanQ, idBox, METHOD,
-    loadSignatures, approvedBy, signaturePic, loadSigners, signerBy, eoidOf, directorId, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
+    loadSignatures, approvedBy, signaturePic, loadSigners, signerBy, eoidOf, stampOf, stampHtml, sigMark, directorId, pickSignature, sigPill, signatureFormPage, openSignatureForm, openBlankSignatureForm, editCustomer, custSoa
   });
   E._docs = { ...(E._docs || {}), invoicePage, ackPage, soaPages, memoPage, detailsPage, applicationPage, txnsOf }; // 3.79: the document pages (for the print checks)
 })();
