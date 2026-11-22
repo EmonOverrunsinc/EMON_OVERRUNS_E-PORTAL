@@ -348,7 +348,7 @@
   }
   // Print a document and write it in the customer's history
   const issueDoc = (c, title, no, page, note) => {
-    E.openPreview(`${title} ${no}`, [page]);
+    E.openPreview(`${title} ${no}`, [page], { customerId: c.id });
     sb.rpc("log_customer_document", { p_customer: c.id, p_document: `${title.toUpperCase()} ${no}`, p_note: note || null }).then(() => {}, () => {});
   };
 
@@ -372,7 +372,7 @@
       const k = b.dataset.rq; m.close();
       if (k === "update") return E.correctRecord("customers", c, `${c.account_no || c.application_no} ${fullName(c)}`, () => V.customer(c.id), { onSaved: (r) => printUpdate(c, r) });
       await E.loadSignatures().catch(() => {});
-      if (k === "balance") { const no = docNo("AB", c); return E.openPreview(`Account Balance Certificate ${no}`, [balancePage(c, ctx, no)]); } // 3.97: only generated (not recorded)
+      if (k === "balance") { const no = docNo("AB", c); return E.openPreview(`Account Balance Certificate ${no}`, [balancePage(c, ctx, no)], { customerId: c.id }); } // 3.97: only generated (not recorded)
       if (k === "closurecert") {
         const ord = (ctx.orders || []).filter((o) => o.subject_type === "closure" && o.status === "applied").sort((x, y) => String(y.applied_at || y.created_at).localeCompare(String(x.applied_at || x.created_at)))[0];
         const no = docNo("CA", c);

@@ -786,13 +786,13 @@
       const t = cleanQ($("#cuQ").value), st = "";
       let q = sb.from("customers").select("*").order("created_at", { ascending: false }).limit(1000);
       if (st) q = q.eq("status", st);
-      if (t) { const w = t.split(/\s+/)[0]; q = q.or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%,public_id.ilike.%${w}%`); }
+      if (t) { const w = t.split(/\s+/)[0]; q = q.or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%,public_id.ilike.%${w}%,public_ident.ilike.%${w}%`); }
       const [{ data, error }, bal, rk] = await Promise.all([q, E.allRows(() => sb.from("customer_balances").select("customer_id,balance_due").order("customer_id")), E.customerRanks()]);
       if (!ok()) return;
       if (error) return fail(error, "Could not load customers");
       const bm = new Map((bal.data || []).map((b) => [b.customer_id, b]));
       const ws = t.toLowerCase().split(/\s+/).filter(Boolean);
-      const rows = (data || []).filter((c) => ws.every((x) => `${fullName(c)} ${c.account_no || ""} ${c.business_name || ""} ${c.phone || ""} ${c.public_id}`.toLowerCase().includes(x)))
+      const rows = (data || []).filter((c) => ws.every((x) => `${fullName(c)} ${c.account_no || ""} ${c.business_name || ""} ${c.phone || ""} ${c.public_id} ${c.public_ident || ""}`.toLowerCase().includes(x)))
         .map((c) => ({ ...c, due: num(bm.get(c.id)?.balance_due) }));
       // 3.99.159: in the order of the account no (its date and running number: AB-202606001 first)
       const acctNo = (c) => Number(String(c.account_no || "").replace(/\D/g, "")) || 9e12;
@@ -978,8 +978,8 @@
     const att = await attachmentsOf("customer", c.id), reqs = att.filter((a) => a.kind === "requirement");
     // 3.80: an approved account prints the CUSTOMER DETAILS (one page, no signature lines); the signatures are collected
     // only on the application form, before the approval
-    if (isApprovedAccount(c)) return E.openPreview(`Customer Details ${c.account_no || c.application_no}`, [await detailsPage(c, att, reqs)], { onePage: true });
-    E.openPreview(`Application ${c.application_no}`, [applicationPage(c, null, reqs)]);
+    if (isApprovedAccount(c)) return E.openPreview(`Customer Details ${c.account_no || c.application_no}`, [await detailsPage(c, att, reqs)], { onePage: true, customerId: c.id });
+    E.openPreview(`Application ${c.application_no}`, [applicationPage(c, null, reqs)], { customerId: c.id });
   }
 
   // 3.80 Customer Details: the approved account's record, made by the E-Portal; no signatures (they are on the application form)
@@ -1035,7 +1035,7 @@
       sb.from("payments_received").select("*, payment_links(invoice_id, amount, removed_at)").eq("customer_id", id).order("paid_date", { ascending: false }).order("created_at", { ascending: false }),
       sb.from("credit_memos").select("*").eq("customer_id", id).order("memo_date", { ascending: false }).order("created_at", { ascending: false }),
       sb.from("customer_events").select("*").eq("customer_id", id).order("created_at"),
-      isAdmin() ? sb.from("customer_secrets").select("private_code").eq("customer_id", id).maybeSingle() : Promise.resolve({ data: null }),
+      Promise.resolve({ data: null }), // 3.99.199: no Private ID any more (the customer portal is closed)
       sb.from("order_letters").select("*").eq("customer_id", id).order("created_at", { ascending: false }),
       E.canAI?.() ? sb.from("ai_gate_log").select("id, suggestion, p_clear, reasons, decision, decided_by_name, created_at").eq("customer_id", id).then((r) => r, () => ({ data: [] })) : Promise.resolve({ data: [] })
     ]);
@@ -1067,14 +1067,13 @@
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
         <div class="ch-main">
-          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}</div>
+          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
           <div class="ch-sub">${[c.credit_limit != null ? `<span class="cl-hi">CREDIT LIMIT <b>₱ ${esc(peso(c.credit_limit))}</b></span>` : "", c.email ? esc(c.email) : ""].filter(Boolean).join(" · ") || "—"}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
-            ${isAdmin() ? `<div class="idbox"><small>Private ID</small><b class="mono" id="pvCode" data-code="${esc(secret.data?.private_code || "")}">••••••••</b> <button type="button" class="linkbtn" id="pvShow">Show</button></div>` : ""}
           </div>
         </div>
-        <div class="ch-qr"><canvas id="pfQr" aria-label="Customer QR code"></canvas><small>Public ID</small><b class="mono key" id="pfKey">${esc(c.public_id || "")}</b><button type="button" class="linkbtn" id="pfCopy">${ic("copy")} Copy</button></div>
+        <div class="ch-qr"><canvas id="pfQr" aria-label="Customer QR code"></canvas><small>Public Identification</small><b class="mono key" id="pfKey">${esc(c.public_ident || "—")}</b><button type="button" class="linkbtn" id="pfCopy">${ic("copy")} Copy</button></div>
       </section>
       <div class="due-card ${num(b.balance_due) > 0 ? "warn" : num(b.balance_due) < 0 ? "credit" : "ok"}"><div><div class="k">Balance Due</div><div class="v">₱ ${peso(b.balance_due)}</div></div>
         <small>${num(b.balance_due) > 0 ? "Amount the customer still owes" : num(b.balance_due) < 0 ? `Overpaid · ₱ ${peso(-num(b.balance_due))} is ready for the customer's next invoice (it is used by itself)` : "Nothing due · fully paid"} · see Details for the full summary</small></div>
@@ -1084,6 +1083,7 @@
         ${canMemo ? `<a class="btn" href="#newcreditmemo/${c.id}">${ic("plus")} Credit Memo</a>` : ""}
         ${c.status === "active" && E.canWrite("eooffice") && E.customerOrdersOf ? `<a class="btn" href="#newcustorder/${c.id}">${ic("box")} Customer Order</a>` : ""}
         ${isApprovedAccount(c) && isStaff() ? `<button type="button" class="btn" id="pfRequest">${ic("stamp")} Request</button>` : ""}
+        ${E.canWrite("customers") ? `<button type="button" class="btn${c.hide_identity ? " ok" : ""}" id="pfHide">${ic("lock")} ${c.hide_identity ? "Identity Hidden on Papers" : "Hide Identity on Papers"}</button>` : ""}
         <span class="grow"></span>
         ${tools("customers", c, `${c.account_no || c.application_no} ${fullName(c)}`, { reload: () => V.customer(c.id), afterDelete: () => (location.hash = "customers"), noFix: isApprovedAccount(c) && isStaff() && !S.mainDirector })}
       </div>
@@ -1133,9 +1133,16 @@
       dropOld(c.photo_path);
       toast("Photo removed."); V.customer(c.id);
     };
+    if ($("#pfHide")) $("#pfHide").onclick = async () => { // 3.99.199: HIDE IDENTITY on the printed / downloaded papers
+      const on = !c.hide_identity;
+      if (!(await E.confirmBox(on ? `Hide the real name on this customer's printed and downloaded papers? They will show the Public Identification <b>${esc(c.public_ident || "")}</b> instead. The portal screens stay the same.` : "Show the real name on this customer's papers again?", { title: on ? "Hide Identity on Papers" : "Show Identity on Papers", ok: on ? "Hide Identity" : "Show Identity" }))) return;
+      const { error } = await sb.rpc("customer_hide_identity", { p_customer: c.id, p_on: on });
+      if (error) return fail(error, /customer_hide_identity|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 129 first" : "Could not save");
+      toast(on ? "Identity hidden on papers." : "Identity shown on papers."); V.customer(c.id);
+    };
     $("#pfCopy").onclick = async () => {
-      try { await navigator.clipboard.writeText(c.public_id); toast("Public ID copied."); }
-      catch (_) { getSelection().selectAllChildren($("#pfKey")); toast("Press Ctrl+C (or tap Copy on a phone) to copy the selected Public ID."); }
+      try { await navigator.clipboard.writeText(c.public_ident || ""); toast("Public Identification copied."); }
+      catch (_) { getSelection().selectAllChildren($("#pfKey")); toast("Press Ctrl+C (or tap Copy on a phone) to copy the selected Public Identification."); }
     };
     $$("#pfTabs button").forEach((t) => (t.onclick = () => {
       $$("#pfTabs button").forEach((x) => x.classList.toggle("on", x === t));
@@ -1173,7 +1180,7 @@
       E.openPreview(`${set[0]} ${c.account_no || ""}`, E.listingPages({ title: set[0], range: `${esc(fullName(c))} · Account No ${esc(c.account_no || "")} · as of ${mdy(isoToday())}`, logo: true,
         cols: set[1].filter((x) => !x.html).concat(set[1].filter((x) => x.html).map((x) => ({ label: x.label, get: x.text }))), rows: set[2],
         summary: { title: "Summary", cols: ["", "Count", k === "od" ? "Balance Overdue (₱)" : "Total Amount (₱)"], rows: [], total: ["Total:", String(set[2].length), peso(total)] },
-        criteria: `Customer: ${fullName(c)} (${c.account_no || ""})` }));
+        criteria: `Customer: ${fullName(c)} (${c.account_no || ""})` }), { customerId: c.id });
     }));
     if (!$("#pfSoa")) { /* 3.64: no statements for this login */ }
     else if (!["pending", "verified", "rejected"].includes(c.status)) renderSoaTab(c, invs.data || [], pays.data || [], memos.data || [], orders);
@@ -1449,7 +1456,7 @@
     const invs = allInvs.filter((i) => i.invoice_date >= from && i.invoice_date <= p.end);
     const pays = txns.filter((x) => x.pay).map((x) => x.pay);
     const images = await monthCopies(invs, pays);
-    E.openPreview(`SOA ${p.no || monthText(p.start)}`, soaPages(c, { ...p, from }, txns, images));
+    E.openPreview(`SOA ${p.no || monthText(p.start)}`, soaPages(c, { ...p, from }, txns, images), { customerId: c.id });
   }
 
   // 3.74: the customer's own SOA on the customer page (Public ID + Private PIN, no login), from the history the server
@@ -1459,7 +1466,7 @@
     const open = openMonth(c), cm = monthStart(isoToday()), months = [];
     for (let m = open; m <= cm; m = nextMonth(m)) months.push(m);
     const period = (m) => ({ start: m, from: coveredFrom(c, m, txns), end: m === cm ? isoToday() : dayBefore(nextMonth(m)), opening: m === open ? 0 : before(txns, m), no: soaNo(m, c), live: m === cm });
-    const print = (m) => { const p = period(m); E.openPreview(`SOA ${p.no}`, soaPages(c, p, within(txns, p.from, p.end), [])); };
+    const print = (m) => { const p = period(m); E.openPreview(`SOA ${p.no}`, soaPages(c, p, within(txns, p.from, p.end), []), { customerId: c.id }); };
     return { months: months.reverse(), period, print, monthText };
   }
 
@@ -1492,7 +1499,7 @@
     E.bindGrid(box, rows, (r) => gatePrint("soa", c.id, `SOA ${r.no || monthText(r.start)} · ${fullName(c)}`, () => printSoa(c, r, txns, invs)));
     $("#soaAll", box).onclick = () => gatePrint("soa", c.id, `All Transactions · ${fullName(c)}`, () => {
       const start = txns.length ? monthStart(txns[0].date) : monthStart(c.application_date);
-      E.openPreview(`All Transactions ${c.account_no}`, soaPages(c, { start, end: isoToday(), opening: 0, no: soaNo(isoToday(), c, true) }, within(txns, start, isoToday()), []));
+      E.openPreview(`All Transactions ${c.account_no}`, soaPages(c, { start, end: isoToday(), opening: 0, no: soaNo(isoToday(), c, true) }, within(txns, start, isoToday()), []), { customerId: c.id });
     });
   }
 
@@ -1736,7 +1743,7 @@
           : `<div class="empty small">No payment is linked to this invoice.</div>`}
         ${linksOn && active.length ? `<div class="lp-sum"><span>Linked to this invoice</span><b>₱ ${peso(active.reduce((s, l) => s + num(l.amount), 0))}</b>${need > 0.004 ? `<span>Still needed from a payment</span><b>₱ ${peso(need)}</b>` : ""}</div>` : ""}</div>
       ${ins && E.insBox ? E.insBox(ins) : ""}
-      <div class="docgrid">${docCard({ key: "inv", title: `Invoice ${inv.invoice_no}`, tag: "System Generated", sub: `Made by the E-Portal · ₱ ${peso(inv.total_amount)} · ${mdy(inv.invoice_date)}${deds.length ? ` · CORRECTED: ₱ ${peso(num(inv.total_amount) - deds.reduce((t, m) => t + num(m.request_amount), 0))}` : ""}`, ownerType: "invoice", ownerId: inv.id, att, kind: "__system", canUpload: false, print: () => gatePrint("invoice", inv.id, `Invoice ${inv.invoice_no}`, async () => { await Promise.all([E.sealCode("invoice", inv.invoice_no), loadSignatures()]); E.openPreview(`Invoice ${inv.invoice_no}`, [invoicePage(inv, active, deds, ins, ord)]); }) })}
+      <div class="docgrid">${docCard({ key: "inv", title: `Invoice ${inv.invoice_no}`, tag: "System Generated", sub: `Made by the E-Portal · ₱ ${peso(inv.total_amount)} · ${mdy(inv.invoice_date)}${deds.length ? ` · CORRECTED: ₱ ${peso(num(inv.total_amount) - deds.reduce((t, m) => t + num(m.request_amount), 0))}` : ""}`, ownerType: "invoice", ownerId: inv.id, att, kind: "__system", canUpload: false, print: () => gatePrint("invoice", inv.id, `Invoice ${inv.invoice_no}`, async () => { await Promise.all([E.sealCode("invoice", inv.invoice_no), loadSignatures()]); E.openPreview(`Invoice ${inv.invoice_no}`, [invoicePage(inv, active, deds, ins, ord)], { customerId: inv.customer_id }); }) })}
         ${copyCard({ key: "invcopy", title: `Invoice ${inv.invoice_no}`, tag: "Upload", sub: "Upload the invoice", ownerType: "invoice", ownerId: inv.id, att, kind: "signed_form" })}</div>
       <div><b>Other Files</b>${filesHtml(att.filter((a) => a.kind !== "signed_form"), "No other files.")}</div>
       </div>
@@ -2008,7 +2015,7 @@
         ${links.length ? links.map((l) => `<div class="lp-row"><a href="#invoice/${l.invoice_id}"><b>${esc(l.customer_invoices?.invoice_no || "")}</b></a><span>Linked ${esc(E.dateTime(l.linked_at))}${l.linked_by_name ? ` by ${esc(l.linked_by_name)}` : ""}</span><b>₱ ${peso(l.amount)}</b><span class="pill active">LINKED</span></div>`).join("")
           : `<div class="empty small">Not linked to an invoice: it pays the customer's oldest invoices first. Link it on the invoice page (Link a Payment).</div>`}
         <div class="lp-sum"><span>Available to link</span><b>₱ ${peso(num(p.amount) - linked)}</b></div></div>`}
-      <div class="docgrid">${docCard({ key: "ack", title: `Acknowledgment Receipt ${p.receipt_no}`, sub: `₱ ${peso(p.amount)} · ${mdy(p.paid_date)}`, ownerType: "payment", ownerId: p.id, att, print: () => gatePrint("payment", p.id, `Payment ${p.receipt_no}`, async () => { await E.sealCode("receipt", p.receipt_no); E.openPreview(`Acknowledgment ${p.receipt_no}`, [ackPage(p)]); }), uploadLabel: "Upload Copy", copyName: "Copy" })}</div>
+      <div class="docgrid">${docCard({ key: "ack", title: `Acknowledgment Receipt ${p.receipt_no}`, sub: `₱ ${peso(p.amount)} · ${mdy(p.paid_date)}`, ownerType: "payment", ownerId: p.id, att, print: () => gatePrint("payment", p.id, `Payment ${p.receipt_no}`, async () => { await E.sealCode("receipt", p.receipt_no); E.openPreview(`Acknowledgment ${p.receipt_no}`, [ackPage(p)], { customerId: p.customer_id }); }), uploadLabel: "Upload Copy", copyName: "Copy" })}</div>
       <div><b>Uploaded Receipts &amp; Files</b>${filesHtml(att.filter((a) => a.kind !== "signed_form"), "No receipts uploaded.")}</div>
       </div>
       <div class="wfoot">${tools("payments_received", p, `Receipt ${p.receipt_no}`, { reload: () => V.payment(id), afterDelete: () => (location.hash = "payments") })}<a class="btn" href="#payments">Close</a></div></div>`;
@@ -2180,7 +2187,7 @@
         <span>Approved By</span><span>${esc(m.approved_by_name || "—")} ${m.approved_at ? mdy(m.approved_at) : ""}</span>
         <span>Paid / Settled</span><span>${m.paid_at ? `${esc(m.paid_by_name || "")} ${mdy(m.paid_at)}` : "—"}</span></div></div>
       ${m.is_return ? returnBox(m) : ""}
-      <div class="docgrid">${docCard({ key: "memo", title: `${m.is_return ? "Return" : "Credit Memo"} ${m.memo_no}`, tag: m.is_return ? "System Generated" : undefined, sub: `₱ ${peso(m.request_amount)} · ${mdy(m.memo_date)}`, ownerType: "credit_memo", ownerId: m.id, att, print: () => E.openPreview(`${m.is_return ? "Return" : "Credit Memo"} ${m.memo_no}`, m.is_return ? returnPage(m) : [memoPage(m)]),
+      <div class="docgrid">${docCard({ key: "memo", title: `${m.is_return ? "Return" : "Credit Memo"} ${m.memo_no}`, tag: m.is_return ? "System Generated" : undefined, sub: `₱ ${peso(m.request_amount)} · ${mdy(m.memo_date)}`, ownerType: "credit_memo", ownerId: m.id, att, print: () => E.openPreview(`${m.is_return ? "Return" : "Credit Memo"} ${m.memo_no}`, m.is_return ? returnPage(m) : [memoPage(m)], { customerId: m.customer_id }),
         approved: memoApproved(m) ? { name: m.approved_by_name, at: m.approved_at } : null })}</div>
       <div><b>Proof</b>${filesHtml(att.filter((a) => a.kind !== "signed_form"), "No proof uploaded.")}</div>
       ${isAdmin() && ["pending", "approved"].includes(m.status) ? `<fieldset class="opt review"><legend>EMON HASAN's Decision</legend>
@@ -2477,7 +2484,7 @@
     if (/^EMONQCK?\|/i.test(t) && (await E.openScanned(t)) !== false) { done(); return; }
     if (findAll === t) findAll = ""; else if (isStaff() && (await findBoxes(t, here))) { done(); return; } // 3.99.35: a box serial no or batch no // a QC form code opens that form (if there is none, the search goes on) // a typed or pasted QC form code opens the (locked) QC form
     const [cs, iv, py, vo, em, qc, cv] = await Promise.all([
-      H("customers") ? sb.from("customers").select("*").neq("status", "closed").or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,public_id.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%`).limit(100) : none,
+      H("customers") ? sb.from("customers").select("*").neq("status", "closed").or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,public_id.ilike.%${w}%,public_ident.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%`).limit(100) : none,
       H("invoices") ? sb.from("invoice_balances").select("*").neq("customer_status", "closed").or(`invoice_no.ilike.%${w}%,po_number.ilike.%${w}%`).limit(50) : none,
       H("payments") ? sb.from("payments_received").select("*, customers(first_name,middle_name,last_name,account_no,status)").or(`receipt_no.ilike.%${w}%,reference_no.ilike.%${w}%`).limit(50) : none,
       H("billing") ? sb.from("pay_vouchers").select("*, pay_companies(name)").or(`voucher_no.ilike.%${w}%,reference_no.ilike.%${w}%,purpose.ilike.%${w}%`).limit(30) : none,
