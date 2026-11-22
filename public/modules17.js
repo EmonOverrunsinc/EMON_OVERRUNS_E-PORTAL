@@ -63,7 +63,8 @@
   const cardSeal = (o) => {
     const k = `cs${++sealN}`, idNo = bidText(o);
     const ring = (r, txt, n) => `<path id="${k}r${r}" d="M150 ${150 - r} a${r} ${r} 0 1 1 -0.01 0"/><text><textPath href="#${k}r${r}" textLength="${(2 * Math.PI * r).toFixed(1)}" lengthAdjust="spacing">${esc(Array.from({ length: n }, () => txt).join(" · "))}</textPath></text>`;
-    return `<span class="ol-card-seal" aria-hidden="true"><svg viewBox="0 0 300 300"><g fill="none">${ring(142, `EMON OVERRUNS · ${o.code} · ${o.name || ""}`, 3)}${ring(121, `${idNo} · ${o.code} · EMON OVERRUNS`, 3)}${ring(100, `${branchOf(o)} BRANCH · ${o.code}`, 3)}</g></svg>${storeLogo(o, "seal-logo")}</span>`;
+    const line = (cls) => `<span class="ol-top-micro ${cls}">${Array.from({ length: 10 }, () => `<i>EMON OVERRUNS</i><i>${esc(idNo)}</i><i>${esc(o.code)}</i>`).join("")}</span>`;
+    return `${line("t")}${line("b")}<span class="ol-card-seal" aria-hidden="true"><svg viewBox="0 0 300 300"><g fill="none">${ring(142, `EMON OVERRUNS · ${o.code} · ${o.name || ""}`, 3)}${ring(121, `${idNo} · ${o.code} · EMON OVERRUNS`, 3)}${ring(100, `${branchOf(o)} BRANCH · ${o.code}`, 3)}</g></svg>${storeLogo(o, "seal-logo")}<b class="seal-id">${esc(idNo)}</b></span>`;
   };
   // the next branch code: SHOP-1, SHOP-2, SHOP-3 … (the highest number + 1)
   const nextCode = (list) => `SHOP-${Math.max(0, ...list.map((x) => Number((/(\d+)$/.exec(String(x.code || "")) || [])[1] || 0))) + 1}`;
@@ -267,6 +268,8 @@
   }
 
   // ---------- a shop's profile ----------
+  // 3.99.224: leaving the page closes an open INFO sheet
+  window.addEventListener("hashchange", () => { document.querySelectorAll("body > .os-info").forEach((x) => x.remove()); document.body.classList.remove("os-info-open"); });
   V.outlet = async (id, month) => {
     E.shell("outlets", "Retail Outlets", `<div id="olBody">${busy()}</div>`);
     const here = E.stillHere();
@@ -347,8 +350,11 @@
       ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn small" for="olDocUp">${ic("upload")} Upload</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}
       ${o.notes ? `<div class="ol-sub">Notes</div><p class="ol-notes">${esc(o.notes)}</p>` : ""}`;
     const box = (cls, k, v, sub = "") => `<div class="os-kpi ${cls}"><small>${k}</small><b>₱ ${peso(v)}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
-    const tabs = [["Daily Sales", days.length, salesTab], ["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Achieved", 0, `<div id="osAchTab" data-oid="${esc(o.id)}">${busy()}</div>`], ["Documents", docs.length, docTab]];
-    const moreBtns = [edit ? `<button type="button" id="olCash">${ic("wallet")} Cash Out</button><button type="button" id="olExp">${ic("plus")} Expense / Bill</button>` : "",
+    // 3.99.224: every month's statement (SOA), made by itself: from the shop's first month to this month (to date)
+    const soaMonths = []; for (let x = start.slice(0, 7); x <= monthNow() && soaMonths.length < 240; x = shiftMonth(x, 1)) soaMonths.push(x);
+    const soaTab = mine ? "" : soaMonths.length ? `<div class="soa-list">${[...soaMonths].reverse().map((x) => `<button type="button" class="ol-li soa-li" data-soa="${esc(x)}">${ic("print")}<div class="ol-li-m"><b class="mono">SOA-${esc(o.code)}-${esc(x.replace("-", ""))}</b><small>${esc(E.monthText(x))}${x === monthNow() ? " · to date" : ""}</small></div><em>Print</em></button>`).join("")}</div>` : empty("No month yet.");
+    const tabs = [["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Achieved", 0, `<div id="osAchTab" data-oid="${esc(o.id)}">${busy()}</div>`], ["Documents", docs.length, docTab], ...(mine ? [] : [["Monthly SOA", soaMonths.length, soaTab]])];
+    const moreBtns = [`<button type="button" id="olInfo">${ic("folder")} Info</button>`, edit ? `<button type="button" id="olCash">${ic("wallet")} Cash Out</button><button type="button" id="olExp">${ic("plus")} Expense / Bill</button>` : "",
       edit && !mine ? `<button type="button" id="olDep">${ic("building")} Bank Deposit</button>` : "",
       edit && !mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<button type="button" id="olPayRent">${ic("receipt")} Pay Rent ₱ ${peso(rs.left)}</button>` : "",
       mine ? "" : `<button type="button" id="olSoa">${ic("print")} Monthly Statement</button>`,
@@ -376,8 +382,10 @@
       <div class="os-kpis"${mine ? " hidden" : ""}>${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", opCost, "Daily operation cost")}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("left", "Cash Left", drawer, "In the shop now")}
         <div class="os-kpi bal${pool < 0 ? " neg" : ""}"><small>Net Balance</small><b>₱ ${peso(pool)}</b><span>Cash out not used yet · used this month ₱ ${peso(usedM)} (rent · stock · bank · bills)</span></div></div>
       <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button>` : ""}</div>
-      <div class="tabs os-tabs" id="osTabs">${tabs.map(([t, n], k) => `<button type="button" class="${k ? "" : "on"}" data-t="${k}">${esc(t)}${n ? ` <em>${n}</em>` : ""}</button>`).join("")}</div>
-      <div class="tabpanes os-panes" id="osPanes">${tabs.map(([, , html], k) => `<div data-p="${k}" class="os-pane"${k ? " hidden" : ""}>${html}</div>`).join("")}</div>`;
+      <section class="os-daily"><div class="os-daily-h"><b>Daily Sales · ${esc(E.monthText(m))}</b>${mine ? "" : `<button type="button" class="btn small" id="olSoa2">${ic("print")} Print</button>`}</div>${salesTab}</section>
+      <section class="os-info" id="osInfo" hidden><div class="os-info-head"><b>${ic("folder")} Info · ${esc(o.code)}</b><button type="button" class="btn small" id="osInfoClose">${ic("x")} Close</button></div>
+        <div class="tabs os-tabs" id="osTabs">${tabs.map(([t, n], k) => `<button type="button" class="${k ? "" : "on"}" data-t="${k}">${esc(t)}${n ? ` <em>${n}</em>` : ""}</button>`).join("")}</div>
+        <div class="tabpanes os-panes" id="osPanes">${tabs.map(([, , html], k) => `<div data-p="${k}" class="os-pane"${k ? " hidden" : ""}>${html}</div>`).join("")}</div></section>`;
     if ($("#osMore")) { // 3.99.221: the ⋯ menu
       const list = $("#osMoreList"), close = () => { list.hidden = true; document.removeEventListener("click", away, true); };
       const away = (e) => { if (!e.target.closest(".pg-more")) close(); };
@@ -396,6 +404,18 @@
     if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales, prevOf, exps);
     $$("[data-esale]").forEach((b) => (b.onclick = () => saleForm(o, sales.find((r) => r.id === b.dataset.esale), sales, prevOf, exps)));
     if ($("#olExp")) $("#olExp").onclick = () => expenseForm(o);
+    // 3.99.224: INFO: expenses, cash out, stock account, employees, achieved, documents and every month's SOA
+    // the sheet goes to the top of the page while it is open (the page's slide-in would keep it under the top bar)
+    const info = $("#osInfo"), home = info?.parentElement, infoClose = () => { info.hidden = true; document.body.classList.remove("os-info-open"); if (home?.isConnected) home.appendChild(info); else info.remove(); };
+    if ($("#olInfo")) $("#olInfo").onclick = () => { document.body.appendChild(info); info.hidden = false; document.body.classList.add("os-info-open"); info.scrollTop = 0; };
+    if ($("#osInfoClose")) $("#osInfoClose").onclick = infoClose;
+    $$("[data-soa]").forEach((b) => (b.onclick = () => {
+      const x = b.dataset.soa;
+      if (x === m) { infoClose(); $("#olSoa")?.click(); return; }
+      try { sessionStorage.setItem("eoSoaPrint", `${id}:${x}`); } catch (_) {}
+      infoClose(); location.hash = `outlet/${id}/${x}`;
+    }));
+    if ($("#olSoa2")) $("#olSoa2").onclick = () => $("#olSoa")?.click();
     if ($("#olDep")) $("#olDep").onclick = () => expenseForm(o, null, "", { kind: "deposit", amount: pool > 0 ? pool.toFixed(2) : "", payee: "BANK", note: "" });
     if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout", cashNow > 0 ? { amount: cashNow.toFixed(2), cashNow } : { cashNow });
     $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
@@ -426,6 +446,9 @@
     if ($("#olPayRent")) $("#olPayRent").onclick = () => expenseForm(o, null, "", { kind: "rent", amount: rs.left.toFixed(2), payee: "Landlord", note: `Rent ${E.monthText(m)}${rs.paidAmt > 0 ? " (the rest)" : ""}` });
     if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null, carry0, op: opCost, used: usedM, pool, drawer });
     E.setRecords(`Outlet: ${o.code}`);
+    document.body.classList.remove("os-info-open");
+    let want = ""; try { want = sessionStorage.getItem("eoSoaPrint") || ""; } catch (_) {}
+    if (want === `${id}:${m}`) { try { sessionStorage.setItem("eoSoaPrint", ""); } catch (_) {} setTimeout(() => $("#olSoa")?.click(), 200); }
   };
 
   // 3.99.220: the days of a month in order, each with the cash left of the day before (prev) and its own cash left

@@ -4978,3 +4978,44 @@ input.locked { background: #f1f4f9; color: #42506b; font-weight: 700; letter-spa
 .ol-card-seal text:nth-of-type(2) { fill: rgba(243, 201, 75, .5); }
 .ol-card-seal .store-logo.seal-logo { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; transform: translate(-50%, -50%); opacity: .5; filter: none; }
 @media (max-width: 760px) { .ol-card-seal { right: -60px; width: 190px; height: 190px; } .ol-card-seal .store-logo.seal-logo { width: 80px; height: 80px; } }
+/* 3.99.224: the shop page: this month's daily sales; INFO opens as a full sheet (iOS style) */
+.os-daily { margin-top: 12px; }
+.os-daily-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 2px 8px; }
+.os-daily-h b { font-size: 15px; color: #0f2a66; letter-spacing: .02em; }
+.os-info { position: fixed; inset: 0; z-index: 80; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: var(--bg, #f4f6fb);
+  padding: max(12px, env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); animation: osSheet .28s cubic-bezier(.2, .8, .2, 1) both; }
+.os-info[hidden] { display: none; }
+@keyframes osSheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.os-info-head { position: sticky; top: calc(-1 * max(12px, env(safe-area-inset-top))); z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -14px 10px; padding: 10px 14px;
+  background: rgba(244, 246, 251, .92); -webkit-backdrop-filter: saturate(1.6) blur(14px); backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid #e3e9f4; }
+.os-info-head b { display: flex; align-items: center; gap: 8px; font-size: 16px; color: #0f2a66; } .os-info-head .ic { color: #a87a22; }
+body.os-info-open { overflow: hidden; }
+.os-info .os-panes { max-width: 1100px; margin: 0 auto; } .os-info .os-tabs { max-width: 1100px; margin: 0 auto 10px; }
+.soa-list { display: grid; gap: 8px; }
+.soa-li { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid #e3e9f4; border-radius: 12px; background: #fff; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.soa-li .ic { width: 18px; height: 18px; color: #1d4fb0; } .soa-li em { font-style: normal; font-weight: 800; color: #1d4fb0; font-size: 13px; }
+.soa-li .ol-li-m small { display: block; color: #6b7a99; font-size: 12px; }
+/* 3.99.224: the card: microtext lines at the top and bottom of the blue head; the identity number inside the seal */
+.ol-top-micro { position: absolute; z-index: 0 !important; left: 0; right: 0; display: flex; gap: 12px; white-space: nowrap; overflow: hidden; pointer-events: none; font: 700 6.5px/1 Arial, Helvetica, sans-serif; letter-spacing: .12em; color: rgba(255, 255, 255, .3); }
+.ol-top-micro i { font-style: normal; } .ol-top-micro i:nth-child(3n+2) { color: rgba(243, 201, 75, .5); }
+.ol-top-micro.t { top: 4px; } .ol-top-micro.b { bottom: 4px; }
+.ol-card .ol-card-top > .ol-top-micro { position: absolute !important; }
+.ol-card-seal .seal-id { position: absolute; left: 50%; top: calc(50% + 52px); transform: translateX(-50%); font: 800 10px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; color: rgba(243, 201, 75, .75); white-space: nowrap; }
+.ol-card-seal .store-logo.seal-logo { opacity: .62; }
+@media (max-width: 760px) { .ol-card-seal { right: 4px; width: 168px; height: 168px; } .ol-card-seal .store-logo.seal-logo { width: 72px; height: 72px; } .ol-card-seal .seal-id { top: calc(50% + 42px); font-size: 9px; } }
+/* 3.99.224: positions stay the same when values change: numbers keep one width; the rank keeps its place while it loads */
+.os-kpi b, .ol-kpi b, .ol-card-n b, td.num, .num, .soa-t td, .lp-row b { font-variant-numeric: tabular-nums; }
+.ol-code-row .ol-rk:empty { display: inline-block; width: 44px; height: 24px; }
+/* 3.99.224: INFO covers the whole screen (above the top bar), like an iOS sheet */
+.os-info { z-index: 5000; }
+.os-info-head { top: calc(-1 * max(12px, env(safe-area-inset-top))); }
+body.os-info-open > .band-back { display: none !important; }
+/* 3.99.224: the INFO sheet lives outside the page: its tabs scroll by themselves, the sheet never sideways */
+.os-info { overflow-x: hidden; }
+.os-info .tabs { display: flex; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; gap: 4px; padding: 5px; border-radius: 13px; background: #e9edf5; }
+.os-info .tabs::-webkit-scrollbar { display: none; }
+.os-info .tabs button { flex: none; white-space: nowrap; min-height: 40px; padding: 0 16px; border-radius: 9px; font-size: 14px; font-weight: 600; color: #3c4a66; }
+.os-info .tabs button.on { background: #0f3a8c; color: #fff; box-shadow: inset 0 -3px 0 #f2b705, 0 2px 8px rgba(15,58,140,.25); }
+.os-info .tabs button em { font-style: normal; display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: #e2b33c; color: #0f2a66; font-size: 11.5px; font-weight: 800; }
+.ol-card-seal .seal-id { top: calc(50% - 64px); }
+@media (max-width: 760px) { .ol-card-seal .seal-id { top: calc(50% - 54px); } }
