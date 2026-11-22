@@ -486,7 +486,7 @@
     if (no) {
       const i = await one(sb.from("invoice_balances").select("*").eq("invoice_no", no).maybeSingle());
       if (!i) return { html: `Invoice ${esc(no)} is not found.` };
-      const st = { paid: "PAID", partial: "PARTIAL PAYMENT", unpaid: "UNPAID" }[i.pay_status] || String(i.pay_status || "").toUpperCase();
+      const st = { paid: "PAID", partial: "PARTIAL", unpaid: "UNPAID" }[i.pay_status] || String(i.pay_status || "").toUpperCase();
       return { cust: { id: i.customer_id, first_name: i.first_name, last_name: i.last_name, account_no: i.account_no }, html: `Invoice <a href="#invoice/${esc(i.id)}"><b>${esc(i.invoice_no)}</b></a> of ${custLink({ id: i.customer_id, first_name: i.first_name, last_name: i.last_name, account_no: i.account_no })}
         <br>Date ${esc(mdy(i.invoice_date))} · amount ${money(i.total_amount)} · paid ${money(i.amount_paid)} · balance <b>${money(i.balance)}</b> · <b>${esc(st)}</b>${isOver(i) ? ` · OVERDUE ${daysBetween(i.due_date, isoToday())} day(s)` : ""}
         ${i.due_date ? `<br>Due date ${esc(mdy(i.due_date))}` : ""}${i.po_number ? ` · order ${esc(i.po_number)}` : ""}` };
