@@ -766,7 +766,7 @@
         <form id="cuForm" class="fields wide">
           <label for="cuQ">Name / Account</label><input type="search" id="cuQ" placeholder="Name, account no, business or phone">
         </form></fieldset></div>
-      <div class="btnrow"><button type="button" class="btn primary" id="cuGo">${ic("search")} Search</button><button type="button" class="btn" id="cuScan">${ic("scan")} Scan QR</button>${isStaff() ? `<button type="button" class="btn" id="cuTop">${ic("crown")} Top 10</button>` : ""}
+      <div class="btnrow"><button type="button" class="btn primary" id="cuGo">${ic("search")} Search</button><button type="button" class="btn" id="cuScan">${ic("scan")} Scan QR</button>${isStaff() ? `<button type="button" class="btn" id="cuTop">${ic("crown")} Rank</button>` : ""}
 </div>
       <div id="cuRes">${busy("Searching")}</div>`, "All customer accounts. Closed accounts are shown here with a <b>CLOSED</b> mark but are hidden from the top search bar.");
     const fresh = E.loadGuard();
@@ -789,13 +789,16 @@
       rows.sort((a, b) => acctNo(a) - acctNo(b));
       // 2.9: names that start with what was typed come first (first name, then last name)
       if (ws.length) { const st0 = (v) => String(v || "").toLowerCase().startsWith(ws[0]); const rk = (c) => (st0(c.first_name) ? 0 : st0(c.last_name) ? 1 : 2); rows.sort((a, b) => rk(a) - rk(b)); }
+      // 3.99.184: no search: numbered by RANK (1 = the highest total net sales, 127); the others after, by account no
+      else { const rnk = (c) => rk.get(c.id)?.rank ?? 1e9; rows.sort((a, b) => rnk(a) - rnk(b)); }
       rows.forEach((r, i) => (r._no = i + 1));
       $("#cuRes").innerHTML = E.grid({ cols: [
-        { label: "No.", num: true, get: (r) => r._no }, { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r), html: (r) => `${esc(E.shortName(r))}${rk.has(r.id) ? ` ${E.rankBadge(rk.get(r.id).rank, "", "mini", `Rank ${rk.get(r.id).rank} of the Top 10 customers`)}` : ""}` }, // 3.99.159: CLOSED once (in Status)
+        { label: ws.length ? "No." : "Rank", num: true, get: (r) => r._no, html: (r) => { const k = !ws.length && rk.get(r.id)?.rank; return k && k <= 10 ? `<span class="rk-no rk${Math.min(k, 6)}" title="Rank ${k}">${k}</span>` : String(r._no); } },
+        { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r) }, // 3.99.159: CLOSED once (in Status)
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
         { label: "Balance Due (₱)", key: "due", num: true, get: (r) => peso(r.due) }],
-        rows, onRow: true, foot: { due: peso(rows.reduce((s, r) => s + r.due, 0)) }, empty: "No customers found.", latest: ws.length ? "start" : "end" });
+        rows, onRow: true, foot: { due: peso(rows.reduce((s, r) => s + r.due, 0)) }, empty: "No customers found." });
       E.bindGrid($("#cuRes"), rows, (r) => (location.hash = "customer/" + r.id));
       E.setRecords(`Customers: ${rows.length}`);
     };
@@ -1197,7 +1200,7 @@
   // 2.7: the account amounts are listed here; the profile shows only the Balance Due
   // 3.99.178: TOP 10 CUSTOMERS by total net sales (all invoices − approved credits), counted up to this week's Monday
   async function topCustomers() {
-    const m = E.modal("Top 10 Customers", `<div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
+    const m = E.modal("Customer Rank", `<div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
     m.el.querySelector("[data-x]").onclick = m.close;
     const rk = await E.customerRanks(), list = [...rk.values()].sort((a, b) => a.rank - b.rank);
     const { data } = list.length ? await sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").in("id", list.map((r) => r.customer_id)) : { data: [] };
@@ -1206,7 +1209,7 @@
     box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} Total net sales up to Monday ${esc(mdy(list[0].as_of))} · the rank changes every Monday.</p>
       <div class="rank-board">${list.map((r) => { const c = cm.get(r.customer_id) || {};
         return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankBadge(r.rank, "")}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
-      : `<div class="empty">No rank yet. It needs the database update <b>125</b>, and invoices before this Monday.</div>`;
+      : `<div class="empty">No rank yet. It needs the database updates <b>125</b> and <b>127</b>, and invoices before this Monday.</div>`;
     box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => m.close()));
   }
 
