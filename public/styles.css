@@ -4875,3 +4875,17 @@ a.qa-plus { text-decoration: none; }
 .ol-card-s:empty { display: none; }
 .ol-card-s .pill { font-size: 11px; padding: 3px 9px; white-space: nowrap; }
 .ol-card-s .pill.ol-rent.pending { background: #fff1f0; color: #b42318; border: 1px solid #f6c7c2; }
+/* 3.99.216: TRX ID under the title of a transaction page, and on the payment slip */
+.band { flex-wrap: wrap; }
+.band .trx-line { flex: 0 0 100%; display: block; margin-top: 6px; min-width: 0; }
+.band .trx-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 999px; background: #eef2fa; border: 1px solid #dde5f3; max-width: 100%; }
+.band .trx-line small { font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #a87a22; flex: none; }
+.band .trx-line b { font-size: 11.5px; color: #0f2a66; letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.band .trx-line .trx-copy { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #fff; color: #1d4fb0; cursor: pointer; }
+.band .trx-line .trx-copy .ic { width: 13px; height: 13px; }
+@media (max-width: 400px) { .band .trx-line b { font-size: 10px; } }
+@media print { .band .trx-line { display: none; } }
+.trx-p { margin: 4px 0 0; font: 600 9px/1.3 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .04em; color: #42506b; text-align: center; }
+.trx-p b { color: #0f2a66; }
+/* the rent tag on one line */
+.ol-card-s .pill.ol-rent { white-space: nowrap; }

@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.215"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.216"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.215"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.216"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2111,7 +2111,27 @@
       t.replaceWith(frag);
     }
   });
+  // 3.99.216: TRX ID: the server ID of the record (its row in the server's table), under the title of every transaction page
+  const TRX_KEYS = new Set(["invoice", "payment", "creditmemo", "custorder", "order", "insurance", "collection", "voucher", "po", "stockbill", "payslip", "project", "qc"]);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let trxSet = { id: "", at: "" };
+  const setTrx = (id) => { trxSet = { id: UUID_RE.test(String(id || "")) ? String(id) : "", at: location.hash }; markTrx(); };
+  const markTrx = () => {
+    const h = document.querySelector(".band h1"); if (!h) return;
+    const [key, arg] = location.hash.slice(1).split("/");
+    const id = !TRX_KEYS.has(key) ? "" : UUID_RE.test(arg || "") ? arg : trxSet.at === location.hash ? trxSet.id : "";
+    const el = document.querySelector(".band .trx-line");
+    if (el && el.dataset.id === id) return;
+    el?.remove();
+    if (id) h.insertAdjacentHTML("afterend", `<div class="trx-line" data-id="${esc(id)}"><span class="trx-pill"><small>TRX ID</small><b class="mono">${esc(id.toUpperCase())}</b><button type="button" class="trx-copy" aria-label="Copy the TRX ID">${ic("copy")}</button></span></div>`);
+  };
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest?.(".trx-copy"); if (!b) return;
+    const id = b.closest(".trx-line")?.dataset.id || "";
+    navigator.clipboard?.writeText(id.toUpperCase()).then(() => toast("TRX ID copied."), () => {});
+  });
   const markWide = () => {
+    markTrx();
     alignFields();
     noBreakCodes();
     fitBoxes();
@@ -3099,7 +3119,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, customerRanks, medalHtml, achHtml, bindAch, achievements, medalRules, vipBox, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, customerRanks, medalHtml, achHtml, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
