@@ -58,6 +58,13 @@
       <text class="sl-b"><textPath href="#${k}b" startOffset="50%" text-anchor="middle" textLength="${fit(bot, 128)}" lengthAdjust="spacingAndGlyphs">${esc(bot)}</textPath></text></svg>${E.logoHtml("sl-img")}</span>`;
   }
   E.storeLogo = storeLogo;
+  // 3.99.223: the round seal on a shop card: rings of microtext (company, shop, branch ID, branch) and the shop's own logo
+  let sealN = 0;
+  const cardSeal = (o) => {
+    const k = `cs${++sealN}`, idNo = bidText(o);
+    const ring = (r, txt, n) => `<path id="${k}r${r}" d="M150 ${150 - r} a${r} ${r} 0 1 1 -0.01 0"/><text><textPath href="#${k}r${r}" textLength="${(2 * Math.PI * r).toFixed(1)}" lengthAdjust="spacing">${esc(Array.from({ length: n }, () => txt).join(" · "))}</textPath></text>`;
+    return `<span class="ol-card-seal" aria-hidden="true"><svg viewBox="0 0 300 300"><g fill="none">${ring(142, `EMON OVERRUNS · ${o.code} · ${o.name || ""}`, 3)}${ring(121, `${idNo} · ${o.code} · EMON OVERRUNS`, 3)}${ring(100, `${branchOf(o)} BRANCH · ${o.code}`, 3)}</g></svg>${storeLogo(o, "seal-logo")}</span>`;
+  };
   // the next branch code: SHOP-1, SHOP-2, SHOP-3 … (the highest number + 1)
   const nextCode = (list) => `SHOP-${Math.max(0, ...list.map((x) => Number((/(\d+)$/.exec(String(x.code || "")) || [])[1] || 0))) + 1}`;
   const empName = (e) => [e?.first_name, e?.middle_name, e?.last_name].filter(Boolean).join(" ").toUpperCase();
@@ -184,7 +191,7 @@
       <div class="ol-cards">${rows.length ? rows.map((r) => {
         const rs = rentState(r.o, r.exps, m);
         return `<a class="ol-card${r.o.status === "closed" ? " closed" : ""}" href="#outlet/${esc(r.o.id)}"><div class="ol-card-micro" aria-hidden="true">${Array.from({ length: 6 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(r.o))}</span><span>${esc(r.o.code)}</span>`).join("")}</div>
-          <div class="ol-card-top"><div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div></div>
+          <div class="ol-card-top">${cardSeal(r.o)}<div class="ol-card-h">${storeLogo(r.o)}<div><div class="ol-code-row"><b class="ol-code">${esc(r.o.code)}</b><span class="ol-rk" data-oid="${esc(r.o.id)}"></span></div><small class="ol-bid">${esc(bidText(r.o))}</small><span>${esc(r.o.name !== r.o.code ? r.o.name : "")}</span></div></div>
           <div class="ol-card-s">${r.o.status === "closed" ? E.pill("closed", "CLOSED") : rentPill(rs)}</div>
           ${r.o.address ? `<div class="ol-card-a">${ic("pin")} ${esc(r.o.address)}</div>` : ""}
           ${hoursOf(r.o) ? `<div class="ol-card-t">${ic("clock")}<span class="ol-hours" data-oid="${esc(r.o.id)}">${esc(hoursOf(r.o))}</span>${r.o.status !== "closed" && storeNow(r.o) ? `<span class="ol-live st-${storeNow(r.o).k}" data-oid="${esc(r.o.id)}">${cardLive(r.o)}</span>` : ""}</div>` : ""}
