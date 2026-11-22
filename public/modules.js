@@ -1564,8 +1564,7 @@
   V.invoices = async () => {
     E.shell("invoices", "Invoice", `
       <div class="tabs" id="ivTabs">${INV_TABS.map(([f, l], i) => `<button type="button" class="${i ? "" : "on"}" data-f="${f}">${l} <span data-n="${f}"></span></button>`).join("")}</div>
-      <div class="btnrow">${E.canWrite("invoices") ? `<a class="btn primary" href="#newinvoice">+ Record Invoice</a>` : ""}</div>
-      <div id="ivRes">${busy()}</div>`, "Every invoice is <b>PAID</b> (in full), <b>PARTIAL PAYMENT</b> or <b>UNPAID</b> (nothing paid yet). Payments, credit memos, discounts and settlement adjustments are for the customer's account: they pay the oldest invoices first. Press <b>Record Invoice</b> to add a sale for an ACTIVE customer.");
+      <div id="ivRes">${busy()}</div>`, "Every invoice is <b>PAID</b> (in full), <b>PARTIAL PAYMENT</b> or <b>UNPAID</b> (nothing paid yet). Payments, credit memos, discounts and settlement adjustments are for the customer's account: they pay the oldest invoices first. Press <b>+</b> at the bottom right to add a sale for an ACTIVE customer.");
     const here = E.stillHere();
     // 3.35: every invoice (also past the 1000 rows the server sends at once), so the tabs and the totals count them all
     const { data, error } = await E.allRows(() => sb.from("invoice_balances").select("*").order("invoice_date", { ascending: false }).order("created_at", { ascending: false }).order("id"));
@@ -1883,7 +1882,7 @@
   ];
   V.payments = async () => {
     E.shell("payments", "Payment", `
-      <div class="btnrow">${E.canWrite("payments") || E.canWrite("invoices") ? `<a class="btn primary" href="#newpayment">+ Record Payment</a>` : ""}</div><div id="pyRes">${busy()}</div>`,
+      <div id="pyRes">${busy()}</div>`,
       "All payments received. Each payment gets a receipt number like <b>A-2026-1003-001</b> and a printable acknowledgment.");
     const here = E.stillHere();
     // 3.35: every payment (also past the 1000 rows the server sends at once), so the total counts them all
