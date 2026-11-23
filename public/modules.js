@@ -1896,7 +1896,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       ${box("Payment", `<div class="pgrid2">${cell("Payment Status", ({ paid: "PAID", partial: "PARTIAL", unpaid: "UNPAID" }[inv.pay_status] || String(inv.pay_status || "").toUpperCase()) + (isOverdue(inv) ? ` · OVERDUE ${daysOver(inv)} DAY(S)` : "") + (bal < 0 ? " (OVERPAID)" : ""))}${cell("Total Amount (₱)", peso(inv.total_amount))}${num(inv.amount_returned) > 0 ? cell("Returned (₱)", peso(inv.amount_returned)) : ""}${cell("Paid (₱)", peso(inv.amount_paid))}${cell("Balance (₱)", peso(bal))}</div>
         ${links.length ? `<table class="ptl"><thead><tr><th>Linked Payment (Receipt No)</th><th>Date Paid</th><th class="num">Amount Linked (₱)</th></tr></thead><tbody>
           ${links.map((l) => `<tr><td>${esc(l.payments_received?.receipt_no || "")}</td><td>${mdy(l.payments_received?.paid_date)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody></table>` : ""}`)}
-      <div class="inv-sealsig">${E.secSeal(inv.invoice_no, { paper: true, code: E.sealCached("invoice", inv.invoice_no), lines: [inv.invoice_no, fullName(inv), inv.account_no].filter(Boolean) })}${invDirector()}</div>`; // 3.99.142: the seal in place of the customer signature
+      <div class="inv-sealsig">${E.secSeal(inv.invoice_no, { trx: inv.id, by: eoidOf(directorId("EMON HASAN")), code: E.sealCached("invoice", inv.invoice_no), lines: [inv.invoice_no, fullName(inv), inv.account_no].filter(Boolean) })}${invDirector()}</div>`; // 3.99.142: the seal in place of the customer signature
   }
 
   // ======================================================================
@@ -2041,7 +2041,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         <div class="prow3">${cell("Bank", p.bank_name)}${cell("Deposit Account", p.bank_account)}${cell("Description", "PAYMENT RECEIVED")}</div>
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(p.amount))}</div></div>`)}
       <p class="pdecl">This acknowledges that ${esc(C.company.name)} has received the payment above. Receipt No ${esc(p.receipt_no)}.</p>
-      <div class="doc-seal mid">${E.secSeal(p.receipt_no, { paper: true, code: E.sealCached("receipt", p.receipt_no) })}</div>
+      <div class="doc-seal mid">${E.secSeal(p.receipt_no, { trx: p.id, by: eoidOf(p.created_by), code: E.sealCached("receipt", p.receipt_no) })}</div>
       <div class="soa-sys">This is a system-generated receipt. No signature is required.</div>`; // 3.99.113: the note under the seal
   }
 
@@ -2425,7 +2425,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
           <div class="bx1-band bxp1-${r.st}"><div><small>Serial No</small><b>${esc(r.serial_no)}</b></div><div><small>Status</small><b>${LBL[r.st]}</b></div><div><small>Batch No</small><b>${esc(r.batch || "—")}</b></div><div><small>Pcs</small><b>${qtyText(r.qty)}</b></div></div>
           ${money.length ? `<div class="bxp-sum money"><div><small>${esc(money[0][0])}</small><b>${money[0][1]}</b></div><div class="amt${sold1 ? "" : " sug"}"><small>${esc(money[1][0])}</small><b>${money[1][1]}</b></div></div>` : ""}
           ${E.box("Tracking", track)}
-          <div class="bxcards"><div class="bxseal-cell">${E.secSeal(r.serial_no, { code })}</div>
+          <div class="bxcards"><div class="bxseal-cell">${E.secSeal(r.serial_no, { code, trx: r.id || "" })}</div>
             ${cards.map(([k, v, n]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b>${n ? `<em>${esc(n)}</em>` : ""}</div>`).join("")}</div>
           <div class="bxsec-micro">${esc(micro)}</div></div>`], { bare: true }); // 3.99.72: no Date Printed box, no page number
       };
