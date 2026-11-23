@@ -612,7 +612,7 @@
       <section class="hero home-hero">${E.logoHtml("hero-logo")}<div>
         <p class="hero-date">${esc(today)}</p>
         <h2>${esc(greet)}${first ? `, ${esc(first.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()))}` : ""}</h2>
-        <p class="welcome">${esc(C.company.name)} <span class="hero-tag">E-PORTAL</span> · <b>${E.titleHtml(S.profile.role, S.position)}</b></p><div id="dPlace" class="ch-place"></div></div></section>
+        <p class="welcome"><span class="hero-tag">${esc(C.company.name)} E-PORTAL</span> · <b>${E.titleHtml(S.profile.role, S.position)}</b></p><div id="dPlace" class="ch-place"></div></div></section>
       ${H("outlets") ? `<section class="nwd-notice" id="dClosed" hidden></section>` : ""}
       ${isAdmin() ? `<section class="todo" id="dTodo" hidden></section>` : ""}
       <section class="box my-dlv" id="dDlv" hidden></section>

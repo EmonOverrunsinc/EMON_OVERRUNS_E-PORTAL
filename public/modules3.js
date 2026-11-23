@@ -718,10 +718,23 @@
     box.innerHTML = rows.length ? rows.map((n) => {
       const day = new Date(n.created_at).toDateString(), sep = day !== lastDay ? `<div class="cv-day">${esc(E.mdy(n.created_at))}</div>` : ""; lastDay = day;
       return `${sep}<div class="cv-msg them cv-note ${n.is_read ? "" : "new"}"><div class="cv-text"><b>${esc(n.title || "")}</b>${n.body ? `<br>${esc(n.body)}` : ""}</div>
-        ${n.link ? `<button type="button" class="btn small cv-open" data-go="${esc(n.link)}">Open</button>` : ""}
+        <div class="cv-acts">${n.link ? `<button type="button" class="btn small cv-open" data-go="${esc(n.link)}">Open</button>` : ""}${(() => { const a = E.noteAction?.(n); return a ? `<button type="button" class="btn small ok" data-pok="${n.id}">${ic("check")} Approve</button><button type="button" class="btn small" data-pno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button>` : ""; })()}</div>
         <small>${esc(new Date(n.created_at).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" }))}${n.sender_name && n.sender_role !== "system" ? ` · ${esc(String(n.sender_name).toUpperCase())}` : ""}</small></div>`;
     }).join("") : `<div class="cp-empty small"><p>No notifications yet.</p></div>`;
     $$("[data-go]", box).forEach((b) => (b.onclick = () => { closeChat(); location.hash = b.dataset.go; }));
+    const byId = new Map(rows.map((n) => [String(n.id), n]));
+    const decide = async (b, ok) => {
+      const n = byId.get(b.dataset.pok || b.dataset.pno), a = n && E.noteAction?.(n); if (!a) return;
+      if (!ok && !(await E.confirmBox(`${esc(a.noLabel || "Reject")}: <b>${esc(n.title)}</b>?`, { title: "E-PORTAL", ok: a.noLabel || "Reject" }))) return;
+      b.parentElement.querySelectorAll("button").forEach((x) => (x.disabled = true));
+      const r = await (ok ? a.ok() : a.no()).catch((e) => ({ error: e }));
+      if (r?.error) { b.parentElement.querySelectorAll("button").forEach((x) => (x.disabled = false)); return fail(r.error, "Could not do it"); }
+      b.parentElement.querySelectorAll("[data-pok],[data-pno]").forEach((x) => x.remove());
+      b.parentElement?.insertAdjacentHTML("beforeend", `<span class="cv-done">${ok ? "✓ Approved" : "✕ " + esc(a.noLabel || "Rejected")}</span>`);
+      toast(ok ? "Approved." : "Done."); E.refreshBadge();
+    };
+    $$("[data-pok]", box).forEach((b) => (b.onclick = () => decide(b, true)));
+    $$("[data-pno]", box).forEach((b) => (b.onclick = () => decide(b, false)));
     box.scrollTop = box.scrollHeight;
     if (rows.some((n) => !n.is_read)) {
       await sb.from("notifications").update({ is_read: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*");
