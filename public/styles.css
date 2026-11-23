@@ -5250,3 +5250,12 @@ body.os-info-open > .band-back { display: none !important; }
 .idc-sign { top: 44.8mm; } /* 3.99.249: higher, clear of the note */
 .idc-sign i { width: 30mm !important; } /* the line about as wide as the name */
 .dir-crown { display: inline-flex; vertical-align: -.12em; margin-left: .35em; color: #e2b33c; } .dir-crown svg { width: 1.05em; height: 1.05em; }
+/* 3.99.252: the Director's title: heavy gold animation (a fast shine and a soft glow); everyone else: silver, a slow light shine */
+.dir-gold { background-image: linear-gradient(100deg, #7a5200 0%, #c8920f 15%, #fff6c8 30%, #ffd84a 40%, #b07d00 55%, #fff2b0 70%, #e2b33c 85%, #8a6100 100%);
+  background-size: 300% 100%; animation: dirGold 1.6s linear infinite, dirGlow 2.4s ease-in-out infinite; }
+@keyframes dirGlow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(242, 183, 5, 0)); } 50% { filter: drop-shadow(0 0 5px rgba(242, 183, 5, .65)); } }
+.dir-crown { animation: dirCrown 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
+@keyframes dirCrown { 0%, 100% { transform: rotate(0) scale(1); } 50% { transform: rotate(-8deg) scale(1.12); } }
+.staff-silver { display: inline-block; font-weight: 900; letter-spacing: .08em; background: linear-gradient(100deg, #6b7280 0%, #9aa3b2 30%, #f3f5f9 45%, #a8b0bd 60%, #6b7280 100%);
+  background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; animation: dirGold 6s linear infinite; }
+@media print { .staff-silver { animation: none; color: #4b5563; -webkit-text-fill-color: #4b5563; background: none; } .dir-crown, .dir-gold { animation: none !important; filter: none !important; } }
