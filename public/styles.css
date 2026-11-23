@@ -5249,3 +5249,4 @@ body.os-info-open > .band-back { display: none !important; }
 .idc-sigpic { height: 7mm; } .idc-sigpic img { max-height: 6.8mm; }
 .idc-sign { top: 44.8mm; } /* 3.99.249: higher, clear of the note */
 .idc-sign i { width: 30mm !important; } /* the line about as wide as the name */
+.dir-crown { display: inline-flex; vertical-align: -.12em; margin-left: .35em; color: #e2b33c; } .dir-crown svg { width: 1.05em; height: 1.05em; }
