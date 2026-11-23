@@ -5228,3 +5228,6 @@ body.os-info-open > .band-back { display: none !important; }
 .page > .pg-code { flex-direction: column-reverse; align-items: center; gap: .7mm; bottom: 1.6mm; }
 .page > .pg-code img { height: 5.6mm; }
 .page > .pg-code span { font-size: 6.5px; letter-spacing: .08em; }
+/* 3.99.245: the ID card back: no stamp; the Director's blue words centred under the line (no line above the EOID) */
+.idc-sign { padding-left: 0 !important; }
+.idc-sign .eo-stamp i { display: block; width: auto; margin: 0; border: 0; }

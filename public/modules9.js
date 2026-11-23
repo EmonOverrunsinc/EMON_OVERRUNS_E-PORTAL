@@ -122,7 +122,7 @@
         <div class="idc-qrtxt"><b class="idc-scan">SCAN TO SIGN IN</b>
           <small>CARD NO</small><b class="mono">${esc(d.card.card_no)}</b><small>ISSUED</small><b>${esc(mdy(d.card.issued_at))}</b>
           <small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b>${d.appNo ? `<small>APPLICATION NO</small><b class="mono">${esc(d.appNo)}</b>` : ""}</div></div>
-      <div class="idc-sign">${rStamp("idc-stamp")}<div class="idc-sigpic">${d.dirSig ? `<img src="${esc(d.dirSig)}" alt="">` : ""}</div><i></i>
+      <div class="idc-sign"><div class="idc-sigpic">${d.dirSig ? `<img src="${esc(d.dirSig)}" alt="">` : ""}</div><i></i>
         ${E.stampHtml ? E.stampHtml(E.stampOf ? E.stampOf(d.card.issued_by, d.dirName || "", d.dirTitle === "REGIONAL DIRECTOR" ? "" : d.dirTitle || "", true) : { name: d.dirName || "", pos: d.dirTitle || "" }) : `<b>${esc(d.dirName || "")}</b><small class="idc-dtitle">${esc(d.dirTitle || "REGIONAL DIRECTOR")}</small>`}</div>
       <p class="idc-note">Property of ${esc(C.company.name)} · not transferable · if found, please return it.<br><b>Verify this card: ${esc(site || "emonoverruns.online")}/verify</b></p>
       <div class="idc-bsec">${d.photo ? `<div class="idc-ghost b2"><img src="${esc(d.photo)}" alt=""><span>${esc(`${em.employee_no} `.repeat(14))}</span></div>` : ""}
