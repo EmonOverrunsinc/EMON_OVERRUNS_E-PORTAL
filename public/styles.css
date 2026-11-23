@@ -5259,3 +5259,8 @@ body.os-info-open > .band-back { display: none !important; }
 .staff-silver { display: inline-block; font-weight: 900; letter-spacing: .08em; background: linear-gradient(100deg, #6b7280 0%, #9aa3b2 30%, #f3f5f9 45%, #a8b0bd 60%, #6b7280 100%);
   background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; animation: dirGold 6s linear infinite; }
 @media print { .staff-silver { animation: none; color: #4b5563; -webkit-text-fill-color: #4b5563; background: none; } .dir-crown, .dir-gold { animation: none !important; filter: none !important; } }
+/* 3.99.253: 3 bronze (a slower shine); plain (no animation) */
+.staff-bronze { display: inline-block; font-weight: 900; letter-spacing: .08em; background: linear-gradient(100deg, #7a4a1e 0%, #b0723a 30%, #f1c79a 45%, #b87b45 60%, #7a4a1e 100%);
+  background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; animation: dirGold 9s linear infinite; }
+.staff-plain { font-weight: 800; letter-spacing: .08em; color: #33415e; }
+@media print { .staff-bronze { animation: none; color: #7a4a1e; -webkit-text-fill-color: #7a4a1e; background: none; } }
