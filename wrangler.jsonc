@@ -4,10 +4,12 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "emon-overruns",
   "compatibility_date": "2026-11-13",
+  "main": "worker.js", // 3.99.335: /api/push (web push alerts); every other address is a file of public/
   "assets": {
     "directory": "public",
     "html_handling": "auto-trailing-slash",
-    "not_found_handling": "none"
+    "not_found_handling": "none",
+    "binding": "ASSETS"
   },
   "workers_dev": true,
   "preview_urls": false,

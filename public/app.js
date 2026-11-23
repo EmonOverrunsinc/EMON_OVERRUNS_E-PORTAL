@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.334"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.335"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.334"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.335"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1816,13 +1816,35 @@
       ? `<div class="al-bar off">${ic("bell")}<span>Notifications are blocked. Turn them on in the phone / browser settings for this site.</span></div>`
       : `<div class="al-bar">${ic("bell")}<span>Get a message alert on this phone / computer</span><button type="button" class="btn small primary" data-allow-alerts>Allow</button></div>`;
   };
+  // 3.99.335: this device gets alerts even when the portal is closed (web push, SQL 154). The Director's device makes the
+  // keys the first time.
+  const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const fromB64u = (t) => Uint8Array.from(atob(String(t).replace(/-/g, "+").replace(/_/g, "/") + "===".slice((String(t).length + 3) % 4)), (c) => c.charCodeAt(0));
+  async function pushSubscribe() {
+    try {
+      if (!S.session || !("serviceWorker" in navigator) || !("PushManager" in window) || Notification.permission !== "granted") return;
+      let { data: pub, error } = await sb.rpc("push_public_key"); if (error) return; // SQL 154 not run yet
+      if (!pub && isAdmin()) {
+        const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+        const jwk = await crypto.subtle.exportKey("jwk", kp.privateKey), raw = await crypto.subtle.exportKey("raw", kp.publicKey);
+        const r = await sb.rpc("push_setup", { p_public: b64u(raw), p_private: jwk }); if (r.error) return; pub = r.data;
+      }
+      if (!pub) return;
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (sub) { const k = sub.options?.applicationServerKey; if (k && b64u(k) !== pub) { await sub.unsubscribe(); sub = null; } }
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64u(pub) });
+      await sb.rpc("push_subscribe", { p_endpoint: sub.endpoint });
+    } catch (_) { /* this browser cannot get alerts */ }
+  }
+  setTimeout(pushSubscribe, 6000);
   document.addEventListener("click", async (e) => {
     const b = e.target.closest?.("[data-allow-alerts]"); if (!b) return;
-    try { const r = await Notification.requestPermission(); toast(r === "granted" ? "Notifications are on." : "Notifications were not allowed.", r !== "granted"); } catch (_) {}
+    try { const r = await Notification.requestPermission(); toast(r === "granted" ? "Notifications are on." : "Notifications were not allowed.", r !== "granted"); if (r === "granted") pushSubscribe(); } catch (_) {}
     document.querySelectorAll(".al-bar").forEach((x) => { const h = alertBar(); if (h) x.outerHTML = h; else x.remove(); });
   });
   // the phone / computer asks once to allow alerts (on the first tap after sign-in)
-  document.addEventListener("pointerdown", () => { try { if (S.session && "Notification" in window && Notification.permission === "default" && !localStorage.getItem("eoAskAlerts")) { localStorage.setItem("eoAskAlerts", "1"); Notification.requestPermission().catch(() => {}); } } catch (_) {} }, { passive: true });
+  document.addEventListener("pointerdown", () => { try { if (S.session && "Notification" in window && Notification.permission === "default" && !localStorage.getItem("eoAskAlerts")) { localStorage.setItem("eoAskAlerts", "1"); Notification.requestPermission().then((r) => { if (r === "granted") pushSubscribe(); }).catch(() => {}); } } catch (_) {} }, { passive: true });
   const refreshBadge = () => refreshBadges(true);
   // 3.99.226: who sent a notification: the E-Portal (✔) or a person (the Director ✔ in gold)
   const noteFrom = (n) => {
