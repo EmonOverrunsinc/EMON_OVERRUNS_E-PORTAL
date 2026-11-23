@@ -5327,3 +5327,7 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.269: EMON OVERRUNS E-PORTAL in one colour; the Download Log button */
 .welcome .hero-tag, .home-hero .welcome .hero-tag { color: var(--ink-soft) !important; -webkit-text-fill-color: currentColor; }
 .log-row { justify-content: flex-end; margin: 0 0 8px; }
+/* 3.99.271: the photo hologram further left and lower, more see-through; the back name block clear of the note */
+.idc-photo .idc-holo { right: 3.2mm; bottom: .4mm; opacity: .7; }
+.idc-photo .idc-holo .idc-holo-st { opacity: .75; }
+.idc-sign { top: 43.4mm !important; }
