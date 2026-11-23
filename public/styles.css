@@ -5424,3 +5424,26 @@ body.os-info-open > .band-back { display: none !important; }
 .store-logo .sl-micro { font: 700 2.05px/1 Arial, Helvetica, sans-serif; fill: rgba(243, 201, 75, .42); letter-spacing: .02em; }
 .store-logo .sl-img { background: transparent !important; border-radius: 0; width: 42%; height: 42%; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, .45)); }
 .store-logo .sl-img { transform: translateY(-7%); } /* 3.99.297: a little up */
+/* 3.99.298: the shop's daily list: every row the same size; on a phone it fits the screen */
+.os-days .d-s { display: none; }
+.os-act > summary { display: none; }
+.os-act { display: inline-block; }
+@media (max-width: 640px) {
+  .os-days { table-layout: fixed; width: 100%; min-width: 0 !important; font-size: 12px; }
+  .os-days th, .os-days td { padding: 0 4px !important; height: 44px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+  .os-days th { height: 32px; font-size: 9.5px; letter-spacing: .02em; }
+  .os-days th:first-child, .os-days td:first-child { width: 21%; padding-left: 8px !important; text-overflow: clip; }
+  .os-days th:last-child, .os-days td:last-child { width: 34px; padding: 0 !important; text-align: center; overflow: visible; }
+  .os-days td b, .os-days td { font-weight: 700; }
+  .os-days .d-l, .os-days td small { display: none; }
+  .os-days .d-s { display: inline; } .os-days td:first-child .d-s { font-size: 11.5px; letter-spacing: -.01em; }
+  .os-act { position: relative; }
+  .os-act > summary { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; list-style: none; cursor: pointer; font-weight: 800; color: #1e3a8a; background: #eef2fb; }
+  .os-act > summary::-webkit-details-marker { display: none; }
+  .os-act[open] > .ol-tools { position: absolute; right: 0; top: 34px; z-index: 30; display: flex; gap: 6px; padding: 6px; background: #fff; border: 1px solid #dfe5f1; border-radius: 12px; box-shadow: 0 8px 22px rgba(15, 35, 80, .18); white-space: nowrap; }
+  .os-days + *, .grid-scroll:has(> .os-days) { overflow: visible; }
+}
+/* 3.99.298: same row size on every screen; the cash from yesterday shows on the date's tooltip */
+.os-days td small { display: none !important; }
+.os-days tbody td { height: 50px; vertical-align: middle; white-space: nowrap; }
+.os-days tbody td.num { font-weight: 700; }
