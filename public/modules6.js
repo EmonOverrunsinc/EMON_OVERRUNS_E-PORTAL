@@ -63,7 +63,14 @@
   V.eooffice = async (tab, month) => {
     const cards = MNL.filter((x) => E.hasModule(x[4]) && (x[4] !== "eooffice" || E.isStaff()));
     E.shell("eooffice", "Regional Office Manila", `${eoTabs("eooffice")}<div class="reg-cards mnl-cards">${cards.map(([k, l, icon, say]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(say)}</small><em id="mnlN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>
+      <section class="prize-pool" id="dPrize" hidden></section>
       <div id="eoBody">${busy()}</div>`);
+    if ($("#dPrize")) sb.rpc("prize_pool").then(({ data: p }) => { // 3.99.250: the prize pool, on the office page
+      const el = $("#dPrize"); if (!el || !p) return;
+      el.innerHTML = `<div class="pz-ic">${ic("crown")}</div><div class="pz-main"><small>PRIZE POOL</small><b>₱ ${peso(p.redeemed)}</b><em>REDEEMED · ${p.redeemed_n} TIME${p.redeemed_n === 1 ? "" : "S"}</em></div>
+        <div class="pz-main pz-open"><small>TO REDEEM</small><b>₱ ${peso(p.open)}</b><em>${p.gold} GOLD · ${p.silver} SILVER · ${p.bronze} BRONZE</em></div>`;
+      el.hidden = false;
+    }, () => {});
     const here = E.stillHere();
     cards.forEach(([k]) => mnlCount[k] && mnlCount[k]().then((t) => { if (here() && $(`#mnlN-${k}`)) $(`#mnlN-${k}`).textContent = t; }, () => {}));
     if (!E.hasModule("eooffice") || !E.isStaff()) { $("#eoBody").innerHTML = ""; return; }

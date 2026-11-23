@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.249"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.250"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.249"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.250"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -268,7 +268,7 @@
   // The top role is called Director in the portal (stored as "admin"); everyone else is shown with their job position.
   const roleName = (r) => ({ admin: "Full Access", staff: "Employee", viewer: "Viewer" })[r] || r || "";
   const personTitle = (role, position) => role === "admin" ? position || "Operational Director" : position || roleName(role); // 3.99.232: the Director's own Position first
-  const titleHtml = (role, position) => role === "admin" ? `<span class="dir-gold">${esc(String(position || "Operational Director").toUpperCase())}</span><i class="vf" title="Verified">${ic("check")}</i>` : esc(String(position || roleName(role) || "").toUpperCase());
+  const titleHtml = (role, position) => role === "admin" ? `<span class="dir-gold">${esc(String(position || "Operational Director").toUpperCase())}</span><span class="dir-crown" aria-hidden="true">${ic("crown")}</span>` : esc(String(position || roleName(role) || "").toUpperCase()); // 3.99.250: the crown after the title
   // 3.99.234: where someone works: the shop (its logo, code and name), a company, or the EO OFFICE; and since when
   const placeBadge = (pl, cls = "") => {
     if (!pl || !pl.kind) return "";
