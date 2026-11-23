@@ -5220,3 +5220,7 @@ body.os-info-open > .band-back { display: none !important; }
 .idc-rs .idc-rs-logo { position: absolute; left: 50%; top: 50%; width: 36%; height: 36%; transform: translate(-50%, -50%); object-fit: contain; }
 .idc-photo .idc-seal.idc-rs { right: .8mm; bottom: .8mm; width: 9.4mm; height: 9.4mm; transform: rotate(-12deg); }
 .idc-sign .idc-stamp.idc-rs { left: .2mm; top: .6mm; width: 11.4mm; height: 11.4mm; transform: rotate(-10deg); }
+/* 3.99.243: the card stamps: front on the photo's corner (over the photo and the frame); back centred under the QR code */
+.idc-photo .idc-seal.idc-rs { right: -6.2mm; bottom: -2.9mm; width: 9.6mm; height: 9.6mm; z-index: 3; }
+.idc-sign .idc-stamp.idc-rs { left: 5.3mm; top: .4mm; }
+.idc-rs img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
