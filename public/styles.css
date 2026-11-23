@@ -5291,3 +5291,10 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.259: every box stamp (VERIFIED, PENDING, CASH SHORT) as wide as the signing line, straight */
 .so-ok .dsr-cash { display: block; margin: 0 0 3mm; }
 .so-ok .dsr-cash .eo-stamp.vst, .dsr-cash .eo-stamp.vst { display: grid; width: 100%; box-sizing: border-box; transform: none; justify-items: center; white-space: normal; }
+/* 3.99.260: the photo hologram moves: the rainbow turns slowly and a light passes over it (medium speed) */
+.idc-photo .idc-holo { animation: idcHoloHue 4s linear infinite; }
+.idc-photo .idc-holo::after { inset: -60%; background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, .85) 50%, transparent 62%); animation: idcHolo 3s ease-in-out infinite; }
+.idc-photo .idc-holo .idc-holo-st { animation: idcHoloTilt 3s ease-in-out infinite; }
+@keyframes idcHoloHue { from { filter: hue-rotate(0deg) saturate(1.3); } to { filter: hue-rotate(360deg) saturate(1.3); } }
+@keyframes idcHoloTilt { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.04); opacity: 1; } }
+@media print { .idc-photo .idc-holo, .idc-photo .idc-holo .idc-holo-st { animation: none; filter: none; } }
