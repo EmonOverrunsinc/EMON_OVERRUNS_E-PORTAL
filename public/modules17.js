@@ -495,16 +495,15 @@
   function saleForm(o, row, existing, prevOf = () => 0, exps = [], day = "") {
     const m = E.modal(`${o.code} · Daily Sales`, `<div class="formgrid ol-form">
         <div><label for="osDate">Date *</label><input id="osDate" type="date" value="${esc(row?.sale_date || day || today())}" ${row ? "disabled" : ""}></div><div></div>
-        <div class="span2"><label for="osNet">Total Net Sales (₱) *</label><input id="osNet" class="os-amt os-net" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row.total) ? esc(row.total) : ""}" placeholder="0.00"></div>
-        <div><label for="os_gcash">GCash (₱)</label><input id="os_gcash" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row.gcash) ? esc(row.gcash) : ""}" placeholder="0.00"></div>
-        <div><label for="os_cash">${ic("lock")} Cash (₱) · by itself</label><input id="os_cash" class="locked" type="number" readonly tabindex="-1" value="${row ? esc(num(row.cash)) : ""}" placeholder="0.00"></div>
-        <div class="span2 ol-total">Total Net Sales <b id="osTot">₱ 0.00</b></div>
+        <div class="span2"><label for="osNet">Total Net Sales *</label><input id="osNet" class="os-amt os-net" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row.total) ? esc(row.total) : ""}" placeholder="0.00"></div>
+        <div><label for="os_gcash">GCash</label><input id="os_gcash" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row.gcash) ? esc(row.gcash) : ""}" placeholder="0.00"></div>
+        <div><label for="os_cash">${ic("lock")} Cash</label><input id="os_cash" class="locked" type="number" readonly tabindex="-1" value="${row ? esc(num(row.cash)) : ""}" placeholder="0.00"></div>
+        <b id="osTot" hidden></b>
         ${row ? "" : `<div class="span2 ol-prev">${ic("lock")} Cash Left from Yesterday <b id="osPrev">₱ 0.00</b></div>
-        <div><label for="osExp">Daily Operation Cost (₱)</label><input id="osExp" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
-        <div><label for="osExpN">Description</label><input id="osExpN" value="DAILY OPERATION COST" readonly class="locked"></div>
-        <div><label for="osOut">Cash Out (₱) <button type="button" class="linkbtn os-all" id="osAll">All</button></label><input id="osOut" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
-        <div><label for="osOutN">Cash Out To</label><input id="osOutN" maxlength="120" placeholder="e.g. EMON HASAN / bank deposit"></div>
-        <div class="span2 ol-left">Cash Left in the Shop <b id="osLeft">₱ 0.00</b><small>goes on to the next day</small></div>`}
+        <div class="span2"><label for="osExp">Daily Operation</label><input id="osExp" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        <div><label for="osOut">Cash Out <button type="button" class="linkbtn os-all" id="osAll">All</button></label><input id="osOut" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        <div><label for="osOutN">${ic("lock")} Cash Out To <button type="button" class="linkbtn" id="osOutEdit" hidden>✎ Change</button></label><input id="osOutN" maxlength="120" value="EMON HASAN" readonly class="locked"></div>
+        <div class="span2 ol-left"><span>Cash Left in the Shop<small>goes on to the next day</small></span><b id="osLeft">₱ 0.00</b></div>`}
         <div class="span2"><label for="osNote">Note</label><input id="osNote" maxlength="500" value="${esc(row?.note || "")}"></div>
         <div class="span2"><label for="osPic">Sales Report Photo</label><input id="osPic" type="file" accept="image/*,application/pdf" multiple></div>
       </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="osSave">${ic("check")} Save</button>`, { wide: true });
@@ -521,10 +520,12 @@
       $("#os_gcash", m.el).classList.toggle("bad", gc > net + 0.004);
       $("#osTot", m.el).textContent = `₱ ${peso(total())}`;
       if ($("#osPrev", m.el)) $("#osPrev", m.el).textContent = `₱ ${peso(prev())}`;
+      if ($("#osOutEdit", m.el)) $("#osOutEdit", m.el).hidden = !(val("osOut") > 0); // 3.99.338
       if ($("#osLeft", m.el)) { const left = avail() - val("osOut"); $("#osLeft", m.el).textContent = `₱ ${peso(left)}`; $("#osLeft", m.el).classList.toggle("neg", left < 0); }
     };
     $$(".os-amt", m.el).forEach((i) => (i.oninput = show)); show();
     if ($("#osDate", m.el)) $("#osDate", m.el).onchange = show;
+    if ($("#osOutEdit", m.el)) $("#osOutEdit", m.el).onclick = () => { const i = $("#osOutN", m.el); i.readOnly = false; i.classList.remove("locked"); i.select(); i.focus(); };
     if ($("#osAll", m.el)) $("#osAll", m.el).onclick = () => { $("#osOut", m.el).value = Math.max(0, avail()).toFixed(2); show(); };
     $("[data-x]", m.el).onclick = () => m.close();
     $("#osSave", m.el).onclick = async (e) => {
