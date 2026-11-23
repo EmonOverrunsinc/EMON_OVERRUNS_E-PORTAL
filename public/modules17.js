@@ -354,7 +354,7 @@
     const dEx = sum(days, "ex"), dCo = sum(days, "co");
     const pc = (v) => (num(v) ? peso(v) : "");
     const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t os-days"><thead><tr><th>DATE</th><th class="num">TOTAL SALES</th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">BALANCE</th><th></th></tr></thead><tbody>
-        ${days.map((x) => `<tr class="os-day" data-dayrow="${esc(x.d)}"><td><b>${esc(mdy(x.d))}</b>${num(x.prev) ? `<small>+ ₱ ${peso(x.prev)} from yesterday</small>` : ""}</td><td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : isAdmin() ? `<button type="button" class="btn small" data-addsale="${esc(x.d)}" title="Add this day's sales">${ic("plus")} Sales</button>` : ""}</span></td></tr>`).join("")}</tbody>
+        ${days.map((x) => `<tr class="os-day" data-dayrow="${esc(x.d)}"><td><b>${esc(mdy(x.d))}</b>${num(x.prev) ? `<small>+ ₱ ${peso(x.prev)} from yesterday</small>` : ""}</td><td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : isAdmin() ? `<button type="button" class="btn small" data-addsale="${esc(x.d)}" title="Add this day's sales">${ic("plus")} Sales</button>` : ""}${isAdmin() ? `<button type="button" class="btn small danger" data-delday="${esc(x.d)}" title="Delete this day">${ic("trash")}</button>` : ""}</span></td></tr>`).join("")}</tbody>
         <tfoot><tr><td>TOTAL</td><td class="num">${peso(net)}</td><td class="num">${peso(dEx)}</td><td class="num">${peso(dCo)}</td><td class="num">${peso(carry0 + net - dEx - dCo)}</td><td></td></tr></tfoot></table></div>`
       : empty("No sales recorded this month.");
     const xps = exps.filter((r) => r.kind !== "cashout"), cos = exps.filter((r) => r.kind === "cashout");
@@ -422,6 +422,13 @@
     };
     E.bindFiles($("#olBody"));
     if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales, prevOf, exps);
+    $$("[data-delday]").forEach((b) => (b.onclick = async (e) => { // 3.99.289: the Director deletes the whole day (SQL 148)
+      e.stopPropagation(); const d = b.dataset.delday;
+      if (!(await E.confirmBox(`Delete <b>${esc(mdy(d))}</b>?<br><br>Its sales, daily operation cost and cash out are all deleted. This cannot be undone.`, { title: "Delete Day", ok: "Delete", danger: true }))) return;
+      const { data: n, error } = await sb.rpc("outlet_day_delete", { p_outlet: o.id, p_date: d });
+      if (error) return fail(error);
+      toast(`${mdy(d)} deleted (${n || 0} record(s)).`); E.route();
+    }));
     $$("[data-addsale]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); saleForm(o, null, sales, prevOf, exps, b.dataset.addsale); })); // 3.99.288: a day without its sales
     $$("[data-esale]").forEach((b) => (b.onclick = () => saleForm(o, sales.find((r) => r.id === b.dataset.esale), sales, prevOf, exps)));
     if ($("#olExp")) $("#olExp").onclick = () => expenseForm(o);
