@@ -5244,3 +5244,8 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.248: the photo hologram is the round EMON OVERRUNS logo stamp on a rainbow hologram */
 .idc-photo .idc-holo { width: 8mm; height: 8mm; right: 1mm; bottom: 1mm; }
 .idc-photo .idc-holo .idc-holo-st { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; opacity: .9; }
+.idc-photo .idc-holo { width: 4.2mm; height: 4.2mm; right: 1mm; bottom: 1mm; box-shadow: 0 0 0 .18mm #fff, 0 0 0 .32mm rgba(15, 58, 140, .55); } /* 3.99.249: a small hologram */
+/* 3.99.249: the back: room between the Director's EOID and the note below */
+.idc-sigpic { height: 7mm; } .idc-sigpic img { max-height: 6.8mm; }
+.idc-sign { top: 44.8mm; } /* 3.99.249: higher, clear of the note */
+.idc-sign i { width: 30mm !important; } /* the line about as wide as the name */
