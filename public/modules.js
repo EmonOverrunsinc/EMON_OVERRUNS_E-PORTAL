@@ -2659,7 +2659,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       <section class="me-card">
         <div class="me-photo">${av ? `<img src="${esc(av)}" alt="Your photo">` : `<span>${esc(E.initials(myName()))}</span>`}
           <label class="btn small" for="mpFile">${ic("camera")} Change Photo</label><input type="file" id="mpFile" accept="image/*" hidden></div>
-        <div class="me-main"><h2>${E.bossName(myName(), S.profile.role)}</h2>
+        <div class="me-main"><h2>${esc(myName())}</h2>
           <div class="me-sub">${esc(S.session.user.email)} · ${E.titleHtml(S.profile.role, emp?.position)}</div>
           ${emp ? `<div class="ch-ids">${idBox("Employee No", emp.employee_no)}${idBox("Position", emp.position)}${idBox("Date Hired", mdy(emp.date_hired))}${idBox("Monthly Salary (₱)", peso(emp.monthly_salary))}</div>` : ""}
         </div>
