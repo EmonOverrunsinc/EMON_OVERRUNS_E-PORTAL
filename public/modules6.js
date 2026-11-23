@@ -44,16 +44,15 @@
   // EO-Office page: mini dashboard, QC Test tab, Collection Voucher tab
   // ======================================================================
   // The pages of EO-Office: QC Test and Collection Voucher (this page), Employees and Payroll (3.23), Credit Memo and Project (3.24: no Job Applications / Job Positions)
-  const eoTabs = (on) => `<nav class="subnav reg-nav">${[["eooffice", `${ic("shield")} Regional Office Manila`, "eooffice"], ["custorders", "Customer Order", "eooffice"], ["boxlist", "Box List", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memo", "creditmemos"], ["projects", "Project", "projects"], ["insurance", "Coverage", "eooffice"], ["mbilling", "Billing", "mbilling"]]
+  const eoTabs = (on) => `<nav class="subnav reg-nav">${[["eooffice", `${ic("shield")} Regional Office Manila`, "eooffice"], ["custorders", "Customer Order", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memo", "creditmemos"], ["projects", "Project", "projects"], ["insurance", "Coverage", "eooffice"], ["mbilling", "Billing", "mbilling"]]
     .filter((x) => E.hasModule(x[2]) && (x[2] !== "eooffice" || E.isStaff())).map(([k, l]) => `<a href="#${k}" class="${k === on ? "on" : ""}">${l}</a>`).join("")}</nav>`;
   // 3.99.158: REGIONAL OFFICE MANILA (was EO-Office): a card for every part on top, with its number
-  const MNL = [["custorders", "Customer Order", "box", "Orders, boxes, delivery and the invoice", "eooffice"], ["boxlist", "Box List", "tag", "Every box: available, on order or sold, by batch", "eooffice"], ["employees", "Employees", "users", "Staff, ID cards and documents", "employees"],
+  const MNL = [["custorders", "Customer Order", "box", "Orders, boxes, delivery and the invoice", "eooffice"], ["employees", "Employees", "users", "Staff, ID cards and documents", "employees"],
     ["payroll", "Payroll", "wallet", "Salaries and payslips", "employees"], ["creditmemos", "Credit Memo", "receipt", "Returns, credits and discounts", "creditmemos"],
     ["projects", "Project", "folder", "Projects and their payments", "projects"], ["insurance", "Coverage", "shield", "Order coverage certificates", "eooffice"],
     ["mbilling", "Billing", "building", "Manila companies, payments and vouchers", "mbilling"],
     ["register", "Document Register", "doc", "Every paper: number, date, who, TRX ID", "__dir"]]; // 3.99.279: the Director only
   const mnlCount = {
-    boxlist: () => sb.from("box_stock").select("serial_no", { count: "exact", head: true }).then((r) => (r.error ? "" : `${r.count || 0} boxes`)),
     custorders: () => sb.from("customer_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "approved"]).then((r) => (r.error ? "" : r.count ? `${r.count} open order(s)` : "No open order")),
     employees: () => sb.from("employees").select("id", { count: "exact", head: true }).eq("status", "active").then((r) => (r.error ? "" : `${r.count || 0} active`)),
     creditmemos: () => sb.from("credit_memos").select("id", { count: "exact", head: true }).eq("status", "pending").then((r) => (r.error ? "" : r.count ? `${r.count} waiting for approval` : "Nothing waiting")),
