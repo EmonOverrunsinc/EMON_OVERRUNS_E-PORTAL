@@ -5608,3 +5608,8 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .al-bar.off { background: #f3f4f6; border-color: #e5e7eb; color: #4b5563; }
 /* 3.99.333: the mark of a decided / accepted message */
 .done-mark { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 12px; background: #e7f6ee; color: #17794a; font-size: 11.5px; font-weight: 800; letter-spacing: .04em; }
+/* 3.99.337: the daily sales form: Net Sales + GCash typed, Cash by itself (locked) */
+.ol-form .os-net { font-size: 18px; font-weight: 800; }
+.ol-form #os_cash.locked { background: #eef2f7; color: #0f2a66; font-weight: 800; pointer-events: none; }
+.ol-form label svg { width: 12px; height: 12px; vertical-align: -1px; }
+.ol-form input.bad { border-color: #c0392b !important; background: #fdecea; }

@@ -495,7 +495,9 @@
   function saleForm(o, row, existing, prevOf = () => 0, exps = [], day = "") {
     const m = E.modal(`${o.code} · Daily Sales`, `<div class="formgrid ol-form">
         <div><label for="osDate">Date *</label><input id="osDate" type="date" value="${esc(row?.sale_date || day || today())}" ${row ? "disabled" : ""}></div><div></div>
-        ${PAY.map(([k, l]) => `<div><label for="os_${k}">${esc(l)} (₱)</label><input id="os_${k}" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row[k]) ? esc(row[k]) : ""}" placeholder="0.00"></div>`).join("")}
+        <div class="span2"><label for="osNet">Total Net Sales (₱) *</label><input id="osNet" class="os-amt os-net" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row.total) ? esc(row.total) : ""}" placeholder="0.00"></div>
+        <div><label for="os_gcash">GCash (₱)</label><input id="os_gcash" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row.gcash) ? esc(row.gcash) : ""}" placeholder="0.00"></div>
+        <div><label for="os_cash">${ic("lock")} Cash (₱) · by itself</label><input id="os_cash" class="locked" type="number" readonly tabindex="-1" value="${row ? esc(num(row.cash)) : ""}" placeholder="0.00"></div>
         <div class="span2 ol-total">Total Net Sales <b id="osTot">₱ 0.00</b></div>
         ${row ? "" : `<div class="span2 ol-prev">${ic("lock")} Cash Left from Yesterday <b id="osPrev">₱ 0.00</b></div>
         <div><label for="osExp">Daily Operation Cost (₱)</label><input id="osExp" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
@@ -514,6 +516,9 @@
     const prev = () => num(prevOf(dateNow()));
     const avail = () => prev() + num($("#os_cash", m.el)?.value) - dayX("daily") - dayX("cashout") - val("osExp"); // 3.99.257: GCash is not in the shop
     const show = () => {
+      const net = num($("#osNet", m.el).value), gc = num($("#os_gcash", m.el).value); // 3.99.337: Cash = Net Sales − GCash (locked)
+      $("#os_cash", m.el).value = (Math.max(0, net - gc)).toFixed(2);
+      $("#os_gcash", m.el).classList.toggle("bad", gc > net + 0.004);
       $("#osTot", m.el).textContent = `₱ ${peso(total())}`;
       if ($("#osPrev", m.el)) $("#osPrev", m.el).textContent = `₱ ${peso(prev())}`;
       if ($("#osLeft", m.el)) { const left = avail() - val("osOut"); $("#osLeft", m.el).textContent = `₱ ${peso(left)}`; $("#osLeft", m.el).classList.toggle("neg", left < 0); }
@@ -525,6 +530,8 @@
     $("#osSave", m.el).onclick = async (e) => {
       const date = $("#osDate", m.el).value;
       if (!date) return toast("Choose the date.", true);
+      if (!num($("#osNet", m.el).value)) return toast("Type the Total Net Sales.", true);
+      if (num($("#os_gcash", m.el).value) > num($("#osNet", m.el).value) + 0.004) return toast("GCash cannot be more than the Total Net Sales.", true);
       if (!total()) return toast("Type the sales amounts.", true);
       // 3.99.157: a day that has its sales already: asked, then changed (the expenses / cash out typed are kept)
       const had = !row && existing.find((r) => r.sale_date === date);
