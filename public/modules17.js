@@ -343,7 +343,7 @@
 
     // 3.99.153: the shop page in a new layout: the head, 4 boxes, the buttons, and tabs (Daily Sales · Expenses & Cash Out ·
     // Stock Account · Employees · Documents). Daily Sales is a day by day table: sales, the day's expenses, cash out, cash left.
-    const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" ? (edit ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : "") : isAdmin() ? `<button type="button" class="btn small" data-eexp="${esc(r.id)}" title="Edit (Director only)">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
+    const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" ? (edit ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : "") : isAdmin() || (edit && r.kind === "cashout" && !num(r.edit_count)) ? `<button type="button" class="btn small" data-eexp="${esc(r.id)}" title="${isAdmin() ? "Edit" : "Correct (one time)"}">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
     const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
     // 3.99.220: CASH LEFT goes on to the next day: the cash left of yesterday + today's sales − the daily operation cost − the cash out
     const carry0 = sum(allS.filter((x) => x.sale_date < first), "total") - allS.filter((x) => x.sale_date < first).reduce((t, r) => t + nonCash(r), 0) - sum(allX.filter((x) => x.exp_date < first && (x.kind === "daily" || x.kind === "cashout")), "amount");
@@ -569,10 +569,12 @@
       if (!(data.amount > 0)) return toast("Type the amount.", true);
       if (isCash && !data.payee) return toast("Type who took the cash (Cash Out To).", true);
       e.target.disabled = true;
-      const r = row ? await sb.from("outlet_expenses").update(data).eq("id", row.id).select().single() : await sb.from("outlet_expenses").insert(data).select().single();
+      const once = row && row.kind === "cashout" && !isAdmin(); // 3.99.263: the shop corrects a cash out once
+      const r = once ? await sb.rpc("outlet_cashout_edit", { p_id: row.id, p_amount: data.amount, p_payee: data.payee, p_note: data.note })
+        : row ? await sb.from("outlet_expenses").update(data).eq("id", row.id).select().single() : await sb.from("outlet_expenses").insert(data).select().single();
       if (r.error) { e.target.disabled = false; return fail(r.error, /kind_check|23514/.test(`${r.error.code} ${r.error.message}`) ? "Bank Deposit needs the database update 135 (updates page)" : "Could not save the expense"); }
       const pics = Array.from($("#oxPic", m.el).files || []);
-      const failed = pics.length ? await E.uploadRecords("outlet_expense", r.data.id, "receipt", pics) : 0;
+      const failed = pics.length ? await E.uploadRecords("outlet_expense", once ? row.id : r.data.id, "receipt", pics) : 0;
       m.close(); toast(failed ? `Saved; ${failed} photo(s) could not be uploaded.` : `${KIND[data.kind]} ${row ? "changed" : "saved"}: ₱ ${peso(data.amount)}.`, !!failed); E.route();
     };
   }

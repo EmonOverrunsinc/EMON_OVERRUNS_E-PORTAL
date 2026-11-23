@@ -5316,3 +5316,5 @@ body.os-info-open > .band-back { display: none !important; }
 /* the customer History: the date never breaks */
 .hist-fit td:nth-child(1) { white-space: nowrap !important; overflow-wrap: normal; word-break: normal; font-size: .92em; }
 .hist-fit th:nth-child(1), .hist-fit td:nth-child(1) { width: 27%; }
+/* 3.99.263: the Director's stamp in red ink on every paper */
+.eo-stamp.st-boss { --ink: #c0262d; }
