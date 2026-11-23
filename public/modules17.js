@@ -818,7 +818,7 @@
     const bar = code(no), tbar = code(trx && String(trx).toUpperCase());
     const boss = E.stampHtml?.({ ...E.stampOf?.(bossId, BOSS, "", true), date: when }) || `<b>${esc(BOSS)}</b>`;
     return `<div class="dsr-sign"><div class="ds-left">${stamp || ""}${bar ? `<div class="ds-bar ds-foot-l"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}</div>
-      <div class="ds-right"><small>APPROVED BY</small><div class="ds-line"></div>${boss}${tbar ? `<div class="ds-bar ds-foot-r"><img src="${tbar}" alt=""><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
+      <div class="ds-right"><small>VERIFIED BY</small><div class="ds-line"></div>${boss}${tbar ? `<div class="ds-bar ds-foot-r"><img src="${tbar}" alt=""><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
   };
   async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
@@ -835,15 +835,16 @@
     // 3.99.229: the CASH LEFT stamp: nothing left: VERIFIED; cash left: VERIFIED once the next sales record took it (its date,
     // record no, TRX ID and system time), PENDING until then; less than nothing: CASH SHORT
     const vst = (cls, lines) => `<div class="dsr-cash"><span class="eo-stamp vst ${cls}">${lines}</span></div>`;
-    const cashStamp = !r.id ? "" : Math.abs(left) < 0.005 ? vst("ok", `<b>✔ VERIFIED</b><em>CASH LEFT ₱ ${P(0)}</em><small>NOTHING TO CARRY</small><small>${esc(mdy(date))}</small>`)
-      : left < 0 ? vst("bad", `<b>CASH SHORT</b><em>₱ ${P(-left)}</em><small>CHECK THIS DAY</small>`)
-      : after ? vst("ok", `<b>✔ VERIFIED</b><em>CASH LEFT ₱ ${P(left)}</em><small>ADDED TO ${esc(mdy(after.sale_date))} SALES</small><small>${esc(dsrNo(o, after.sale_date))}</small><i>TRX ID ${esc(String(after.id).toUpperCase())}</i><small>SYSTEM RECORD ${esc(mdy(after.created_at ? new Date(after.created_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" }) : after.sale_date))}</small>`)
-      : vst("wait", `<b>PENDING</b><em>CASH LEFT ₱ ${P(left)}</em><small>GOES TO THE NEXT SALES RECORD</small>`);
+    const cashStamp = !r.id ? "" : Math.abs(left) < 0.005 ? vst("ok", `<b>✔ VERIFIED</b><em>CASH LEFT ₱ ${P(0)}</em>`) // 3.99.306: simple: the word and the amount only
+      : left < 0 ? vst("bad", `<b>CASH SHORT</b><em>₱ ${P(-left)}</em>`)
+      : after ? vst("ok", `<b>✔ VERIFIED</b><em>CASH LEFT ₱ ${P(left)}</em>`)
+      : vst("wait", `<b>PENDING</b><em>CASH LEFT ₱ ${P(left)}</em>`);
     const list = (title, rows, cols) => `<div class="soa-sec"><h4>${title}</h4>${rows.length ? `<table class="soa-t"><thead><tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>` : `<div class="soa-none">None this day.</div>`}</div>`;
     const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small>${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? `<small class="soa-corr">CORRECTED ${esc(mdy(new Date(r.updated_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })))}</small>` : ""}${r.id ? `<small class="soa-trx">TRX ID<span>${esc(String(r.id).toUpperCase())}</span></small>` : ""}</div>`)}
       <div class="soa-info"><div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div><div><small>Date</small><b>${esc(mdy(date))}</b></div>
         <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div><div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div><div><small>Issued By</small><b>${esc(String(r.created_by_name || "").toUpperCase())}${(() => { const e = r.created_by ? E.stampOf?.(r.created_by, r.created_by_name)?.eoid : ""; return e ? ` <i class="dsr-eoid">· ${esc(e)}</i>` : ""; })()}${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? ` · CORRECTED BY ${esc(BOSS)}` : ""}</b></div>
-        <div class="w2 dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? ` <i>· ${esc(resp.employee_no)}</i>` : ""}${resp.position ? ` <i>· ${esc(String(resp.position).toUpperCase())}</i>` : ""}` : "—"}</b></div>
+        <div class="dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? ` <i>· ${esc(resp.employee_no)}</i>` : ""}${resp.position ? ` <i>· ${esc(String(resp.position).toUpperCase())}</i>` : ""}` : "—"}</b></div>
+        <div class="dsr-resp"><small>Authorized Responsible</small><b>${esc(BOSS)}${(() => { const e = E.stampOf?.(bossId, BOSS, "", true)?.eoid; return e ? ` <i>· ${esc(e)}</i>` : ""; })()}</b></div>
         ${r.note ? `<div class="w3"><small>Note</small><b>${esc(r.note)}</b></div>` : ""}</div>
       <div class="soa-tiles t5">${[["Total Sales", tot, "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash Out", cash, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
@@ -867,7 +868,9 @@
       ${dsrSign(no, bossId, r.id || "", cashStamp, mdy(date))}</div>`; // 3.99.300: no Store Responsible signature (the name is in the box on top)
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
     // 3.99.301: the two barcodes go to the bottom of the page: the report no on the left, the TRX ID on the right
-    $$(".preview .page").forEach((pg) => { pg.classList.add("dsr-page"); pg.querySelectorAll(".ds-foot-l, .ds-foot-r").forEach((b) => pg.appendChild(b)); });
+    // 3.99.303: the report no barcode goes up into the head, under DAILY SALES REPORT
+    $$(".preview .page").forEach((pg) => { pg.classList.add("dsr-page"); const mid = pg.querySelector(".ph2 .ph-mid"), l = pg.querySelector(".ds-foot-l");
+      if (l && mid) { l.classList.replace("ds-foot-l", "ds-head-bar"); mid.appendChild(l); } pg.querySelectorAll(".ds-foot-r").forEach((b) => pg.appendChild(b)); });
   }
 
   // 3.99.164: the OUTLET STATEMENT in a document layout: the company head, the shop, 5 summary boxes, the daily sales,
@@ -892,7 +895,9 @@
         <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div>
         <div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div>
         <div><small>Monthly Rental</small><b>₱ ${P(o.monthly_rent)}</b></div>
-        ${d.cust ? `<div class="w2"><small>Stock Account</small><b>${esc(E.fullName(d.cust))} · ${esc(d.cust.account_no || "")}</b></div>` : ""}</div>`;
+        ${d.cust ? `<div class="w2"><small>Stock Account</small><b>${esc(E.fullName(d.cust))} · ${esc(d.cust.account_no || "")}</b></div>` : ""}
+        <div class="w2 dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? ` <i>· ${esc(resp.employee_no)}</i>` : ""}${resp.position ? ` <i>· ${esc(String(resp.position).toUpperCase())}</i>` : ""}` : "—"}</b></div>
+        <div class="w2 dsr-resp"><small>Authorized Responsible</small><b>${esc(BOSS)}${(() => { const e = E.stampOf?.(bossId, BOSS, "", true)?.eoid; return e ? ` <i>· ${esc(e)}</i>` : ""; })()}</b></div></div>`; // 3.99.305
     const tile = (k, v, cls = "") => `<div class="soa-tile ${cls}"><small>${k}</small><b>₱ ${P(v)}</b></div>`;
     const tiles = `<div class="soa-tiles">${tile("Net Sales", d.net, "in")}${tile("Expenses", d.op ?? d.out, "out")}${tile("Cash Out", d.cash || 0, "co")}${tile("Cash Left", d.drawer ?? 0, "pay")}${tile("Net Balance", d.pool ?? d.bal, `bal${(d.pool ?? d.bal) < 0 ? " neg" : ""}`)}</div>
       <div class="soa-pay">${PAY.map(([k, l]) => `<span>${esc(l)} <b>₱ ${P(sum(d.sales, k))}</b></span>`).join("")}<span>Sales days <b>${d.sales.length}</b></span>${d.owed != null ? `<span>Stock to pay <b>₱ ${P(d.owed)}</b></span>` : ""}</div>`;
@@ -920,7 +925,7 @@
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the signatures
-    blocks.push({ h: 7, html: nameBoxes("", soaNo, bossId, "", resp?.profile_id || "", "", resp, mdy(isoNow())) }); // 3.99.228: no sum line box; the tiles show it
+    blocks.push({ h: 7, html: dsrSign(soaNo, bossId, "", "", mdy(isoNow())) }); // 3.99.305: no Store Responsible signature // 3.99.228: no sum line box; the tiles show it
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;
@@ -931,6 +936,8 @@
     if (cur.length) pages.push(cur);
     const html = pages.map((pg, i) => `<div class="soa-doc">${i ? `<div class="soa-cont"><b>${esc(C.company.name)}</b> · OUTLET STATEMENT · ${esc(o.code)} · ${esc(E.monthText(m))}<span>${esc(soaNo)}</span></div>` : ""}${pg.join("")}${pages.length > 1 ? `<div class="soa-pg">Page ${i + 1} of ${pages.length}</div>` : ""}</div>`);
     E.openPreview(`Outlet Statement ${o.code} ${E.monthText(m)}`, html);
+    $$(".preview .page").forEach((pg, i) => { const mid = pg.querySelector(".ph2 .ph-mid"), l = pg.querySelector(".ds-foot-l"); // 3.99.305: the statement no barcode in the head
+      if (l && mid) { l.classList.replace("ds-foot-l", "ds-head-bar"); mid.appendChild(l); } else if (l) l.remove(); });
   }
 
   // ======================================================================
