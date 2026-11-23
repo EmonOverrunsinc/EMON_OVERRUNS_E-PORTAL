@@ -5171,10 +5171,10 @@ body.os-info-open > .band-back { display: none !important; }
 .wp-office { border-color: #c9b26a; } .wp-badge.sm { padding: 2px 10px 2px 3px; } .wp-badge.sm .wp-logo { width: 26px; height: 26px; } .wp-badge.sm .wp-ic { width: 24px; height: 24px; }
 .auth-st { display: none !important; }
 /* 3.99.235: the prize pool on the dashboard */
-.prize-pool { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 16px; margin: 0 0 14px; border-radius: 16px; background: linear-gradient(110deg, #0f2a66, #1d4fd6); color: #fff; }
-.prize-pool .pz-ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .14); color: #f2c94c; } .prize-pool .pz-ic svg { width: 22px; height: 22px; }
-.prize-pool .pz-main { display: grid; line-height: 1.15; } .prize-pool small { font-size: 10px; letter-spacing: .14em; opacity: .8; } .prize-pool b { font-size: 20px; letter-spacing: .02em; }
-.prize-pool em { font-style: normal; font-size: 10.5px; letter-spacing: .08em; opacity: .85; } .prize-pool .pz-open { margin-left: auto; text-align: right; } .prize-pool .pz-open b { color: #f2c94c; }
+#dPrize.prize-pool { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 16px; margin: 0 0 14px; border-radius: 16px; background: linear-gradient(110deg, #0f2a66, #1d4fd6); color: #fff; }
+#dPrize.prize-pool .pz-ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .14); color: #f2c94c; } .prize-pool .pz-ic svg { width: 22px; height: 22px; }
+#dPrize.prize-pool .pz-main { display: grid; line-height: 1.15; } .prize-pool small { font-size: 10px; letter-spacing: .14em; opacity: .8; } .prize-pool b { font-size: 20px; letter-spacing: .02em; }
+#dPrize.prize-pool em { font-style: normal; font-size: 10.5px; letter-spacing: .08em; opacity: .85; } .prize-pool .pz-open { margin-left: auto; text-align: right; } .prize-pool .pz-open b { color: #f2c94c; }
 /* the invoice: the Director's blue words under the line */
 .inv-dir .eo-stamp { margin-top: 1.2mm; }
 .inv-dir .eo-stamp b { font-size: 9.5pt; font-weight: 900; letter-spacing: .06em; color: var(--ink); }
@@ -5362,3 +5362,4 @@ body.os-info-open > .band-back { display: none !important; }
 .page:has(> .pg-code) { padding-bottom: 15mm; }
 .page > .pg-code { bottom: 4.5mm; }
 .page:has(> .pg-code) > .pg-trx { bottom: 5mm; }
+.hist-fit .mail-from { display: inline-flex; margin: 0; font-size: 10.5px; }
