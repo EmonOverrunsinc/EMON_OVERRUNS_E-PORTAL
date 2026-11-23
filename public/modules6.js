@@ -74,14 +74,19 @@
   V.register = async () => {
     if (!E.isAdmin()) { E.shell("register", "Document Register", `<div class="empty">Only the Director opens the Document Register.</div>`); return; }
     E.shell("register", "Document Register", `<div class="reg-bar"><input type="search" id="rgQ" placeholder="Search number, name, who, TRX ID" aria-label="Search">
-      <select id="rgT" aria-label="Type"><option value="">All papers</option>${REG.map((x) => `<option>${x[1]}</option>`).join("")}</select>
+      <select id="rgT" aria-label="Type"><option value="">All papers</option>${REG.map((x) => `<option>${x[1]}</option>`).join("")}<option>DAILY SALES REPORT</option></select>
       <button type="button" class="btn" id="rgLog">${ic("download")} Download Log</button></div><div id="rgList">${busy("Loading the papers")}</div>`);
     const here = E.stillHere();
     const got = await Promise.all(REG.map(([t, kind, noK, dK, route, amtK]) => sb.from(t).select("*").order("created_at", { ascending: false }).limit(400)
       .then(({ data }) => (data || []).filter((r) => r[noK]).map((r) => ({ kind, no: r[noK], date: r[dK] || r.created_at, at: r.created_at, by: r.created_by_name || r.prepared_by_name || r.approved_by_name || "",
         who: r.customer_name || [r.first_name, r.last_name].filter(Boolean).join(" ") || r.received_from || r.lot_name || "", amt: r[amtK], id: r.id, route })), () => [])));
+    // the shops' Daily Sales Reports (DSR-SHOP1-20261119)
+    const dsr = await Promise.all([sb.from("outlet_sales").select("id, outlet_id, sale_date, total, created_at, created_by_name").order("created_at", { ascending: false }).limit(400),
+      sb.from("outlets").select("id, code, name")]).then(([a, b]) => { const oc = new Map((b.data || []).map((o) => [o.id, o]));
+      return (a.data || []).map((r) => { const o = oc.get(r.outlet_id) || {}; return { kind: "DAILY SALES REPORT", no: `DSR-${String(o.code || "").replace(/[^A-Z0-9]/gi, "").toUpperCase()}-${String(r.sale_date).replace(/-/g, "")}`,
+        date: r.sale_date, at: r.created_at, by: r.created_by_name || "", who: o.code ? `${o.code}${o.name && o.name !== o.code ? " · " + o.name : ""}` : "", amt: r.total, id: r.id, route: "outlet", rid: r.outlet_id }; }); }, () => []);
     if (!here()) return;
-    const all = got.flat().sort((a, b) => String(b.at || b.date).localeCompare(String(a.at || a.date)));
+    const all = [...got.flat(), ...dsr].sort((a, b) => String(b.at || b.date).localeCompare(String(a.at || a.date)));
     const show = () => {
       const q = $("#rgQ").value.trim().toLowerCase(), t = $("#rgT").value;
       const rows = all.filter((r) => (!t || r.kind === t) && (!q || [r.no, r.who, r.by, r.id, r.kind].join(" ").toLowerCase().includes(q)));
@@ -89,7 +94,7 @@
         { label: "Date", get: (r) => mdy(String(r.date).slice(0, 10)) }, { label: "Paper", get: (r) => r.kind }, { label: "No", html: (r) => `<b class="mono">${esc(r.no)}</b>` },
         { label: "Name", get: (r) => String(r.who || "").toUpperCase() }, { label: "Amount (₱)", get: (r) => (r.amt != null ? peso(r.amt) : "") }, { label: "By", get: (r) => String(r.by || "").toUpperCase() },
         { label: "TRX ID", html: (r) => `<small class="mono reg-trx">${esc(String(r.id).toUpperCase())}</small>` }],
-        rows, limit: 50, onRow: (r) => { if (r.route) location.hash = `${r.route}/${r.id}`; } });
+        rows, limit: 50, onRow: (r) => { if (r.route) location.hash = `${r.route}/${r.rid || r.id}`; } });
     };
     $("#rgQ").oninput = show; $("#rgT").onchange = show; show();
     $("#rgLog").onclick = () => E.downloadLog("DOCUMENT REGISTER", all.map((r) => ({ at: r.at || r.date, what: `${r.kind} ${r.no}${r.amt != null ? ` · PHP ${peso(r.amt)}` : ""}`, by: r.by, note: `${String(r.who || "").toUpperCase()}${r.who ? " · " : ""}TRX ${String(r.id).toUpperCase()}` })));
