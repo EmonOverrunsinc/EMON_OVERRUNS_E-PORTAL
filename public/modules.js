@@ -597,7 +597,7 @@
     const now = new Date(), today = `${now.toLocaleDateString("en-US", { weekday: "long" })}, ${mdy(isoToday())}`;
     // 2.7: a greeting by the time of day (Manila time, as every date in the portal)
     const hr = now.getHours(), greet = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
-    const first = String(myName() || "").trim().split(/\s+/)[0] || "";
+    const first = String(myName() || "").trim().replace(/\s+/g, " "); // 3.99.251: the full name on the dashboard
     // the key numbers: [name, icon, the list it opens, the line under the number]
     const tiles = [["Active Customers", "users", "customers", "Open accounts"], ["Pending Applications", "order", "customers", "Awaiting approval"],
       ["Unpaid This Month", "wallet", "invoices", `Billed in ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`], ["Collections This Month", "check", "payments", `Received in ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`]];
@@ -610,7 +610,7 @@
     E.shell("dashboard", "Dashboard", `
       <section class="hero home-hero">${E.logoHtml("hero-logo")}<div>
         <p class="hero-date">${esc(today)}</p>
-        <h2>${esc(greet)}${first ? `, ${esc(first.charAt(0) + first.slice(1).toLowerCase())}` : ""}</h2>
+        <h2>${esc(greet)}${first ? `, ${esc(first.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()))}` : ""}</h2>
         <p class="welcome">${esc(C.company.name)} <span class="hero-tag">E-PORTAL</span> · <b>${E.titleHtml(S.profile.role, S.position)}</b></p><div id="dPlace" class="ch-place"></div></div></section>
       ${H("outlets") ? `<section class="nwd-notice" id="dClosed" hidden></section>` : ""}
       ${isAdmin() ? `<section class="todo" id="dTodo" hidden></section>` : ""}
