@@ -5232,3 +5232,12 @@ body.os-info-open > .band-back { display: none !important; }
 .idc-sign { padding-left: 0 !important; }
 .idc-sign .eo-stamp i { display: block; width: auto; margin: 0; border: 0; }
 .idc-photo .idc-seal.idc-rs { right: -5.5mm; bottom: -5.2mm; } /* 3.99.246: the stamp centred on the frame edge */
+/* 3.99.247: the ID card front: no stamp; a small round hologram inside the photo, bottom right */
+.idc-photo .idc-holo { position: absolute; right: 1.2mm; bottom: 1.2mm; width: 6.4mm; height: 6.4mm; border-radius: 50%; z-index: 3;
+  background: conic-gradient(from 30deg, #ff8fd8, #ffd36b, #9dffb0, #7fd8ff, #b59bff, #ff8fd8); box-shadow: 0 0 0 .25mm #fff, 0 0 0 .45mm rgba(15, 58, 140, .55), 0 .3mm .8mm rgba(0, 0, 0, .25);
+  display: grid; place-items: center; overflow: hidden; opacity: .92; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.idc-photo .idc-holo::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: repeating-radial-gradient(circle, rgba(255, 255, 255, .5) 0 .18mm, transparent .18mm .45mm); mix-blend-mode: overlay; }
+.idc-photo .idc-holo::after { content: ""; position: absolute; inset: -40%; background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, .75) 50%, transparent 60%); animation: idcHolo 3.2s linear infinite; }
+.idc-photo .idc-holo .idc-holo-logo { position: relative; z-index: 1; width: 62%; height: 62%; object-fit: contain; border-radius: 50%; background: rgba(255, 255, 255, .7); }
+@keyframes idcHolo { from { transform: translateX(-60%); } to { transform: translateX(60%); } }
+@media print { .idc-photo .idc-holo::after { animation: none; } }
