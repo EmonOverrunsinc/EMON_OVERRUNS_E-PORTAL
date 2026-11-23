@@ -5224,3 +5224,7 @@ body.os-info-open > .band-back { display: none !important; }
 .idc-photo .idc-seal.idc-rs { right: -6.2mm; bottom: -2.9mm; width: 9.6mm; height: 9.6mm; z-index: 3; }
 .idc-sign .idc-stamp.idc-rs { left: 5.3mm; top: .4mm; }
 .idc-rs img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+/* 3.99.244: the paper's number under its PDF417 (bottom right of every paper) */
+.page > .pg-code { flex-direction: column-reverse; align-items: center; gap: .7mm; bottom: 1.6mm; }
+.page > .pg-code img { height: 5.6mm; }
+.page > .pg-code span { font-size: 6.5px; letter-spacing: .08em; }
