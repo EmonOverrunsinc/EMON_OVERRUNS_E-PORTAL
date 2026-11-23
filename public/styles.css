@@ -5517,3 +5517,8 @@ body.os-info-open > .band-back { display: none !important; }
 #main .cust-hero > .ch-medals .md-mini .mm b { font-size: 13px; }
 #main .cust-hero > .ch-medals { top: 44px; } /* 3.99.313: a little lower in the band */
 #main .cust-hero > .ch-medals .md-mini { background: transparent !important; border: 0 !important; box-shadow: none !important; } #main .cust-hero > .ch-medals .md-mini .mm b { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.4); } /* 3.99.314: no white pill on the band */
+/* 3.99.315: the medals in place of the credit limit chip (the credit limit box is below) */
+#main .cust-hero .ch-sub .ch-medals { display: inline-flex; margin: 0; }
+#main .cust-hero .ch-sub .ch-medals:empty { display: none; }
+#main .cust-hero .ch-sub .ch-medals .md-mini { padding: 4px 10px; gap: 8px; }
+#main .cust-hero .ch-sub .ch-medals .md-mini .mm > :first-child { width: 20px !important; height: 20px !important; min-width: 20px; }
