@@ -5194,3 +5194,9 @@ body.os-info-open > .band-back { display: none !important; }
 .page table th, .page .soa-t th { font-size: 9.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .page table td, .page .soa-t td { font-size: 10.5px; }
 .page .so-issued small { font-size: 8px; letter-spacing: .12em; }
+/* 3.99.239: the paper's PDF417 at the bottom right (its number beside it); the TRX ID at the bottom left; the page no in the middle */
+.page > .pg-code { position: absolute; right: 14mm; bottom: 2.4mm; display: flex; align-items: center; gap: 2mm; }
+.page > .pg-code img { height: 6mm; width: auto; max-width: 48mm; image-rendering: pixelated; display: block; }
+.page > .pg-code span { font: 700 7px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; color: #42506b; }
+.page:has(> .pg-code) > .pg-num { right: auto; left: 50%; transform: translateX(-50%); }
+.page:has(> .pg-code) > .pg-trx { max-width: 70mm; }
