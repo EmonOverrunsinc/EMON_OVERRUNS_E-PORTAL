@@ -1107,9 +1107,9 @@
     $(".band h1").textContent = `Customer › ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c, orders, ev.data || [])}
-      <section class="cust-hero st-${esc(c.status)}">
+      <section class="cust-hero st-${esc(c.status)}">${isApprovedAccount(c) && isStaff() ? `<div class="ch-band-tag"><span id="pfStanding"></span></div>` : ""}
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
-          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
+          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span></div>` : ""}</div>
         <div class="ch-main">
           <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
           <div class="ch-sub">${[isStaff() ? `<span class="ch-medals" id="pfMedals"></span>` : "", c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""].filter(Boolean).join(`<span class="ch-dot"> · </span>`) || "—"}</div>

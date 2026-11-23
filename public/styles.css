@@ -5522,3 +5522,21 @@ body.os-info-open > .band-back { display: none !important; }
 #main .cust-hero .ch-sub .ch-medals:empty { display: none; }
 #main .cust-hero .ch-sub .ch-medals .md-mini { padding: 4px 10px; gap: 8px; }
 #main .cust-hero .ch-sub .ch-medals .md-mini .mm > :first-child { width: 20px !important; height: 20px !important; min-width: 20px; }
+/* 3.99.316: the floating Back button: a small round icon; hidden while the Messenger is open */
+.band-back { width: 46px !important; height: 46px !important; min-width: 0 !important; padding: 0 !important; border-radius: 50% !important; display: grid !important; place-items: center !important; }
+.band-back span { display: none !important; }
+.band-back svg { width: 20px !important; height: 20px !important; margin: 0 !important; }
+body:has(.chat-panel.open) .band-back { display: none !important; }
+/* 3.99.316: the E-PORTAL chat: full-width cards, title + text, a small Open link and the time on one line */
+.cv-note { max-width: 100% !important; width: 100%; box-sizing: border-box; padding: 10px 12px !important; }
+.cv-note .cv-text { font-size: 13.5px; line-height: 1.45; }
+.cv-note .cv-text b { display: block; margin-bottom: 2px; font-size: 13.5px; }
+.cv-note .cv-acts { margin: 6px 0 0; align-items: center; }
+.cv-note .cv-acts .btn.small { min-height: 0; height: 28px; padding: 0 12px; font-size: 12.5px; border-radius: 14px; }
+.cv-note > small { margin-top: 4px; font-size: 11px; }
+.cv-note .cv-text br { display: none; }
+/* 3.99.316: the customer's standing (NEW ACCOUNT / REGULAR / TRUSTED) in the blue band, on the right */
+#main .cust-hero > .ch-band-tag { position: absolute; right: 18px; top: 46px; z-index: 3; }
+#main .cust-hero:has(.auth-st) > .ch-band-tag { right: 84px; }
+#main .cust-hero > .ch-band-tag:not(:has(*:not(:empty))) { display: none; }
+#main .cust-hero > .ch-band-tag * { font-size: 10px !important; line-height: 1.2 !important; } #main .cust-hero > .ch-band-tag > span > * { padding: 3px 9px !important; min-height: 0 !important; height: auto !important; } #main .cust-hero > .ch-band-tag svg { width: 11px !important; height: 11px !important; }
