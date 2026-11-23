@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.269"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.270"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.269"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.270"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -285,9 +285,12 @@
   };
   // 3.99.269: DOWNLOAD LOG of a customer, an employee or a company: "2026-11-23T04:21:30Z  WHAT · BY · NOTE"
   function downloadLog(title, entries) {
-    const iso = (t) => { const d = new Date(t); return isNaN(d) ? String(t || "") : d.toISOString().replace(/\.\d{3}Z$/, "Z"); };
+    // 3.99.270: Manila time: "2026-10-01 01:30 P.M"
+    const iso = (t) => { const d = new Date(t); if (isNaN(d)) return String(t || "");
+      const m = new Date(d.toLocaleString("en-US", { timeZone: "Asia/Manila" })), h = m.getHours(), p2 = (n) => String(n).padStart(2, "0");
+      return `${m.getFullYear()}-${p2(m.getMonth() + 1)}-${p2(m.getDate())} ${p2(h % 12 || 12)}:${p2(m.getMinutes())} ${h < 12 ? "A.M" : "P.M"}`; };
     const rows = (entries || []).filter((e) => e && e.at).sort((a, b) => String(a.at).localeCompare(String(b.at)))
-      .map((e) => `${iso(e.at)}  ${[e.what, e.by, e.note].filter((x) => x != null && String(x).trim() !== "").join(" · ")}`);
+      .map((e) => `${iso(e.at)}   ${[e.what + (e.eoid ? ` ${String(e.eoid).replace(/-/g, "")}` : ""), e.by, e.note].filter((x) => x != null && String(x).trim() !== "").join(" · ")}`);
     const text = [`${C.company.name} E-PORTAL · LOG · ${title}`, `Downloaded ${iso(new Date())} by ${S.profile?.full_name || ""}`, "", ...rows, "", `${rows.length} line(s)`].join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
     a.download = `LOG-${String(title).replace(/[^A-Za-z0-9-]+/g, "-").replace(/^-|-$/g, "")}.txt`; document.body.appendChild(a); a.click();

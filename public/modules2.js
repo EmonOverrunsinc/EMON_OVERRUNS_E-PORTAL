@@ -289,9 +289,9 @@
       </div>`;
     // 3.99.234: where the employee works (a badge); the Director moves the employee; the Director's own login link
     if ($("#emLog")) $("#emLog").onclick = () => E.downloadLog(`${em.employee_no || ""} ${fullName(em)}`, [
-      { at: em.created_at, what: "EMPLOYEE ADDED", by: em.created_by_name }, { at: em.date_hired, what: "DATE HIRED" },
-      { at: em.approved_at, what: "EMPLOYEE APPROVED", by: em.approved_by_name },
-      ...slips.map((r) => ({ at: r.created_at || r.pay_date, what: `PAYSLIP ${r.payslip_no || ""} · PHP ${peso(r.net_pay ?? r.amount ?? 0)}`, by: r.created_by_name })),
+      { at: em.created_at, what: "EMPLOYEE ADDED", by: em.created_by_name }, { at: em.date_hired, what: "DATE HIRED", eoid: em.employee_no },
+      { at: em.approved_at, what: "EMPLOYEE APPROVED", eoid: em.employee_no, by: em.approved_by_name },
+      ...slips.map((r) => ({ at: r.created_at || r.pay_date, what: `PAYSLIP${r.payslip_no ? " " + r.payslip_no : ""} · PHP ${peso(r.net_pay ?? r.amount ?? 0)}`, by: r.created_by_name })),
       ...(pays.rows || []).map((r) => ({ at: r.created_at || r.pay_date, what: `SALARY PAID · PHP ${peso(r.amount)}`, by: r.created_by_name })),
       ...(em.termination_date ? [{ at: em.termination_date, what: "TERMINATED", note: em.termination_reason }] : [])]); // 3.99.269
     sb.rpc("employee_place", { p_employee: em.id }).then(({ data: pl }) => { const b = $("#emPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl); }, () => {});
