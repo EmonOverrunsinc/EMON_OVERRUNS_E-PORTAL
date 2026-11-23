@@ -5337,3 +5337,8 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.274: the hologram right in the photo corner; the position badge just under the name */
 .idc-photo .idc-holo { right: .3mm; bottom: .2mm; }
 .idc-pos { top: 53.8mm; }
+/* 3.99.276: card back: the signature below the QR text (smaller), clear of VALID UNTIL; card front: the photo fills its frame */
+.idc-sign { top: 47.2mm !important; }
+.idc-sigpic { height: 5.2mm !important; } .idc-sigpic img { max-height: 5mm !important; max-width: 20mm !important; }
+.idc-photo { border-width: 0 !important; background: #dfe6f3; overflow: hidden; }
+.idc-photo .idc-pic { border-radius: 2mm; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
