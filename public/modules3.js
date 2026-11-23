@@ -704,7 +704,7 @@
     const p = $(".chat-panel"); if (!p) return;
     CH.other = "__eva"; CH.msgs = [];
     p.classList.add("in-conv");
-    E.eva.seen?.(); renderContacts();
+    E.eva.seen?.(); renderContacts(); document.dispatchEvent(new CustomEvent("eva-push"));
     $(".cp-conv", p).innerHTML = `<div class="cv-head"><span class="cp-av eva-av">${ic("ai")}</span><div><b>EVA AI<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Assistant · remembers this chat</small></div></div><div class="cv-eva"></div>`;
     E.eva.mount($(".cv-eva", p));
   }

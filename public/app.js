@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.326"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.327"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.326"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.327"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1698,7 +1698,7 @@
           <button type="button" class="scanbtn" id="tbScan" title="Scan a QR code or barcode">${ic("scan")}<span>Scan</span></button>
         </form>
         <div class="tb-right">
-          ${canAI() ? `<button type="button" class="iconbtn tb-eva" id="tbEva" aria-label="Ask EVA AI" title="Ask EVA AI">${ic("ai")}</button>` : ""}
+          ${canAI() ? `<button type="button" class="iconbtn tb-eva" id="tbEva" aria-label="Ask EVA AI" title="Ask EVA AI">${ic("ai")}<span class="badge" id="tbEvaBadge" hidden>0</span></button>` : ""}
           <button type="button" class="iconbtn" id="tbChat" aria-label="Messages" title="Messages">${ic("chat")}<span class="badge" id="tbChatBadge" hidden>0</span></button>
           <button type="button" class="iconbtn" id="tbBell" aria-label="Notifications" title="Notifications" aria-haspopup="true">${ic("bell")}<span class="badge" id="tbBadge" hidden>0</span></button>
           <button type="button" class="avatar-btn" id="tbUser" aria-haspopup="true" aria-label="Your account">
@@ -1753,7 +1753,7 @@
     };
     $("#tbScan").onclick = () => scanDialog((text) => openScanned(text));
     $("#tbChat").onclick = () => { if (window.EO.openChat) window.EO.openChat(); else toast("Messages are not available yet.", true); };
-    if ($("#tbEva")) $("#tbEva").onclick = () => window.EO.eva?.open();
+    if ($("#tbEva")) $("#tbEva").onclick = () => { window.EO.eva?.open(); window.EO.eva?.seen?.(); paintBadges(); };
     const toggle = (id) => { const el = $(id); const show = el.hidden; $$(".pop").forEach((p) => (p.hidden = true)); el.hidden = !show; if (show && id === "#mailPop") loadMail(); };
     $("#tbBell").onclick = (e) => { e.stopPropagation(); toggle("#mailPop"); };
     $("#tbUser").onclick = (e) => { e.stopPropagation(); toggle("#userPop"); };
@@ -1767,7 +1767,9 @@
     const set = (id, n) => { const b = $(id); if (!b) return; b.hidden = !n; b.textContent = n > 99 ? "99+" : String(n || 0); };
     set("#tbBadge", badgeState.notes);
     set("#tbChatBadge", badgeState.msgs);
+    set("#tbEvaBadge", window.EO.eva?.unread?.() || 0); // 3.99.327: EVA's new messages
   }
+  document.addEventListener("eva-push", () => paintBadges());
   async function refreshBadges(force) {
     paintBadges();
     if (!force && Date.now() - badgeState.at < 15000) return;
@@ -1782,7 +1784,7 @@
     paintBadges();
     if (!n.error && (badgeState.lastId == null || badgeState.notes > before)) pushNew().catch(() => {});
   }
-  // 3.99.326: PUSH: a new notification pops up in the portal at once (a transfer, an approval, a message …), and as a
+  // 3.99.327: PUSH: a new notification pops up in the portal at once (a transfer, an approval, a message …), and as a
   // phone / computer alert when the portal is in the background and alerts are allowed
   async function pushNew() {
     const { data } = await sb.from("notifications").select("id, title, body, link, created_at").eq("is_read", false).order("id", { ascending: false }).limit(5);
@@ -1814,7 +1816,7 @@
   // Approve / Reject right in the notification (EMON HASAN) when the record can be decided from here
   const noteAction = (n) => {
     const l = String(n.link || ""), id = l.split("/")[1] || "", t = String(n.title || "");
-    if (/^You now work at /i.test(t) && !isAdmin()) return { ok: () => sb.rpc("transfer_accept"), okLabel: "Read & Accept", single: true }; // 3.99.326 (SQL 152)
+    if (/^You now work at /i.test(t) && !isAdmin()) return { ok: () => sb.rpc("transfer_accept"), okLabel: "Read & Accept", single: true }; // 3.99.327 (SQL 152)
     if (!isAdmin()) return null;
     if (/^custorder\//.test(l) && /to review/i.test(t)) return { ok: () => sb.rpc("decide_customer_order", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_customer_order", { p_id: id, p_action: "cancel" }), noLabel: "Cancel Order" };
     if (/^insurance\//.test(l) && /to review/i.test(t)) return { ok: () => sb.rpc("decide_insurance", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_insurance", { p_id: id, p_action: "reject" }) };
