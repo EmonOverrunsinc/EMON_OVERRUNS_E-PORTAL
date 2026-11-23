@@ -5542,3 +5542,7 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 #main .cust-hero > .ch-band-tag * { font-size: 10px !important; line-height: 1.2 !important; } #main .cust-hero > .ch-band-tag > span > * { padding: 3px 9px !important; min-height: 0 !important; height: auto !important; } #main .cust-hero > .ch-band-tag svg { width: 11px !important; height: 11px !important; }
 #main .cust-hero .ch-pic { align-self: start; align-content: start; } #main .cust-hero .ch-pic-tools { margin-bottom: 0 !important; } #main .cust-hero .ch-tags { margin-top: 2px !important; } /* 3.99.318: NOT VERIFIED right under Add Photo */
 #main .cust-hero .ch-pic-tools { height: auto !important; min-height: 0 !important; } #main .cust-hero .ch-pic-tools .linkbtn { min-height: 0 !important; height: auto !important; padding: 3px 4px !important; line-height: 1.2; }
+/* 3.99.321: CLOSED ACCOUNT in the red band, on the right */
+#main .cust-hero > .ch-band-closed { position: absolute; right: 16px; top: 14px; z-index: 3; display: grid; justify-items: end; gap: 2px; text-align: right; color: #fff; max-width: 62%; }
+#main .cust-hero > .ch-band-closed b { font-size: 13px; letter-spacing: .06em; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+#main .cust-hero > .ch-band-closed span { font: 700 10px/1.3 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; opacity: .95; }
