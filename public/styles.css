@@ -5358,3 +5358,7 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.279: the Document Register */
 .reg-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; } .reg-bar input { flex: 1 1 220px; } .reg-bar select { flex: 0 1 200px; }
 .reg-n { margin: 0 0 6px; } .reg-trx { font-size: 10px; color: var(--muted, #6b7487); word-break: break-all; }
+/* 3.99.283: the paper's PDF417 a little higher; room kept for it at the bottom of every paper */
+.page:has(> .pg-code) { padding-bottom: 15mm; }
+.page > .pg-code { bottom: 4.5mm; }
+.page:has(> .pg-code) > .pg-trx { bottom: 5mm; }
