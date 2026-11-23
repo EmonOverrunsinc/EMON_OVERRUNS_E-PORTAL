@@ -1468,6 +1468,32 @@
     };
   }
 
+  // 3.99.293: EVA PUSHES A MESSAGE when something is waiting (in her own chat, the same memory as the EVA panel); the
+  // Messenger shows her with a red number until the chat is opened
+  const pushKey = (k) => `eoEva${k}:${S.profile?.id || ""}`;
+  const lsGet = (k) => { try { return localStorage.getItem(pushKey(k)) || ""; } catch (_) { return ""; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(pushKey(k), String(v)); } catch (_) {} };
+  function push(r) {
+    loadLog();
+    LOG.push({ who: "ai", at: Date.now(), html: r.html, chips: r.chips });
+    if (LOG.length > 120) LOG.splice(0, LOG.length - 120);
+    saveLog(); paint();
+    lsSet("New", Number(lsGet("New") || 0) + 1);
+    document.dispatchEvent(new CustomEvent("eva-push"));
+  }
+  async function pushIssues() {
+    if (!S.profile?.id || S.profile.status !== "active" || !E.canAI?.() || !E.todoItems) return;
+    const items = await E.todoItems().catch(() => []);
+    const sig = items.map(([n, l]) => `${n} ${l}`).join("|");
+    if (!items.length) { lsSet("Sig", ""); return; }
+    if (sig === lsGet("Sig")) return; // the same things as the last message: nothing new to say
+    lsSet("Sig", sig);
+    const first = String(S.profile.full_name || "").split(" ")[0].toLowerCase().replace(/^./, (x) => x.toUpperCase());
+    push({ html: `${first ? esc(first) + ", t" : "T"}hese need you now: <b class="eva-amt">${items.reduce((s, [n]) => s + n, 0)}</b><ul class="eva-todo">${items.map(([n, label, href]) => `<li><a href="${esc(href)}"><b>${n}</b> ${esc(label)}${n === 1 ? "" : "s"}</a></li>`).join("")}</ul>`,
+      chips: [["Business summary", "business summary"], ["Total due", "total due"]] });
+  }
+  setTimeout(() => { pushIssues(); setInterval(() => { if (document.visibilityState === "visible") pushIssues(); }, 10 * 60e3); }, 8000);
   E.eva = { mergeBoxes, open: openPanel, close: closePanel, mount, ask, answer, readQuestion, classify, entities, boxSection, boxesOf, readCsv, sheetIdOf, clear: clearChat,
+    push, pushIssues, unread: () => Number(lsGet("New") || 0), seen: () => lsSet("New", 0),
     reset: () => { CUST = null; BOX = null; ENTS = null; clearChat(); } };
 })();

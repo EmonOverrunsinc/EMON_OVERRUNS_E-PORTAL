@@ -694,8 +694,21 @@
     if (!q || "emon overruns e-portal notifications".includes(q)) box.insertAdjacentHTML("afterbegin", `<button type="button" class="cp-contact cp-sys ${CH.other === "__portal" ? "on" : ""}" data-c="__portal">
         <span class="cp-av"><img src="brand/seal-stamp.png" alt=""></span><span class="cp-who"><b>EMON OVERRUNS E-PORTAL<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Notifications</small></span>
         ${CH.sysUnread ? `<span class="badge">${CH.sysUnread}</span>` : ""}</button>`);
+    if (E.canAI?.() && E.eva && (!q || "eva ai assistant".includes(q))) { const n = E.eva.unread?.() || 0; box.querySelector(".cp-sys")?.insertAdjacentHTML("afterend", `<button type="button" class="cp-contact cp-sys cp-eva ${CH.other === "__eva" ? "on" : ""}" data-c="__eva">
+        <span class="cp-av eva-av">${ic("ai")}</span><span class="cp-who"><b>EVA AI<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Assistant · tells you what is waiting</small></span>
+        ${n ? `<span class="badge">${n}</span>` : ""}</button>`); }
     $$(".cp-contact", box).forEach((b) => (b.onclick = () => openConversation(b.dataset.c)));
   }
+  // 3.99.293: EVA in the Messenger: the same chat (her memory) as the EVA panel
+  function openEvaChat() {
+    const p = $(".chat-panel"); if (!p) return;
+    CH.other = "__eva"; CH.msgs = [];
+    p.classList.add("in-conv");
+    E.eva.seen?.(); renderContacts();
+    $(".cp-conv", p).innerHTML = `<div class="cv-head"><span class="cp-av eva-av">${ic("ai")}</span><div><b>EVA AI<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Assistant · remembers this chat</small></div></div><div class="cv-eva"></div>`;
+    E.eva.mount($(".cv-eva", p));
+  }
+  document.addEventListener("eva-push", () => { if (CH.other === "__eva") E.eva.seen?.(); if ($(".chat-panel")) renderContacts(); });
   // 3.99.291: every notification also comes as a message from EMON OVERRUNS E-PORTAL (read only; press Open to go there)
   async function openPortalChat() {
     const p = $(".chat-panel"); if (!p) return;
@@ -743,6 +756,7 @@
   }
   async function openConversation(otherId) {
     if (otherId === "__portal") return openPortalChat();
+    if (otherId === "__eva") return openEvaChat();
     const p = $(".chat-panel"); if (!p) return;
     const c = CH.contacts.find((x) => x.id === otherId);
     if (!c) return toast("That person is not available for messages.", true);
@@ -848,6 +862,7 @@
     if (!$(".chat-panel") || document.visibilityState !== "visible") return;
     CH.tick++;
     if (CH.other === "__portal") await loadPortalChat();
+    else if (CH.other === "__eva") { /* EVA paints her own chat */ }
     else if (CH.other) { await loadMessages(false); await refreshSeen(); }
     if (CH.tick % 4 === 0) loadContacts();
   }

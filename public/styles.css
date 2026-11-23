@@ -5381,3 +5381,9 @@ body.os-info-open > .band-back { display: none !important; }
 .cp-sys .cp-who { overflow: visible; min-width: 0; } .cp-sys .cp-who .vbadge { margin-left: 3px; }
 .cv-acts { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; } .cv-acts .btn { margin: 0; }
 .cv-done { font-size: 12px; font-weight: 700; color: var(--ok, #17794a); align-self: center; }
+/* 3.99.293: EVA AI in the Messenger */
+.cp-eva .eva-av, .cv-head .eva-av { display: grid; place-items: center; background: linear-gradient(135deg, #0f3a8c, #5b3fd1); color: #fff; border-radius: 50%; }
+.cp-eva .eva-av svg, .cv-head .eva-av svg { width: 60%; height: 60%; }
+.cp-conv .cv-eva { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.cp-conv .cv-eva .eva-chat { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.cp-conv .cv-eva .eva-log { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
