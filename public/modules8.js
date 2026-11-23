@@ -35,7 +35,7 @@
   const issuerBlock = (c) => {
     const sign = isAdmin() ? E.approvedBy(S.session?.user?.id, S.profile?.full_name, new Date().toISOString()) : null;
     const qr = c?.public_id ? `<div class="ol-qr"><img src="${E.qrDataUrl(verifyUrl(c.public_id))}" alt="Verification QR code"><small>Scan to check this account</small></div>` : "";
-    return `<div class="ol-sign ${qr ? "" : "one"}">${qr}<div class="ol-auth${sign ? " has-sig" : ""}"><div class="ol-auth-name">${sign ? "" : esc(S.profile?.full_name || "")}</div><div class="line"></div>${E.sigMark(sign)}${isAdmin() ? "Operational Director · Authorized Representative" : "Issued by · Authorized Representative"}</div></div>`;
+    return `<div class="ol-sign ${qr ? "" : "one"}">${qr}<div class="ol-auth${sign ? " has-sig" : ""}"><div class="ol-auth-name">${sign ? "" : esc(S.profile?.full_name || "")}</div><div class="line"></div>${sign ? E.sigMark({ ...sign, stamp: { ...(sign.stamp || { name: sign.name }), date: sign.at ? mdy(sign.at) : "" } }) : "Issued by · Authorized Representative"}</div></div>`; // 3.99.264: the stamp only (the date inside)
   };
   const codes = (c, no, qr = false) => `<div class="ph-codes"><div><img src="${E.pdf417DataUrl("EMONCUST|" + (c.account_no || c.application_no))}" alt="" class="ph-bar"><div class="mono">${esc(no)}</div></div>
     ${qr && c.public_id ? `<img src="${E.qrDataUrl(verifyUrl(c.public_id))}" alt="Verification QR code" class="ph-qr">` : ""}</div>`;
@@ -337,7 +337,7 @@
         ${keys.map((k) => `<tr><td>${esc(E.fieldLabel("customers", k))}</td><td>${val(k, r.previous?.[k])}</td><td><b>${val(k, r.changes[k])}</b></td></tr>`).join("")}</tbody></table>
       <p class="cert-body">I confirm that the new information above is true and correct, and I ask ${esc(C.company.name)} to update my account with it.</p>
       <div class="ol-sign"><div class="ol-auth"><div class="ol-auth-name">${esc(fullName(r.previous).toUpperCase())}</div><div class="line"></div>Customer · Signature over Printed Name / Date</div>
-        <div class="ol-auth${sign ? " has-sig" : ""}"><div class="ol-auth-name"></div><div class="line"></div>${E.sigMark(sign)}Approved by · Operational Director${sign ? ` · ${esc(mdy(isoToday()))}` : " / Date"}</div></div>
+        <div class="ol-auth${sign ? " has-sig" : ""}"><div class="ol-auth-name"></div><div class="line"></div>${sign ? E.sigMark({ ...sign, stamp: { ...(sign.stamp || { name: sign.name }), date: mdy(isoToday()) } }) : "Approved by / Date"}</div></div>
       ${c.public_id ? `<div class="doc-qr"><img src="${E.qrDataUrl(verifyUrl(c.public_id))}" alt="Verification QR code"><small>Scan to check this account</small></div>` : ""}
       <div class="rp-foot"><span>Scan the QR code to check this account online.</span><span>${esc(no)}</span></div>`;
   }
