@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.319"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.320"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.319"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.320"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -117,7 +117,7 @@
       ${pool}
 `;
   };
-  // 3.99.319: the small medal row under a customer's photo: gold, silver and bronze with their counts
+  // 3.99.320: the small medal row under a customer's photo: gold, silver and bronze with their counts
   const medalMini = (a) => !a ? "" : `<div class="md-mini">${[1, 2, 3].map((k) => `<span class="mm md${k}" title="${MEDAL_NAME[k]}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b></span>`).join("")}</div>`;
   // 3.99.204: WEEK 2 OF NOVEMBER (the week a medal is for); the Redeem button of a customer's Achieved tab
   const weekOf = (p) => { const d = new Date(`${String(p).slice(0, 10)}T00:00:00`); return `WEEK ${Math.ceil(d.getDate() / 7)} OF ${MON[d.getMonth()]}`; };

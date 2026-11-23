@@ -1044,7 +1044,8 @@
       const l = no ? (orders || []).find((x) => x.order_no === no) : null;
       const e = [...(evs || [])].reverse().find((x) => /clos/i.test(`${x.action} ${x.note || ""}`));
       const at = l?.applied_at || l?.approved_at || l?.created_at || e?.created_at || c.updated_at || "";
-      return `<div class="banner closed sus-b">❌ <b>CLOSED ACCOUNT</b>${no ? ` · <span class="mono">${esc(no)}</span>` : ""}${at ? ` · ${esc(mdy(at))}` : ""}${!no && note ? ` · ${esc(note)}` : ""}</div>`;
+      const bl = no ? no.replace(/^[A-Z]{2,4}-/, "BL-") : `BL-${String(c.account_no || "").replace(/^[A-Z]+-/, "")}`; // 3.99.320: the blacklist no
+      return `<div class="banner closed sus-b">❌ <b>CLOSED ACCOUNT</b>${no ? ` · <span class="mono">${esc(no)}</span>` : ""}${at ? ` · ${esc(mdy(at))}` : ""}${!no && note ? ` · ${esc(note)}` : ""} · BLACKLIST NO <span class="mono">${esc(bl)}</span></div>`;
     }
     if (c.status === "suspended") { // 3.99.220: SUSPENDED · the action no (EO-…) · the date
       const note = String(c.status_note || ""), no = (note.match(/\b[A-Z]{2,4}-\d{4}-\d{2}-\d{2,6}\b/) || note.match(/\b[A-Z]{2,4}-[0-9A-Z]+-[0-9A-Z-]{3,}\b/) || [])[0] || "";
