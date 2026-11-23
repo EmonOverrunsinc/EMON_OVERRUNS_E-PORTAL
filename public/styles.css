@@ -5447,3 +5447,6 @@ body.os-info-open > .band-back { display: none !important; }
 .os-days td small { display: none !important; }
 .os-days tbody td { height: 50px; vertical-align: middle; white-space: nowrap; }
 .os-days tbody td.num { font-weight: 700; }
+/* 3.99.299: YESTERDAY CASH in its own column (hidden on a phone, where the list must fit) */
+.os-days .os-prev { color: #5b6b8c; }
+@media (max-width: 640px) { .os-days .os-prev { display: none; } }
