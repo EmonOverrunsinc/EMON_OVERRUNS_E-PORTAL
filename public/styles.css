@@ -5515,3 +5515,4 @@ body.os-info-open > .band-back { display: none !important; }
 #main .cust-hero > .ch-medals .md-mini { background: rgba(255, 255, 255, .96); border-color: rgba(255, 255, 255, .6); padding: 5px 10px; gap: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
 #main .cust-hero > .ch-medals .md-mini .mm > :first-child { width: 22px !important; height: 22px !important; min-width: 22px; }
 #main .cust-hero > .ch-medals .md-mini .mm b { font-size: 13px; }
+#main .cust-hero > .ch-medals { top: 44px; } /* 3.99.313: a little lower in the band */
