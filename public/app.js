@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.323"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.324"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.323"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.324"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1776,10 +1776,35 @@
       sb.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false),
       sb.rpc("unread_messages_count")
     ]);
+    const before = badgeState.notes;
     badgeState.notes = n.error ? 0 : n.count || 0;
     badgeState.msgs = m.error ? 0 : Number(m.data || 0);
     paintBadges();
+    if (!n.error && (badgeState.lastId == null || badgeState.notes > before)) pushNew().catch(() => {});
   }
+  // 3.99.324: PUSH: a new notification pops up in the portal at once (a transfer, an approval, a message …), and as a
+  // phone / computer alert when the portal is in the background and alerts are allowed
+  async function pushNew() {
+    const { data } = await sb.from("notifications").select("id, title, body, link, created_at").eq("is_read", false).order("id", { ascending: false }).limit(5);
+    const rows = data || [];
+    if (badgeState.lastId == null) { badgeState.lastId = rows[0]?.id || 0; return; } // the first look after sign-in: no pop-up for the old ones
+    const fresh = rows.filter((x) => x.id > badgeState.lastId);
+    if (!fresh.length) return;
+    badgeState.lastId = fresh[0].id;
+    fresh.reverse().forEach(pushAlert);
+  }
+  function pushAlert(n) {
+    let box = $("#pushBox"); if (!box) { box = document.createElement("div"); box.id = "pushBox"; box.className = "push-box"; document.body.appendChild(box); }
+    const el = document.createElement("div"); el.className = "push-alert"; el.setAttribute("role", "status");
+    el.innerHTML = `<span class="pa-ic">${ic("bell")}</span><div class="pa-t"><b>${esc(n.title || "")}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</div><button type="button" class="pa-x" aria-label="Close">${ic("x")}</button>`;
+    const go = () => { sb.from("notifications").update({ is_read: true }).eq("id", n.id).then(refreshBadge); el.remove();
+      const chat = /^chat\/([0-9a-f-]{36})$/i.exec(n.link || ""); if (chat && window.EO.openChat) window.EO.openChat(chat[1]); else if (n.link) location.hash = n.link; };
+    el.onclick = (e) => { if (e.target.closest(".pa-x")) { el.remove(); return; } go(); };
+    box.prepend(el); setTimeout(() => el.classList.add("in"), 20); setTimeout(() => el.remove(), 12000);
+    try { if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") { const sn = new Notification(n.title || "EMON OVERRUNS E-PORTAL", { body: n.body || "", icon: "brand/icon-192.png", tag: "eo-" + n.id }); sn.onclick = () => { window.focus(); go(); sn.close(); }; } } catch (_) {}
+  }
+  // the phone / computer asks once to allow alerts (on the first tap after sign-in)
+  document.addEventListener("pointerdown", () => { try { if (S.session && "Notification" in window && Notification.permission === "default" && !localStorage.getItem("eoAskAlerts")) { localStorage.setItem("eoAskAlerts", "1"); Notification.requestPermission().catch(() => {}); } } catch (_) {} }, { passive: true });
   const refreshBadge = () => refreshBadges(true);
   // 3.99.226: who sent a notification: the E-Portal (✔) or a person (the Director ✔ in gold)
   const noteFrom = (n) => {
@@ -3217,7 +3242,7 @@
   window.addEventListener("pageshow", idleTick);
 
   Object.assign(window.EO, {
-    noteAction, // 3.99.306: Approve / Reject also in the Messenger's E-PORTAL chat
+    noteAction, pushAlert, // 3.99.306: Approve / Reject also in the Messenger's E-PORTAL chat
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
