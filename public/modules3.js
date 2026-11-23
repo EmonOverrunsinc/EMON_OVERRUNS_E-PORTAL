@@ -767,11 +767,11 @@
         <div><b>${esc(c.full_name || "")}${c.verified ? `<span class="vbadge sm" title="Verified">${ic("check")}</span>` : ""}</b><small>${esc(c.job_position || "")} · ${E.online(c.last_seen_at) ? `<span class="on-txt">Active now</span>` : `Last seen ${esc(c.last_seen_at ? E.timeAgo(c.last_seen_at) : "—")}`}</small></div></div>
       <div class="cv-msgs" id="cvMsgs">${busy()}</div>
       <form class="cv-compose" id="cvForm"><label class="cv-attach" title="Send a photo or document" for="cvFile">${ic("clip")}</label>
-        <input type="file" id="cvFile" hidden accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+        <input type="file" id="cvFile" hidden multiple accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
         <input type="text" id="cvText" placeholder="Write a message…" autocomplete="off" aria-label="Message">
         <button type="submit" class="cv-send" aria-label="Send">${ic("send")}</button></form>`;
     $("#cvForm").onsubmit = (e) => { e.preventDefault(); sendMessage(); };
-    $("#cvFile").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) sendMessage(f); };
+    $("#cvFile").onchange = async (e) => { const fs = Array.from(e.target.files || []).slice(0, 10); e.target.value = ""; for (const f of fs) await sendMessage(f); }; // 3.99.325: up to 10 at once
     await loadMessages(true);
     $("#cvText")?.focus();
   }
@@ -782,7 +782,7 @@
     const last = CH.msgs[CH.msgs.length - 1];
     // 3.35: the last 2 minutes are asked again, so a message sent at the same moment as the last one shown (saved a
     // moment earlier, but stored a moment later) still comes; each message shows once, in time order
-    if (!full && last) q = q.gt("created_at", new Date(new Date(last.created_at).getTime() - 120000).toISOString()); else q = q.limit(300);
+    if (!full && last) q = q.gt("created_at", new Date(new Date(last.created_at).getTime() - 120000).toISOString()); else q = q.gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString()).limit(300); // 3.99.325: messages last 30 days
     const { data, error } = await q;
     if (error || other !== CH.other) return;
     const fresh = (data || []).filter((m) => !CH.msgs.some((x) => x.id === m.id));
@@ -817,9 +817,17 @@
       const file = m.file_path ? (isImg && u ? `<button type="button" class="cv-img" data-img="${esc(u)}"><img src="${esc(u)}" alt="${esc(m.file_name || "Photo")}" loading="lazy"></button>`
         : `<a class="cv-file" href="${esc(u || "#")}" target="_blank" rel="noopener" download="${esc(m.file_name || "file")}">${ic("doc")} ${esc(m.file_name || "Document")}</a>`) : "";
       return `${sep}<div class="cv-msg ${m.sender_id === me ? "me" : "them"}" data-mid="${esc(m.id)}">${file}${m.body ? `<div class="cv-text">${esc(m.body)}</div>` : ""}
-        <small>${msgFoot(m, me)}</small></div>`;
+        <small>${msgFoot(m, me)}${m.sender_id === me ? `<button type="button" class="cv-del" data-del="${esc(m.id)}" title="Delete" aria-label="Delete this message">${ic("trash")}</button>` : ""}</small></div>`;
     }).join("") : `<div class="cp-empty small"><p>No messages yet. Say hello!</p></div>`;
     $$("[data-img]", box).forEach((b) => (b.onclick = () => lightbox(b.dataset.img)));
+    $$("[data-del]", box).forEach((b) => (b.onclick = async (e) => { // 3.99.325: delete my own message (SQL 151)
+      e.stopPropagation();
+      if (!(await E.confirmBox("Delete this message? It is removed for both of you.", { title: "Delete Message", ok: "Delete", danger: true }))) return;
+      const { data: path, error } = await sb.rpc("message_delete", { p_id: b.dataset.del });
+      if (error) return fail(error, /message_delete|PGRST202|schema cache/.test(error.message || "") ? "Run the database update 151 first" : "Could not delete");
+      if (path) sb.storage.from("records").remove([path]).catch(() => {});
+      CH.msgs = CH.msgs.filter((x) => x.id !== b.dataset.del); renderMessages();
+    }));
     if (atEnd) box.scrollTop = box.scrollHeight;
   }
   async function sendMessage(file) {

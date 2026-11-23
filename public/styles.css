@@ -5573,3 +5573,15 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .push-alert .pa-t span { font-size: 12.5px; color: #42506b; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .push-alert .pa-x { flex: none; border: 0; background: none; color: #8a95ab; padding: 2px; cursor: pointer; }
 .push-alert .pa-x svg { width: 14px; height: 14px; }
+/* 3.99.325: messages easy to read; a small delete on my own messages */
+.cv-msgs { gap: 8px !important; }
+.cv-msg { max-width: 80% !important; padding: 9px 13px !important; border-radius: 16px; }
+.cv-msg .cv-text { font-size: 15px; line-height: 1.45; letter-spacing: .005em; }
+.cv-msg.me { background: #1d4fb0 !important; color: #fff; }
+.cv-msg.them { background: #fff !important; color: #10203f; border: 1px solid #e2e8f3; }
+.cv-msg small { display: flex; align-items: center; gap: 6px; font-size: 10.5px; }
+.cv-msg .cv-del { border: 0; background: none; padding: 0 0 0 2px; color: inherit; opacity: .6; cursor: pointer; display: inline-grid; place-items: center; }
+.cv-msg .cv-del:hover { opacity: 1; }
+.cv-msg .cv-del svg { width: 13px; height: 13px; }
+.cv-msg .cv-img img { max-width: 220px; max-height: 260px; border-radius: 10px; display: block; }
+.cv-day { font-size: 11px; }
