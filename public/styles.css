@@ -5179,3 +5179,10 @@ body.os-info-open > .band-back { display: none !important; }
 .inv-dir .eo-stamp { margin-top: 1.2mm; }
 .inv-dir .eo-stamp b { font-size: 9.5pt; font-weight: 900; letter-spacing: .06em; color: var(--ink); }
 .inv-dir .eo-stamp em, .inv-dir .eo-stamp i { color: var(--ink); }
+/* 3.99.236: the sales report sign-off: the cash left stamp higher up; the TRX ID lower under the Director's stamp;
+   a signature on the line at a normal size (all papers) */
+.so-ok .dsr-cash { margin: 0 0 9mm; }
+.sign-off .so-appr { margin-top: 5mm; height: 12mm; } .so-appr-space { height: 17mm; }
+.so-sign img { max-height: 11mm; max-width: 55%; }
+.psig .esig { height: 11mm; max-width: 60%; } .ol-auth.has-sig .esig { height: 11mm; }
+.vp-sig img { max-height: 13mm; max-width: 60%; }
