@@ -1039,7 +1039,13 @@
 
   // Suspended / closed accounts are marked for everyone who opens them.
   function statusBanner(c, orders = [], evs = []) {
-    if (c.status === "closed") return `<div class="banner closed">${ic("x")} CLOSED ACCOUNT — new invoices cannot be recorded; payments can still be recorded. ${c.status_note ? " " + esc(c.status_note) : ""}</div>`;
+    if (c.status === "closed") { // 3.99.319: ❌ CLOSED ACCOUNT · the action no (EO-…) · the date it was closed
+      const note = String(c.status_note || ""), no = (note.match(/\b[A-Z]{2,4}-\d{4}-\d{2}-\d{2,6}\b/) || note.match(/\b[A-Z]{2,4}-[0-9A-Z]+-[0-9A-Z-]{3,}\b/) || [])[0] || "";
+      const l = no ? (orders || []).find((x) => x.order_no === no) : null;
+      const e = [...(evs || [])].reverse().find((x) => /clos/i.test(`${x.action} ${x.note || ""}`));
+      const at = l?.applied_at || l?.approved_at || l?.created_at || e?.created_at || c.updated_at || "";
+      return `<div class="banner closed sus-b">❌ <b>CLOSED ACCOUNT</b>${no ? ` · <span class="mono">${esc(no)}</span>` : ""}${at ? ` · ${esc(mdy(at))}` : ""}${!no && note ? ` · ${esc(note)}` : ""}</div>`;
+    }
     if (c.status === "suspended") { // 3.99.220: SUSPENDED · the action no (EO-…) · the date
       const note = String(c.status_note || ""), no = (note.match(/\b[A-Z]{2,4}-\d{4}-\d{2}-\d{2,6}\b/) || note.match(/\b[A-Z]{2,4}-[0-9A-Z]+-[0-9A-Z-]{3,}\b/) || [])[0] || "";
       const l = no ? (orders || []).find((x) => x.order_no === no) : null;
@@ -1107,7 +1113,7 @@
     $(".band h1").textContent = `Customer › ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c, orders, ev.data || [])}
-      <section class="cust-hero st-${esc(c.status)}">${isApprovedAccount(c) && isStaff() ? `<div class="ch-band-tag"><span id="pfStanding"></span></div>` : ""}
+      <section class="cust-hero st-${esc(c.status)}">${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span></div>` : ""}
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span></div>` : ""}</div>
         <div class="ch-main">
