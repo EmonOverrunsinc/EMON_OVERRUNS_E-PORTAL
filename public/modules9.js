@@ -11,6 +11,18 @@
   const E = window.EO;
   const { sb, C, esc, mdy, $, isAdmin, toast, fail, ic, busy, fullName } = E;
   const W = 54, H = 85.6;
+  // 3.99.241: the company stamp of the card, drawn in the portal colours (navy, gold): a ring of words, a guilloche
+  // security pattern and the logo in the middle
+  let rsN = 0;
+  const rStamp = (cls, words) => {
+    const k = `rs${++rsN}`, ring = esc(Array.from({ length: 2 }, () => words).join(" · ") + " · ");
+    const guil = Array.from({ length: 18 }, (_, i) => `<ellipse cx="50" cy="50" rx="34" ry="12" transform="rotate(${i * 10} 50 50)"/>`).join("");
+    return `<span class="${cls} idc-rs" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><path id="${k}" d="M50,50 m-39,0 a39,39 0 1,1 78,0 a39,39 0 1,1 -78,0"/></defs>
+      <circle cx="50" cy="50" r="48" fill="#fff" fill-opacity=".55" stroke="#0f3a8c" stroke-width="3"/><circle cx="50" cy="50" r="44.5" fill="none" stroke="#c9a227" stroke-width="1"/>
+      <g fill="none" stroke="#0f3a8c" stroke-width=".35" opacity=".45">${guil}</g>
+      <circle cx="50" cy="50" r="31" fill="none" stroke="#c9a227" stroke-width=".9"/><circle cx="50" cy="50" r="22" fill="#fff" stroke="#0f3a8c" stroke-width="1.2"/>
+      <text font-family="Arial, sans-serif" font-size="6.6" font-weight="800" fill="#0f3a8c"><textPath href="#${k}" textLength="242" lengthAdjust="spacingAndGlyphs">${ring}</textPath></text></svg>${E.logoHtml("idc-rs-logo")}</span>`;
+  };
   const STAMP = "brand/stamp.png"; // the company stamp (round seal, see-through), on the photo corner and by EMON HASAN's signature
   let uid = 0;
 
@@ -98,7 +110,7 @@
       <div class="idc-top">${band(k)}${E.logoHtml("idc-logo")}<div class="idc-co"><b>${esc(C.company.name)}</b><small>EMPLOYEE IDENTIFICATION CARD</small></div></div>
       <div class="idc-gold"></div>
       ${photoFrame(k, [C.company.name, d.em.employee_no])}
-      <div class="idc-photo">${d.photo ? `<img class="idc-pic" src="${esc(d.photo)}" alt="">` : `<span>PHOTO</span>`}<img class="idc-seal" src="${STAMP}" alt=""></div>
+      <div class="idc-photo">${d.photo ? `<img class="idc-pic" src="${esc(d.photo)}" alt="">` : `<span>PHOTO</span>`}${rStamp("idc-seal", `${C.company.name} · ${d.em.employee_no || ""}`)}</div>
       ${d.photo ? `<div class="idc-ghost"><img src="${esc(d.photo)}" alt=""><span>${esc(`${d.em.employee_no} `.repeat(14))}</span></div>` : ""}
       <div class="idc-name" style="font-size:${nameSize(name)}mm">${esc(name)}</div>
       <div class="idc-pos"><span>${esc((d.em.position || "EMPLOYEE").toUpperCase())}</span></div>
@@ -119,8 +131,8 @@
         <div class="idc-qrtxt"><b class="idc-scan">SCAN TO SIGN IN</b>
           <small>CARD NO</small><b class="mono">${esc(d.card.card_no)}</b><small>ISSUED</small><b>${esc(mdy(d.card.issued_at))}</b>
           <small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b>${d.appNo ? `<small>APPLICATION NO</small><b class="mono">${esc(d.appNo)}</b>` : ""}</div></div>
-      <div class="idc-sign"><img class="idc-stamp" src="${STAMP}" alt="Company stamp"><div class="idc-sigpic">${d.dirSig ? `<img src="${esc(d.dirSig)}" alt="">` : ""}</div><i></i>
-        ${E.stampHtml ? E.stampHtml(E.stampOf ? E.stampOf(d.card.issued_by, d.dirName || "", d.dirTitle || "") : { name: d.dirName || "", pos: d.dirTitle || "" }) : `<b>${esc(d.dirName || "")}</b><small class="idc-dtitle">${esc(d.dirTitle || "REGIONAL DIRECTOR")}</small>`}</div>
+      <div class="idc-sign">${rStamp("idc-stamp", `${C.company.name} · ${d.card.card_no || ""}`)}<div class="idc-sigpic">${d.dirSig ? `<img src="${esc(d.dirSig)}" alt="">` : ""}</div><i></i>
+        ${E.stampHtml ? E.stampHtml(E.stampOf ? E.stampOf(d.card.issued_by, d.dirName || "", d.dirTitle === "REGIONAL DIRECTOR" ? "" : d.dirTitle || "", true) : { name: d.dirName || "", pos: d.dirTitle || "" }) : `<b>${esc(d.dirName || "")}</b><small class="idc-dtitle">${esc(d.dirTitle || "REGIONAL DIRECTOR")}</small>`}</div>
       <p class="idc-note">Property of ${esc(C.company.name)} · not transferable · if found, please return it.<br><b>Verify this card: ${esc(site || "emonoverruns.online")}/verify</b></p>
       <div class="idc-bsec">${d.photo ? `<div class="idc-ghost b2"><img src="${esc(d.photo)}" alt=""><span>${esc(`${em.employee_no} `.repeat(14))}</span></div>` : ""}
         <div class="idc-miniseal">${E.secSeal ? E.secSeal(d.card.card_no, { code: d.seal || "", trx: d.card.id || "", by: E.eoidOf?.(d.card.issued_by) || E.eoidOf?.(E.directorId?.("EMON HASAN")) || "", lines: [fullName(em).toUpperCase(), em.employee_no || "", (em.position || "EMPLOYEE").toUpperCase()].filter(Boolean) }) : ""}</div></div>

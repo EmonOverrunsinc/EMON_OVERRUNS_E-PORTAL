@@ -227,7 +227,7 @@
   async function loadSigners(ids) {
     const want = [...new Set((ids || []).filter((x) => x && !SIGNERS.has(x)))];
     if (!want.length || !S.session) return;
-    const put = (x) => { want.forEach((w) => SIGNERS.add(w)); if (x.employee_no) EOIDS.set(x.id, x.employee_no); STAMPS.set(x.id, { name: x.full_name || "", pos: x.position || (x.role ? E.personTitle?.(x.role) || "" : ""), eoid: x.employee_no || "" }); };
+    const put = (x) => { want.forEach((w) => SIGNERS.add(w)); if (x.employee_no) EOIDS.set(x.id, x.employee_no); STAMPS.set(x.id, { name: x.full_name || "", pos: x.position || (x.role && x.role !== "admin" ? E.personTitle?.(x.role) || "" : ""), eoid: x.employee_no || "", boss: x.role === "admin" }); }; // 3.99.241: the Director: only the employee profile's position
     // 3.99.232: an employee who issues a paper also signs it: their approved signature picture stands on the line
     const pics = sb.rpc("signatures_of", { p_ids: want }).then(async ({ data: sg }) => { await Promise.all((sg || []).map(async (x) => SIGPICS.set(x.id, await signaturePic(x.signature_path)))); }, () => {});
     const { data, error } = await sb.rpc("people_stamp", { p_ids: want }).then((r) => r, () => ({ error: true }));
@@ -235,8 +235,9 @@
     await Promise.all([pics, sb.rpc("people_eoid", { p_ids: want }).then(({ data: ppl }) => (ppl || []).forEach(put), () => {})]);
   }
   const EOIDS = new Map(), eoidOf = (id) => (id && EOIDS.get(id)) || "";
-  const stampOf = (id, name = "", pos = "") => { const s = (id && STAMPS.get(id)) || {}; return { name: s.name || name, pos: s.pos || pos, eoid: s.eoid || eoidOf(id) }; };
-  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.pos ? `<em>${esc(String(s.pos).toUpperCase())}</em>` : ""}${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}</span>` : "");
+  const stampOf = (id, name = "", pos = "", boss = false) => { const s = (id && STAMPS.get(id)) || {}; return { name: s.name || name, pos: s.pos || pos, eoid: s.eoid || eoidOf(id), boss: s.boss || boss }; };
+  // 3.99.242: on papers the stamp is the name, the position (from the employee profile) and the EOID (no crown, no mark)
+  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${s.boss ? " st-boss" : ""}${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.pos ? `<em>${esc(String(s.pos).toUpperCase())}</em>` : ""}${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}</span>` : "");
   // on a paper: the blue words of who signs, under the line (never the signature picture; they sign by hand after printing)
   const sigMark = (sign) => (sign ? stampHtml(sign.stamp || (sign.name ? { name: sign.name } : null)) : "");
   // 3.99.219: the id of a Director by name (from the Directors' signatures list), e.g. to print EMON HASAN's EOID
@@ -250,7 +251,7 @@
   function approvedBy(id, name, at) {
     if (!id && !name) return null;
     const x = (SIG.list || []).find((d) => (id ? d.id === id : d.full_name === name)), nm = name || x?.full_name || "";
-    return { name: nm, at, pic: x ? SIG.pics.get(x.signature_path) || "" : "", dir: true, stamp: stampOf(id || x?.id, nm, "Operational Director") };
+    return { name: nm, at, pic: x ? SIG.pics.get(x.signature_path) || "" : "", dir: true, stamp: stampOf(id || x?.id, nm, "", true) };
   }
   // A photo of a signature made ready to print: the paper made clear, the edges cut off, at most 900 × 320.
   async function cleanSignature(file) {
@@ -1873,7 +1874,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     const d = (SIG.list || []).find((x) => /EMON\s+HASAN/i.test(x.full_name || "")) || (SIG.list || [])[0];
     const pic = d ? SIG.pics.get(d.signature_path) || "" : "";
     void pic; // 3.99.235: a paper the Director issues carries the Director's stamp only
-    return `<div class="inv-dir"><div class="inv-dir-sig"></div><div class="line"></div>${stampHtml(stampOf(d?.id, "EMON HASAN", "Operational Director"))}</div>`;
+    return `<div class="inv-dir"><div class="inv-dir-sig"></div><div class="line"></div>${stampHtml(stampOf(d?.id, "EMON HASAN", "", true))}</div>`;
   }
   function invoicePage(inv, links = [], deds = [], ins = null, ord = null) {
     const bal = num(inv.balance);
