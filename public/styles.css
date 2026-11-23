@@ -5423,3 +5423,4 @@ body.os-info-open > .band-back { display: none !important; }
 .store-logo .sl-in { fill: #14378a; stroke: #e2b33c; stroke-width: 1.8; }
 .store-logo .sl-micro { font: 700 2.05px/1 Arial, Helvetica, sans-serif; fill: rgba(243, 201, 75, .42); letter-spacing: .02em; }
 .store-logo .sl-img { background: transparent !important; border-radius: 0; width: 42%; height: 42%; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, .45)); }
+.store-logo .sl-img { transform: translateY(-7%); } /* 3.99.297: a little up */
