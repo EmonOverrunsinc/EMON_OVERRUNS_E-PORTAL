@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.254"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.255"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.254"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.255"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -272,7 +272,10 @@
   // in-charge, coordinator, cashier), else plain
   const titleTier = (pos) => { const p = String(pos || "").toLowerCase();
     return /director|manager|officer|head|accountant|chief|admin/.test(p) ? "staff-silver" : /supervisor|lead|in[- ]?charge|coordinator|cashier|team/.test(p) ? "staff-bronze" : "staff-plain"; };
-  const titleHtml = (role, position) => role === "admin" ? `<span class="dir-gold">${esc(String(position || "Operational Director").toUpperCase())}</span><span class="dir-crown" aria-hidden="true">${ic("crown")}</span>` : `<span class="${titleTier(position)}">${esc(String(position || roleName(role) || "").toUpperCase())}</span>`; // 3.99.253: 1 gold Director · 2 silver · 3 bronze · plain
+  const titleHtml = (role, position) => { // 3.99.255: the title as a badge like VIP: gold (the Director), silver, bronze, plain
+    const t = esc(String(position || (role === "admin" ? "Operational Director" : roleName(role)) || "").toUpperCase());
+    const k = role === "admin" ? "gold" : ({ "staff-silver": "silver", "staff-bronze": "bronze" })[titleTier(position)] || "plain";
+    return `<span class="tbadge tb-${k}">${k === "gold" ? ic("crown") : ""}<b>${t}</b></span>`; };
   // 3.99.234: where someone works: the shop (its logo, code and name), a company, or the EO OFFICE; and since when
   const placeBadge = (pl, cls = "") => {
     if (!pl || !pl.kind) return "";
@@ -1765,7 +1768,7 @@
   // 3.99.226: who sent a notification: the E-Portal (✔) or a person (the Director ✔ in gold)
   const noteFrom = (n) => {
     const sys = !n.sender_name || n.sender_role === "system", boss = n.sender_role === "admin";
-    return `<span class="mail-from${sys ? " sys" : ""}">${sys ? "EMON OVERRUNS E-PORTAL" : boss ? bossName(n.sender_name, "admin") : esc(n.sender_name)}${sys || boss ? ` <i class="vf" title="Verified">${ic("check")}</i>` : ""}${boss ? ` <span class="dir-gold">OPERATIONAL DIRECTOR</span>` : ""}</span>`;
+    return `<span class="mail-from${sys ? " sys" : ""}">${sys ? "EMON OVERRUNS E-PORTAL" : boss ? bossName(n.sender_name, "admin") : esc(n.sender_name)}${sys || boss ? ` <i class="vf" title="Verified">${ic("check")}</i>` : ""}${boss ? ` ${titleHtml("admin", S.profile?.role === "admin" ? S.position : "")}` : ""}</span>`;
   };
   // Approve / Reject right in the notification (EMON HASAN) when the record can be decided from here
   const noteAction = (n) => {

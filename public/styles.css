@@ -5265,3 +5265,19 @@ body.os-info-open > .band-back { display: none !important; }
 .staff-plain { font-weight: 800; letter-spacing: .08em; color: #33415e; }
 @media print { .staff-bronze { animation: none; color: #7a4a1e; -webkit-text-fill-color: #7a4a1e; background: none; } }
 .tl .nw, .trk .nw { white-space: nowrap; }
+/* 3.99.255: the title badge (like the VIP badge): a shine sweeps across it; gold heavy, silver light, bronze slow, plain none */
+.tbadge { position: relative; display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 7px; overflow: hidden; isolation: isolate; vertical-align: middle;
+  font-weight: 900; font-size: 12px; letter-spacing: .12em; line-height: 1.15; white-space: nowrap; }
+.tbadge b { font-weight: 900; }
+.tbadge::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .55) 48%, transparent 66%); transform: translateX(-120%); }
+.tb-gold { color: #3d2a00; border: 1.5px solid #fbe38a; background: linear-gradient(135deg, #fff4b8, #f5c542 30%, #c8920f 55%, #f7d867 80%, #b8860b); animation: vipGold 1.8s ease-in-out infinite; }
+.tb-gold::after { animation: rkShine 1.6s ease-in-out infinite; }
+.tb-gold .ic { width: 15px; height: 15px; stroke: #5a3d00; fill: rgba(255, 255, 255, .45); animation: vipCrown 1.8s ease-in-out infinite; transform-origin: 50% 80%; }
+.tb-silver { color: #2f3744; border: 1.5px solid #e3e7ee; background: linear-gradient(135deg, #f7f9fc, #c9d0db 35%, #9aa3b2 55%, #e8ecf2 80%, #a8b0bd); }
+.tb-silver::after { animation: rkShine 4.5s ease-in-out infinite; }
+.tb-bronze { color: #3b2210; border: 1.5px solid #f1c79a; background: linear-gradient(135deg, #f6d9b8, #c98a55 35%, #9c6233 55%, #e3b07f 80%, #8a5530); }
+.tb-bronze::after { animation: rkShine 7s ease-in-out infinite; }
+.tb-plain { color: #33415e; border: 1.5px solid #d9e1f2; background: #f4f7fd; }
+.welcome .tbadge { margin-left: 2px; }
+@media print { .tbadge, .tbadge::after, .tbadge .ic { animation: none !important; } }
+.mail-from .tbadge { font-size: 9.5px; padding: 2px 7px; } .mail-from .tbadge .ic { width: 11px; height: 11px; }
