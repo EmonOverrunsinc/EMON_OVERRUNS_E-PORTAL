@@ -133,8 +133,7 @@
   // The print: front and back side by side on A4, corner marks to cut, a dotted line to fold.
   const sheet = (d) => `<div class="idc-sheet">
       <div class="idc-pair print"><i class="cm tl"></i><i class="cm tr"></i><i class="cm bl"></i><i class="cm br"></i>${front(d)}<div class="idc-fold"></div>${back(d)}</div>
-      <div class="idc-howto"><b>EMPLOYEE ID CARD · ${esc(d.card.card_no)} · ${esc(fullName(d.em).toUpperCase())}</b> · Date Printed: ${esc(E.dateTime(new Date().toISOString()))}<br>
-        Print at actual size (100%). Cut along the corner marks, fold on the dotted line so the front and the back meet, then laminate.</div></div>`;
+</div>`;
 
   // Everything the card shows: the photo, the holder's signature, the signature of the Director who issued it, the blood type.
   async function cardData(em, card) {
@@ -187,7 +186,7 @@
       const { data: code, error } = await sb.rpc("employee_card_code", { p_card: card.id });
       if (error) return fail(error, "Could not print the ID card");
       const seal = E.sealCode ? await E.sealCode("idcard", card.card_no) : ""; // 3.99.123: the card's unique seal no
-      E.openPreview(`ID Card ${card.card_no} ${fullName(em)}`, [sheet({ ...d, seal, qr: E.qrDataUrl(code) })], { bare: true });
+      E.openPreview(`${fullName(em).toUpperCase()} ${em.employee_no || card.card_no}`, [sheet({ ...d, seal, qr: E.qrDataUrl(code) })], { bare: true }); // 3.99.275: the file is named NAME EOID
       idCardTab(em, el, reload);
     };
     // 3.99.123: block a lost or stolen card (it stops at once; then Issue ID Card), change the expiration date
