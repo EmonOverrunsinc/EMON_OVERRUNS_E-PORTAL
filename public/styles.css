@@ -5352,3 +5352,6 @@ body.os-info-open > .band-back { display: none !important; }
 .checks.access .acc-chk:has(input:checked) { border-color: #9fd3ad; background: #eef9f0; color: #1b6b33; }
 .checks.access { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
 .checks.access .acc-chk { overflow: hidden; } .checks.access .acc-chk span { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+/* 3.99.278: phone: the customer History breaks lines only between words */
+.hist-fit td { overflow-wrap: break-word; word-break: normal; }
+@media (max-width: 600px) { .hist-fit table { font-size: 11px; } .hist-fit th:nth-child(1), .hist-fit td:nth-child(1) { width: 30%; white-space: normal !important; } .hist-fit th:nth-child(3), .hist-fit td:nth-child(3) { width: 20%; } }
