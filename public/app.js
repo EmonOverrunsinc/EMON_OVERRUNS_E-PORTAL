@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.335"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.336"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.335"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.336"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1780,7 +1780,7 @@
     ]);
     const before = badgeState.notes, beforeMsgs = badgeState.msgs;
     badgeState.notes = n.error ? 0 : n.count || 0;
-    badgeState.msgs = (m.error ? 0 : Number(m.data || 0)) + (n.error ? 0 : n.count || 0); // 3.99.334: Messages = people + E-PORTAL
+    badgeState.msgs = (m.error ? 0 : Number(m.data || 0)) + (await openRequests()); // 3.99.336: Messages = people + requests waiting
     paintBadges();
     if (!n.error && (badgeState.lastId == null || badgeState.notes > before)) pushNew().catch(() => {});
     if (!m.error && badgeState.msgSeen && badgeState.msgs > beforeMsgs) pushAlert({ id: "m" + Date.now(), title: badgeState.msgs === 1 ? "New message" : `${badgeState.msgs} new messages`, body: "Open Messages to read", link: "__chat" }); // 3.99.334
@@ -1846,6 +1846,13 @@
   // the phone / computer asks once to allow alerts (on the first tap after sign-in)
   document.addEventListener("pointerdown", () => { try { if (S.session && "Notification" in window && Notification.permission === "default" && !localStorage.getItem("eoAskAlerts")) { localStorage.setItem("eoAskAlerts", "1"); Notification.requestPermission().then((r) => { if (r === "granted") pushSubscribe(); }).catch(() => {}); } } catch (_) {} }, { passive: true });
   const refreshBadge = () => refreshBadges(true);
+  // 3.99.336: the requests still waiting for Approve / Reject / Read & Accept (counted on the Messenger icon)
+  async function openRequests() {
+    const since = new Date(Date.now() - 30 * 864e5).toISOString();
+    let r = await sb.from("notifications").select("id, title, link, is_read, done_at").is("done_at", null).gte("created_at", since).limit(200);
+    if (r.error) r = await sb.from("notifications").select("id, title, link, is_read").eq("is_read", false).gte("created_at", since).limit(200);
+    return (r.data || []).filter((n) => noteAction(n)).length;
+  }
   // 3.99.226: who sent a notification: the E-Portal (✔) or a person (the Director ✔ in gold)
   const noteFrom = (n) => {
     const sys = !n.sender_name || n.sender_role === "system", boss = n.sender_role === "admin";
@@ -1880,7 +1887,7 @@
     // 3.97: Mark all as read stays at the top of the list (it was below the last notification)
     const unread = data.filter((n) => !n.is_read).length;
     box.innerHTML = `${alertBar()}<div class="mail-top"><span>${unread ? `${unread} unread` : "All read"}</span><button type="button" class="btn small" id="mailAllRead"${unread ? "" : " disabled"}>${ic("check")} Mark all as read</button></div>`
-      + data.map((n) => { const a0 = noteAction(n), a = n.is_read ? null : a0; // 3.99.334: buttons only while unread; then the mark stays
+      + data.map((n) => { const a0 = noteAction(n), a = (n.done_at === undefined ? !n.is_read : !n.done_at) ? a0 : null; // 3.99.336: buttons until decided (SQL 155); then the mark stays
         return `<div class="mail-wrap"><a class="mail-item ${n.is_read ? "" : "unread"}" href="#${esc(n.link || "dashboard")}" data-n="${n.id}">${noteFrom(n)}
       <b>${esc(n.title)}</b><span>${esc(n.body || "")}</span><small>${esc(timeAgo(n.created_at))}</small></a>${!a && a0 ? `<div class="mail-act"><span class="done-mark">${a0.single ? "✓ READ &amp; ACCEPTED" : "✓ DONE"}</span></div>` : ""}${a ? `<div class="mail-act"><button type="button" class="btn small ok" data-nok="${n.id}">${ic("check")} ${esc(a.okLabel || "Approve")}</button>${a.single ? "" : `<button type="button" class="btn small" data-nno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button>`}</div>` : ""}</div>`; }).join("");
     const byId = new Map(data.map((n) => [String(n.id), n]));
@@ -1890,7 +1897,7 @@
       b.disabled = true;
       const r = await (ok ? a.ok() : a.no()).catch((e) => ({ error: e }));
       if (r?.error) { b.disabled = false; return fail(r.error, "Could not do it"); }
-      await sb.from("notifications").update({ is_read: true }).eq("id", n.id);
+      await sb.rpc("note_done", { p_id: n.id }).then((r) => (r.error ? sb.from("notifications").update({ is_read: true }).eq("id", n.id) : r));
       toast(ok ? (a.single ? "Read & accepted. The Director is told." : "Approved.") : "Done."); loadMail(); refreshBadge();
     };
     $$("[data-nok]", box).forEach((b) => (b.onclick = () => decide(b, true)));
@@ -3283,7 +3290,7 @@
   window.addEventListener("pageshow", idleTick);
 
   Object.assign(window.EO, {
-    noteAction, pushAlert, alertBar, // 3.99.306: Approve / Reject also in the Messenger's E-PORTAL chat
+    noteAction, pushAlert, alertBar, openRequests, // 3.99.306: Approve / Reject also in the Messenger's E-PORTAL chat
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
