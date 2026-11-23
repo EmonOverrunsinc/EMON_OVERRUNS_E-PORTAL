@@ -56,8 +56,9 @@
     return `<span class="store-logo ${cls}" aria-label="${esc(top)} · ${esc(bot)}"><svg viewBox="0 0 120 120" aria-hidden="true">
       <defs><path id="${k}t" d="M18.7 75 A44 44 0 1 1 101.3 75"/><path id="${k}b" d="M11.7 68.5 A49 49 0 0 0 108.3 68.5"/></defs>
       <circle cx="60" cy="60" r="58" class="sl-out"/><circle cx="60" cy="60" r="56" class="sl-gold"/><circle cx="60" cy="60" r="33" class="sl-in"/>
+      ${[30.5, 27, 23.5, 20, 16.5].map((r, n) => `<path fill="none" id="${k}m${n}" d="M${60 - r} 60 a${r} ${r} 0 1 1 ${2 * r} 0 a${r} ${r} 0 1 1 ${-2 * r} 0"/><text class="sl-micro"><textPath href="#${k}m${n}" textLength="${(2 * Math.PI * r - 1).toFixed(1)}" lengthAdjust="spacingAndGlyphs">${esc(`${String(o.code || "").toUpperCase()} · EMON OVERRUNS · ${bidText(o)} · AUTHENTIC · `.repeat(3))}</textPath></text>`).join("")}
       <text class="sl-t"><textPath href="#${k}t" startOffset="50%" text-anchor="middle" textLength="${fit(top, 160)}" lengthAdjust="spacingAndGlyphs">${esc(top)}</textPath></text>
-      <text class="sl-b"><textPath href="#${k}b" startOffset="50%" text-anchor="middle" textLength="${fit(bot, 140)}" lengthAdjust="spacingAndGlyphs">${esc(bot)}</textPath></text></svg>${E.logoHtml("sl-img")}</span>`;
+      <text class="sl-b"><textPath href="#${k}b" startOffset="50%" text-anchor="middle" textLength="${fit(bot, 140)}" lengthAdjust="spacingAndGlyphs">${esc(bot)}</textPath></text></svg><img class="sl-img" src="brand/logo-clear.png" alt=""></span>`;
   }
   E.storeLogo = storeLogo;
   // 3.99.227: THE SHOP ON GOOGLE MAPS: the exact place from the pasted link (or the address); "Open in Google Maps"
