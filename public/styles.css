@@ -5281,3 +5281,6 @@ body.os-info-open > .band-back { display: none !important; }
 .welcome .tbadge { margin-left: 2px; }
 @media print { .tbadge, .tbadge::after, .tbadge .ic { animation: none !important; } }
 .mail-from .tbadge { font-size: 9.5px; padding: 2px 7px; } .mail-from .tbadge .ic { width: 11px; height: 11px; }
+/* 3.99.256: medium speed for the title badges */
+.tb-gold { animation: vipGold 3s ease-in-out infinite; } .tb-gold::after { animation: rkShine 3.2s ease-in-out infinite; } .tb-gold .ic { animation: vipCrown 3s ease-in-out infinite; }
+.tb-silver::after { animation: rkShine 4s ease-in-out infinite; } .tb-bronze::after { animation: rkShine 5s ease-in-out infinite; }
