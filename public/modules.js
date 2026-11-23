@@ -1097,7 +1097,11 @@
     const boss = isAdmin(); // 3.99.220: INFO only for the Director: the bio data, documents, medals history and forms
     const achAt = isStaff() && !boss ? tabs.push("Achieved") - 1 : -1; // 3.99.180/200: medals and the prize pool (staff)
     const infoAt = boss ? tabs.push("Info") - 1 : -1;
-    const histHtml = `<div class="hist-fit">` + E.grid({ cols: [{ label: "Date / Time", get: (r) => stamp(new Date(r.at)) }, { label: "Action", get: (r) => r.action }, { label: "By", get: (r) => r.by }, { label: "Note", get: (r) => r.note },
+    E._cuLog = { title: `${c.account_no || c.application_no || ""} ${fullName(c)}`, entries: () => [
+      ...history.map((r) => ({ at: r.at, what: r.action, by: r.by, note: r.note })),
+      ...(invs.data || []).map((r) => ({ at: r.created_at || r.invoice_date, what: `INVOICE ${r.invoice_no} · PHP ${peso(r.total_amount)}`, by: r.created_by_name })),
+      ...(pays.data || []).map((r) => ({ at: r.created_at || r.paid_date, what: `PAYMENT ${r.receipt_no} · PHP ${peso(r.amount)}`, by: r.created_by_name }))] };
+    const histHtml = `<div class="btnrow log-row"><button type="button" class="btn small" id="cuLog">${ic("download")} Download Log</button></div><div class="hist-fit">` + E.grid({ cols: [{ label: "Date / Time", get: (r) => stamp(new Date(r.at)) }, { label: "Action", get: (r) => r.action }, { label: "By", get: (r) => r.by }, { label: "Note", get: (r) => r.note },
           ...(isAdmin() ? [{ label: "", html: (r) => `<button type="button" class="btn small danger" data-hdel="${r.src}:${r.id}" aria-label="Delete this history line">${ic("trash")}</button>` }] : [])], rows: history }) + `</div>`;
     const docsHtml = `${filesHtml(att.map((a) => a.kind === "signed_form" ? { ...a, kind: "application" } : a), "No documents yet.")}${isStaff() && c.status !== "closed" ? `<div class="fields wide" style="margin-top:8px">${fileField("pfAdd", "Add Requirement", "multiple data-save-now")}</div>` : ""}`;
     $(".band h1").textContent = `Customer › ${fullName(c)}`;
@@ -1285,6 +1289,11 @@
     business: ["Business Name", c.business_name], start: ["Business Start Date", mdy(c.business_start_date)],
     fb: ["Facebook Name", c.facebook_name], fbLink: ["Facebook Account Link", c.facebook_link, fbLinkHtml(c.facebook_link)],
     fbExtra: ["Additional Facebook", c.has_extra_facebook ? "Yes — " + (c.extra_facebook_name || "") : "No"], issued: ["Issued By", c.issued_by_name]
+  });
+  // 3.99.269: the customer's Download Log (history, invoices, payments)
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest?.("#cuLog"); if (!b || !E._cuLog) return;
+    E.downloadLog(E._cuLog.title, E._cuLog.entries());
   });
   function detailsTable(c, b = null) {
     const st = b ? num(b.total_settlement) : 0;

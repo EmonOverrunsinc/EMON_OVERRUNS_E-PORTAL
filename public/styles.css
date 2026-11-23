@@ -5324,3 +5324,6 @@ body.os-info-open > .band-back { display: none !important; }
 .welcome .hero-tag { color: inherit !important; }
 /* 3.99.266: the credit limit box a little lower, clear of the tags (iPad and phone) */
 #main .cust-hero .ch-sub:has(.cl-hi) { margin-top: 10px; }
+/* 3.99.269: EMON OVERRUNS E-PORTAL in one colour; the Download Log button */
+.welcome .hero-tag, .home-hero .welcome .hero-tag { color: var(--ink-soft) !important; -webkit-text-fill-color: currentColor; }
+.log-row { justify-content: flex-end; margin: 0 0 8px; }

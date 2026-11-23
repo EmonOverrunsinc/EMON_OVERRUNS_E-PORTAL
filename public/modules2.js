@@ -248,6 +248,7 @@
         ${canPay && st.unpaid > 0 ? `<button type="button" class="btn ok" id="emPaySal">${ic("wallet")} Pay Salary</button>` : ""}
         ${isAdmin() ? `<button type="button" class="btn" id="emPrint">${ic("print")} Employee Details (PDF)</button>` : ""}
         ${isAdmin() ? `<a class="btn" href="#editemployee/${em.id}">${ic("edit")} Edit Employee</a>` : ""}
+        ${isAdmin() ? `<button type="button" class="btn" id="emLog">${ic("download")} Download Log</button>` : ""}
         ${isAdmin() && em.status !== "terminated" ? `<button type="button" class="btn" id="emPlaceSet">${ic("building")} Workplace</button>` : ""}
         ${isAdmin() && !em.profile_id && !S.empId ? `<button type="button" class="btn" id="emLinkMe">${ic("user")} Link to My Login</button>` : ""}
         ${isAdmin() ? `<label class="btn" for="emPhoto">${ic("camera")} ${photo ? "Change Photo" : "Add Photo"}</label><input type="file" id="emPhoto" accept="image/*" hidden>` : ""}
@@ -287,6 +288,12 @@
           ["Emergency Contact", em.emergency_name], ["Relationship", em.emergency_relation], ["Emergency Contact No", em.emergency_phone], ["Emergency Address", em.emergency_address], ["Created By", em.created_by_name]])}</div>
       </div>`;
     // 3.99.234: where the employee works (a badge); the Director moves the employee; the Director's own login link
+    if ($("#emLog")) $("#emLog").onclick = () => E.downloadLog(`${em.employee_no || ""} ${fullName(em)}`, [
+      { at: em.created_at, what: "EMPLOYEE ADDED", by: em.created_by_name }, { at: em.date_hired, what: "DATE HIRED" },
+      { at: em.approved_at, what: "EMPLOYEE APPROVED", by: em.approved_by_name },
+      ...slips.map((r) => ({ at: r.created_at || r.pay_date, what: `PAYSLIP ${r.payslip_no || ""} · PHP ${peso(r.net_pay ?? r.amount ?? 0)}`, by: r.created_by_name })),
+      ...(pays.rows || []).map((r) => ({ at: r.created_at || r.pay_date, what: `SALARY PAID · PHP ${peso(r.amount)}`, by: r.created_by_name })),
+      ...(em.termination_date ? [{ at: em.termination_date, what: "TERMINATED", note: em.termination_reason }] : [])]); // 3.99.269
     sb.rpc("employee_place", { p_employee: em.id }).then(({ data: pl }) => { const b = $("#emPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl); }, () => {});
     if ($("#emPlaceSet")) $("#emPlaceSet").onclick = () => placeDialog(em, () => V.employee(id));
     if ($("#emLinkMe")) $("#emLinkMe").onclick = async () => {
@@ -1309,7 +1316,7 @@
           <div class="ch-ids">${E.idBox("Currency", CUR[cur])}${E.idBox("Accounts", String(accounts.length))}${E.idBox("Vouchers", String(vouchers.length))}${E.idBox("Last Paid", mdy(c.last_paid))}${E.idBox("Added By", c.created_by_name)}</div>
           ${w ? `<div class="btnrow"><label class="btn small" for="pcPhoto">${ic("camera")} ${photo ? "Change Photo" : "Add Photo"}</label><input type="file" id="pcPhoto" accept="image/*" hidden></div>` : ""}</div></section>
       <div class="tiles">${tiles.map(([k, l, v]) => `<div class="tile ${k}"><div class="k">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
-      <div class="actionbar">${w && !suspended ? `<a class="btn primary" href="#newvoucher/${c.id}">${ic("plus")} New Payment</a>` : ""}<button type="button" class="btn" id="pcRecord">${ic("download")} Download Payment Record</button>
+      <div class="actionbar">${w && !suspended ? `<a class="btn primary" href="#newvoucher/${c.id}">${ic("plus")} New Payment</a>` : ""}<button type="button" class="btn" id="pcRecord">${ic("download")} Download Payment Record</button><button type="button" class="btn" id="pcLog">${ic("download")} Download Log</button>
         <span class="grow"></span>${tools("pay_companies", c, c.name, { reload: () => V.paycompany(id), afterDelete: () => (location.hash = O.list) })}</div>
       <div class="tabs" id="pcTabs"><button type="button" class="on" data-t="0">Payment Vouchers (${vouchers.length})</button><button type="button" data-t="1">Monthly Records (${months.length})</button><button type="button" data-t="2">Accounts (${accounts.length})</button>${ebills.length ? `<button type="button" data-t="3">E-Bills (${ebills.length})</button>` : ""}${staffOn ? `<button type="button" data-t="4">Employees (${staff.length})</button>` : ""}</div>
       <div class="tabpanes" id="pcPanes">
@@ -1342,6 +1349,9 @@
     E.bindGrid($("#pcVouchers"), vouchers, (r) => (location.hash = "voucher/" + r.id));
     E.bindGrid($("#pcMonths"), months, (r) => printRecord(c, r.list, `For the month of ${monthText(r.month)}`));
     bindTools($("#main"));
+    if ($("#pcLog")) $("#pcLog").onclick = () => E.downloadLog(c.name || "COMPANY", [ // 3.99.269
+      { at: c.created_at, what: "COMPANY ADDED", by: c.created_by_name },
+      ...(vs.data || []).map((r) => ({ at: r.created_at || r.pay_date, what: `PAYMENT ${r.voucher_no || ""} · ${r.currency || ""} ${peso(r.amount)}`, by: r.created_by_name, note: r.status ? String(r.status).toUpperCase() : "" }))]);
     $("#pcRecord").onclick = () => printRecord(c, vouchers, "All payments");
     if ($("#pcPhoto")) $("#pcPhoto").onchange = async (e) => {
       const f = e.target.files[0]; if (!f) return;
