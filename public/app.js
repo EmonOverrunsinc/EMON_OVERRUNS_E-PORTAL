@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.293"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.294"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.293"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.294"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1829,7 +1829,7 @@
     $$("[data-nno]", box).forEach((b) => (b.onclick = () => decide(b, false)));
     $$(".mail-item", box).forEach((a) => (a.onclick = (e) => {
       sb.from("notifications").update({ is_read: true }).eq("id", Number(a.dataset.n)).then(refreshBadge);
-      const chat = /^#chat\/([0-9a-f-]{36})$/i.exec(a.getAttribute("href") || ""); // 3.99.293: a message notification opens that chat
+      const chat = /^#chat\/([0-9a-f-]{36})$/i.exec(a.getAttribute("href") || ""); // 3.99.294: a message notification opens that chat
       if (chat && window.EO.openChat) { e.preventDefault(); window.EO.openChat(chat[1]); }
     }));
     $("#mailAllRead").onclick = async () => { await sb.from("notifications").update({ is_read: true }).eq("is_read", false); loadMail(); refreshBadge(); };
@@ -2729,6 +2729,19 @@
       box.appendChild(img); pg.appendChild(box);
       if (!r.textContent.trim() && !r.querySelector("img, canvas, svg")) r.parentNode.removeChild(r);
     });
+    // 3.99.294: the barcode stands centred under the Director's stamp (or the last signing place) when the paper has one
+    const underStamp = () => $$(".page:not(.bare)", $("#pvDesk", pv)).forEach((pg) => {
+      const box = pg.querySelector(":scope > .pg-code"); if (!box) return;
+      const sigs = pg.querySelectorAll(".eo-stamp"); if (!sigs.length) return;
+      const st = pg.querySelector(".eo-stamp.st-boss") || sigs[sigs.length - 1];
+      const pr = pg.getBoundingClientRect(), sr = st.getBoundingClientRect(); if (!pr.width || !sr.width) return;
+      const k = pg.offsetWidth / pr.width, cx = (sr.left + sr.width / 2 - pr.left) * k, w = box.offsetWidth;
+      const left = Math.max(12, Math.min(pg.offsetWidth - w - 12, cx - w / 2));
+      box.style.left = left + "px"; box.style.right = "auto";
+      const top = (sr.bottom - pr.top) * k + 10; // right under the stamp
+      if (top + box.offsetHeight < pg.offsetHeight - 8) { box.style.top = top + "px"; box.style.bottom = "auto"; }
+    });
+    requestAnimationFrame(() => requestAnimationFrame(underStamp)); setTimeout(underStamp, 600);
     // 3.0: no watermark (company seal) on printed pages
     document.body.classList.toggle("print-a5l", size === "a5l");
     const desk = $("#pvDesk", pv);
@@ -3204,7 +3217,7 @@
   window.addEventListener("pageshow", idleTick);
 
   Object.assign(window.EO, {
-    noteAction, // 3.99.293: Approve / Reject also in the Messenger's E-PORTAL chat
+    noteAction, // 3.99.294: Approve / Reject also in the Messenger's E-PORTAL chat
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,

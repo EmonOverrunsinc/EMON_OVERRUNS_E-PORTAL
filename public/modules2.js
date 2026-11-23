@@ -197,9 +197,10 @@
 
   // 3.99.234: the Director sets where an employee works: a shop or the EO OFFICE
   async function placeDialog(em, done) {
-    const { data: shops } = await sb.from("outlets").select("id, code, name, status").neq("status", "closed").order("code").then((r) => r, () => ({ data: [] }));
+    const [{ data: shops }, { data: cos }] = await Promise.all([sb.from("outlets").select("id, code, name, status").neq("status", "closed").order("code").then((r) => r, () => ({ data: [] })),
+      sb.from("pay_companies").select("id, name, address").order("name").then((r) => r, () => ({ data: [] }))]); // 3.99.294: a company too
     const opt = (k, v, t, sub) => `<label class="asg-row"><input type="radio" name="wpTo" value="${k}:${v}"><span><b>${esc(t)}</b><small>${esc(sub)}</small></span></label>`;
-    const m = E.modal(`Workplace · ${fullName(em)}`, `<div class="asg-list">${opt("office", "", "EO OFFICE", "Operational office")}${(shops || []).map((o) => opt("outlet", o.id, o.code, o.name || "Retail outlet")).join("")}</div>`,
+    const m = E.modal(`Transfer · ${fullName(em)}`, `<p class="muted">Choose the new workplace. The employee is told, and the move is kept in the Transfer History.</p><div class="asg-list">${opt("office", "", "EO OFFICE", "Operational office")}${(shops || []).map((o) => opt("outlet", o.id, o.code, o.name || "Retail outlet")).join("")}${(cos || []).map((c) => opt("company", c.id, c.name, c.address || "Company")).join("")}</div>`,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>${ic("check")} Save</button>`);
     $("[data-x]", m.el).onclick = m.close;
     $("[data-ok]", m.el).onclick = async (e) => {
@@ -208,7 +209,7 @@
       E.setBusy(e.currentTarget, true);
       const { data, error } = await sb.rpc("employee_place_set", { p_employee: em.id, p_kind: k, p_to: to || null });
       if (error) { E.setBusy(e.currentTarget, false); return fail(error, /employee_place_set|PGRST202|schema cache/.test(error.message || "") ? "Run the database update 141_employee_place_link.sql first" : "Could not save"); }
-      m.close(); toast(`${fullName(em)} now works at ${String(data || "").split(" · ")[0]}. The employee was told.`); done();
+      m.close(); toast(`${fullName(em)} transferred to ${String(data || "").split(" · ")[0]}. The employee was told.`); done();
     };
   }
   V.employee = async (id) => {
@@ -243,6 +244,8 @@
           <div class="ch-sub">${esc(em.position || "—")} · ${esc(em.email)}${em.phone ? " · " + esc(em.phone) : ""}</div>
           <div class="ch-place" id="emPlace"></div>
           <div class="ch-ids">${E.idBox("Employee No", em.employee_no)}${E.idBox("Date Hired", mdy(em.date_hired))}${E.idBox("Monthly Salary (₱)", peso(em.monthly_salary))}${E.idBox("Access Level", E.roleName(em.role).toUpperCase())}</div></div></section>
+      <section class="wp-card" id="emWork"><div class="wp-head"><h3>${ic("building")} Currently Working At</h3>${isAdmin() && em.status !== "terminated" ? `<button type="button" class="btn small primary" id="emTransfer">${ic("pin")} Transfer / Assign New Location</button>` : ""}</div>
+        <div class="wp-now" id="emWorkNow">${busy()}</div><div class="wp-hist" id="emWorkHist"></div></section>
       ${salaryTiles(em, st)}
       ${bal.missing && isAdmin() ? `<div class="banner warn">Run the database update <b>063_payroll_pay_salary.sql</b> to issue payslips and pay salary.</div>` : ""}
       <div class="actionbar">
@@ -252,7 +255,6 @@
         ${isAdmin() ? `<button type="button" class="btn" id="emPrint">${ic("print")} Employee Details (PDF)</button>` : ""}
         ${isAdmin() ? `<a class="btn" href="#editemployee/${em.id}">${ic("edit")} Edit Employee</a>` : ""}
         ${isAdmin() ? `<button type="button" class="btn" id="emLog">${ic("download")} Download Log</button>` : ""}
-        ${isAdmin() && em.status !== "terminated" ? `<button type="button" class="btn" id="emPlaceSet">${ic("building")} Workplace</button>` : ""}
         ${isAdmin() && !em.profile_id && !S.empId ? `<button type="button" class="btn" id="emLinkMe">${ic("user")} Link to My Login</button>` : ""}
         ${isAdmin() ? `<label class="btn" for="emPhoto">${ic("camera")} ${photo ? "Change Photo" : "Add Photo"}</label><input type="file" id="emPhoto" accept="image/*" hidden>` : ""}
         ${isAdmin() && em.status !== "terminated" && em.profile_id !== S.profile.id ? `<button type="button" class="btn danger" id="emTerm">Terminate</button>` : ""}
@@ -297,8 +299,16 @@
       ...slips.map((r) => ({ at: r.created_at || r.pay_date, what: `PAYSLIP${r.payslip_no ? " " + r.payslip_no : ""} · PHP ${peso(r.net_pay ?? r.amount ?? 0)}`, by: r.created_by_name })),
       ...(pays.rows || []).map((r) => ({ at: r.created_at || r.pay_date, what: `SALARY PAID · PHP ${peso(r.amount)}`, by: r.created_by_name })),
       ...(em.termination_date ? [{ at: em.termination_date, what: "TERMINATED", note: em.termination_reason }] : [])]); // 3.99.269
-    sb.rpc("employee_place", { p_employee: em.id }).then(({ data: pl }) => { const b = $("#emPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl); }, () => {});
-    if ($("#emPlaceSet")) $("#emPlaceSet").onclick = () => placeDialog(em, () => V.employee(id));
+    sb.rpc("employee_place", { p_employee: em.id }).then(({ data: pl }) => {
+      const b = $("#emPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl);
+      const n = $("#emWorkNow"); if (!n) return;
+      n.innerHTML = pl ? `${E.placeBadge(pl, "lg")}<div class="wp-meta"><span>Position <b>${esc(String(em.position || "—").toUpperCase())}</b></span>${pl.address ? `<span>Address <b>${esc(String(pl.address).toUpperCase())}</b></span>` : ""}${pl.kind === "outlet" && pl.id ? `<a class="btn small" href="#outlet/${esc(pl.id)}">${ic("building")} Open Store</a>` : ""}</div>` : `<div class="muted">Not set yet.</div>`;
+    }, () => { const n = $("#emWorkNow"); if (n) n.innerHTML = `<div class="muted">Not set yet.</div>`; });
+    sb.from("employee_transfers").select("*").eq("employee_id", em.id).order("moved_at", { ascending: false }).limit(50).then(({ data, error }) => { // 3.99.294: TRANSFER HISTORY (SQL 150)
+      const h = $("#emWorkHist"); if (!h || error || !data?.length) return;
+      h.innerHTML = `<h4>Transfer History</h4><ol class="wp-tl">${data.map((t, i) => `<li class="${i ? "" : "now"}"><b>${esc(String(t.to_place || "").split(" · ")[0].toUpperCase())}</b>${t.from_place ? `<small>from ${esc(String(t.from_place).split(" · ")[0].toUpperCase())}</small>` : ""}<small>${esc(mdy(String(t.moved_at).slice(0, 10)))}${t.moved_by_name ? ` · by ${esc(String(t.moved_by_name).toUpperCase())}` : ""}</small>${i ? "" : `<span class="pill ok">NOW</span>`}</li>`).join("")}</ol>`;
+    }, () => {});
+    if ($("#emTransfer")) $("#emTransfer").onclick = () => placeDialog(em, () => V.employee(id));
     if ($("#emLinkMe")) $("#emLinkMe").onclick = async () => {
       if (!(await E.confirmBox?.(`Link YOUR login (${S.profile.full_name}) to the employee profile of ${fullName(em)}? This is locked: it cannot be changed later.`) ?? confirm("Link your login? It cannot be changed later."))) return;
       const { error } = await sb.rpc("link_my_employee", { p_employee: em.id });

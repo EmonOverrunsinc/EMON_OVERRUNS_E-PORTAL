@@ -5387,3 +5387,35 @@ body.os-info-open > .band-back { display: none !important; }
 .cp-conv .cv-eva { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .cp-conv .cv-eva .eva-chat { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .cp-conv .cv-eva .eva-log { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* 3.99.294: Currently Working At + Transfer History on the employee page */
+.wp-card { background: var(--card, #fff); border: 1px solid var(--line, #e3e8f2); border-radius: 14px; padding: 12px 14px; margin: 0 0 12px; }
+.wp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.wp-head h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 6px; color: var(--navy, #0f3a8c); }
+.wp-head h3 svg { width: 18px; height: 18px; }
+.wp-now { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0 0; }
+.wp-badge.lg { font-size: 14px; padding: 8px 12px; }
+.wp-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 12.5px; color: var(--muted, #6b7487); }
+.wp-meta b { color: var(--ink, #10203f); }
+.wp-hist h4 { margin: 12px 0 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted, #6b7487); }
+.wp-tl { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--line, #e3e8f2); display: grid; gap: 8px; }
+.wp-tl li { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 13px; }
+.wp-tl li::before { content: ""; position: absolute; left: -20px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: #c9d3e6; }
+.wp-tl li.now::before { background: var(--ok, #17794a); }
+.wp-tl small { color: var(--muted, #6b7487); font-size: 11.5px; }
+/* 3.99.294: the paper's PDF417 at the bottom right: bigger and clear, its number under it */
+.page:has(> .pg-code) { padding-bottom: 19mm; }
+.page > .pg-code { right: 14mm; bottom: 4mm; flex-direction: column-reverse; align-items: center; gap: 1mm; }
+.page > .pg-code img { height: 10mm; width: 58mm; max-width: 58mm; object-fit: fill; image-rendering: pixelated; }
+.page > .pg-code span { font-size: 7.5px; letter-spacing: .12em; color: #2a3550; }
+.page:has(> .pg-code) > .pg-trx { bottom: 5mm; max-width: 95mm; }
+/* 3.99.294: the coverage strip on the invoice page: small and neat on a phone */
+@media (max-width: 640px) {
+  .ins-strip.ins-inv { display: grid !important; grid-template-columns: 30px minmax(0, 1fr); gap: 4px 10px; padding: 10px 12px !important; align-items: start; }
+  .ins-strip.ins-inv .ins-seal { width: 30px; height: 30px; min-width: 30px; }
+  .ins-strip.ins-inv .ins-seal svg { width: 16px; height: 16px; }
+  .ins-strip.ins-inv small { font-size: 9px !important; letter-spacing: .04em; line-height: 1.35; }
+  .ins-strip.ins-inv b { font-size: 13px !important; line-height: 1.25; }
+  .ins-strip.ins-inv .ins-note { font-size: 10px !important; line-height: 1.35; }
+  .ins-strip.ins-inv .ins-exp { grid-column: 2; margin: 2px 0 0 !important; text-align: left !important; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding-top: 4px; border-top: 1px dashed rgba(23, 121, 74, .3); }
+  .ins-strip.ins-inv .ins-exp b { font-size: 12px !important; }
+}

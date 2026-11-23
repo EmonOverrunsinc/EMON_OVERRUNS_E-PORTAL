@@ -2382,7 +2382,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       const pr = String(r.product || ""), br = r.brand && r.brand !== "-" ? String(r.brand) : "";
       const [rets, same] = await Promise.all([
         sb.from("credit_memos").select("id, memo_no, memo_date, status, is_return, qty, serial_no").ilike("serial_no", `%${ser}%`).order("memo_date", { ascending: false }).limit(20)
-          .then((x) => (x.data || []).filter((m) => String(m.serial_no || "").toUpperCase().split(/[^A-Z0-9-]+/).includes(r.serial_no.toUpperCase())), () => []), // the exact serial no only
+          .then((x) => (x.data || []).filter((m) => String(m.serial_no || "").toUpperCase().split(/[^A-Z0-9-]+/).includes(String(r.serial_no || "").toUpperCase())), () => []), // the exact serial no only
         pr ? sb.from("box_stock").select("serial_no, brand, qty, price").eq("product", pr).gt("price", 0).limit(1000).then((x) => x.data || [], () => []) : []]);
       if (!here()) return true;
       const avgOf = (l) => { const q = l.reduce((a, x) => a + (num(x.qty) || 1), 0); return q ? l.reduce((a, x) => a + num(x.price) * (num(x.qty) || 1), 0) / q : 0; };
@@ -2505,16 +2505,20 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     if (/^EMONQCK?\|/i.test(t) && (await E.openScanned(t)) !== false) { done(); return; }
     const trx = (t.replace(/^TRX\s*(ID)?\s*/i, "").match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) || [])[0];
     if (trx) { const hit = await findTrx(trx.toLowerCase()); if (!here()) return; if (hit) { done(); location.hash = hit; return; } }
-    if (findAll === t) findAll = ""; else if (isStaff() && (await findBoxes(t, here))) { done(); return; } // 3.99.35: a box serial no or batch no // a QC form code opens that form (if there is none, the search goes on) // a typed or pasted QC form code opens the (locked) QC form
-    const [cs, iv, py, vo, em, qc, cv] = await Promise.all([
+    const appNo = /^EO-\d{4}(-\d*)?$/i.test(t); // 3.99.294: an application number is never a box
+    if (findAll === t) findAll = ""; else if (!appNo && isStaff() && (await findBoxes(t, here))) { done(); return; } // 3.99.35: a box serial no or batch no // a QC form code opens that form (if there is none, the search goes on) // a typed or pasted QC form code opens the (locked) QC form
+    const [cs, iv, py, vo, em, qc, cv, r7, r8] = await Promise.all([
       H("customers") ? sb.from("customers").select("*").neq("status", "closed").or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,account_no.ilike.%${w}%,public_id.ilike.%${w}%,public_ident.ilike.%${w}%,business_name.ilike.%${w}%,phone.ilike.%${w}%`).limit(100) : none,
       H("invoices") ? sb.from("invoice_balances").select("*").neq("customer_status", "closed").or(`invoice_no.ilike.%${w}%,po_number.ilike.%${w}%`).limit(50) : none,
       H("payments") ? sb.from("payments_received").select("*, customers(first_name,middle_name,last_name,account_no,status)").or(`receipt_no.ilike.%${w}%,reference_no.ilike.%${w}%`).limit(50) : none,
       H("billing") ? sb.from("pay_vouchers").select("*, pay_companies(name)").or(`voucher_no.ilike.%${w}%,reference_no.ilike.%${w}%,purpose.ilike.%${w}%`).limit(30) : none,
       H("employees") ? sb.from("employees").select("*").or(`first_name.ilike.%${w}%,last_name.ilike.%${w}%,employee_no.ilike.%${w}%,email.ilike.%${w}%`).limit(30) : none,
       isStaff() && H("eooffice") ? sb.from("qc_tests").select("*").or(`qc_no.ilike.%${w}%,serial_no.ilike.%${w}%,item.ilike.%${w}%,brand.ilike.%${w}%,batch.ilike.%${w}%`).limit(30) : none,
-      isStaff() && H("eooffice") ? sb.from("collection_vouchers").select("*").or(`cv_no.ilike.%${w}%,received_from.ilike.%${w}%,reference_no.ilike.%${w}%`).limit(30) : none
+      isStaff() && H("eooffice") ? sb.from("collection_vouchers").select("*").or(`cv_no.ilike.%${w}%,received_from.ilike.%${w}%,reference_no.ilike.%${w}%`).limit(30) : none,
+      H("customers") ? sb.from("customers").select("id, application_no, application_date, first_name, middle_name, last_name, account_no, status, created_at").ilike("application_no", `%${w}%`).limit(30) : none, // 3.99.294: applications by number
+      H("employees") ? sb.from("job_applications").select("id, application_no, full_name, position_title, company_name, status, created_at, approved_at, approval_no, employee_id").or(`application_no.ilike.%${w}%,full_name.ilike.%${w}%`).limit(30) : none
     ]);
+    const [ca, ja] = [r7, r8].map((x) => x || { data: [] });
     if (!here()) return; // another search or page came after this one
     done();
     const ws = t.toLowerCase().split(/\s+/);
@@ -2522,6 +2526,13 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     const pays = (py.data || []).filter((p) => p.customers?.status !== "closed");
     const sections = [];
     if (H("customers")) sections.push(["Customers", custs, [{ label: "Account No", get: (r) => r.account_no }, { label: "Name", get: fullName }, { label: "Public ID", get: (r) => r.public_ident || "" }, { label: "Business", get: (r) => r.business_name || "" }, { label: "Phone", get: (r) => r.phone || "" }, { label: "Status", html: (r) => pill(r.status) }], (r) => "customer/" + r.id]);
+    // 3.99.294: APPLICATIONS: the number, whose, and where it is now (status and position)
+    const CU_NOW = { pending: "WAITING FOR APPROVAL", active: "APPROVED · ACCOUNT OPEN", suspended: "APPROVED · SUSPENDED", closed: "CLOSED", rejected: "NOT APPROVED" };
+    const JA_NOW = { submitted: "WAITING FOR REVIEW", approved: "APPROVED · HIRED", rejected: "NOT APPROVED" };
+    const apps = [...(ca.data || []).map((r) => ({ id: r.id, no: r.application_no, kind: "CUSTOMER", name: fullName(r), at: r.application_date || r.created_at, st: r.status, now: CU_NOW[r.status] || String(r.status || "").toUpperCase(), pos: r.account_no ? `ACCOUNT ${r.account_no}` : "—", link: "customer/" + r.id })),
+      ...(ja.data || []).map((r) => ({ id: r.id, no: r.application_no, kind: "JOB", name: String(r.full_name || "").toUpperCase(), at: r.created_at, st: r.status === "submitted" ? "pending" : r.status, now: JA_NOW[r.status] || String(r.status || "").toUpperCase(), pos: `${String(r.position_title || "").toUpperCase()}${r.company_name ? " · " + String(r.company_name).toUpperCase() : ""}`, link: r.employee_id ? "employee/" + r.employee_id : "jobapp/" + r.id }))].filter((a) => a.no);
+    if (apps.length) sections.push(["Applications", apps, [{ label: "Application No", html: (r) => `<b class="mono">${esc(r.no)}</b>` }, { label: "Type", get: (r) => r.kind }, { label: "Name", get: (r) => r.name },
+      { label: "Applied", get: (r) => mdy(String(r.at || "").slice(0, 10)) }, { label: "Current Status", html: (r) => pill(r.st, r.now) }, { label: "Now", get: (r) => r.pos }], (r) => r.link]);
     if (H("invoices")) sections.push(["Invoices", iv.data || [], INV_COLS, (r) => "invoice/" + r.id]);
     if (H("payments")) sections.push(["Payments", pays, PAY_COLS, (r) => "payment/" + r.id]);
     if ((vo.data || []).length) sections.push(["Payment Vouchers", vo.data, [{ label: "Voucher No", get: (r) => r.voucher_no }, { label: "Company", get: (r) => r.pay_companies?.name || "" }, { label: "Date", get: (r) => mdy(r.pay_date) }, { label: "PHP", num: true, get: (r) => r.amount_php == null ? "—" : peso(r.amount_php) }, { label: "BDT", num: true, get: (r) => r.amount_bdt == null ? "—" : peso(r.amount_bdt) }], (r) => "voucher/" + r.id]);
