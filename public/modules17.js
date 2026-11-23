@@ -354,7 +354,7 @@
     const dEx = sum(days, "ex"), dCo = sum(days, "co");
     const pc = (v) => (num(v) ? peso(v) : "");
     const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t os-days"><thead><tr><th>DATE</th><th class="num">TOTAL SALES</th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">BALANCE</th><th></th></tr></thead><tbody>
-        ${days.map((x) => `<tr class="os-day" data-dayrow="${esc(x.d)}"><td><b>${esc(mdy(x.d))}</b>${num(x.prev) ? `<small>+ ₱ ${peso(x.prev)} from yesterday</small>` : ""}</td><td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : ""}</span></td></tr>`).join("")}</tbody>
+        ${days.map((x) => `<tr class="os-day" data-dayrow="${esc(x.d)}"><td><b>${esc(mdy(x.d))}</b>${num(x.prev) ? `<small>+ ₱ ${peso(x.prev)} from yesterday</small>` : ""}</td><td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : isAdmin() ? `<button type="button" class="btn small" data-addsale="${esc(x.d)}" title="Add this day's sales">${ic("plus")} Sales</button>` : ""}</span></td></tr>`).join("")}</tbody>
         <tfoot><tr><td>TOTAL</td><td class="num">${peso(net)}</td><td class="num">${peso(dEx)}</td><td class="num">${peso(dCo)}</td><td class="num">${peso(carry0 + net - dEx - dCo)}</td><td></td></tr></tfoot></table></div>`
       : empty("No sales recorded this month.");
     const xps = exps.filter((r) => r.kind !== "cashout"), cos = exps.filter((r) => r.kind === "cashout");
@@ -422,6 +422,7 @@
     };
     E.bindFiles($("#olBody"));
     if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales, prevOf, exps);
+    $$("[data-addsale]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); saleForm(o, null, sales, prevOf, exps, b.dataset.addsale); })); // 3.99.288: a day without its sales
     $$("[data-esale]").forEach((b) => (b.onclick = () => saleForm(o, sales.find((r) => r.id === b.dataset.esale), sales, prevOf, exps)));
     if ($("#olExp")) $("#olExp").onclick = () => expenseForm(o);
     // 3.99.224: INFO: expenses, cash out, stock account, employees, achieved, documents and every month's SOA
@@ -482,9 +483,9 @@
   const prevLeft = (sales, exps, carry0, date) => { const before = chainDays(sales, exps, carry0).filter((x) => x.dt < date); return before.length ? before[before.length - 1].left : carry0; };
 
   // ---------- daily sales: the cash breakdown and the report photo ----------
-  function saleForm(o, row, existing, prevOf = () => 0, exps = []) {
+  function saleForm(o, row, existing, prevOf = () => 0, exps = [], day = "") {
     const m = E.modal(`${o.code} · Daily Sales`, `<div class="formgrid ol-form">
-        <div><label for="osDate">Date *</label><input id="osDate" type="date" value="${esc(row?.sale_date || today())}" ${row ? "disabled" : ""}></div><div></div>
+        <div><label for="osDate">Date *</label><input id="osDate" type="date" value="${esc(row?.sale_date || day || today())}" ${row ? "disabled" : ""}></div><div></div>
         ${PAY.map(([k, l]) => `<div><label for="os_${k}">${esc(l)} (₱)</label><input id="os_${k}" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row[k]) ? esc(row[k]) : ""}" placeholder="0.00"></div>`).join("")}
         <div class="span2 ol-total">Total Net Sales <b id="osTot">₱ 0.00</b></div>
         ${row ? "" : `<div class="span2 ol-prev">${ic("lock")} Cash Left from Yesterday <b id="osPrev">₱ 0.00</b></div>
