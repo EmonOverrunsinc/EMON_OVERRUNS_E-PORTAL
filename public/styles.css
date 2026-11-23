@@ -5479,3 +5479,19 @@ body.os-info-open > .band-back { display: none !important; }
 .ph-mid .ds-head-bar img { height: 7mm; width: 44mm; object-fit: fill; image-rendering: pixelated; }
 .ph-mid .ds-head-bar span { font: 700 6px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .1em; color: #42506b; }
 .soa-info .dsr-resp b i { white-space: nowrap; } .soa-info .dsr-resp b { overflow-wrap: normal; }
+/* 3.99.307: small medals under the customer's photo; the medal rows fit a phone */
+.ch-medals { margin: 6px 0 2px; display: flex; justify-content: center; }
+.md-mini { display: inline-flex; gap: 6px; padding: 4px 8px; border-radius: 999px; background: #fff; border: 1px solid #e3e9f4; box-shadow: 0 1px 3px rgba(15, 35, 80, .08); }
+.md-mini .mm { display: inline-flex; align-items: center; gap: 3px; }
+.md-mini .mm > :first-child { width: 18px !important; height: 18px !important; min-width: 18px; font-size: 9px; }
+.md-mini .mm > :first-child svg { width: 100%; height: 100%; }
+.md-mini .mm b { font-size: 12px; font-weight: 800; color: #0f2a66; }
+@media (max-width: 640px) {
+  .ach-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 4px 10px; padding: 10px 12px; }
+  .ach-row b { font-size: 12.5px; }
+  .ach-row .ach-end { grid-column: 3; justify-self: start; display: flex; gap: 8px; align-items: center; }
+  .ach-row em { font-size: 13px; }
+}
+/* 3.99.308: the store logo in the head of the shop papers */
+.ph2 .store-logo.ph-store { width: 21mm; height: 21mm; flex: none; }
+.ph2.ph-shop .ph-co { font-size: 14px; letter-spacing: .02em; white-space: nowrap; } .ph2.ph-shop .ph-tag { font-size: 9.5px; } .ph2.ph-shop .ph-addr { font-size: 8.5px; } .ph2.ph-shop .ph-left { min-width: 0; flex: 1 1 auto; }

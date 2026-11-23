@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.306"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.308"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.306"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.308"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -112,11 +112,13 @@
     })();
     return `<div class="ach-head">
         <div class="ach-stars"><b>MEDALS ACHIEVED</b><small>${num(a.gold) + num(a.silver) + num(a.bronze)} in all</small></div>
-        <div class="ach-count">${[1, 2, 3].map((k) => `<div class="ach-c md${k}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b><small>${MEDAL_NAME[k]}</small></div>`).join("")}</div></div>
+        ${shop ? `<div class="ach-count">${[1, 2, 3].map((k) => `<div class="ach-c md${k}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b><small>${MEDAL_NAME[k]}</small></div>`).join("")}</div>` : ""}</div>
       ${list.length ? `<div class="ach-list">${list.map((x, n) => `<div class="ach-row md${x.rank}${x.claimed ? " claimed" : ""}"><span class="ach-no">${n + 1}</span>${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} MEDAL · ${shop ? (x.monthly ? `#${x.rank} OF THE MONTH` : `#${x.rank} OF THE DAY`) : esc(weekOf(x.period))}</b><small>${x.monthly ? `${esc(monthText(String(x.period).slice(0, 7)))}${x.given ? ` · given ${esc(mdy(x.given))}` : ""}` : `Date of activity: ${esc(mdy(x.period))}`}</small></div><span class="ach-end">${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}${x.claimed ? `<span class="ach-claim" title="${esc(x.ref || "")}">CLAIMED ✔</span>` : ""}</span></div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
       ${pool}
 `;
   };
+  // 3.99.308: the small medal row under a customer's photo: gold, silver and bronze with their counts
+  const medalMini = (a) => !a ? "" : `<div class="md-mini">${[1, 2, 3].map((k) => `<span class="mm md${k}" title="${MEDAL_NAME[k]}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b></span>`).join("")}</div>`;
   // 3.99.204: WEEK 2 OF NOVEMBER (the week a medal is for); the Redeem button of a customer's Achieved tab
   const weekOf = (p) => { const d = new Date(`${String(p).slice(0, 10)}T00:00:00`); return `WEEK ${Math.ceil(d.getDate() / 7)} OF ${MON[d.getMonth()]}`; };
   const bindAch = (el, customerId, reload) => el?.querySelectorAll("[data-redeem]").forEach((b) => (b.onclick = async () => {
@@ -3219,7 +3221,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, outletWeekRanks, titleHtml, bossName, customerRanks, medalHtml, achHtml, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, outletWeekRanks, titleHtml, bossName, customerRanks, medalHtml, achHtml, medalMini, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     roleName, personTitle, placeBadge, downloadLog, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)

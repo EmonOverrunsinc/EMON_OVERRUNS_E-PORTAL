@@ -1109,7 +1109,7 @@
       ${statusBanner(c, orders, ev.data || [])}
       <section class="cust-hero st-${esc(c.status)}">
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
-          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
+          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isStaff() ? `<div class="ch-medals" id="pfMedals"></div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span><span id="pfStanding"></span></div>` : ""}</div>
         <div class="ch-main">
           <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
           <div class="ch-sub">${[c.credit_limit != null ? `<span class="cl-hi">CREDIT LIMIT <b>₱ ${esc(peso(c.credit_limit))}</b></span>` : "", c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""].filter(Boolean).join(`<span class="ch-dot"> · </span>`) || "—"}</div>
@@ -1249,7 +1249,9 @@
       if (!r || !el || el.dataset.cid !== c.id) return;
       el.innerHTML = E.rankTag(r.rank, r.tier || null); el.title = `Rank ${r.rank} · total net sales up to Monday ${mdy(r.as_of)} · the rank changes every Monday`; el.hidden = false;
     });
-    if ($("#pfAchTab")) E.achievements("customer", c.id).then((a) => { const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) { p.innerHTML = E.achHtml(a, "customer"); E.bindAch(p, c.id, () => V.customer(c.id)); } });
+    if ($("#pfAchTab") || $("#pfMedals")) E.achievements("customer", c.id).then((a) => {
+      const m = $("#pfMedals"); if (m && a) m.innerHTML = E.medalMini(a); // 3.99.307: gold / silver / bronze, small, under the photo
+      const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) { p.innerHTML = E.achHtml(a, "customer"); E.bindAch(p, c.id, () => V.customer(c.id)); } });
     E.custVerified?.($("#pfVerified"), c.id); // 3.69: the customer agreed to the legal terms
     // 3.12: the Director deletes a history line
     $$("[data-hdel]").forEach((b) => (b.onclick = async () => {

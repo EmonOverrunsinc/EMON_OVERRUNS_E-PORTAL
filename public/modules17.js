@@ -820,6 +820,13 @@
     return `<div class="dsr-sign"><div class="ds-left">${stamp || ""}${bar ? `<div class="ds-bar ds-foot-l"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}</div>
       <div class="ds-right"><small>VERIFIED BY</small><div class="ds-line"></div>${boss}${tbar ? `<div class="ds-bar ds-foot-r"><img src="${tbar}" alt=""><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
   };
+  // 3.99.308: the shop papers carry the store's logo and name in the head (not the company's)
+  const storeHead = (o) => $$(".preview .page .ph2").forEach((h) => {
+    const ring = h.querySelector(".ph-logo-ring"); if (ring) { ring.outerHTML = storeLogo(o, "ph-store"); }
+    h.classList.add("ph-shop"); const co = h.querySelector(".ph-co"); if (co) co.textContent = "EMON OVERRUNS RETAIL STORE";
+    const tg = h.querySelector(".ph-tag"); if (tg) tg.textContent = `${String(o.code || "").toUpperCase()} · BRANCH ID ${bidText(o)}`;
+    const ad = h.querySelector(".ph-addr"); if (ad) ad.textContent = String(o.address || "").toUpperCase();
+  });
   async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
     // 3.99.229: the sales records before and after this day (the cash left came from / went to)
@@ -868,6 +875,7 @@
       ${dsrSign(no, bossId, r.id || "", cashStamp, mdy(date))}</div>`; // 3.99.300: no Store Responsible signature (the name is in the box on top)
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
     // 3.99.301: the two barcodes go to the bottom of the page: the report no on the left, the TRX ID on the right
+    storeHead(o);
     // 3.99.303: the report no barcode goes up into the head, under DAILY SALES REPORT
     $$(".preview .page").forEach((pg) => { pg.classList.add("dsr-page"); const mid = pg.querySelector(".ph2 .ph-mid"), l = pg.querySelector(".ds-foot-l");
       if (l && mid) { l.classList.replace("ds-foot-l", "ds-head-bar"); mid.appendChild(l); } pg.querySelectorAll(".ds-foot-r").forEach((b) => pg.appendChild(b)); });
@@ -936,6 +944,7 @@
     if (cur.length) pages.push(cur);
     const html = pages.map((pg, i) => `<div class="soa-doc">${i ? `<div class="soa-cont"><b>${esc(C.company.name)}</b> · OUTLET STATEMENT · ${esc(o.code)} · ${esc(E.monthText(m))}<span>${esc(soaNo)}</span></div>` : ""}${pg.join("")}${pages.length > 1 ? `<div class="soa-pg">Page ${i + 1} of ${pages.length}</div>` : ""}</div>`);
     E.openPreview(`Outlet Statement ${o.code} ${E.monthText(m)}`, html);
+    storeHead(o);
     $$(".preview .page").forEach((pg, i) => { const mid = pg.querySelector(".ph2 .ph-mid"), l = pg.querySelector(".ds-foot-l"); // 3.99.305: the statement no barcode in the head
       if (l && mid) { l.classList.replace("ds-foot-l", "ds-head-bar"); mid.appendChild(l); } else if (l) l.remove(); });
   }
