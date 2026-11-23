@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.252"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.253"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.252"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.253"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -268,7 +268,11 @@
   // The top role is called Director in the portal (stored as "admin"); everyone else is shown with their job position.
   const roleName = (r) => ({ admin: "Full Access", staff: "Employee", viewer: "Viewer" })[r] || r || "";
   const personTitle = (role, position) => role === "admin" ? position || "Operational Director" : position || roleName(role); // 3.99.232: the Director's own Position first
-  const titleHtml = (role, position) => role === "admin" ? `<span class="dir-gold">${esc(String(position || "Operational Director").toUpperCase())}</span><span class="dir-crown" aria-hidden="true">${ic("crown")}</span>` : `<span class="staff-silver">${esc(String(position || roleName(role) || "").toUpperCase())}</span>`; // 3.99.252: the Director in moving gold, everyone else in silver
+  // 3.99.253: the level of a position: 2 silver (manager, officer, director, head, accountant), 3 bronze (supervisor, lead,
+  // in-charge, coordinator, cashier), else plain
+  const titleTier = (pos) => { const p = String(pos || "").toLowerCase();
+    return /director|manager|officer|head|accountant|chief|admin/.test(p) ? "staff-silver" : /supervisor|lead|in[- ]?charge|coordinator|cashier|team/.test(p) ? "staff-bronze" : "staff-plain"; };
+  const titleHtml = (role, position) => role === "admin" ? `<span class="dir-gold">${esc(String(position || "Operational Director").toUpperCase())}</span><span class="dir-crown" aria-hidden="true">${ic("crown")}</span>` : `<span class="${titleTier(position)}">${esc(String(position || roleName(role) || "").toUpperCase())}</span>`; // 3.99.253: 1 gold Director · 2 silver · 3 bronze · plain
   // 3.99.234: where someone works: the shop (its logo, code and name), a company, or the EO OFFICE; and since when
   const placeBadge = (pl, cls = "") => {
     if (!pl || !pl.kind) return "";
