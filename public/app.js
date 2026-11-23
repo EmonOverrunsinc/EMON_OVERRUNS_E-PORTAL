@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.238"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.239"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.238"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.239"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -699,9 +699,10 @@
   const sealCached = (kind, ref) => sealMem.get(kind + "|" + ref) || ""; // 3.99.106: a seal no already fetched (for the page builders)
   const sealFmt = (c) => String(c || "").replace(/(\d{4})(?=\d)/g, "$1 ");
   let sealIds = 0;
-  function secSeal(ref, { code = "", cls = "", doc = "", noRef = false, lines = [] } = {}) {
-    const site = siteName() || "emonoverruns.online", no = code ? sealFmt(code) : ref, id = "eosr" + ++sealIds;
-    const docNo = !!(code && ref && !noRef && !lines.length); // 3.99.238: a paper's sticker: its own number big (the seal code on the small line)
+  function secSeal(ref, { code = "", cls = "", doc = "", noRef = false, lines = [], paper = false } = {}) {
+    const docNo = !!(paper && ref); // 3.99.239: a paper's sticker (invoice, receipt, certificate) carries the paper's own number: big, in the ring and the microtext
+    if (docNo) lines = lines.filter((l, i) => !(i === 0 && l === ref));
+    const site = siteName() || "emonoverruns.online", no = code && !docNo ? sealFmt(code) : ref, id = "eosr" + ++sealIds;
     // a microtext line of whole words: the words that do not fit go to a hidden 2nd line (never cut in the middle)
     const line = (k, n = 6) => `<div class="eos-micro ${k}">${Array.from({ length: n }, () => (k === "l" || k === "r" ? [C.company.name] : [C.company.name, no])).flat().map((t) => `<span>${esc(t)}</span>`).join("")}</div>`; // 3.99.108: the short side edges carry only the name (never cut)
     const ring = esc(`${C.company.name} · ${no} · ${C.company.name} · `); // 3.99.105: EMON OVERRUNS and the seal no (the address stays the small line)
@@ -711,8 +712,8 @@
         <circle cx="50" cy="50" r="49" fill="#fff" stroke="#b8901e" stroke-width="1.2"/><circle cx="50" cy="50" r="38.5" fill="none" stroke="#b8901e" stroke-width=".8"/>
         <text font-family="Arial, sans-serif" font-size="7.6" font-weight="700" fill="#12306b"><textPath href="#${id}" textLength="252" lengthAdjust="spacing">${ring}</textPath></text></svg>
         <div class="eos-logo-in">${logoHtml("eos-img")}</div></div>
-      <div class="eos-mid"><div class="eos-no">${esc(docNo ? ref : no)}</div>
-        <div class="eos-ref">${lines.length ? lines.map((l, i) => `<span class="eos-line${i ? "" : " main"}">${esc(l)}</span>`).join("") : noRef ? "" : docNo ? `SEAL ${esc(no)}` : code ? esc(ref) : "REFERENCE NO"}<small>${esc(site.toLowerCase())}/verify</small><em class="eos-printed"><span>${esc(dateTime(new Date().toISOString()))}</span>${S.profile?.full_name ? `<span>PRINTED BY: ${esc(String(S.profile.full_name).toUpperCase())}</span>` : ""}</em></div></div></div>`;
+      <div class="eos-mid"><div class="eos-no">${esc(no)}</div>
+        <div class="eos-ref">${lines.length ? lines.map((l, i) => `<span class="eos-line${i ? "" : " main"}">${esc(l)}</span>`).join("") : noRef || docNo ? "" : code ? esc(ref) : "REFERENCE NO"}<small>${esc(site.toLowerCase())}/verify</small><em class="eos-printed"><span>${esc(dateTime(new Date().toISOString()))}</span>${S.profile?.full_name ? `<span>PRINTED BY: ${esc(String(S.profile.full_name).toUpperCase())}</span>` : ""}</em></div></div></div>`;
   }
 
   // ---------- new versions ----------
@@ -2691,6 +2692,16 @@
       <div class="statusbar"><span id="pvCur">Current Page No: 1</span><span>Total Page No: ${pages.length}</span><span id="pvZf">Zoom Factor: 100%</span></div>`;
     document.body.appendChild(pv);
     bwPictures($("#pvDesk", pv)); // 3.99.15
+    // 3.99.239: the paper's barcode (PDF417) goes from the head to the bottom right of the page, with its number; the TRX ID
+    // stays at the bottom left. What else the head box held (e.g. the boxes of an order) stays in the head.
+    $$(".page:not(.bare)", $("#pvDesk", pv)).forEach((pg) => {
+      const r = pg.querySelector(".ph2 .ph-right"), img = r?.querySelector("img.ph-bar"); if (!img) return;
+      const cap = img.nextElementSibling && img.nextElementSibling.classList.contains("mono") ? img.nextElementSibling : null;
+      const box = document.createElement("div"); box.className = "pg-code";
+      if (cap) { const t = document.createElement("span"); t.textContent = cap.textContent; box.appendChild(t); cap.parentNode.removeChild(cap); }
+      box.appendChild(img); pg.appendChild(box);
+      if (!r.textContent.trim() && !r.querySelector("img, canvas, svg")) r.parentNode.removeChild(r);
+    });
     // 3.0: no watermark (company seal) on printed pages
     document.body.classList.toggle("print-a5l", size === "a5l");
     const desk = $("#pvDesk", pv);

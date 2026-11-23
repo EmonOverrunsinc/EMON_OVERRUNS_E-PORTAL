@@ -1896,7 +1896,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       ${box("Payment", `<div class="pgrid2">${cell("Payment Status", ({ paid: "PAID", partial: "PARTIAL", unpaid: "UNPAID" }[inv.pay_status] || String(inv.pay_status || "").toUpperCase()) + (isOverdue(inv) ? ` · OVERDUE ${daysOver(inv)} DAY(S)` : "") + (bal < 0 ? " (OVERPAID)" : ""))}${cell("Total Amount (₱)", peso(inv.total_amount))}${num(inv.amount_returned) > 0 ? cell("Returned (₱)", peso(inv.amount_returned)) : ""}${cell("Paid (₱)", peso(inv.amount_paid))}${cell("Balance (₱)", peso(bal))}</div>
         ${links.length ? `<table class="ptl"><thead><tr><th>Linked Payment (Receipt No)</th><th>Date Paid</th><th class="num">Amount Linked (₱)</th></tr></thead><tbody>
           ${links.map((l) => `<tr><td>${esc(l.payments_received?.receipt_no || "")}</td><td>${mdy(l.payments_received?.paid_date)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody></table>` : ""}`)}
-      <div class="inv-sealsig">${E.secSeal(inv.invoice_no, { code: E.sealCached("invoice", inv.invoice_no), lines: [inv.invoice_no, fullName(inv), inv.account_no].filter(Boolean) })}${invDirector()}</div>`; // 3.99.142: the seal in place of the customer signature
+      <div class="inv-sealsig">${E.secSeal(inv.invoice_no, { paper: true, code: E.sealCached("invoice", inv.invoice_no), lines: [inv.invoice_no, fullName(inv), inv.account_no].filter(Boolean) })}${invDirector()}</div>`; // 3.99.142: the seal in place of the customer signature
   }
 
   // ======================================================================
@@ -2041,7 +2041,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         <div class="prow3">${cell("Bank", p.bank_name)}${cell("Deposit Account", p.bank_account)}${cell("Description", "PAYMENT RECEIVED")}</div>
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(p.amount))}</div></div>`)}
       <p class="pdecl">This acknowledges that ${esc(C.company.name)} has received the payment above. Receipt No ${esc(p.receipt_no)}.</p>
-      <div class="doc-seal mid">${E.secSeal(p.receipt_no, { code: E.sealCached("receipt", p.receipt_no) })}</div>
+      <div class="doc-seal mid">${E.secSeal(p.receipt_no, { paper: true, code: E.sealCached("receipt", p.receipt_no) })}</div>
       <div class="soa-sys">This is a system-generated receipt. No signature is required.</div>`; // 3.99.113: the note under the seal
   }
 
