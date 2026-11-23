@@ -11,7 +11,8 @@
   const V = (window.EO_VIEWS = window.EO_VIEWS || {});
   const { sb, S, C, esc, $, $$, isAdmin, toast, fail, ic, busy, peso, num, mdy } = E;
 
-  const PAY = [["cash", "Cash"], ["gcash", "GCash"]]; // 3.99.117: only Cash and GCash (the server keeps the other columns at 0)
+  const PAY = [["cash", "Cash"], ["gcash", "GCash"]];
+  const nonCash = (r) => Math.max(0, num(r?.total) - num(r?.cash)); // 3.99.257: GCash etc.: already out of the shop (cash out) // 3.99.117: only Cash and GCash (the server keeps the other columns at 0)
   const KIND = { daily: "Daily Operation Cost", rent: "Monthly Rental", supplier: "Supplier Payment", bills: "Bills / Utilities", salary: "Salary", other: "Other Expense", deposit: "Bank Deposit", cashout: "Cash Out" };
   const USE = ["rent", "supplier", "bills", "salary", "other", "deposit"]; // 3.99.221: paid from the cash taken out (Net Balance)
   const missing = (e) => /outlet|does not exist|schema cache|PGRST20[25]|42P01/.test(`${e?.message || ""} ${e?.code || ""}`);
@@ -131,7 +132,7 @@
     const ids = outlets.map((o) => o.id), custs = outlets.map((o) => o.customer_id).filter(Boolean);
     if (!ids.length) return { sales: [], exps: [], pays: [] };
     const [s, x, p] = await Promise.all([
-      E.allRows(() => sb.from("outlet_sales").select("outlet_id, sale_date, total").in("outlet_id", ids).gte("sale_date", `${m}-01`).lte("sale_date", monthEnd(m))),
+      E.allRows(() => sb.from("outlet_sales").select("outlet_id, sale_date, total, cash").in("outlet_id", ids).gte("sale_date", `${m}-01`).lte("sale_date", monthEnd(m))),
       E.allRows(() => sb.from("outlet_expenses").select("outlet_id, exp_date, kind, amount").in("outlet_id", ids).gte("exp_date", `${m}-01`).lte("exp_date", monthEnd(m))),
       custs.length ? E.allRows(() => sb.from("payments_received").select("customer_id, paid_date, amount").in("customer_id", custs).gte("paid_date", `${m}-01`).lte("paid_date", monthEnd(m))) : { data: [] }]);
     if (s.error) throw s.error;
@@ -141,7 +142,7 @@
     const ids = outlets.map((o) => o.id), custs = outlets.map((o) => o.customer_id).filter(Boolean);
     if (!ids.length) return { sales: [], exps: [], pays: [] };
     const [s2, x2, p2] = await Promise.all([
-      E.allRows(() => sb.from("outlet_sales").select("outlet_id, total").in("outlet_id", ids)),
+      E.allRows(() => sb.from("outlet_sales").select("outlet_id, total, cash").in("outlet_id", ids)),
       E.allRows(() => sb.from("outlet_expenses").select("outlet_id, kind, amount").in("outlet_id", ids)),
       custs.length ? E.allRows(() => sb.from("payments_received").select("customer_id, paid_date, amount").in("customer_id", custs)) : { data: [] }]);
     return { sales: s2.data || [], exps: x2.data || [], pays: p2.data || [] };
@@ -153,12 +154,13 @@
     const S2 = am.sales.filter((r) => r.outlet_id === o.id), X2 = am.exps.filter((r) => r.outlet_id === o.id);
     const P2 = o.customer_id ? am.pays.filter((r) => r.customer_id === o.customer_id && r.paid_date >= String(o.created_at).slice(0, 10)) : [];
     const k = (f) => sum(X2.filter(f), "amount");
-    return { drawer: sum(S2, "total") - k((x) => x.kind === "daily" || x.kind === "cashout"), pool: k((x) => x.kind === "cashout") - k((x) => USE.includes(x.kind)) - sum(P2, "amount") };
+    const g = S2.reduce((t, r) => t + nonCash(r), 0);
+    return { drawer: sum(S2, "total") - g - k((x) => x.kind === "daily" || x.kind === "cashout"), pool: k((x) => x.kind === "cashout") + g - k((x) => USE.includes(x.kind)) - sum(P2, "amount") };
   };
   const shopMoney = (o, mm, am = null) => {
     const sales = mm.sales.filter((r) => r.outlet_id === o.id), exps = mm.exps.filter((r) => r.outlet_id === o.id);
     const pays = o.customer_id ? mm.pays.filter((r) => r.customer_id === o.customer_id) : [];
-    const cash = sum(exps.filter((x) => x.kind === "cashout"), "amount"); // 3.99.157: the cash taken out, apart from the expenses
+    const cash = sum(exps.filter((x) => x.kind === "cashout"), "amount") + sales.reduce((t, r) => t + nonCash(r), 0); // 3.99.157/257: the cash taken out (GCash included)
     const net = sum(sales, "total"), out = sum(exps, "amount") - cash, paid = sum(pays, "amount");
     const todayOut = sum(exps.filter((x) => x.exp_date === today() && x.kind === "daily"), "amount");
     return { today: sum(sales.filter((r) => r.sale_date === today()), "total"), todayOut, net, out, cash, paid, bal: net - out - cash - paid, exps,
@@ -308,7 +310,7 @@
       o.customer_id ? sb.from("payments_received").select("id, receipt_no, paid_date, amount, method").eq("customer_id", o.customer_id).gte("paid_date", first).lte("paid_date", last).order("paid_date", { ascending: false }).then((r) => r.data || []) : [],
       o.customer_id ? sb.from("invoice_balances").select("id, invoice_no, invoice_date, due_date, total_amount, balance, pay_status").eq("customer_id", o.customer_id).gt("balance", 0).order("invoice_date").then((r) => r.data || []) : [],
       o.customer_id ? sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").eq("id", o.customer_id).maybeSingle().then((r) => r.data) : null,
-      E.allRows(() => sb.from("outlet_sales").select("total, sale_date").eq("outlet_id", id)).then((r) => r.data || []),
+      E.allRows(() => sb.from("outlet_sales").select("total, cash, sale_date").eq("outlet_id", id)).then((r) => r.data || []),
       E.allRows(() => sb.from("outlet_expenses").select("amount, kind, exp_date").eq("outlet_id", id)).then((r) => r.data || []),
       o.customer_id ? E.allRows(() => sb.from("payments_received").select("amount").eq("customer_id", o.customer_id).gte("paid_date", start)).then((r) => r.data || []) : [],
       sb.from("outlet_closures").select("*").eq("outlet_id", id).gte("day", first < today() ? first : today()).order("day").limit(120).then((r) => (r.error ? null : r.data || []), () => null),
@@ -325,13 +327,13 @@
     const docs = await E.attachmentsOf("outlet", id).catch(() => []); // 3.99.119: the shop's documents
     const files = ids.length ? ((await sb.from("attachments").select("*").in("owner_type", ["outlet_sales", "outlet_expense"]).in("owner_id", ids).order("created_at", { ascending: false })).data || []) : [];
     if (!here()) return;
-    const cash = sum(exps.filter((x) => x.kind === "cashout"), "amount"); // 3.99.140: the cash taken out of the shop
+    const cash = sum(exps.filter((x) => x.kind === "cashout"), "amount") + sales.reduce((t, r) => t + nonCash(r), 0); // 3.99.140/257: the cash taken out (GCash included)
     const net = sum(sales, "total"), out = sum(exps, "amount") - cash, paid = sum(pays, "amount"), bal = net - out - cash - paid;
     const allBal = sum(allS, "total") - sum(allX, "amount") - sum(allP, "amount");
     // 3.99.221: CASH LEFT in the shop now; NET BALANCE of the cash taken out (what was paid from it taken off)
     const opCost = sum(exps.filter((x) => x.kind === "daily"), "amount"), usedM = sum(exps.filter((x) => USE.includes(x.kind)), "amount") + sum(pays, "amount");
-    const drawer = sum(allS, "total") - sum(allX.filter((x) => x.kind === "daily" || x.kind === "cashout"), "amount");
-    const pool = sum(allX.filter((x) => x.kind === "cashout"), "amount") - sum(allX.filter((x) => USE.includes(x.kind)), "amount") - sum(allP, "amount");
+    const drawer = sum(allS, "total") - allS.reduce((t, r) => t + nonCash(r), 0) - sum(allX.filter((x) => x.kind === "daily" || x.kind === "cashout"), "amount");
+    const pool = sum(allX.filter((x) => x.kind === "cashout"), "amount") + allS.reduce((t, r) => t + nonCash(r), 0) - sum(allX.filter((x) => USE.includes(x.kind)), "amount") - sum(allP, "amount");
     const owed = sum(invs, "balance"), rs = rentState(o, exps, m), edit = canEdit();
     const byPay = PAY.map(([k, l]) => [l, sum(sales, k)]).filter(([, v]) => v > 0);
     const filesOf = (oid) => files.filter((f) => f.owner_id === oid);
@@ -343,7 +345,7 @@
     const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" ? (edit ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : "") : isAdmin() ? `<button type="button" class="btn small" data-eexp="${esc(r.id)}" title="Edit (Director only)">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
     const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
     // 3.99.220: CASH LEFT goes on to the next day: the cash left of yesterday + today's sales − the daily operation cost − the cash out
-    const carry0 = sum(allS.filter((x) => x.sale_date < first), "total") - sum(allX.filter((x) => x.exp_date < first && (x.kind === "daily" || x.kind === "cashout")), "amount");
+    const carry0 = sum(allS.filter((x) => x.sale_date < first), "total") - allS.filter((x) => x.sale_date < first).reduce((t, r) => t + nonCash(r), 0) - sum(allX.filter((x) => x.exp_date < first && (x.kind === "daily" || x.kind === "cashout")), "amount");
     const days = chainDays(sales, exps, carry0).reverse().map((x) => ({ ...x, d: x.dt }));
     const prevOf = (date) => prevLeft(sales, exps, carry0, date);
     const cashNow = days.length ? days[0].left : carry0;
@@ -359,6 +361,7 @@
         <tfoot><tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${peso(out)}</td><td></td></tr></tfoot></table></div>`
       : empty("No expense this month.");
     const cashTab = cos.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>CASH OUT TO</th><th>NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
+        ${sales.filter((r) => nonCash(r) > 0).map((r) => `<tr class="os-gc"><td><b>${esc(mdy(r.sale_date))}</b></td><td><b>GCASH</b></td><td>Not in the shop</td><td class="num"><b class="os-co">${peso(nonCash(r))}</b></td><td></td></tr>`).join("")}
         ${cos.map((r) => `<tr><td><b>${esc(mdy(r.exp_date))}</b></td><td><b>${esc(r.payee || "—")}</b></td><td>${esc(r.note || "—")}</td><td class="num"><b class="os-co">${peso(r.amount)}</b></td><td>${tools("outlet_expenses", r)}</td></tr>`).join("")}</tbody>
         <tfoot><tr><td colspan="3">TOTAL CASH OUT</td><td class="num">${peso(cash)}</td><td></td></tr></tfoot></table></div>`
       : empty("No cash out this month.");
@@ -480,7 +483,7 @@
     const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
     let prev = carry0;
     return [...new Set([...sales.map((r) => r.sale_date), ...exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort()
-      .map((dt) => { const r = sales.find((x) => x.sale_date === dt), t = num(r?.total), ex = dayOf(dt, "daily"), co = dayOf(dt, "cashout"), x = { dt, r, t, ex, co, prev, left: prev + t - ex - co }; prev = x.left; return x; });
+      .map((dt) => { const r = sales.find((x) => x.sale_date === dt), t = num(r?.total), ex = dayOf(dt, "daily"), co = dayOf(dt, "cashout") + nonCash(r), x = { dt, r, t, ex, co, prev, left: prev + t - ex - co }; prev = x.left; return x; });
   }
   const prevLeft = (sales, exps, carry0, date) => { const before = chainDays(sales, exps, carry0).filter((x) => x.dt < date); return before.length ? before[before.length - 1].left : carry0; };
 
@@ -505,7 +508,7 @@
     const dateNow = () => $("#osDate", m.el).value || today();
     const dayX = (k) => sum(exps.filter((x) => x.exp_date === dateNow() && x.kind === k), "amount");
     const prev = () => num(prevOf(dateNow()));
-    const avail = () => prev() + total() - dayX("daily") - dayX("cashout") - val("osExp");
+    const avail = () => prev() + num($("#os_cash", m.el)?.value) - dayX("daily") - dayX("cashout") - val("osExp"); // 3.99.257: GCash is not in the shop
     const show = () => {
       $("#osTot", m.el).textContent = `₱ ${peso(total())}`;
       if ($("#osPrev", m.el)) $("#osPrev", m.el).textContent = `₱ ${peso(prev())}`;
@@ -811,7 +814,7 @@
     const [bossId, dh, before, after] = await Promise.all([loadBoss([r.created_by, resp?.profile_id]), sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", date).maybeSingle().then((r) => r.data, () => null), near("lt", false), near("gt", true)]);
     const xp = day.filter((x) => x.kind === "daily"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), cash = sum(co, "amount"), left = num(prev) + tot - ex - cash;
+    const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), gc = nonCash(r), cash = sum(co, "amount") + gc, left = num(prev) + tot - ex - cash;
     const no = dsrNo(o, date);
     const row = (k, v, cls = "") => `<tr class="${cls}"><td>${k}</td><td class="num">${v}</td></tr>`;
     // 3.99.229: the CASH LEFT stamp: nothing left: VERIFIED; cash left: VERIFIED once the next sales record took it (its date,
@@ -829,7 +832,7 @@
       <div class="soa-tiles t5">${[["Total Sales", tot, "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash Out", cash, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
-      ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
+      ${list("Cash Out", [...(gc > 0 ? [`<tr><td>GCASH (NOT IN THE SHOP)</td><td class="num"><b>${P(gc)}</b></td></tr>`] : []), ...co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`)], [["Cash Out To"], ["Amount (₱)", 1]])}
       ${(() => { // 3.99.226: every activity of the day, each with its TRX ID; the employees on duty
         const tm = (at) => (at ? new Date(at).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "—");
         const acts = [
@@ -892,7 +895,7 @@
       xps.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc([r.payee, r.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${P(d.out)}</td></tr>`);
     table("Cash Out", [["Date"], ["Cash Out To"], ["Note"], ["Amount (₱)", 1]],
-      cos.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(r.payee || "—")}</td><td>${esc(r.note || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
+      [...d.sales.filter((r) => nonCash(r) > 0).map((r) => ({ exp_date: r.sale_date, payee: "GCASH", note: "Not in the shop", amount: nonCash(r) })), ...cos].sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1)).map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(r.payee || "—")}</td><td>${esc(r.note || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL CASH OUT</td><td class="num">${P(d.cash || 0)}</td></tr>`);
     table("Stock Payments", [["Receipt No"], ["Date"], ["Amount (₱)", 1]],
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
