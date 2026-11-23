@@ -29,7 +29,9 @@
   const DOC_TYPES = ["SSS ID", "PhilHealth ID", "TIN ID", "Pag-IBIG ID", "UMID", "Passport", "Driver's License", "NBI Clearance", "Police Clearance", "Barangay Clearance", "Birth Certificate", "Contract", "Other"];
   // 3.96: what the employee can open in the portal, menu by menu
   const accessList = (role, mods) => `<div class="acc-list">${role === "admin" ? `<span class="acc on">${ic("check")} EVERYTHING (EMON HASAN)</span>`
-    : MODULES.map(([k, l]) => { const on = mods == null || (mods || []).includes(k); return `<span class="acc ${on ? "on" : "off"}">${on ? ic("check") : "✕"} ${esc(l.replace(/^\d+\s*/, ""))}</span>`; }).join("")}
+    : (() => { // 3.99.277: only what is allowed, small; what is not allowed is counted
+      const on = MODULES.filter(([k]) => mods == null || (mods || []).includes(k)), off = MODULES.length - on.length;
+      return on.map(([, l]) => `<span class="acc on">${esc(l.replace(/^\d+\s*/, ""))}</span>`).join("") + (off ? `<span class="acc off-n">${off} not allowed</span>` : ""); })()}
     ${role === "viewer" ? `<span class="acc note">VIEW ONLY: cannot record or change</span>` : ""}</div>`;
 
   // ======================================================================
@@ -73,7 +75,8 @@
       <option value="staff" ${role === "staff" ? "selected" : ""}>Employee — can add and record</option>
       <option value="viewer" ${role === "viewer" ? "selected" : ""}>Viewer — can only look</option>
       <option value="admin" ${role === "admin" ? "selected" : ""}>Full Access — can do everything and approve</option></select>
-    <span>Menu Access</span><div><div class="checks access">${MODULES.map(([k, l]) => `<label><input type="checkbox" name="emMod" value="${k}" ${mods.includes(k) ? "checked" : ""}> ${l}</label>`).join("")}</div>
+    <span>Menu Access</span><div><div class="acc-tools"><button type="button" class="btn small" onclick="document.querySelectorAll('input[name=emMod]').forEach((x) => (x.checked = true))">All</button><button type="button" class="btn small" onclick="document.querySelectorAll('input[name=emMod]').forEach((x) => (x.checked = false))">None</button></div>
+      <div class="checks access">${MODULES.map(([k, l]) => `<label class="acc-chk"><input type="checkbox" name="emMod" value="${k}" ${mods.includes(k) ? "checked" : ""}><span>${esc(String(l).replace(/^\d+\s*/, ""))}</span></label>`).join("")}</div>
 </div>`;
   const readAccess = () => ({ role: $("#emRole").value, modules: $$("input[name=emMod]:checked").map((x) => x.value) });
 
