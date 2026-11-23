@@ -732,7 +732,7 @@
     box.innerHTML = rows.length ? rows.map((n) => {
       const day = new Date(n.created_at).toDateString(), sep = day !== lastDay ? `<div class="cv-day">${esc(E.mdy(n.created_at))}</div>` : ""; lastDay = day;
       return `${sep}<div class="cv-msg them cv-note ${n.is_read ? "" : "new"}" data-nid="${n.id}"><div class="cv-text"><b>${esc(n.title || "")}</b>${n.body ? `<br>${esc(n.body)}` : ""}</div>
-        <div class="cv-acts">${n.link ? `<button type="button" class="btn small cv-open" data-go="${esc(n.link)}">Open</button>` : ""}${(() => { const a = E.noteAction?.(n); return a ? `<button type="button" class="btn small ok" data-pok="${n.id}">${ic("check")} ${esc(a.okLabel || "Approve")}</button>${a.single ? "" : `<button type="button" class="btn small" data-pno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button>`}` : ""; })()}${n.is_read || /^You now work at /i.test(n.title || "") ? "" : `<button type="button" class="btn small cv-read" data-pread="${n.id}">${ic("check")} Mark read</button>`}</div>
+        <div class="cv-acts">${n.link ? `<button type="button" class="btn small cv-open" data-go="${esc(n.link)}">Open</button>` : ""}${(() => { const a0 = E.noteAction?.(n), a = n.is_read ? null : a0; if (!a && a0) return `<span class="done-mark">${a0.single ? "✓ READ &amp; ACCEPTED" : "✓ DONE"}</span>`; return a ? `<button type="button" class="btn small ok" data-pok="${n.id}">${ic("check")} ${esc(a.okLabel || "Approve")}</button>${a.single ? "" : `<button type="button" class="btn small" data-pno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button>`}` : ""; })()}${n.is_read || E.noteAction?.(n) ? "" : `<button type="button" class="btn small cv-read" data-pread="${n.id}">${ic("check")} Mark read</button>`}</div>
         <small>${esc(new Date(n.created_at).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" }))}${n.sender_name && n.sender_role !== "system" ? ` · ${esc(String(n.sender_name).toUpperCase())}` : ""}</small></div>`;
     }).join("") : `<div class="cp-empty small"><p>No notifications yet.</p></div>`;
     const markRead = (id) => sb.from("notifications").update({ is_read: true }).eq("id", Number(id)).then(() => { CH.sysUnread = Math.max(0, (CH.sysUnread || 1) - 1); renderContacts(); E.refreshBadge(); }, () => {});
@@ -746,7 +746,8 @@
       const r = await (ok ? a.ok() : a.no()).catch((e) => ({ error: e }));
       if (r?.error) { b.parentElement.querySelectorAll("button").forEach((x) => (x.disabled = false)); return fail(r.error, "Could not do it"); }
       b.parentElement.querySelectorAll("[data-pok],[data-pno]").forEach((x) => x.remove());
-      b.parentElement?.insertAdjacentHTML("beforeend", `<span class="cv-done">${ok ? (a.single ? "✓ Read & Accepted" : "✓ Approved") : "✕ " + esc(a.noLabel || "Rejected")}</span>`);
+      b.parentElement?.querySelectorAll("[data-pread]").forEach((x) => x.remove());
+      b.parentElement?.insertAdjacentHTML("beforeend", `<span class="done-mark">${ok ? (a.single ? "✓ READ &amp; ACCEPTED" : "✓ APPROVED") : "✕ " + esc(String(a.noLabel || "Rejected").toUpperCase())}</span>`);
       sb.from("notifications").update({ is_read: true }).eq("id", n.id).then(() => {}, () => {}); b.closest(".cv-note")?.classList.remove("new");
       toast(ok ? (a.single ? "Read & accepted. The Director is told." : "Approved.") : "Done."); E.refreshBadge();
     };
