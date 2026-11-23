@@ -614,6 +614,7 @@
       ${H("outlets") ? `<section class="nwd-notice" id="dClosed" hidden></section>` : ""}
       ${isAdmin() ? `<section class="todo" id="dTodo" hidden></section>` : ""}
       <section class="box my-dlv" id="dDlv" hidden></section>
+      ${isAdmin() || H("customers") ? `<section class="prize-pool" id="dPrize" hidden></section>` : ""}
       ${H("customers") ? `<div class="tiles" id="dTiles">${tiles.map(tile).join("")}</div>` : ""}
       <h3 class="home-h">Quick Actions</h3>
       <div class="quick">${quick.map((q) => `<a class="qa qa-${q[4]}" href="${q[1]}"><span class="qa-ic">${ic(q[3])}</span><span class="qa-l">${esc(q[2])}</span></a>`).join("")}</div>
@@ -625,6 +626,12 @@
         ${isStaff() && H("purchase") ? box("dComm", "Purchase Orders", "purchase") : ""}
       </div>`);
     myDeliveries();
+    if ($("#dPrize")) sb.rpc("prize_pool").then(({ data: p }) => { // 3.99.235: the medal prizes redeemed and still to redeem
+      const el = $("#dPrize"); if (!el || !p) return;
+      el.innerHTML = `<div class="pz-ic">${ic("crown")}</div><div class="pz-main"><small>PRIZE POOL</small><b>₱ ${peso(p.redeemed)}</b><em>REDEEMED · ${p.redeemed_n} TIME${p.redeemed_n === 1 ? "" : "S"}</em></div>
+        <div class="pz-main pz-open"><small>TO REDEEM</small><b>₱ ${peso(p.open)}</b><em>${p.gold} GOLD · ${p.silver} SILVER · ${p.bronze} BRONZE</em></div>`;
+      el.hidden = false;
+    }, () => {});
     if (S.empId) sb.rpc("my_place").then(({ data: pl }) => { const b = $("#dPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl, "sm"); }, () => {}); // 3.99.234
     E.outletsBox?.($("#dOutlets")); // 3.99.116: the shops' sales on the Dashboard
     // 3.99.196: a shop with an approved non-working day today: everyone of that shop sees it here
@@ -1865,7 +1872,8 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
   function invDirector() {
     const d = (SIG.list || []).find((x) => /EMON\s+HASAN/i.test(x.full_name || "")) || (SIG.list || [])[0];
     const pic = d ? SIG.pics.get(d.signature_path) || "" : "";
-    return `<div class="inv-dir"><div class="inv-dir-sig">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div><div class="line"></div><b>EMON HASAN</b><small>OPERATIONAL DIRECTOR</small></div>`;
+    void pic; // 3.99.235: a paper the Director issues carries the Director's stamp only
+    return `<div class="inv-dir"><div class="inv-dir-sig"></div><div class="line"></div>${stampHtml(stampOf(d?.id, "EMON HASAN", "Operational Director"))}</div>`;
   }
   function invoicePage(inv, links = [], deds = [], ins = null, ord = null) {
     const bal = num(inv.balance);

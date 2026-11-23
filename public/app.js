@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.234"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.235"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.234"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.235"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -209,13 +209,9 @@
     const box = [...h.querySelectorAll(".idbox")].find((b) => /\bNO\b/i.test(t(b.querySelector("small")))) || h.querySelector(".idbox");
     return t(box?.querySelector("b")).slice(0, 22);
   };
-  const authSticker = (id) => `<div class="auth-st" aria-hidden="true"><svg viewBox="0 0 100 100"><defs><path id="authRing" d="M50 12 a38 38 0 1 1 -0.01 0"/></defs>
-    <circle cx="50" cy="50" r="46" class="as-out"/><circle cx="50" cy="50" r="30" class="as-in"/>
-    <text class="as-ring"><textPath href="#authRing" textLength="238" lengthAdjust="spacing">${esc(id ? `EMON OVERRUNS · ${id} · EMON OVERRUNS · ${id} ·` : "EMON OVERRUNS · EMON OVERRUNS · EMON OVERRUNS ·")}</textPath></text>
-    <path d="M38 47 l8 8 l16 -18" class="as-tick"/><text x="50" y="70" text-anchor="middle" class="as-word"${id ? ` textLength="${Math.min(52, 4.4 * id.length).toFixed(1)}" lengthAdjust="spacingAndGlyphs"` : ""}>${esc(id || "EMON OVERRUNS")}</text></svg><i class="as-shine"></i></div>`;
   const addSticker = (root) => root.querySelectorAll?.("#main .cust-hero:not(.has-auth)").forEach((h) => {
     const id = headId(h);
-    h.classList.add("has-auth"); h.insertAdjacentHTML("beforeend", authSticker(id));
+    h.classList.add("has-auth"); // 3.99.235: no round sticker on the profile heads (the microtext stays)
     h.dataset.micro = Array.from({ length: 10 }, () => (id ? `EMON OVERRUNS · ${id}` : "EMON OVERRUNS")).join(" · ");
   });
   new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches?.("#main .cust-hero")) addSticker(n.parentNode); else if (n.querySelector?.(".cust-hero")) addSticker(n); } })

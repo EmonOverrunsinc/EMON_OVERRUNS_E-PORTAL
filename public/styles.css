@@ -5169,3 +5169,13 @@ body.os-info-open > .band-back { display: none !important; }
 .wp-badge .wp-logo { width: 34px; height: 34px; flex: 0 0 auto; font-size: 0; } .wp-badge .wp-logo * { max-width: 100%; }
 .wp-ic { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--soft, #eef3fd); color: var(--nv, #0f3a8c); flex: 0 0 auto; } .wp-ic svg { width: 16px; height: 16px; }
 .wp-office { border-color: #c9b26a; } .wp-badge.sm { padding: 2px 10px 2px 3px; } .wp-badge.sm .wp-logo { width: 26px; height: 26px; } .wp-badge.sm .wp-ic { width: 24px; height: 24px; }
+.auth-st { display: none !important; }
+/* 3.99.235: the prize pool on the dashboard */
+.prize-pool { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 16px; margin: 0 0 14px; border-radius: 16px; background: linear-gradient(110deg, #0f2a66, #1d4fd6); color: #fff; }
+.prize-pool .pz-ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .14); color: #f2c94c; } .prize-pool .pz-ic svg { width: 22px; height: 22px; }
+.prize-pool .pz-main { display: grid; line-height: 1.15; } .prize-pool small { font-size: 10px; letter-spacing: .14em; opacity: .8; } .prize-pool b { font-size: 20px; letter-spacing: .02em; }
+.prize-pool em { font-style: normal; font-size: 10.5px; letter-spacing: .08em; opacity: .85; } .prize-pool .pz-open { margin-left: auto; text-align: right; } .prize-pool .pz-open b { color: #f2c94c; }
+/* the invoice: the Director's blue words under the line */
+.inv-dir .eo-stamp { margin-top: 1.2mm; }
+.inv-dir .eo-stamp b { font-size: 9.5pt; font-weight: 900; letter-spacing: .06em; color: var(--ink); }
+.inv-dir .eo-stamp em, .inv-dir .eo-stamp i { color: var(--ink); }
