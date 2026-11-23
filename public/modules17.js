@@ -125,7 +125,8 @@
   };
   const todayText = (o) => `${hourText(o._today?.opens || o.opens) || "—"} – ${hourText(o._today?.closes || o.closes) || "—"}`;
   const cardLive = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}` : ""; };
-  const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b> ${esc(s.t)}` : ""; }; // 3.99.205: one line (the sales hours in the tip)
+  const liveHtml = (o) => { const s = storeNow(o); return s ? `<i></i><b>${s.word}</b>` : ""; };
+  const liveNext = (o) => { const s = storeNow(o); return s ? esc(s.t) : ""; }; // 3.99.205: one line (the sales hours in the tip)
 
   // the money of the shops for a month (and today): sales, expenses, payments of their customer accounts
   async function monthMoney(outlets, m) {
@@ -389,17 +390,9 @@
     $("#olBody").innerHTML = `
       ${moreBtns ? `<div class="pg-more"><button type="button" class="pg-more-btn" id="osMore" aria-label="More" aria-haspopup="true">⋯</button><div class="pg-more-list" id="osMoreList" hidden>${moreBtns}</div></div>` : ""}
       <section class="os-hero">
-        <div class="os-hero-micro" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(bidText(o))}</span>`).join("")}</div>
-        <div class="os-hero-micro low" aria-hidden="true">${Array.from({ length: 14 }, () => `<span>EMON OVERRUNS</span><span>${esc(o.code)}</span>`).join("")}</div>
-        ${(() => { // 3.99.163: the identity in the rosette: rings of microtext and the shop's ID number
-          const idNo = bidText(o); // 3.99.187: without "EO-"
-          const ring = (r, txt, n) => `<path id="osR${r}" d="M150 ${150 - r} a${r} ${r} 0 1 1 -0.01 0"/><text><textPath href="#osR${r}" textLength="${(2 * Math.PI * r).toFixed(1)}" lengthAdjust="spacing">${esc(Array.from({ length: n }, () => txt).join(" · "))}</textPath></text>`;
-          return `<svg class="os-hero-id" viewBox="0 0 300 300" aria-hidden="true"><g fill="none">${ring(132, `EMON OVERRUNS · ${o.code} · ${o.name}`, 3)}${ring(104, `${idNo} · ${o.code} · EMON OVERRUNS`, 3)}${ring(78, `${o.code} · EMON OVERRUNS`, 3)}</g>
-            <text class="os-id-no" x="150" y="146" text-anchor="middle">${esc(idNo)}</text><text class="os-id-sub" x="150" y="164" text-anchor="middle">EMON OVERRUNS · ${esc(o.code)}</text></svg>`;
-        })()}
         <div class="os-hero-top"><div class="os-logo-col">${storeLogo(o, "big")}<span class="os-rk" id="osRank" data-oid="${esc(o.id)}" data-m="${esc(m)}" hidden></span></div>
           <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
-        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span>${o._today ? "" : `<span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>`}${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive" title="${storeNow(o).sales ? `Sales hours ${o._today ? "today" : "a day"}: ${storeNow(o).sales}` : ""}">${liveHtml(o)}</span>` : ""}${o._today ? `<span class="os-todayh" title="Changed for today${o._today.set_by_name ? ` by ${esc(o._today.set_by_name)}` : ""}${o._today.note ? ` · ${esc(o._today.note)}` : ""}">${ic("clock")} Today ${esc(todayText(o))}</span>` : ""}
+        <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span>${o._today ? "" : `<span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>`}${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive" title="${storeNow(o).sales ? `Sales hours ${o._today ? "today" : "a day"}: ${storeNow(o).sales}` : ""}">${liveHtml(o)}</span><span class="os-next" id="osNext">${ic("clock")} ${liveNext(o)}</span>` : ""}${o._today ? `<span class="os-todayh" title="Changed for today${o._today.set_by_name ? ` by ${esc(o._today.set_by_name)}` : ""}${o._today.note ? ` · ${esc(o._today.note)}` : ""}">${ic("clock")} Today ${esc(todayText(o))}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? ic("check") + " " : ""}${esc(rentLine(rs))}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
@@ -448,7 +441,7 @@
     $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
     // the store status counts by itself (every 30 seconds while this page is open)
-    const live = setInterval(() => { const el = $("#osLive"), s = storeNow(o); if (!el || !s) { clearInterval(live); return; } el.className = `os-live st-${s.k}`; el.innerHTML = liveHtml(o); }, 30000);
+    const live = setInterval(() => { const el = $("#osLive"), s = storeNow(o); if (!el || !s) { clearInterval(live); return; } el.className = `os-live st-${s.k}`; el.innerHTML = liveHtml(o); const nx = $("#osNext"); if (nx) nx.innerHTML = `${ic("clock")} ${liveNext(o)}`; }, 30000);
     (E.outletWeekRanks || E.outletRanks)(m).then((rk) => { // 3.99.226: the rank of THIS WEEK (Monday to Sunday) under the store logo
       const el = $("#osRank"), r = rk.get(o.id);
       if (!r || !el || el.dataset.oid !== o.id) return;

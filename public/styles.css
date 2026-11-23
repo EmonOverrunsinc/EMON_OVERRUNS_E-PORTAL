@@ -5298,3 +5298,8 @@ body.os-info-open > .band-back { display: none !important; }
 @keyframes idcHoloHue { from { filter: hue-rotate(0deg) saturate(1.3); } to { filter: hue-rotate(360deg) saturate(1.3); } }
 @keyframes idcHoloTilt { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.04); opacity: 1; } }
 @media print { .idc-photo .idc-holo, .idc-photo .idc-holo .idc-holo-st { animation: none; filter: none; } }
+/* 3.99.261: OPEN and its countdown: 2 chips side by side, nothing cut */
+.os-chips .os-live, .os-chips .os-next { white-space: nowrap; flex: none; }
+.os-chips .os-next { display: inline-flex; align-items: center; gap: 6px; }
+.os-chips { flex-wrap: wrap; }
+.os-hero .os-hero-id { display: none !important; } /* 3.99.261: no branch-code rosette behind the chips */
