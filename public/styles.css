@@ -5322,3 +5322,5 @@ body.os-info-open > .band-back { display: none !important; }
 .welcome .hero-tag { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 0 0 .25em; font: inherit; letter-spacing: inherit; color: inherit; text-transform: uppercase; }
 .welcome .tbadge { font-size: 11px; padding: 2px 8px; } .welcome .tbadge .ic { width: 13px; height: 13px; }
 .welcome .hero-tag { color: inherit !important; }
+/* 3.99.266: the credit limit box a little lower, clear of the tags (iPad and phone) */
+#main .cust-hero .ch-sub:has(.cl-hi) { margin-top: 10px; }
