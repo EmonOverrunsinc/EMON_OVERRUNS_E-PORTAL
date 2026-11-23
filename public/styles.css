@@ -5463,3 +5463,14 @@ body.os-info-open > .band-back { display: none !important; }
 .dsr-sign .ds-bar img { height: 8mm; width: 50mm; object-fit: fill; image-rendering: pixelated; }
 .dsr-sign .ds-bar span { font: 700 6.5px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; color: #42506b; }
 .dsr-sign .ds-left .ds-bar { justify-items: start; }
+/* 3.99.301: the Daily Sales Report barcodes at the bottom of the page */
+.page.dsr-page { padding-bottom: 20mm; }
+.page.dsr-page > .ds-foot-l, .page.dsr-page > .ds-foot-r { position: absolute; bottom: 5mm; margin: 0; display: grid; gap: .8mm; }
+.page.dsr-page > .ds-foot-l { left: 14mm; justify-items: start; }
+.page.dsr-page > .ds-foot-r { right: 14mm; justify-items: center; width: 82mm; }
+.page.dsr-page > .ds-foot-l img, .page.dsr-page > .ds-foot-r img { height: 9mm; width: 52mm; object-fit: fill; image-rendering: pixelated; }
+.page.dsr-page > .ds-foot-l span, .page.dsr-page > .ds-foot-r span { font: 700 6.5px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; color: #42506b; }
+/* 3.99.302: the activities in the system style; the issuer's EOID */
+.dsr-acts .soa-t td { font: 600 8.6px/1.35 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .02em; text-transform: uppercase; color: #22304d; }
+.dsr-acts .soa-t td:first-child { white-space: nowrap; }
+.soa-info .dsr-eoid { font-style: normal; font-weight: 600; color: #5b6b8c; }
