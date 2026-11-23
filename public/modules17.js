@@ -820,14 +820,17 @@
     return `<div class="dsr-sign"><div class="ds-left">${stamp || ""}${bar ? `<div class="ds-bar ds-foot-l"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}</div>
       <div class="ds-right"><small>VERIFIED BY</small><div class="ds-line"></div>${boss}${tbar ? `<div class="ds-bar ds-foot-r"><img src="${tbar}" alt=""><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
   };
-  // 3.99.308: the shop papers carry the store's logo and name in the head (not the company's)
+  // 3.99.309: the shop papers: EMON OVERRUNS stays on the left of the head; the store logo, its code and branch code on the right
   const storeHead = (o) => $$(".preview .page .ph2").forEach((h) => {
-    const ring = h.querySelector(".ph-logo-ring"); if (ring) { ring.outerHTML = storeLogo(o, "ph-store"); }
-    h.classList.add("ph-shop"); const co = h.querySelector(".ph-co"); if (co) co.textContent = "EMON OVERRUNS RETAIL STORE";
-    const tg = h.querySelector(".ph-tag"); if (tg) tg.textContent = `${String(o.code || "").toUpperCase()} · BRANCH ID ${bidText(o)}`;
-    const ad = h.querySelector(".ph-addr"); if (ad) ad.textContent = String(o.address || "").toUpperCase();
+    if (h.querySelector(".ph-store-r")) return;
+    h.classList.add("ph-shop2");
+    h.insertAdjacentHTML("beforeend", `<div class="ph-store-r">${storeLogo(o, "ph-store")}<b>${esc(String(o.code || "").toUpperCase())}</b><small>BRANCH ${esc(bidText(o))}</small></div>`);
   });
+  // 3.99.309: dates on the shop papers read NOV-11-2026
+  const shopDate = (d) => { const t = String(d || "").slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return mdy(d); const x = new Date(t + "T00:00:00");
+    return `${x.toLocaleDateString("en-US", { month: "short" }).toUpperCase()}-${String(x.getDate()).padStart(2, "0")}-${x.getFullYear()}`; };
   async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
+    const mdy = shopDate; // 3.99.309
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
     // 3.99.229: the sales records before and after this day (the cash left came from / went to)
     const near = (op, asc) => sb.from("outlet_sales").select("id, sale_date, created_at").eq("outlet_id", o.id)[op]("sale_date", date).order("sale_date", { ascending: asc }).limit(1)
@@ -885,6 +888,7 @@
   // the expenses, the cash out and the stock payments (each a table with its total), and the signatures. A long month
   // goes on to the next page (the table head is repeated there).
   async function printSoa(o, m, d) {
+    const mdy = shopDate; // 3.99.309
     const resp = ((d.staff || []).map((x) => x.employees).filter(Boolean))[0] || null; // 3.99.282: the store's own employee signs, not who prints
     const bossId = await loadBoss([resp?.profile_id].filter(Boolean));
     const days = chainDays(d.sales, d.exps, num(d.carry0)); // 3.99.220: the cash left goes on to the next day
