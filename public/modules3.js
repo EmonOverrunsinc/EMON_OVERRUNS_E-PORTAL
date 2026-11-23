@@ -678,6 +678,8 @@
     const box = $(".cp-contacts"); if (!box) return;
     if (error) { box.innerHTML = `<div class="empty small">Messages are not set up yet (run the 1.1 database update).</div>`; return; }
     CH.contacts = data || [];
+    const un = await sb.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*");
+    CH.sysUnread = un.count || 0; // 3.99.291: the E-PORTAL chat (every notification)
     renderContacts();
   }
   function renderContacts() {
@@ -689,9 +691,45 @@
         <span class="cp-who"><b>${esc(c.full_name || "")}${c.verified ? `<span class="vbadge sm" title="Verified">${ic("check")}</span>` : ""}</b><small>${esc(c.job_position || "")} · ${E.online(c.last_seen_at) ? `<span class="on-txt">Active now</span>` : "Not active"}</small></span>
         ${c.unread ? `<span class="badge">${c.unread}</span>` : c.last_at ? `<small class="cp-time">${esc(E.timeAgo(c.last_at))}</small>` : ""}</button>`).join("")
       : `<div class="empty small">${CH.contacts.length ? "No one matches." : "No one else is active in the portal yet."}</div>`;
+    if (!q || "emon overruns e-portal notifications".includes(q)) box.insertAdjacentHTML("afterbegin", `<button type="button" class="cp-contact cp-sys ${CH.other === "__portal" ? "on" : ""}" data-c="__portal">
+        <span class="cp-av"><img src="brand/seal-stamp.png" alt=""></span><span class="cp-who"><b>EMON OVERRUNS E-PORTAL<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Notifications</small></span>
+        ${CH.sysUnread ? `<span class="badge">${CH.sysUnread}</span>` : ""}</button>`);
     $$(".cp-contact", box).forEach((b) => (b.onclick = () => openConversation(b.dataset.c)));
   }
+  // 3.99.291: every notification also comes as a message from EMON OVERRUNS E-PORTAL (read only; press Open to go there)
+  async function openPortalChat() {
+    const p = $(".chat-panel"); if (!p) return;
+    CH.other = "__portal"; CH.msgs = []; CH.sysLast = "";
+    p.classList.add("in-conv");
+    renderContacts();
+    $(".cp-conv", p).innerHTML = `<div class="cv-head"><span class="cp-av"><img src="brand/seal-stamp.png" alt=""></span>
+        <div><b>EMON OVERRUNS E-PORTAL<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Notifications · the portal sends these</small></div></div>
+      <div class="cv-msgs" id="cvMsgs">${busy()}</div><div class="cv-compose cv-sys-foot">${ic("lock")} You cannot reply to E-PORTAL.</div>`;
+    await loadPortalChat();
+  }
+  async function loadPortalChat() {
+    const { data, error } = await sb.from("notifications").select("*").or("link.is.null,link.not.like.chat/*").order("created_at", { ascending: false }).limit(150);
+    if (error || CH.other !== "__portal") return;
+    const rows = (data || []).reverse(), top = rows.length ? rows[rows.length - 1].id + "|" + rows[rows.length - 1].created_at : "";
+    if (top === CH.sysLast && $("#cvMsgs .cv-msg, #cvMsgs .cp-empty")) return;
+    CH.sysLast = top;
+    const box = $("#cvMsgs"); if (!box) return;
+    let lastDay = "";
+    box.innerHTML = rows.length ? rows.map((n) => {
+      const day = new Date(n.created_at).toDateString(), sep = day !== lastDay ? `<div class="cv-day">${esc(E.mdy(n.created_at))}</div>` : ""; lastDay = day;
+      return `${sep}<div class="cv-msg them cv-note ${n.is_read ? "" : "new"}"><div class="cv-text"><b>${esc(n.title || "")}</b>${n.body ? `<br>${esc(n.body)}` : ""}</div>
+        ${n.link ? `<button type="button" class="btn small cv-open" data-go="${esc(n.link)}">Open</button>` : ""}
+        <small>${esc(new Date(n.created_at).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" }))}${n.sender_name && n.sender_role !== "system" ? ` · ${esc(String(n.sender_name).toUpperCase())}` : ""}</small></div>`;
+    }).join("") : `<div class="cp-empty small"><p>No notifications yet.</p></div>`;
+    $$("[data-go]", box).forEach((b) => (b.onclick = () => { closeChat(); location.hash = b.dataset.go; }));
+    box.scrollTop = box.scrollHeight;
+    if (rows.some((n) => !n.is_read)) {
+      await sb.from("notifications").update({ is_read: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*");
+      CH.sysUnread = 0; renderContacts(); E.refreshBadge();
+    }
+  }
   async function openConversation(otherId) {
+    if (otherId === "__portal") return openPortalChat();
     const p = $(".chat-panel"); if (!p) return;
     const c = CH.contacts.find((x) => x.id === otherId);
     if (!c) return toast("That person is not available for messages.", true);
@@ -796,7 +834,8 @@
   async function pollChat() {
     if (!$(".chat-panel") || document.visibilityState !== "visible") return;
     CH.tick++;
-    if (CH.other) { await loadMessages(false); await refreshSeen(); }
+    if (CH.other === "__portal") await loadPortalChat();
+    else if (CH.other) { await loadMessages(false); await refreshSeen(); }
     if (CH.tick % 4 === 0) loadContacts();
   }
 

@@ -5368,3 +5368,11 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.287: space between the date and the action in History; no "2 × ₱ 10,000.00" in the prize pool */
 .hist-fit td:nth-child(1) { padding-right: 14px !important; }
 .pp-row .pp-x { display: none; } .pp-row { grid-template-columns: 34px minmax(0, 1fr) auto; }
+/* 3.99.291: the E-PORTAL chat in the Messenger (every notification) */
+.cp-contact.cp-sys { border-bottom: 1px solid var(--line, #e3e8f2); }
+.cp-sys .cp-av img, .cv-head .cp-av img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; background: #fff; }
+.cv-note .cv-text b { color: var(--navy, #0f3a8c); }
+.cv-note.new { border-left: 3px solid var(--gold, #f2b705); }
+.cv-note .cv-open { margin: 4px 0 0; }
+.cv-sys-foot { justify-content: center; gap: 6px; color: var(--muted, #6b7487); font-size: 12.5px; padding: 10px; }
+.cp-sys .cp-who b { white-space: normal; overflow: visible; text-overflow: clip; }
