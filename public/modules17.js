@@ -49,13 +49,13 @@
   };
   let logoN = 0;
   function storeLogo(o, cls = "") {
-    const k = `sl${++logoN}`, top = `${String(o.code || "").toUpperCase()} · ${bidText(o)}`, bot = branchOf(o); // 3.99.227: code · identity no / address
+    const k = `sl${++logoN}`, top = "EMON OVERRUNS RETAIL STORE", bot = [String(o.code || "").toUpperCase(), bidText(o), branchOf(o)].filter(Boolean).join(" · "); // 3.99.235
     const fit = (t, max) => Math.min(t.length * 5.1, max).toFixed(1);
     return `<span class="store-logo ${cls}" aria-label="${esc(top)} · ${esc(bot)}"><svg viewBox="0 0 120 120" aria-hidden="true">
       <defs><path id="${k}t" d="M18.7 75 A44 44 0 1 1 101.3 75"/><path id="${k}b" d="M11.7 68.5 A49 49 0 0 0 108.3 68.5"/></defs>
       <circle cx="60" cy="60" r="58" class="sl-out"/><circle cx="60" cy="60" r="56" class="sl-gold"/><circle cx="60" cy="60" r="33" class="sl-in"/>
       <text class="sl-t"><textPath href="#${k}t" startOffset="50%" text-anchor="middle" textLength="${fit(top, 160)}" lengthAdjust="spacingAndGlyphs">${esc(top)}</textPath></text>
-      <text class="sl-b"><textPath href="#${k}b" startOffset="50%" text-anchor="middle" textLength="${fit(bot, 128)}" lengthAdjust="spacingAndGlyphs">${esc(bot)}</textPath></text></svg>${E.logoHtml("sl-img")}</span>`;
+      <text class="sl-b"><textPath href="#${k}b" startOffset="50%" text-anchor="middle" textLength="${fit(bot, 140)}" lengthAdjust="spacingAndGlyphs">${esc(bot)}</textPath></text></svg>${E.logoHtml("sl-img")}</span>`;
   }
   E.storeLogo = storeLogo;
   // 3.99.227: THE SHOP ON GOOGLE MAPS: the exact place from the pasted link (or the address); "Open in Google Maps"
@@ -377,7 +377,7 @@
     const soaMonths = []; for (let x = start.slice(0, 7); x <= monthNow() && soaMonths.length < 240; x = shiftMonth(x, 1)) soaMonths.push(x);
     const soaTab = mine ? "" : soaMonths.length ? `<div class="soa-list">${[...soaMonths].reverse().map((x) => `<button type="button" class="ol-li soa-li" data-soa="${esc(x)}">${ic("print")}<div class="ol-li-m"><b class="mono">SOA-${esc(o.code)}-${esc(x.replace("-", ""))}</b><small>${esc(E.monthText(x))}${x === monthNow() ? " · to date" : ""}</small></div><em>Print</em></button>`).join("")}</div>` : empty("No month yet.");
     const tabs = [["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Achieved", 0, `<div id="osAchTab" data-oid="${esc(o.id)}">${busy()}</div>`], ["Documents", docs.length, docTab], ...(mine ? [] : [["Monthly SOA", soaMonths.length, soaTab]])];
-    const moreBtns = [`<button type="button" id="olInfo">${ic("folder")} Info</button>`, edit ? `<button type="button" id="olCash">${ic("wallet")} Cash Out</button><button type="button" id="olExp">${ic("plus")} Expense / Bill</button>` : "",
+    const moreBtns = [`<button type="button" id="olInfo">${ic("folder")} Info</button>`, mapQuery(o) ? `<button type="button" id="olMapOpen">${ic("pin")} Location</button>` : "", edit ? `<button type="button" id="olCash">${ic("wallet")} Cash Out</button><button type="button" id="olExp">${ic("plus")} Expense / Bill</button>` : "",
       edit && !mine ? `<button type="button" id="olDep">${ic("building")} Bank Deposit</button>` : "",
       edit && !mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<button type="button" id="olPayRent">${ic("receipt")} Pay Rent ₱ ${peso(rs.left)}</button>` : "",
       mine ? "" : `<button type="button" id="olSoa">${ic("print")} Monthly Statement</button>`,
@@ -406,7 +406,6 @@
         <div class="os-kpi bal${pool < 0 ? " neg" : ""}"><small>Net Balance</small><b>₱ ${peso(pool)}</b><span>Cash out not used yet · used this month ₱ ${peso(usedM)} (rent · stock · bank · bills)</span></div></div>
       <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button>` : ""}</div>
       <section class="os-daily"><div class="os-daily-h"><b>Daily Sales · ${esc(E.monthText(m))}</b>${mine ? "" : `<button type="button" class="btn small" id="olSoa2">${ic("print")} Print</button>`}</div>${salesTab}</section>
-      ${mapBox(o)}
       <section class="os-info" id="osInfo" hidden><div class="os-info-head"><b>${ic("folder")} Info · ${esc(o.code)}</b><button type="button" class="btn small" id="osInfoClose">${ic("x")} Close</button></div>
         <div class="tabs os-tabs" id="osTabs">${tabs.map(([t, n], k) => `<button type="button" class="${k ? "" : "on"}" data-t="${k}">${esc(t)}${n ? ` <em>${n}</em>` : ""}</button>`).join("")}</div>
         <div class="tabpanes os-panes" id="osPanes">${tabs.map(([, , html], k) => `<div data-p="${k}" class="os-pane"${k ? " hidden" : ""}>${html}</div>`).join("")}</div></section>`;
@@ -431,6 +430,7 @@
     // 3.99.224: INFO: expenses, cash out, stock account, employees, achieved, documents and every month's SOA
     // the sheet goes to the top of the page while it is open (the page's slide-in would keep it under the top bar)
     const info = $("#osInfo"), home = info?.parentElement, infoClose = () => { info.hidden = true; document.body.classList.remove("os-info-open"); if (home?.isConnected) home.appendChild(info); else info.remove(); };
+    if ($("#olMapOpen")) $("#olMapOpen").onclick = () => { const m = E.modal(`${o.code} · Location`, mapBox(o), `<button type="button" class="btn" data-x>Close</button>`); $("[data-x]", m.el).onclick = m.close; }; // 3.99.235
     if ($("#olInfo")) $("#olInfo").onclick = () => { document.body.appendChild(info); info.hidden = false; document.body.classList.add("os-info-open"); info.scrollTop = 0; };
     if ($("#osInfoClose")) $("#osInfoClose").onclick = infoClose;
     $$("[data-soa]").forEach((b) => (b.onclick = () => {
