@@ -5355,3 +5355,6 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.278: phone: the customer History breaks lines only between words */
 .hist-fit td { overflow-wrap: break-word; word-break: normal; }
 @media (max-width: 600px) { .hist-fit table { font-size: 11px; } .hist-fit th:nth-child(1), .hist-fit td:nth-child(1) { width: 30%; white-space: normal !important; } .hist-fit th:nth-child(3), .hist-fit td:nth-child(3) { width: 20%; } }
+/* 3.99.279: the Document Register */
+.reg-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; } .reg-bar input { flex: 1 1 220px; } .reg-bar select { flex: 0 1 200px; }
+.reg-n { margin: 0 0 6px; } .reg-trx { font-size: 10px; color: var(--muted, #6b7487); word-break: break-all; }

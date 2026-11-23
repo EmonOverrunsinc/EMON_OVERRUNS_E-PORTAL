@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.278"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.279"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.278"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.279"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1548,6 +1548,7 @@
     mbilling: "mbilling", // 3.99.163: Regional Office Manila › Billing (its own companies; "15 Manila Billing")
     inventory: "inventory", newstockbill: "inventory", stockbill: "inventory",
     outlets: "outlets", outlet: "outlets", // 3.99.116: its own access "14 Outlets"
+    register: "eooffice", // 3.99.279: the Document Register (the page itself lets only the Director in)
     eooffice: EO_MODULES, newqc: "eooffice", qc: "eooffice", newcollection: "eooffice", editcollection: "eooffice", collection: "eooffice",
     purchase: "purchase", newpurchase: "purchase", po: "purchase", editpo: "purchase", // 3.31: its own menu access
     regional: ["purchase", "billing", "inventory"], // 3.99.156: REGIONAL OFFICE opens for anyone who may open one of them

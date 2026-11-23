@@ -50,7 +50,8 @@
   const MNL = [["custorders", "Customer Order", "box", "Orders, boxes, delivery and the invoice", "eooffice"], ["boxlist", "Box List", "tag", "Every box: available, on order or sold, by batch", "eooffice"], ["employees", "Employees", "users", "Staff, ID cards and documents", "employees"],
     ["payroll", "Payroll", "wallet", "Salaries and payslips", "employees"], ["creditmemos", "Credit Memo", "receipt", "Returns, credits and discounts", "creditmemos"],
     ["projects", "Project", "folder", "Projects and their payments", "projects"], ["insurance", "Coverage", "shield", "Order coverage certificates", "eooffice"],
-    ["mbilling", "Billing", "building", "Manila companies, payments and vouchers", "mbilling"]];
+    ["mbilling", "Billing", "building", "Manila companies, payments and vouchers", "mbilling"],
+    ["register", "Document Register", "doc", "Every paper: number, date, who, TRX ID", "__dir"]]; // 3.99.279: the Director only
   const mnlCount = {
     boxlist: () => sb.from("box_stock").select("serial_no", { count: "exact", head: true }).then((r) => (r.error ? "" : `${r.count || 0} boxes`)),
     custorders: () => sb.from("customer_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "approved"]).then((r) => (r.error ? "" : r.count ? `${r.count} open order(s)` : "No open order")),
@@ -60,8 +61,42 @@
     mbilling: () => sb.from("pay_companies").select("id", { count: "exact", head: true }).eq("office", "manila").then((r) => (r.error ? "" : `${r.count || 0} compan${r.count === 1 ? "y" : "ies"}`)),
     insurance: () => sb.from("order_insurance").select("id", { count: "exact", head: true }).in("status", ["unpaid", "review"]).then((r) => (r.error ? "" : r.count ? `${r.count} to check` : "Nothing to check"))
   };
+  // 3.99.279: DOCUMENT REGISTER (the Director): every paper the portal made, newest first; search, type, open, download
+  const REG = [
+    ["customer_invoices", "INVOICE", "invoice_no", "invoice_date", "invoice", "total_amount"],
+    ["payments_received", "PAYMENT RECEIPT", "receipt_no", "paid_date", "payment", "amount"],
+    ["customer_orders", "CUSTOMER ORDER", "order_no", "order_date", "custorder", "total_amount"],
+    ["credit_memos", "CREDIT MEMO", "memo_no", "memo_date", "creditmemo", "request_amount"],
+    ["order_insurance", "COVERAGE", "ins_no", "created_at", "insurance", "amount"],
+    ["collection_vouchers", "COLLECTION VOUCHER", "cv_no", "cv_date", "collection", "amount"],
+    ["pay_vouchers", "PAYMENT VOUCHER", "voucher_no", "pay_date", "voucher", "amount"],
+    ["purchase_orders", "PURCHASE ORDER", "po_no", "po_date", "po", "total_amount"],
+    ["payslips", "PAYSLIP", "payslip_no", "pay_date", "", "net_pay"]];
+  V.register = async () => {
+    if (!E.isAdmin()) { E.shell("register", "Document Register", `<div class="empty">Only the Director opens the Document Register.</div>`); return; }
+    E.shell("register", "Document Register", `<div class="reg-bar"><input type="search" id="rgQ" placeholder="Search number, name, who, TRX ID" aria-label="Search">
+      <select id="rgT" aria-label="Type"><option value="">All papers</option>${REG.map((x) => `<option>${x[1]}</option>`).join("")}</select>
+      <button type="button" class="btn" id="rgLog">${ic("download")} Download Log</button></div><div id="rgList">${busy("Loading the papers")}</div>`);
+    const here = E.stillHere();
+    const got = await Promise.all(REG.map(([t, kind, noK, dK, route, amtK]) => sb.from(t).select("*").order("created_at", { ascending: false }).limit(400)
+      .then(({ data }) => (data || []).filter((r) => r[noK]).map((r) => ({ kind, no: r[noK], date: r[dK] || r.created_at, at: r.created_at, by: r.created_by_name || r.prepared_by_name || r.approved_by_name || "",
+        who: r.customer_name || [r.first_name, r.last_name].filter(Boolean).join(" ") || r.received_from || r.lot_name || "", amt: r[amtK], id: r.id, route })), () => [])));
+    if (!here()) return;
+    const all = got.flat().sort((a, b) => String(b.at || b.date).localeCompare(String(a.at || a.date)));
+    const show = () => {
+      const q = $("#rgQ").value.trim().toLowerCase(), t = $("#rgT").value;
+      const rows = all.filter((r) => (!t || r.kind === t) && (!q || [r.no, r.who, r.by, r.id, r.kind].join(" ").toLowerCase().includes(q)));
+      $("#rgList").innerHTML = `<p class="muted reg-n">${rows.length} paper(s)</p>` + E.grid({ cols: [
+        { label: "Date", get: (r) => mdy(String(r.date).slice(0, 10)) }, { label: "Paper", get: (r) => r.kind }, { label: "No", html: (r) => `<b class="mono">${esc(r.no)}</b>` },
+        { label: "Name", get: (r) => String(r.who || "").toUpperCase() }, { label: "Amount (₱)", get: (r) => (r.amt != null ? peso(r.amt) : "") }, { label: "By", get: (r) => String(r.by || "").toUpperCase() },
+        { label: "TRX ID", html: (r) => `<small class="mono reg-trx">${esc(String(r.id).toUpperCase())}</small>` }],
+        rows, limit: 50, onRow: (r) => { if (r.route) location.hash = `${r.route}/${r.id}`; } });
+    };
+    $("#rgQ").oninput = show; $("#rgT").onchange = show; show();
+    $("#rgLog").onclick = () => E.downloadLog("DOCUMENT REGISTER", all.map((r) => ({ at: r.at || r.date, what: `${r.kind} ${r.no}${r.amt != null ? ` · PHP ${peso(r.amt)}` : ""}`, by: r.by, note: `${String(r.who || "").toUpperCase()}${r.who ? " · " : ""}TRX ${String(r.id).toUpperCase()}` })));
+  };
   V.eooffice = async (tab, month) => {
-    const cards = MNL.filter((x) => E.hasModule(x[4]) && (x[4] !== "eooffice" || E.isStaff()));
+    const cards = MNL.filter((x) => (x[4] === "__dir" ? E.isAdmin() : E.hasModule(x[4]) && (x[4] !== "eooffice" || E.isStaff())));
     E.shell("eooffice", "Regional Office Manila", `${eoTabs("eooffice")}<div class="reg-cards mnl-cards">${cards.map(([k, l, icon, say]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(say)}</small><em id="mnlN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>
       <section class="prize-pool" id="dPrize" hidden></section>
       <div id="eoBody">${busy()}</div>`);
