@@ -570,10 +570,10 @@
       if (!(data.amount > 0)) return toast("Type the amount.", true);
       if (isCash && !data.payee) return toast("Type who took the cash (Cash Out To).", true);
       e.target.disabled = true;
-      const once = false; // 3.99.267: the Director changes every record directly
-      const r = once ? await sb.rpc("outlet_cashout_edit", { p_id: row.id, p_amount: data.amount, p_payee: data.payee, p_note: data.note })
+      const once = !!row; // 3.99.285: a change goes through the Director's safe edit (every field)
+      const r = once ? await sb.rpc("outlet_expense_edit", { p_id: row.id, p_date: data.exp_date, p_kind: data.kind, p_payee: data.payee, p_amount: data.amount, p_note: data.note })
         : row ? await sb.from("outlet_expenses").update(data).eq("id", row.id).select().single() : await sb.from("outlet_expenses").insert(data).select().single();
-      if (r.error) { e.target.disabled = false; return fail(r.error, /kind_check|23514/.test(`${r.error.code} ${r.error.message}`) ? "Bank Deposit needs the database update 135 (updates page)" : "Could not save the expense"); }
+      if (r.error) { e.target.disabled = false; return fail(r.error, /kind_check|23514/.test(`${r.error.code} ${r.error.message}`) ? "Bank Deposit needs the database update 135 (updates page)" : /outlet_expense_edit|PGRST202|schema cache/.test(r.error.message || "") ? "Run the database update 147 first (updates page)" : "Could not save"); }
       const pics = Array.from($("#oxPic", m.el).files || []);
       const failed = pics.length ? await E.uploadRecords("outlet_expense", once ? row.id : r.data.id, "receipt", pics) : 0;
       m.close(); toast(failed ? `Saved; ${failed} photo(s) could not be uploaded.` : `${KIND[data.kind]} ${row ? "changed" : "saved"}: ₱ ${peso(data.amount)}.`, !!failed); E.route();
