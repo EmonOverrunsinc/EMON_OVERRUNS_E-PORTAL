@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.289"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.290"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.289"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.290"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1827,7 +1827,11 @@
     };
     $$("[data-nok]", box).forEach((b) => (b.onclick = () => decide(b, true)));
     $$("[data-nno]", box).forEach((b) => (b.onclick = () => decide(b, false)));
-    $$(".mail-item", box).forEach((a) => (a.onclick = () => { sb.from("notifications").update({ is_read: true }).eq("id", Number(a.dataset.n)).then(refreshBadge); }));
+    $$(".mail-item", box).forEach((a) => (a.onclick = (e) => {
+      sb.from("notifications").update({ is_read: true }).eq("id", Number(a.dataset.n)).then(refreshBadge);
+      const chat = /^#chat\/([0-9a-f-]{36})$/i.exec(a.getAttribute("href") || ""); // 3.99.290: a message notification opens that chat
+      if (chat && window.EO.openChat) { e.preventDefault(); window.EO.openChat(chat[1]); }
+    }));
     $("#mailAllRead").onclick = async () => { await sb.from("notifications").update({ is_read: true }).eq("is_read", false); loadMail(); refreshBadge(); };
   }
 

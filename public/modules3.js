@@ -663,6 +663,7 @@
     clearInterval(CH.timer);
     CH.timer = setInterval(pollChat, 4000);
   }
+  V.chat = async (id) => { location.replace("#dashboard"); if (id) setTimeout(() => openChat(id), 300); }; // 3.99.290: #chat/<person> opens that chat
   function chatKey(e) { if (e.key === "Escape" && !$(".modal") && $(".chat-panel.open")) closeChat(); }
   function closeChat() {
     const p = $(".chat-panel"); if (!p) return;
