@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.331"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.332"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.331"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.332"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1775,19 +1775,21 @@
     if (!force && Date.now() - badgeState.at < 15000) return;
     badgeState.at = Date.now();
     const [n, m] = await Promise.all([
-      sb.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false),
+      sb.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*"), // 3.99.332: chat messages are on the Messenger icon
       sb.rpc("unread_messages_count")
     ]);
-    const before = badgeState.notes;
+    const before = badgeState.notes, beforeMsgs = badgeState.msgs;
     badgeState.notes = n.error ? 0 : n.count || 0;
     badgeState.msgs = m.error ? 0 : Number(m.data || 0);
     paintBadges();
     if (!n.error && (badgeState.lastId == null || badgeState.notes > before)) pushNew().catch(() => {});
+    if (!m.error && badgeState.msgSeen && badgeState.msgs > beforeMsgs) pushAlert({ id: "m" + Date.now(), title: badgeState.msgs === 1 ? "New message" : `${badgeState.msgs} new messages`, body: "Open Messages to read", link: "__chat" }); // 3.99.332
+    if (!m.error) badgeState.msgSeen = true;
   }
   // 3.99.330: PUSH: a new notification pops up in the portal at once (a transfer, an approval, a message …), and as a
   // phone / computer alert when the portal is in the background and alerts are allowed
   async function pushNew() {
-    const { data } = await sb.from("notifications").select("id, title, body, link, created_at").eq("is_read", false).order("id", { ascending: false }).limit(5);
+    const { data } = await sb.from("notifications").select("id, title, body, link, created_at").eq("is_read", false).or("link.is.null,link.not.like.chat/*").order("id", { ascending: false }).limit(5);
     const rows = data || [];
     if (badgeState.lastId == null) { badgeState.lastId = rows[0]?.id || 0; return; } // the first look after sign-in: no pop-up for the old ones
     const fresh = rows.filter((x) => x.id > badgeState.lastId);
@@ -1799,7 +1801,7 @@
     let box = $("#pushBox"); if (!box) { box = document.createElement("div"); box.id = "pushBox"; box.className = "push-box"; document.body.appendChild(box); }
     const el = document.createElement("div"); el.className = "push-alert"; el.setAttribute("role", "status");
     el.innerHTML = `<span class="pa-ic">${ic("bell")}</span><div class="pa-t"><b>${esc(n.title || "")}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</div><button type="button" class="pa-x" aria-label="Close">${ic("x")}</button>`;
-    const go = () => { sb.from("notifications").update({ is_read: true }).eq("id", n.id).then(refreshBadge); el.remove();
+    const go = () => { if (n.link === "__chat") { el.remove(); window.EO.openChat?.(); return; } sb.from("notifications").update({ is_read: true }).eq("id", n.id).then(refreshBadge); el.remove();
       const chat = /^chat\/([0-9a-f-]{36})$/i.exec(n.link || ""); if (chat && window.EO.openChat) window.EO.openChat(chat[1]); else if (n.link) location.hash = n.link; };
     el.onclick = (e) => { if (e.target.closest(".pa-x")) { el.remove(); return; } go(); };
     box.prepend(el); setTimeout(() => el.classList.add("in"), 20); setTimeout(() => el.remove(), 12000);
@@ -1849,7 +1851,7 @@
   };
   async function loadMail() {
     const since = new Date(Date.now() - 30 * 864e5).toISOString(); // 3.99.226: the last 30 days
-    const { data, error } = await sb.from("notifications").select("*").gte("created_at", since).order("created_at", { ascending: false }).limit(300);
+    const { data, error } = await sb.from("notifications").select("*").gte("created_at", since).or("link.is.null,link.not.like.chat/*").order("created_at", { ascending: false }).limit(300);
     const box = $("#mailList"); if (!box) return;
     if (error) { box.innerHTML = `<div class="empty">Notifications could not be loaded.</div>`; return; }
     if (!data.length) { box.innerHTML = `<div class="empty">No notifications yet.</div>`; return; }
@@ -1876,7 +1878,7 @@
       const chat = /^#chat\/([0-9a-f-]{36})$/i.exec(a.getAttribute("href") || ""); // 3.99.306: a message notification opens that chat
       if (chat && window.EO.openChat) { e.preventDefault(); window.EO.openChat(chat[1]); }
     }));
-    $("#mailAllRead").onclick = async () => { await sb.from("notifications").update({ is_read: true }).eq("is_read", false); loadMail(); refreshBadge(); };
+    $("#mailAllRead").onclick = async () => { await sb.from("notifications").update({ is_read: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*"); loadMail(); refreshBadge(); };
   }
 
   // Presence ("active now" in Messages) and badge refresh while signed in.
