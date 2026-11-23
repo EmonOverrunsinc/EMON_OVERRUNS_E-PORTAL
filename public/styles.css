@@ -5231,3 +5231,4 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.245: the ID card back: no stamp; the Director's blue words centred under the line (no line above the EOID) */
 .idc-sign { padding-left: 0 !important; }
 .idc-sign .eo-stamp i { display: block; width: auto; margin: 0; border: 0; }
+.idc-photo .idc-seal.idc-rs { right: -5.5mm; bottom: -5.2mm; } /* 3.99.246: the stamp centred on the frame edge */
