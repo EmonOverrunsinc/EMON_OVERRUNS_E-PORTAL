@@ -5186,3 +5186,11 @@ body.os-info-open > .band-back { display: none !important; }
 .so-sign img { max-height: 11mm; max-width: 55%; }
 .psig .esig { height: 11mm; max-width: 60%; } .ol-auth.has-sig .esig { height: 11mm; }
 .vp-sig img { max-height: 13mm; max-width: 60%; }
+/* 3.99.237: ONE WORDING STYLE ON EVERY PAPER (sizes at A4): title · box heads · labels · values · table heads · cells */
+.page .ph2 .ph-title { letter-spacing: .05em; }
+.page .pbox-h, .page .soa-sec h4 { font-size: 9.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.page .pl, .page .soa-info small, .page .soa-tile small { font-size: 7.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.page .pv, .page .soa-info b { font-size: 11.5px; font-weight: 600; }
+.page table th, .page .soa-t th { font-size: 9.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.page table td, .page .soa-t td { font-size: 10.5px; }
+.page .so-issued small { font-size: 8px; letter-spacing: .12em; }
