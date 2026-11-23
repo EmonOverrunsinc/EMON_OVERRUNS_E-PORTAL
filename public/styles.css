@@ -5540,3 +5540,5 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 #main .cust-hero:has(.auth-st) > .ch-band-tag { right: 84px; }
 #main .cust-hero > .ch-band-tag:not(:has(*:not(:empty))) { display: none; }
 #main .cust-hero > .ch-band-tag * { font-size: 10px !important; line-height: 1.2 !important; } #main .cust-hero > .ch-band-tag > span > * { padding: 3px 9px !important; min-height: 0 !important; height: auto !important; } #main .cust-hero > .ch-band-tag svg { width: 11px !important; height: 11px !important; }
+#main .cust-hero .ch-pic { align-self: start; align-content: start; } #main .cust-hero .ch-pic-tools { margin-bottom: 0 !important; } #main .cust-hero .ch-tags { margin-top: 2px !important; } /* 3.99.318: NOT VERIFIED right under Add Photo */
+#main .cust-hero .ch-pic-tools { height: auto !important; min-height: 0 !important; } #main .cust-hero .ch-pic-tools .linkbtn { min-height: 0 !important; height: auto !important; padding: 3px 4px !important; line-height: 1.2; }
