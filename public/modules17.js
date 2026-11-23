@@ -824,7 +824,7 @@
   const storeHead = (o) => $$(".preview .page .ph2").forEach((h) => {
     if (h.querySelector(".ph-store-r")) return;
     h.classList.add("ph-shop2");
-    h.insertAdjacentHTML("beforeend", `<div class="ph-store-r">${storeLogo(o, "ph-store")}<b>${esc(String(o.code || "").toUpperCase())}</b><small>BRANCH ${esc(bidText(o))}</small></div>`);
+    h.insertAdjacentHTML("beforeend", `<div class="ph-store-r">${storeLogo(o, "ph-store")}</div>`);
   });
   // 3.99.309: dates on the shop papers read NOV-11-2026
   const shopDate = (d) => { const t = String(d || "").slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return mdy(d); const x = new Date(t + "T00:00:00");

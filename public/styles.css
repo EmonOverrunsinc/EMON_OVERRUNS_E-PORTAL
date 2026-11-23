@@ -5504,3 +5504,4 @@ body.os-info-open > .band-back { display: none !important; }
 .ph2 .ph-store-r b { font: 800 8px/1 Arial, sans-serif; letter-spacing: .06em; color: #0f2a66; margin-top: .6mm; }
 .ph2 .ph-store-r small { font: 700 6px/1 Arial, sans-serif; letter-spacing: .06em; color: #8a6400; white-space: nowrap; }
 .ph2.ph-shop2 .ph-title { font-size: 14px !important; white-space: nowrap; letter-spacing: .04em; } .ph2.ph-shop2 .ph-mid { flex: none; }
+.ph2 .ph-store-r { width: auto; align-self: center; } /* 3.99.310: same place and size as the company logo */
