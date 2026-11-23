@@ -5264,3 +5264,4 @@ body.os-info-open > .band-back { display: none !important; }
   background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; animation: dirGold 9s linear infinite; }
 .staff-plain { font-weight: 800; letter-spacing: .08em; color: #33415e; }
 @media print { .staff-bronze { animation: none; color: #7a4a1e; -webkit-text-fill-color: #7a4a1e; background: none; } }
+.tl .nw, .trk .nw { white-space: nowrap; }
