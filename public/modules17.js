@@ -811,6 +811,15 @@
     const boss = E.stampHtml?.({ ...E.stampOf?.(bossId, BOSS, "", true), date: when }) || `<b>${esc(BOSS)}</b>`; // 3.99.268: the date inside the stamps
     return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>${resp || prepId ? "STORE RESPONSIBLE BY" : "ISSUED BY"}</small><div class="so-sign">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div>${issued}${tbar ? `<div class="so-appr-space"></div>` : ""}</div></div>
       <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
+  // 3.99.300: the Daily Sales Report sign-off: left the CASH LEFT stamp and the report no (PDF417); right the line, the
+  // Director's stamp and the TRX ID (PDF417)
+  const dsrSign = (no, bossId, trx, stamp, when) => {
+    const code = (t) => { try { return t && E.pdf417DataUrl ? E.pdf417DataUrl(String(t)) : ""; } catch (_) { return ""; } };
+    const bar = code(no), tbar = code(trx && String(trx).toUpperCase());
+    const boss = E.stampHtml?.({ ...E.stampOf?.(bossId, BOSS, "", true), date: when }) || `<b>${esc(BOSS)}</b>`;
+    return `<div class="dsr-sign"><div class="ds-left">${stamp || ""}${bar ? `<div class="ds-bar"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}</div>
+      <div class="ds-right"><small>APPROVED BY</small><div class="ds-line"></div>${boss}${tbar ? `<div class="ds-bar"><img src="${tbar}" alt=""><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
+  };
   async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
     const r = sales.find((x) => x.sale_date === date) || {}, day = exps.filter((x) => x.exp_date === date);
     // 3.99.229: the sales records before and after this day (the cash left came from / went to)
@@ -834,7 +843,8 @@
     const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small>${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? `<small class="soa-corr">CORRECTED ${esc(mdy(new Date(r.updated_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })))}</small>` : ""}${r.id ? `<small class="soa-trx">TRX ID<span>${esc(String(r.id).toUpperCase())}</span></small>` : ""}</div>`)}
       <div class="soa-info"><div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div><div><small>Date</small><b>${esc(mdy(date))}</b></div>
         <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div><div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div><div><small>Recorded By</small><b>${esc(r.created_by_name || "")}${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? ` · CORRECTED BY ${esc(BOSS)}` : ""}</b></div>
-        <div class="w2"><small>Note</small><b>${esc(r.note || "")}</b></div></div>
+        <div class="w2 dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? ` <i>· ${esc(resp.employee_no)}</i>` : ""}${resp.position ? ` <i>· ${esc(String(resp.position).toUpperCase())}</i>` : ""}` : "—"}</b></div>
+        ${r.note ? `<div class="w3"><small>Note</small><b>${esc(r.note)}</b></div>` : ""}</div>
       <div class="soa-tiles t5">${[["Total Sales", tot, "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash Out", cash, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
@@ -852,9 +862,9 @@
         const duty = (staff || []).map((x) => x.employees).filter(Boolean);
         return `${acts.length ? `<div class="soa-sec dsr-acts"><h4>Activities</h4><table class="soa-t"><thead><tr><th>Time</th><th>Activity</th><th>By</th><th>TRX ID</th></tr></thead><tbody>
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(a.what)}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
-          <div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>`;
+          ${duty.length > 1 ? `<div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>` : ""}`;
       })()}
-      ${nameBoxes(r.created_by_name || me() || "", no, bossId, r.id || "", r.created_by || (r.id ? "" : S.profile?.id), cashStamp, resp, mdy(date))}</div>`; // 3.99.231: the cash left stamp above the Director's line
+      ${dsrSign(no, bossId, r.id || "", cashStamp, mdy(date))}</div>`; // 3.99.300: no Store Responsible signature (the name is in the box on top)
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
 

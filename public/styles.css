@@ -5450,3 +5450,16 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.299: YESTERDAY CASH in its own column (hidden on a phone, where the list must fit) */
 .os-days .os-prev { color: #5b6b8c; }
 @media (max-width: 640px) { .os-days .os-prev { display: none; } }
+/* 3.99.300: the Daily Sales Report: the store responsible on top, a clean sign-off */
+.soa-info .dsr-resp b i { font-style: normal; font-weight: 600; color: #5b6b8c; }
+.soa-info .w3 { grid-column: 1 / -1; }
+.dsr-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; align-items: end; margin-top: 7mm; break-inside: avoid; }
+.dsr-sign .ds-left { display: grid; gap: 3mm; justify-items: start; align-content: end; }
+.dsr-sign .ds-left .dsr-cash { margin: 0; width: 100%; }
+.dsr-sign .ds-right { display: grid; justify-items: center; gap: 1.2mm; text-align: center; }
+.dsr-sign .ds-right > small { justify-self: stretch; text-align: left; font: 700 7px/1 Arial, sans-serif; letter-spacing: .12em; color: #6b7a99; }
+.dsr-sign .ds-line { justify-self: stretch; height: 13mm; border-bottom: 1px solid #1d2b4a; }
+.dsr-sign .ds-bar { display: grid; justify-items: center; gap: .8mm; margin-top: 1.5mm; }
+.dsr-sign .ds-bar img { height: 8mm; width: 50mm; object-fit: fill; image-rendering: pixelated; }
+.dsr-sign .ds-bar span { font: 700 6.5px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; color: #42506b; }
+.dsr-sign .ds-left .ds-bar { justify-items: start; }
