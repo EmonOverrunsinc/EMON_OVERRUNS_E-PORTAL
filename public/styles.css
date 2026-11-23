@@ -5365,3 +5365,6 @@ body.os-info-open > .band-back { display: none !important; }
 .hist-fit .mail-from { display: inline-flex; margin: 0; font-size: 10.5px; }
 .modal { z-index: 6000; } /* 3.99.286: dialogs above the shop Info sheet */
 .toast { z-index: 6500; } .preview { z-index: 5500; } .modal ~ .preview { z-index: 6100; }
+/* 3.99.287: space between the date and the action in History; no "2 × ₱ 10,000.00" in the prize pool */
+.hist-fit td:nth-child(1) { padding-right: 14px !important; }
+.pp-row .pp-x { display: none; } .pp-row { grid-template-columns: 34px minmax(0, 1fr) auto; }
