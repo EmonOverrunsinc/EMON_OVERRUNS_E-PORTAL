@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.330"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.331"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.330"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.331"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1805,6 +1805,20 @@
     box.prepend(el); setTimeout(() => el.classList.add("in"), 20); setTimeout(() => el.remove(), 12000);
     try { if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") { const sn = new Notification(n.title || "EMON OVERRUNS E-PORTAL", { body: n.body || "", icon: "brand/icon-192.png", tag: "eo-" + n.id }); sn.onclick = () => { window.focus(); go(); sn.close(); }; } } catch (_) {}
   }
+  // 3.99.331: an "Allow notifications" bar in the message areas (a phone asks only when a button is pressed)
+  const alertBar = () => {
+    if (!("Notification" in window)) return "";
+    const p = Notification.permission;
+    if (p === "granted") return "";
+    return p === "denied"
+      ? `<div class="al-bar off">${ic("bell")}<span>Notifications are blocked. Turn them on in the phone / browser settings for this site.</span></div>`
+      : `<div class="al-bar">${ic("bell")}<span>Get a message alert on this phone / computer</span><button type="button" class="btn small primary" data-allow-alerts>Allow</button></div>`;
+  };
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest?.("[data-allow-alerts]"); if (!b) return;
+    try { const r = await Notification.requestPermission(); toast(r === "granted" ? "Notifications are on." : "Notifications were not allowed.", r !== "granted"); } catch (_) {}
+    document.querySelectorAll(".al-bar").forEach((x) => { const h = alertBar(); if (h) x.outerHTML = h; else x.remove(); });
+  });
   // the phone / computer asks once to allow alerts (on the first tap after sign-in)
   document.addEventListener("pointerdown", () => { try { if (S.session && "Notification" in window && Notification.permission === "default" && !localStorage.getItem("eoAskAlerts")) { localStorage.setItem("eoAskAlerts", "1"); Notification.requestPermission().catch(() => {}); } } catch (_) {} }, { passive: true });
   const refreshBadge = () => refreshBadges(true);
@@ -1841,7 +1855,7 @@
     if (!data.length) { box.innerHTML = `<div class="empty">No notifications yet.</div>`; return; }
     // 3.97: Mark all as read stays at the top of the list (it was below the last notification)
     const unread = data.filter((n) => !n.is_read).length;
-    box.innerHTML = `<div class="mail-top"><span>${unread ? `${unread} unread` : "All read"}</span><button type="button" class="btn small" id="mailAllRead"${unread ? "" : " disabled"}>${ic("check")} Mark all as read</button></div>`
+    box.innerHTML = `${alertBar()}<div class="mail-top"><span>${unread ? `${unread} unread` : "All read"}</span><button type="button" class="btn small" id="mailAllRead"${unread ? "" : " disabled"}>${ic("check")} Mark all as read</button></div>`
       + data.map((n) => { const a = noteAction(n);
         return `<div class="mail-wrap"><a class="mail-item ${n.is_read ? "" : "unread"}" href="#${esc(n.link || "dashboard")}" data-n="${n.id}">${noteFrom(n)}
       <b>${esc(n.title)}</b><span>${esc(n.body || "")}</span><small>${esc(timeAgo(n.created_at))}</small></a>${a ? `<div class="mail-act"><button type="button" class="btn small ok" data-nok="${n.id}">${ic("check")} ${esc(a.okLabel || "Approve")}</button>${a.single ? "" : `<button type="button" class="btn small" data-nno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button>`}</div>` : ""}</div>`; }).join("");
@@ -3245,7 +3259,7 @@
   window.addEventListener("pageshow", idleTick);
 
   Object.assign(window.EO, {
-    noteAction, pushAlert, // 3.99.306: Approve / Reject also in the Messenger's E-PORTAL chat
+    noteAction, pushAlert, alertBar, // 3.99.306: Approve / Reject also in the Messenger's E-PORTAL chat
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,

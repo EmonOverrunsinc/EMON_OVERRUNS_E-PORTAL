@@ -650,7 +650,7 @@
       p.setAttribute("role", "dialog");
       p.setAttribute("aria-label", "Messages");
       p.innerHTML = `<div class="cp-head"><button type="button" class="cp-back" aria-label="Back to people">${ic("back")}</button><div class="cp-title">${ic("chat")} Messages</div><button type="button" class="cp-x" aria-label="Close messages">${ic("x")}</button></div>
-        <div class="cp-body"><aside class="cp-list"><input type="search" class="cp-q" placeholder="Search people" aria-label="Search people"><div class="cp-contacts">${busy()}</div></aside>
+        <div class="cp-body"><aside class="cp-list">${E.alertBar?.() || ""}<input type="search" class="cp-q" placeholder="Search people" aria-label="Search people"><div class="cp-contacts">${busy()}</div></aside>
           <section class="cp-conv"><div class="cp-empty">${ic("chat")}<p>Choose a person to start chatting.</p></div></section></div>`;
       document.body.appendChild(p);
       $(".cp-x", p).onclick = closeChat;
