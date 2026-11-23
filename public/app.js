@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.333"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.334"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.333"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.334"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1775,15 +1775,15 @@
     if (!force && Date.now() - badgeState.at < 15000) return;
     badgeState.at = Date.now();
     const [n, m] = await Promise.all([
-      sb.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*"), // 3.99.333: chat messages are on the Messenger icon
+      sb.from("notifications").select("id", { count: "exact", head: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*"), // 3.99.334: chat messages are on the Messenger icon
       sb.rpc("unread_messages_count")
     ]);
     const before = badgeState.notes, beforeMsgs = badgeState.msgs;
     badgeState.notes = n.error ? 0 : n.count || 0;
-    badgeState.msgs = (m.error ? 0 : Number(m.data || 0)) + (n.error ? 0 : n.count || 0); // 3.99.333: Messages = people + E-PORTAL
+    badgeState.msgs = (m.error ? 0 : Number(m.data || 0)) + (n.error ? 0 : n.count || 0); // 3.99.334: Messages = people + E-PORTAL
     paintBadges();
     if (!n.error && (badgeState.lastId == null || badgeState.notes > before)) pushNew().catch(() => {});
-    if (!m.error && badgeState.msgSeen && badgeState.msgs > beforeMsgs) pushAlert({ id: "m" + Date.now(), title: badgeState.msgs === 1 ? "New message" : `${badgeState.msgs} new messages`, body: "Open Messages to read", link: "__chat" }); // 3.99.333
+    if (!m.error && badgeState.msgSeen && badgeState.msgs > beforeMsgs) pushAlert({ id: "m" + Date.now(), title: badgeState.msgs === 1 ? "New message" : `${badgeState.msgs} new messages`, body: "Open Messages to read", link: "__chat" }); // 3.99.334
     if (!m.error) badgeState.msgSeen = true;
   }
   // 3.99.330: PUSH: a new notification pops up in the portal at once (a transfer, an approval, a message …), and as a
@@ -1858,7 +1858,7 @@
     // 3.97: Mark all as read stays at the top of the list (it was below the last notification)
     const unread = data.filter((n) => !n.is_read).length;
     box.innerHTML = `${alertBar()}<div class="mail-top"><span>${unread ? `${unread} unread` : "All read"}</span><button type="button" class="btn small" id="mailAllRead"${unread ? "" : " disabled"}>${ic("check")} Mark all as read</button></div>`
-      + data.map((n) => { const a0 = noteAction(n), a = n.is_read ? null : a0; // 3.99.333: buttons only while unread; then the mark stays
+      + data.map((n) => { const a0 = noteAction(n), a = n.is_read ? null : a0; // 3.99.334: buttons only while unread; then the mark stays
         return `<div class="mail-wrap"><a class="mail-item ${n.is_read ? "" : "unread"}" href="#${esc(n.link || "dashboard")}" data-n="${n.id}">${noteFrom(n)}
       <b>${esc(n.title)}</b><span>${esc(n.body || "")}</span><small>${esc(timeAgo(n.created_at))}</small></a>${!a && a0 ? `<div class="mail-act"><span class="done-mark">${a0.single ? "✓ READ &amp; ACCEPTED" : "✓ DONE"}</span></div>` : ""}${a ? `<div class="mail-act"><button type="button" class="btn small ok" data-nok="${n.id}">${ic("check")} ${esc(a.okLabel || "Approve")}</button>${a.single ? "" : `<button type="button" class="btn small" data-nno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button>`}</div>` : ""}</div>`; }).join("");
     const byId = new Map(data.map((n) => [String(n.id), n]));

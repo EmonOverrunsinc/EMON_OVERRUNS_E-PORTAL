@@ -716,9 +716,9 @@
     p.classList.add("in-conv");
     renderContacts();
     $(".cp-conv", p).innerHTML = `<div class="cv-head"><span class="cp-av"><img src="brand/seal-stamp.png" alt=""></span>
-        <div><b>EMON OVERRUNS E-PORTAL<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Notifications · the portal sends these</small></div><button type="button" class="btn small cv-allread" hidden>${ic("check")} Mark all read</button></div>
+        <div><b>EMON OVERRUNS E-PORTAL<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Notifications · the portal sends these</small></div></div>
       <div class="cv-msgs" id="cvMsgs">${busy()}</div><div class="cv-compose cv-sys-foot">${ic("lock")} You cannot reply to E-PORTAL.</div>`;
-    $(".cv-allread", p).onclick = async () => { await sb.from("notifications").update({ is_read: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*"); CH.sysUnread = 0; CH.sysLast = ""; renderContacts(); E.refreshBadge(); loadPortalChat(); };
+    if ($(".cv-allread", p)) $(".cv-allread", p).onclick = async () => { await sb.from("notifications").update({ is_read: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*"); CH.sysUnread = 0; CH.sysLast = ""; renderContacts(); E.refreshBadge(); loadPortalChat(); };
     await loadPortalChat();
   }
   async function loadPortalChat() {
