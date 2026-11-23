@@ -5318,3 +5318,7 @@ body.os-info-open > .band-back { display: none !important; }
 .hist-fit th:nth-child(1), .hist-fit td:nth-child(1) { width: 27%; }
 /* 3.99.263: the Director's stamp in red ink on every paper */
 .eo-stamp.st-boss { --ink: #c0262d; }
+/* 3.99.265: "EMON OVERRUNS E-PORTAL" as one clean line (no box around E-PORTAL); the title badge a little smaller */
+.welcome .hero-tag { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 0 0 .25em; font: inherit; letter-spacing: inherit; color: inherit; text-transform: uppercase; }
+.welcome .tbadge { font-size: 11px; padding: 2px 8px; } .welcome .tbadge .ic { width: 13px; height: 13px; }
+.welcome .hero-tag { color: inherit !important; }
