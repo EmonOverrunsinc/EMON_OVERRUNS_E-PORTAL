@@ -200,7 +200,7 @@
     const [{ data: shops }, { data: cos }] = await Promise.all([sb.from("outlets").select("id, code, name, status").neq("status", "closed").order("code").then((r) => r, () => ({ data: [] })),
       sb.from("pay_companies").select("id, name, address").order("name").then((r) => r, () => ({ data: [] }))]); // 3.99.294: a company too
     const opt = (k, v, t, sub) => `<label class="asg-row"><input type="radio" name="wpTo" value="${k}:${v}"><span><b>${esc(t)}</b><small>${esc(sub)}</small></span></label>`;
-    const m = E.modal(`Transfer · ${fullName(em)}`, `<p class="muted">Choose the new workplace. The employee is told, and the move is kept in the Transfer History.</p><div class="asg-list">${opt("office", "", "EO OFFICE", "Operational office")}${(shops || []).map((o) => opt("outlet", o.id, o.code, o.name || "Retail outlet")).join("")}${(cos || []).map((c) => opt("company", c.id, c.name, c.address || "Company")).join("")}</div>`,
+    const m = E.modal(`Transfer · ${fullName(em)}`, `<p class="muted">Choose the new workplace. The employee is told, and the move is kept in the Transfer History.</p><div class="asg-list">${opt("office", "", "EO OFFICE", "Operational office")}${opt("manila", "", "REGIONAL OFFICE MANILA", "Regional office · Manila")}${opt("dhaka", "", "REGIONAL OFFICE DHAKA", "Regional office · Dhaka")}${(shops || []).map((o) => opt("outlet", o.id, o.code, o.name || "Retail outlet")).join("")}${(cos || []).map((c) => opt("company", c.id, c.name, c.address || "Company")).join("")}</div>`,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>${ic("check")} Save</button>`);
     $("[data-x]", m.el).onclick = m.close;
     $("[data-ok]", m.el).onclick = async (e) => {
@@ -306,7 +306,7 @@
     }, () => { const n = $("#emWorkNow"); if (n) n.innerHTML = `<div class="muted">Not set yet.</div>`; });
     sb.from("employee_transfers").select("*").eq("employee_id", em.id).order("moved_at", { ascending: false }).limit(50).then(({ data, error }) => { // 3.99.294: TRANSFER HISTORY (SQL 150)
       const h = $("#emWorkHist"); if (!h || error || !data?.length) return;
-      h.innerHTML = `<h4>Transfer History</h4><ol class="wp-tl">${data.map((t, i) => `<li class="${i ? "" : "now"}"><b>${esc(String(t.to_place || "").split(" · ")[0].toUpperCase())}</b>${t.from_place ? `<small>from ${esc(String(t.from_place).split(" · ")[0].toUpperCase())}</small>` : ""}<small>${esc(mdy(String(t.moved_at).slice(0, 10)))}${t.moved_by_name ? ` · by ${esc(String(t.moved_by_name).toUpperCase())}` : ""}</small>${i ? "" : `<span class="pill ok">NOW</span>`}</li>`).join("")}</ol>`;
+      h.innerHTML = `<h4>Transfer History</h4><ol class="wp-tl">${data.map((t, i) => `<li class="${i ? "" : "now"}"><b>${esc(String(t.to_place || "").split(" · ")[0].toUpperCase())}</b>${t.from_place ? `<small>from ${esc(String(t.from_place).split(" · ")[0].toUpperCase())}</small>` : ""}<small>${esc(mdy(String(t.moved_at).slice(0, 10)))}${t.moved_by_name ? ` · by ${esc(String(t.moved_by_name).toUpperCase())}` : ""}</small>${t.accepted_at ? `<span class="pill ok">READ &amp; ACCEPTED ${esc(mdy(String(t.accepted_at).slice(0, 10)))}</span>` : t.moved_by_name && t.moved_by_name !== "EMON OVERRUNS E-PORTAL" ? `<span class="pill pending">WAITING ACCEPT</span>` : ""}${i ? "" : `<span class="pill ok">NOW</span>`}</li>`).join("")}</ol>`;
     }, () => {});
     if ($("#emTransfer")) $("#emTransfer").onclick = () => placeDialog(em, () => V.employee(id));
     if ($("#emLinkMe")) $("#emLinkMe").onclick = async () => {
@@ -1298,7 +1298,7 @@
       // 3.99.131: the company's e-bills: bill amount, shipping bill, total, net sales, profit
       E.canOpen("inventory") || E.canOpen("ebill") ? sb.from("stock_bill_totals").select("id, bill_no, batch_no, total_boxes, total_cost, release_bdt, shipping_cost, bill_total, net_sales, total_expenses, profit, status, shipment_date").eq("company_id", id).order("created_at", { ascending: false }).then((r) => r, () => ({ data: [] })) : { data: [] },
       // 3.99.142: the employees assigned to this company (114)
-      sb.from("pay_company_staff").select(E.STAFF_SEL || "employee_id").eq("company_id", id).then((r) => r, () => ({ error: true })),
+      sb.from("pay_company_staff").select(`${E.STAFF_SEL || "employee_id"}, role`).eq("company_id", id).then((r) => (r.error ? sb.from("pay_company_staff").select(E.STAFF_SEL || "employee_id").eq("company_id", id) : r), () => ({ error: true })), // 3.99.326: + role
       sb.from("pay_companies").select("office").eq("id", id).maybeSingle().then((r) => r, () => ({ data: null })) // 3.99.163
     ]);
     const c = co.data;

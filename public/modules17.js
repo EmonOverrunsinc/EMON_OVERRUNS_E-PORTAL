@@ -653,7 +653,7 @@
   const STAFF_SEL = "employee_id, employees(id, first_name, last_name, employee_no, position, profile_id)";
   const need114 = (er, word) => (new RegExp(word).test((er && er.message) || "") ? "Run the database update 114 first" : null);
   function staffHtml(st) {
-    return `${st.length ? st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${isAdmin() ? `<span class="ol-emp-btns"><button type="button" class="btn small" data-stmove="${esc(x.employee_id)}">${ic("next")} Transfer</button><button type="button" class="btn small" data-stdel="${esc(x.employee_id)}" title="Remove">${ic("x")}</button></span>` : ""}</div>`).join("") : empty("No employee assigned.")}
+    return `${st.length ? st.map((x) => `<div class="ol-emp"><a href="#employee/${esc(x.employee_id)}"><b>${esc(empName(x.employees))}${x.role ? ` <span class="st-role ${x.role === "authorizer" ? "auth" : ""}">${x.role === "authorizer" ? "AUTHORIZER" : "EMPLOYEE"}</span>` : ""}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></a>${isAdmin() ? `<span class="ol-emp-btns">${x.role ? `<button type="button" class="btn small" data-strole="${esc(x.employee_id)}" data-to="${x.role === "authorizer" ? "employee" : "authorizer"}">${x.role === "authorizer" ? "Make Employee" : "Make Authorizer"}</button>` : ""}<button type="button" class="btn small" data-stmove="${esc(x.employee_id)}">${ic("next")} Transfer</button><button type="button" class="btn small" data-stdel="${esc(x.employee_id)}" title="Remove">${ic("x")}</button></span>` : ""}</div>`).join("") : empty("No employee assigned.")}
       ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small" data-stadd>${ic("plus")} Assign Employee</button></div>` : ""}`;
   }
   function bindStaff(root, kind, place, st) {
@@ -666,6 +666,11 @@
       toast("Removed. The employee is notified."); E.route();
     }));
     $$("[data-stmove]", root).forEach((b) => (b.onclick = () => transferForm(kind, place, st.find((x) => x.employee_id === b.dataset.stmove))));
+    $$("[data-strole]", root).forEach((b) => (b.onclick = async () => { // 3.99.326: a company's AUTHORIZER or EMPLOYEE (SQL 152)
+      const { error } = await sb.rpc("company_staff_role", { p_company: place.id, p_employee: b.dataset.strole, p_role: b.dataset.to });
+      if (error) return fail(error, /company_staff_role|PGRST202|schema cache/.test(error.message || "") ? "Run the database update 152 first" : "Could not change");
+      toast(b.dataset.to === "authorizer" ? "Now an AUTHORIZER of the company." : "Now an EMPLOYEE of the company."); E.route();
+    }));
   }
   async function assignForm(kind, place, have) {
     const { data, error } = await sb.from("employees").select("id, first_name, last_name, employee_no, position, status").order("first_name");
@@ -706,6 +711,34 @@
     };
   }
   E.staffHtml = staffHtml; E.bindStaff = bindStaff; E.STAFF_SEL = STAFF_SEL;
+  // 3.99.326: the ASSIGNED EMPLOYEES of a regional office (Manila / Dhaka), on top of its page; the Director assigns
+  const OFFICE_NAME = { manila: "REGIONAL OFFICE MANILA", dhaka: "REGIONAL OFFICE DHAKA" };
+  async function officeStaff(el, office) {
+    if (!el) return;
+    const { data, error } = await sb.rpc("office_staff", { p_office: office });
+    if (error) { el.hidden = true; return; }
+    const list = data || [];
+    el.innerHTML = `<div class="off-h"><h3>${ic("users")} Assigned Employees</h3>${isAdmin() ? `<button type="button" class="btn small primary" id="offAdd">${ic("plus")} Assign Employee</button>` : ""}</div>
+      ${list.length ? `<div class="off-list">${list.map((x) => `<a class="off-emp" href="#employee/${esc(x.id)}"><b>${esc(String(x.full_name || "").toUpperCase())}</b><small>${esc([x.employee_no, x.job_position].filter(Boolean).join(" · ").toUpperCase())}</small></a>`).join("")}</div>` : `<div class="muted off-none">No employee assigned to ${OFFICE_NAME[office]} yet.</div>`}`;
+    el.hidden = false;
+    if ($("#offAdd", el)) $("#offAdd", el).onclick = async () => {
+      const { data: emps } = await sb.from("employees").select("id, first_name, last_name, employee_no, position, status").neq("status", "terminated").order("first_name");
+      const have = new Set(list.map((x) => x.id));
+      const rows = (emps || []).filter((x) => !have.has(x.id));
+      const m = E.modal(`Assign Employee · ${OFFICE_NAME[office]}`, `<p class="muted">The employee is moved to ${OFFICE_NAME[office]}, gets this office's area in the portal, and must press READ & ACCEPT.</p>
+        <div class="asg-list">${rows.map((x) => `<label class="asg-row"><input type="radio" name="offEmp" value="${esc(x.id)}"><span><b>${esc(`${x.first_name || ""} ${x.last_name || ""}`.trim().toUpperCase())}</b><small>${esc([x.employee_no, x.position].filter(Boolean).join(" · "))}</small></span></label>`).join("") || `<div class="muted">No other employee.</div>`}</div>`,
+        `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>${ic("check")} Assign</button>`);
+      $("[data-x]", m.el).onclick = m.close;
+      $("[data-ok]", m.el).onclick = async (e) => {
+        const id = $("input[name=offEmp]:checked", m.el)?.value; if (!id) return toast("Choose the employee.", true);
+        E.setBusy(e.currentTarget, true);
+        const { error: er } = await sb.rpc("employee_place_set", { p_employee: id, p_kind: office, p_to: null });
+        if (er) { E.setBusy(e.currentTarget, false); return fail(er, /Unknown place|employee_place_set/.test(er.message || "") ? "Run the database update 152 first" : "Could not assign"); }
+        m.close(); toast("Assigned. The employee is told and must press READ & ACCEPT."); officeStaff(el, office);
+      };
+    };
+  }
+  E.officeStaff = officeStaff;
 
   // ---------- the monthly statement (SOA): a ledger of the month ----------
   // 3.99.175: the DAILY SALES REPORT of one shop for ONE day: the sales (cash, GCash), the day's expenses and cash out, the cash
@@ -964,8 +997,9 @@
   V.regional = async () => {
     const it = E.regionalItems();
     if (it.length === 1) { location.replace("#" + it[0][0]); return; } // only one page inside: open it
-    E.shell("regional", "Regional Office Dhaka", `${E.regTabs("regional")}<div class="reg-cards">${it.map(([k, l, icon]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(REG_SAY[k] || "")}</small><em id="regN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>`);
+    E.shell("regional", "Regional Office Dhaka", `${E.regTabs("regional")}<section class="off-staff" id="offStaff" hidden></section><div class="reg-cards">${it.map(([k, l, icon]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(REG_SAY[k] || "")}</small><em id="regN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>`);
     const here = E.stillHere();
+    officeStaff($("#offStaff"), "dhaka"); // 3.99.326
     const cnt = (q) => q.then((r) => (r.error ? null : r.count), () => null);
     const ask = {
       purchase: () => cnt(sb.from("purchase_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "negotiation"])).then((n) => (n == null ? "" : n ? `${n} waiting for approval` : "Nothing waiting")),

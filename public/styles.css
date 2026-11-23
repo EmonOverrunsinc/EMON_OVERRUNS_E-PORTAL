@@ -5585,3 +5585,17 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .cv-msg .cv-del svg { width: 13px; height: 13px; }
 .cv-msg .cv-img img { max-width: 220px; max-height: 260px; border-radius: 10px; display: block; }
 .cv-day { font-size: 11px; }
+/* 3.99.326: the assigned employees on top of a regional office; company roles; E-PORTAL chat buttons */
+.off-staff { background: var(--card, #fff); border: 1px solid #e3e9f4; border-radius: 14px; padding: 12px 14px; margin: 0 0 12px; }
+.off-staff .off-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.off-staff .off-h h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 6px; color: #0f2a66; }
+.off-staff .off-h h3 svg { width: 18px; height: 18px; }
+.off-staff .off-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.off-staff .off-emp { display: grid; gap: 1px; padding: 7px 12px; border-radius: 12px; background: #f3f6fc; border: 1px solid #e3e9f4; text-decoration: none; }
+.off-staff .off-emp b { font-size: 13px; color: #0f2a66; } .off-staff .off-emp small { font-size: 11px; color: #5b6b8c; }
+.off-staff .off-none { margin-top: 8px; font-size: 13px; }
+.st-role { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 8px; font-size: 9.5px; letter-spacing: .06em; background: #eef2f7; color: #5b6b8c; vertical-align: middle; }
+.st-role.auth { background: #fff3cd; color: #8a6400; }
+.cv-head { position: relative; } .cv-head .cv-allread { margin-left: auto; height: 28px; min-height: 0; padding: 0 10px; font-size: 12px; }
+.cv-note .cv-read { background: #fff; border: 1px solid #d6dfef; }
+.cv-head .cv-allread { white-space: nowrap; font-size: 11.5px; padding: 0 9px; flex: none; } .cv-head > div { min-width: 0; }

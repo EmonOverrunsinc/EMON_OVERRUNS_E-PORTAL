@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.325"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.326"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.325"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.326"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1782,7 +1782,7 @@
     paintBadges();
     if (!n.error && (badgeState.lastId == null || badgeState.notes > before)) pushNew().catch(() => {});
   }
-  // 3.99.325: PUSH: a new notification pops up in the portal at once (a transfer, an approval, a message …), and as a
+  // 3.99.326: PUSH: a new notification pops up in the portal at once (a transfer, an approval, a message …), and as a
   // phone / computer alert when the portal is in the background and alerts are allowed
   async function pushNew() {
     const { data } = await sb.from("notifications").select("id, title, body, link, created_at").eq("is_read", false).order("id", { ascending: false }).limit(5);
@@ -1813,8 +1813,9 @@
   };
   // Approve / Reject right in the notification (EMON HASAN) when the record can be decided from here
   const noteAction = (n) => {
-    if (!isAdmin()) return null;
     const l = String(n.link || ""), id = l.split("/")[1] || "", t = String(n.title || "");
+    if (/^You now work at /i.test(t) && !isAdmin()) return { ok: () => sb.rpc("transfer_accept"), okLabel: "Read & Accept", single: true }; // 3.99.326 (SQL 152)
+    if (!isAdmin()) return null;
     if (/^custorder\//.test(l) && /to review/i.test(t)) return { ok: () => sb.rpc("decide_customer_order", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_customer_order", { p_id: id, p_action: "cancel" }), noLabel: "Cancel Order" };
     if (/^insurance\//.test(l) && /to review/i.test(t)) return { ok: () => sb.rpc("decide_insurance", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_insurance", { p_id: id, p_action: "reject" }) };
     if (/^po\//.test(l) && /to review/i.test(t) && !/update/i.test(t)) return { ok: () => sb.rpc("decide_purchase_order", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_purchase_order", { p_id: id, p_action: "cancel" }), noLabel: "Cancel" };
@@ -1841,7 +1842,7 @@
     box.innerHTML = `<div class="mail-top"><span>${unread ? `${unread} unread` : "All read"}</span><button type="button" class="btn small" id="mailAllRead"${unread ? "" : " disabled"}>${ic("check")} Mark all as read</button></div>`
       + data.map((n) => { const a = noteAction(n);
         return `<div class="mail-wrap"><a class="mail-item ${n.is_read ? "" : "unread"}" href="#${esc(n.link || "dashboard")}" data-n="${n.id}">${noteFrom(n)}
-      <b>${esc(n.title)}</b><span>${esc(n.body || "")}</span><small>${esc(timeAgo(n.created_at))}</small></a>${a ? `<div class="mail-act"><button type="button" class="btn small ok" data-nok="${n.id}">${ic("check")} Approve</button><button type="button" class="btn small" data-nno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button></div>` : ""}</div>`; }).join("");
+      <b>${esc(n.title)}</b><span>${esc(n.body || "")}</span><small>${esc(timeAgo(n.created_at))}</small></a>${a ? `<div class="mail-act"><button type="button" class="btn small ok" data-nok="${n.id}">${ic("check")} ${esc(a.okLabel || "Approve")}</button>${a.single ? "" : `<button type="button" class="btn small" data-nno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button>`}</div>` : ""}</div>`; }).join("");
     const byId = new Map(data.map((n) => [String(n.id), n]));
     const decide = async (b, ok) => {
       const n = byId.get(b.dataset.nok || b.dataset.nno), a = n && noteAction(n); if (!a) return;
@@ -1850,7 +1851,7 @@
       const r = await (ok ? a.ok() : a.no()).catch((e) => ({ error: e }));
       if (r?.error) { b.disabled = false; return fail(r.error, "Could not do it"); }
       await sb.from("notifications").update({ is_read: true }).eq("id", n.id);
-      toast(ok ? "Approved." : "Done."); loadMail(); refreshBadge();
+      toast(ok ? (a.single ? "Read & accepted. The Director is told." : "Approved.") : "Done."); loadMail(); refreshBadge();
     };
     $$("[data-nok]", box).forEach((b) => (b.onclick = () => decide(b, true)));
     $$("[data-nno]", box).forEach((b) => (b.onclick = () => decide(b, false)));
