@@ -5288,3 +5288,6 @@ body.os-info-open > .band-back { display: none !important; }
 .idc-photo .idc-holo { box-shadow: none !important; opacity: 1; background: conic-gradient(from 30deg, rgba(255, 143, 216, .45), rgba(255, 211, 107, .45), rgba(157, 255, 176, .45), rgba(127, 216, 255, .45), rgba(181, 155, 255, .45), rgba(255, 143, 216, .45)); }
 .idc-photo .idc-holo::before { background: repeating-radial-gradient(circle, rgba(255, 255, 255, .25) 0 .18mm, transparent .18mm .45mm); }
 .idc-photo .idc-holo .idc-holo-st { mix-blend-mode: normal; opacity: .95; }
+/* 3.99.259: every box stamp (VERIFIED, PENDING, CASH SHORT) as wide as the signing line, straight */
+.so-ok .dsr-cash { display: block; margin: 0 0 3mm; }
+.so-ok .dsr-cash .eo-stamp.vst, .dsr-cash .eo-stamp.vst { display: grid; width: 100%; box-sizing: border-box; transform: none; justify-items: center; white-space: normal; }
