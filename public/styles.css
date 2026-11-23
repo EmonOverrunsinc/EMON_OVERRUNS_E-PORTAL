@@ -5508,3 +5508,10 @@ body.os-info-open > .band-back { display: none !important; }
 /* 3.99.311: the store logo on the left of the shop papers' head */
 .ph2.ph-shop3 .store-logo.ph-store { width: 16mm; height: 16mm; flex: none; }
 .ph2.ph-shop3 .ph-title { font-size: 14px !important; white-space: nowrap; letter-spacing: .04em; }
+/* 3.99.312: the medals in the blue band, on the right */
+#main .cust-hero { position: relative; }
+#main .cust-hero > .ch-medals { position: absolute; right: 18px; top: 22px; margin: 0; z-index: 3; }
+#main .cust-hero:has(.auth-st) > .ch-medals { right: 84px; }
+#main .cust-hero > .ch-medals .md-mini { background: rgba(255, 255, 255, .96); border-color: rgba(255, 255, 255, .6); padding: 5px 10px; gap: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); }
+#main .cust-hero > .ch-medals .md-mini .mm > :first-child { width: 22px !important; height: 22px !important; min-width: 22px; }
+#main .cust-hero > .ch-medals .md-mini .mm b { font-size: 13px; }
