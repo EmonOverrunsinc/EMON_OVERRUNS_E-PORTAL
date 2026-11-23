@@ -546,7 +546,7 @@
     const photos = (o.delivery_photos || []).length, waiting = o.status === "approved" && !!o.delivery_request_at, done = o.status === "completed";
     const sameTime = done && o.delivered_at && Math.abs(new Date(o.completed_at) - new Date(o.delivered_at)) < 120000;
     add(o.delivered_at || o.delivery_request_at, waiting ? "Delivery submitted" : "Order has been delivered", [
-      photos ? `<button type="button" class="tl-link" data-pod>View Proof of Delivery</button>` : "", o.plate_no ? `License Plate Number: <b>${esc(o.plate_no)}</b>` : "", o.vehicle_type ? `Type of Car: <b>${esc(o.vehicle_type)}</b>` : "",
+      photos ? `<button type="button" class="tl-link" data-pod>View Proof of Delivery</button>` : "", o.plate_no ? `Plate No: <b class="nw">${esc(o.plate_no)}</b>` : "", o.vehicle_type ? `Car: <b class="nw">${esc(o.vehicle_type)}</b>` : "",
       waiting ? "Waiting for EMON HASAN's approval" : "", by(done ? o.completed_by_name : o.delivery_request_by), sameTime && inv ? `Invoice ${esc(inv.invoice_no)} made and billed` : ""]);
     if (done && !sameTime) add(o.completed_at, "Order completed", [inv ? `Invoice ${esc(inv.invoice_no)} made and billed` : "", by(o.completed_by_name)]);
     if (o.status === "cancelled") add(o.cancelled_at || o.updated_at || o.created_at, "Order cancelled", [by(o.cancelled_by_name), o.cancel_note ? esc(o.cancel_note) : ""], "tl-bad");
