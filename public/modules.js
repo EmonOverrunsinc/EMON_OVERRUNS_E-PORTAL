@@ -237,7 +237,7 @@
   const EOIDS = new Map(), eoidOf = (id) => (id && EOIDS.get(id)) || "";
   const stampOf = (id, name = "", pos = "", boss = false) => { const s = (id && STAMPS.get(id)) || {}; return { name: s.name || name, pos: s.pos || pos, eoid: s.eoid || eoidOf(id), boss: s.boss || boss }; };
   // 3.99.242: on papers the stamp is the name, the position (from the employee profile) and the EOID (no crown, no mark)
-  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${s.boss ? " st-boss" : ""}${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.pos ? `<em>${esc(String(s.pos).toUpperCase())}</em>` : ""}${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}</span>` : "");
+  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${s.boss ? " st-boss" : ""}${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.pos ? `<em>${esc(String(s.pos).toUpperCase())}</em>` : ""}${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}${s.date ? `<small class="st-date">${esc(s.date)}</small>` : ""}</span>` : "");
   // on a paper: the blue words of who signs, under the line (never the signature picture; they sign by hand after printing)
   const sigMark = (sign) => (sign ? stampHtml(sign.stamp || (sign.name ? { name: sign.name } : null)) : "");
   // 3.99.219: the id of a Director by name (from the Directors' signatures list), e.g. to print EMON HASAN's EOID
@@ -558,7 +558,8 @@
   // on the right line, with the name and the date under it.
   const sigCol = (label, sign) => {
     const mark = sigMark(sign);
-    if (mark) return `<div class="sig-on">${sign.pic && !sign.dir ? `<img class="esig" src="${esc(sign.pic)}" alt="Signature">` : ""}<div class="line"></div>${mark}<small class="sig-role">${String(label).replace(/:[\s\S]*$/, "")}${sign.at ? ` &nbsp;·&nbsp; <span class="nw">${esc(mdy(sign.at))}</span>` : ""}</small></div>`;
+    // 3.99.262: the date goes inside the stamp; no "Approved by" words under it
+    if (mark) return `<div class="sig-on">${sign.pic && !sign.dir ? `<img class="esig" src="${esc(sign.pic)}" alt="Signature">` : ""}<div class="line"></div>${sigMark({ ...sign, stamp: { ...(sign.stamp || { name: sign.name }), date: sign.at ? mdy(sign.at) : "" } })}</div>`;
     return sign ? `<div class="sig-on"><div class="line"></div>${label}${sign.name ? `: <b class="nw">${esc(sign.name)}</b>` : ""}${sign.at ? ` &nbsp;·&nbsp; <span class="nw">${esc(mdy(sign.at))}</span>` : ""}</div>`
       : `<div><div class="line"></div>${label}</div>`;
   };
@@ -1096,8 +1097,8 @@
     const boss = isAdmin(); // 3.99.220: INFO only for the Director: the bio data, documents, medals history and forms
     const achAt = isStaff() && !boss ? tabs.push("Achieved") - 1 : -1; // 3.99.180/200: medals and the prize pool (staff)
     const infoAt = boss ? tabs.push("Info") - 1 : -1;
-    const histHtml = E.grid({ cols: [{ label: "Date / Time", get: (r) => stamp(new Date(r.at)) }, { label: "Action", get: (r) => r.action }, { label: "By", get: (r) => r.by }, { label: "Note", get: (r) => r.note },
-          ...(isAdmin() ? [{ label: "", html: (r) => `<button type="button" class="btn small danger" data-hdel="${r.src}:${r.id}" aria-label="Delete this history line">${ic("trash")}</button>` }] : [])], rows: history });
+    const histHtml = `<div class="hist-fit">` + E.grid({ cols: [{ label: "Date / Time", get: (r) => stamp(new Date(r.at)) }, { label: "Action", get: (r) => r.action }, { label: "By", get: (r) => r.by }, { label: "Note", get: (r) => r.note },
+          ...(isAdmin() ? [{ label: "", html: (r) => `<button type="button" class="btn small danger" data-hdel="${r.src}:${r.id}" aria-label="Delete this history line">${ic("trash")}</button>` }] : [])], rows: history }) + `</div>`;
     const docsHtml = `${filesHtml(att.map((a) => a.kind === "signed_form" ? { ...a, kind: "application" } : a), "No documents yet.")}${isStaff() && c.status !== "closed" ? `<div class="fields wide" style="margin-top:8px">${fileField("pfAdd", "Add Requirement", "multiple data-save-now")}</div>` : ""}`;
     $(".band h1").textContent = `Customer › ${fullName(c)}`;
     $("#main").innerHTML = `
@@ -1292,7 +1293,7 @@
       ["Credits / Discounts", "₱ " + peso(b.total_credits)], ["Balance Due", "₱ " + peso(b.balance_due)]] : [];
     const a = appRows(c);
     const rows = [ // 3.99.220: the account figures only (the bio data is in the Director's Info tab)
-      ["Account No", c.account_no], a.credit, a.opening, ...money,
+      ["Full Name", fullName(c).toUpperCase()], ["Account No", c.account_no], a.credit, a.opening, ...money, // 3.99.262: the full name first
       [["pending", "verified", "rejected"].includes(c.status) ? "Application Date" : "Opening Date", mdy(c.application_date)], ["Account Status", c.status.toUpperCase()], ["Status Note", c.status_note]
     ];
     return E.kvTable(rows);
@@ -2544,7 +2545,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     const one = (label, sign) => `<div class="psig one"><div></div>${sigCol(label, sign)}</div>`;
     const sign = p && p.signature_status === "approved" ? p.approval : null;
     const details = p
-      ? [["Full Name", p.full_name, "hl"], ["Position / Designation", p.position], ["Employee No / ID No", p.employee_no], ["Username", p.username ? "@" + p.username : ""], ["Phone Number", p.phone], ["Email Address", p.email]]
+      ? [["Full Name", p.full_name, "hl"], ["Position / Designation", p.position], ["Employee No / ID No", p.employee_no], ["Phone Number", p.phone], ["Email Address", p.email]]
       : [["Full Name", ""], ["Position / Designation", ""], ["Employee No / ID No", ""], ["Department", ""], ["Phone Number", ""], ["Email Address", ""]];
     const boxes = p
       ? `<div class="sv-one">${p.signature_pic ? `<img src="${esc(p.signature_pic)}" alt="Signature">` : `<span>No signature uploaded yet</span>`}</div>
@@ -2628,16 +2629,12 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         <div class="me-photo">${av ? `<img src="${esc(av)}" alt="Your photo">` : `<span>${esc(E.initials(myName()))}</span>`}
           <label class="btn small" for="mpFile">${ic("camera")} Change Photo</label><input type="file" id="mpFile" accept="image/*" hidden></div>
         <div class="me-main"><h2>${E.bossName(myName(), S.profile.role)}</h2>
-          <div class="me-sub">${S.profile.username ? `@${esc(S.profile.username)} · ` : ""}${esc(S.session.user.email)} · ${E.titleHtml(S.profile.role, emp?.position)}</div>
+          <div class="me-sub">${esc(S.session.user.email)} · ${E.titleHtml(S.profile.role, emp?.position)}</div>
           ${emp ? `<div class="ch-ids">${idBox("Employee No", emp.employee_no)}${idBox("Position", emp.position)}${idBox("Date Hired", mdy(emp.date_hired))}${idBox("Monthly Salary (₱)", peso(emp.monthly_salary))}</div>` : ""}
         </div>
       </section>
       <div class="cols">
-        <fieldset class="opt"><legend>Username</legend>
-          ${S.profile.username ? `<p>Your username is <b>@${esc(S.profile.username)}</b>. You can sign in with it or with your email.</p>`
-            : `<p>Set a username so you can sign in without typing your email.</p><div class="fields wide"><label for="mpUser">Username</label><input type="text" id="mpUser" maxlength="20" autocapitalize="none" spellcheck="false" placeholder="3–20 letters, numbers, dot or underscore"></div>
-              <div class="btnrow"><button type="button" class="btn primary" id="mpUserSave">Save Username</button></div>`}
-        </fieldset>
+
         <fieldset class="opt"><legend>Password</legend><p>Change the password you sign in with.</p><div class="btnrow"><button type="button" class="btn" id="mpPw">${ic("key")} Change Password</button></div></fieldset>
         <fieldset class="opt dev-card" id="mpDev" hidden></fieldset>
       </div>

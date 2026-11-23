@@ -5303,3 +5303,16 @@ body.os-info-open > .band-back { display: none !important; }
 .os-chips .os-next { display: inline-flex; align-items: center; gap: 6px; }
 .os-chips { flex-wrap: wrap; }
 .os-hero .os-hero-id { display: none !important; } /* 3.99.261: no branch-code rosette behind the chips */
+/* 3.99.262: the customer History fits the screen: the note wraps, no sideways scroll */
+.hist-fit table { table-layout: fixed; width: 100%; }
+.hist-fit th:nth-child(1), .hist-fit td:nth-child(1) { width: 24%; } .hist-fit th:nth-child(2), .hist-fit td:nth-child(2) { width: 26%; }
+.hist-fit th:nth-child(3), .hist-fit td:nth-child(3) { width: 16%; }
+.hist-fit td { white-space: normal !important; word-break: break-word; overflow-wrap: anywhere; vertical-align: top; }
+.hist-fit th:last-child:empty, .hist-fit td:last-child:has(.btn) { width: 46px; }
+.soa-no .soa-corr { display: inline-block; margin: .6mm 0 0; padding: .3mm 1.6mm; border: .3mm solid #b42318; border-radius: .8mm; color: #b42318; font-weight: 800; letter-spacing: .1em; }
+.eo-stamp .st-date { font-size: 6.4pt; letter-spacing: .1em; margin-top: .3mm; }
+/* 3.99.262: ID card back: the Director's signature at a normal size */
+.idc-sigpic img { max-width: 22mm !important; max-height: 6mm !important; }
+/* the customer History: the date never breaks */
+.hist-fit td:nth-child(1) { white-space: nowrap !important; overflow-wrap: normal; word-break: normal; font-size: .92em; }
+.hist-fit th:nth-child(1), .hist-fit td:nth-child(1) { width: 27%; }
