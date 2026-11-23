@@ -465,7 +465,7 @@
     if ($("#olNwd")) $("#olNwd").onclick = () => nwdForm(o, clos, m);
     if ($("#olHours")) $("#olHours").onclick = () => hoursForm(o, m);
     if ($("#olPayRent")) $("#olPayRent").onclick = () => expenseForm(o, null, "", { kind: "rent", amount: rs.left.toFixed(2), payee: "Landlord", note: `Rent ${E.monthText(m)}${rs.paidAmt > 0 ? " (the rest)" : ""}` });
-    if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null, carry0, op: opCost, used: usedM, pool, drawer });
+    if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null, carry0, op: opCost, used: usedM, pool, drawer, staff: st });
     E.setRecords(`Outlet: ${o.code}`);
     document.body.classList.remove("os-info-open");
     let want = ""; try { want = sessionStorage.getItem("eoSoaPrint") || ""; } catch (_) {}
@@ -852,7 +852,8 @@
   // the expenses, the cash out and the stock payments (each a table with its total), and the signatures. A long month
   // goes on to the next page (the table head is repeated there).
   async function printSoa(o, m, d) {
-    const bossId = await loadBoss([S.profile?.id]);
+    const resp = ((d.staff || []).map((x) => x.employees).filter(Boolean))[0] || null; // 3.99.282: the store's own employee signs, not who prints
+    const bossId = await loadBoss([resp?.profile_id].filter(Boolean));
     const days = chainDays(d.sales, d.exps, num(d.carry0)); // 3.99.220: the cash left goes on to the next day
     const xps = d.exps.filter((r) => r.kind !== "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
     const cos = d.exps.filter((r) => r.kind === "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
@@ -897,7 +898,7 @@
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the signatures
-    blocks.push({ h: 7, html: nameBoxes(me() || "", soaNo, bossId, "", S.profile?.id, "", null, mdy(isoNow())) }); // 3.99.228: no sum line box; the tiles show it
+    blocks.push({ h: 7, html: nameBoxes("", soaNo, bossId, "", resp?.profile_id || "", "", resp, mdy(isoNow())) }); // 3.99.228: no sum line box; the tiles show it
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;
@@ -906,7 +907,7 @@
       cur.push(b.html); used += b.h;
     }
     if (cur.length) pages.push(cur);
-    const html = pages.map((pg, i) => `<div class="soa-doc">${i ? `<div class="soa-cont"><b>${esc(C.company.name)}</b> · OUTLET STATEMENT · ${esc(o.code)} · ${esc(E.monthText(m))}<span>${esc(soaNo)}</span></div>` : ""}${pg.join("")}<div class="soa-pg">Page ${i + 1} of ${pages.length}</div></div>`);
+    const html = pages.map((pg, i) => `<div class="soa-doc">${i ? `<div class="soa-cont"><b>${esc(C.company.name)}</b> · OUTLET STATEMENT · ${esc(o.code)} · ${esc(E.monthText(m))}<span>${esc(soaNo)}</span></div>` : ""}${pg.join("")}${pages.length > 1 ? `<div class="soa-pg">Page ${i + 1} of ${pages.length}</div>` : ""}</div>`);
     E.openPreview(`Outlet Statement ${o.code} ${E.monthText(m)}`, html);
   }
 
