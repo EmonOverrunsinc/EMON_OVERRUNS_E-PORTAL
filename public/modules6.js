@@ -206,7 +206,7 @@
     <div class="qc-card-row"><span>Qty Found</span><b>${res && t.qty != null ? esc(E.qtyText(t.qty)) : ""}</b></div>
     <div class="qc-card-row"><span>Result</span><b class="qc-res">${res ? `Pass ${res.pass} · Fail ${res.fail}` : ""}</b><b class="qc-verdict${res ? " " + res.verdict.toLowerCase() : ""}">${res ? res.verdict : ""}</b></div>
     <div class="qc-card-row"><span>Check By</span><b>${res ? esc(res.by) : ""}</b></div>
-    ${code != null ? `<div class="qc-card-seal">${E.secSeal(t.qc_no, { code })}</div>${qcMicro(t)}` : ""}</div>`;
+    ${code != null ? `<div class="qc-card-seal">${E.secSeal(t.qc_no, { code, trx: t.id, by: E.eoidOf?.(t.created_by) || "" })}</div>${qcMicro(t)}` : ""}</div>`;
   // The 2 stickers on plain paper: nothing else on the page (no heading, no footer, no date).
   // 3.99.106: each sticker carries the security seal of the QC test (its unique seal no)
   const stickerPage = (t, res, code = "") => `<div class="qc-cards qc-sticker">${qcCard(t, res, code)}${qcCard(t, res, code)}</div>`;

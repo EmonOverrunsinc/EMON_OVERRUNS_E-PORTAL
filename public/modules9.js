@@ -120,10 +120,10 @@
           <small>CARD NO</small><b class="mono">${esc(d.card.card_no)}</b><small>ISSUED</small><b>${esc(mdy(d.card.issued_at))}</b>
           <small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b>${d.appNo ? `<small>APPLICATION NO</small><b class="mono">${esc(d.appNo)}</b>` : ""}</div></div>
       <div class="idc-sign"><img class="idc-stamp" src="${STAMP}" alt="Company stamp"><div class="idc-sigpic">${d.dirSig ? `<img src="${esc(d.dirSig)}" alt="">` : ""}</div><i></i>
-        <b>${esc(d.dirName || "")}</b><small class="idc-dtitle">${esc(d.dirTitle || "REGIONAL DIRECTOR")}</small></div>
+        ${E.stampHtml ? E.stampHtml(E.stampOf ? E.stampOf(d.card.issued_by, d.dirName || "", d.dirTitle || "") : { name: d.dirName || "", pos: d.dirTitle || "" }) : `<b>${esc(d.dirName || "")}</b><small class="idc-dtitle">${esc(d.dirTitle || "REGIONAL DIRECTOR")}</small>`}</div>
       <p class="idc-note">Property of ${esc(C.company.name)} · not transferable · if found, please return it.<br><b>Verify this card: ${esc(site || "emonoverruns.online")}/verify</b></p>
       <div class="idc-bsec">${d.photo ? `<div class="idc-ghost b2"><img src="${esc(d.photo)}" alt=""><span>${esc(`${em.employee_no} `.repeat(14))}</span></div>` : ""}
-        <div class="idc-miniseal">${E.secSeal ? E.secSeal(d.card.card_no, { code: d.seal || "", lines: [fullName(em).toUpperCase(), em.employee_no || "", (em.position || "EMPLOYEE").toUpperCase()].filter(Boolean) }) : ""}</div></div>
+        <div class="idc-miniseal">${E.secSeal ? E.secSeal(d.card.card_no, { code: d.seal || "", trx: d.card.id || "", by: E.eoidOf?.(d.card.issued_by) || E.eoidOf?.(E.directorId?.("EMON HASAN")) || "", lines: [fullName(em).toUpperCase(), em.employee_no || "", (em.position || "EMPLOYEE").toUpperCase()].filter(Boolean) }) : ""}</div></div>
       <div class="idc-foot"><span class="idc-micro">${micro(8)}</span><b>${esc(em.employee_no)}</b></div>
     </div>`;
   }
@@ -139,7 +139,7 @@
       em.photo_path ? E.signedUrl(em.photo_path, 3600) : "",
       em.profile_id ? sb.from("profiles").select("signature_path, signature_status").eq("id", em.profile_id).maybeSingle() : { data: null },
       em.job_application_id ? sb.from("job_applications").select("blood_group, application_no").eq("id", em.job_application_id).maybeSingle() : { data: null },
-      E.loadSignatures(),
+      Promise.all([E.loadSignatures(), card.issued_by ? E.loadSigners?.([card.issued_by]) : null]), // 3.99.240: and the issuer's name, position, EOID
       // 3.99.124: the title of the Director who approved (issued) the card, for its back
       card.issued_by ? sb.from("employees").select("position").eq("profile_id", card.issued_by).maybeSingle().then((r) => r.data, () => null) : null
     ]);
@@ -246,5 +246,5 @@
     if (open) $("[data-open]", m.el).onclick = () => { m.close(); location.hash = "employee/" + r.data.employee_id; };
   }
 
-  Object.assign(E, { idCardTab, cardInfoBox, cardCheck, showCardCheck });
+  Object.assign(E, { idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet }); // idCardSheet: for the print checks
 })();

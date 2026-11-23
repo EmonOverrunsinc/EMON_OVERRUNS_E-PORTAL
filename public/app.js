@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.239"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.240"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.239"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.240"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -699,13 +699,15 @@
   const sealCached = (kind, ref) => sealMem.get(kind + "|" + ref) || ""; // 3.99.106: a seal no already fetched (for the page builders)
   const sealFmt = (c) => String(c || "").replace(/(\d{4})(?=\d)/g, "$1 ");
   let sealIds = 0;
-  function secSeal(ref, { code = "", cls = "", doc = "", noRef = false, lines = [], paper = false } = {}) {
-    const docNo = !!(paper && ref); // 3.99.239: a paper's sticker (invoice, receipt, certificate) carries the paper's own number: big, in the ring and the microtext
+  function secSeal(ref, { code = "", cls = "", doc = "", noRef = false, lines = [], paper = true, by = "", trx = "" } = {}) {
+    // 3.99.240: every sticker carries its own number (invoice no, card no, serial no, QC no …): big, in the ring and the
+    // microtext; by: the EOID of who issued or approved it, written in the microtext and the ring
+    const docNo = !!(paper && ref && !noRef);
     if (docNo) lines = lines.filter((l, i) => !(i === 0 && l === ref));
     const site = siteName() || "emonoverruns.online", no = code && !docNo ? sealFmt(code) : ref, id = "eosr" + ++sealIds;
     // a microtext line of whole words: the words that do not fit go to a hidden 2nd line (never cut in the middle)
-    const line = (k, n = 6) => `<div class="eos-micro ${k}">${Array.from({ length: n }, () => (k === "l" || k === "r" ? [C.company.name] : [C.company.name, no])).flat().map((t) => `<span>${esc(t)}</span>`).join("")}</div>`; // 3.99.108: the short side edges carry only the name (never cut)
-    const ring = esc(`${C.company.name} · ${no} · ${C.company.name} · `); // 3.99.105: EMON OVERRUNS and the seal no (the address stays the small line)
+    const line = (k, n = 6) => `<div class="eos-micro ${k}">${Array.from({ length: n }, () => (k === "l" || k === "r" ? [C.company.name] : [C.company.name, no, ...(by ? [by] : [])])).flat().map((t) => `<span>${esc(t)}</span>`).join("")}</div>`; // 3.99.108: the short side edges carry only the name (never cut)
+    const ring = esc(by ? `${C.company.name} · ${no} · ${by} · ` : `${C.company.name} · ${no} · ${C.company.name} · `); // 3.99.105: EMON OVERRUNS and the seal no (the address stays the small line)
     return `<div class="eos ${cls}" role="img" aria-label="Security seal ${esc(no)}">
       ${line("t", 8)}${line("b", 8)}${line("l", 4)}${line("r", 4)}
       <div class="eos-logo"><svg class="eos-ring" viewBox="0 0 100 100" aria-hidden="true"><defs><path id="${id}" d="M50,50 m-40.4,0 a40.4,40.4 0 1,1 80.8,0 a40.4,40.4 0 1,1 -80.8,0"/></defs>
@@ -713,7 +715,7 @@
         <text font-family="Arial, sans-serif" font-size="7.6" font-weight="700" fill="#12306b"><textPath href="#${id}" textLength="252" lengthAdjust="spacing">${ring}</textPath></text></svg>
         <div class="eos-logo-in">${logoHtml("eos-img")}</div></div>
       <div class="eos-mid"><div class="eos-no">${esc(no)}</div>
-        <div class="eos-ref">${lines.length ? lines.map((l, i) => `<span class="eos-line${i ? "" : " main"}">${esc(l)}</span>`).join("") : noRef || docNo ? "" : code ? esc(ref) : "REFERENCE NO"}<small>${esc(site.toLowerCase())}/verify</small><em class="eos-printed"><span>${esc(dateTime(new Date().toISOString()))}</span>${S.profile?.full_name ? `<span>PRINTED BY: ${esc(String(S.profile.full_name).toUpperCase())}</span>` : ""}</em></div></div></div>`;
+        <div class="eos-ref">${lines.length ? lines.map((l, i) => `<span class="eos-line${i ? "" : " main"}">${esc(l)}</span>`).join("") : noRef || docNo ? "" : code ? esc(ref) : "REFERENCE NO"}<small>${esc(site.toLowerCase())}/verify</small><em class="eos-printed"><span>${esc(dateTime(new Date().toISOString()))}</span>${S.profile?.full_name ? `<span>PRINTED BY: ${esc(String(S.profile.full_name).toUpperCase())}</span>` : ""}${trx ? `<span class="eos-trx">TRX ID ${esc(String(trx).toUpperCase())}</span>` : ""}</em></div></div></div>`; // 3.99.240: and the record's TRX ID
   }
 
   // ---------- new versions ----------

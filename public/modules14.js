@@ -419,7 +419,7 @@
       <section class="cv3-stmt"><p>${esc(C.company.name)} certifies that the customer above is covered for the <b>${esc(boxes)}</b> of order <b>${esc(i.order_no || "")}</b> (covered value <b>PHP ${peso(covered)}</b>) for the benefits listed, ${issued ? `from <b>${esc(issued)}</b> ` : ""}until <b>${esc(until)}</b>. A claim is accepted only until that date. The invoice of this order may be paid <b>${DUE} days</b> after its terms.</p>
         <p class="cv3-place">Signed at Pasay City, Metro Manila, Philippines, on <b>${esc(i.approved_at ? mdy(i.approved_at) : mdy(E.isoToday()))}</b>.</p></section>
       <footer class="cv3-sign">
-        <div class="cv3-seal">${E.secSeal(i.ins_no, { paper: true, code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
+        <div class="cv3-seal">${E.secSeal(i.ins_no, { trx: i.id, by: E.eoidOf?.(i.approved_by) || E.eoidOf?.(E.directorId?.("EMON HASAN")) || "", code: sealNo, cls: "sm", doc: "COVERAGE CERTIFICATE" })}</div>
         <div class="cv3-inv">${invoice?.invoice_no ? `<img src="${E.pdf417DataUrl("EMONINV|" + invoice.invoice_no)}" alt="PDF417 barcode: ${esc(invoice.invoice_no)}">` : ""}<small>Invoice No</small><b class="mono">${v(invNo)}</b></div>
         <div class="cv3-dir"><div class="cv3-dsig"></div><i></i>${E.sigMark(sign) || `<b>${v(who.approver)}</b>`}<small>Authorized Signatory${i.approved_at ? ` · ${esc(mdy(i.approved_at))}` : ""}</small></div>
       </footer>

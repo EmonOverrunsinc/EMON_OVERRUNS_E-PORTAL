@@ -5200,3 +5200,12 @@ body.os-info-open > .band-back { display: none !important; }
 .page > .pg-code span { font: 700 7px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; color: #42506b; }
 .page:has(> .pg-code) > .pg-num { right: auto; left: 50%; transform: translateX(-50%); }
 .page:has(> .pg-code) > .pg-trx { max-width: 70mm; }
+.eos .eos-printed > span.eos-trx { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0; white-space: nowrap; }
+.idc-miniseal .eos .eos-printed { display: block; } .idc-miniseal .eos .eos-printed > span:not(.eos-trx) { display: none; }
+/* 3.99.240: the ID card: the company stamp in clean blue ink (front and back); the Director's name, position and EOID as
+   blue words; the holder's signature smaller; the barcode without a white box */
+.idc-seal, .idc-sign .idc-stamp { filter: brightness(0) saturate(100%) invert(22%) sepia(83%) saturate(2400%) hue-rotate(218deg) brightness(92%); mix-blend-mode: multiply; opacity: .78; }
+.idc-bar img { background: transparent !important; mix-blend-mode: multiply; }
+.idc-hsig img { max-width: 20mm; max-height: 3.6mm; }
+.idc-sign .eo-stamp { display: grid; width: max-content; margin: 0 auto; gap: .2mm; }
+.idc-sign .eo-stamp b { font-size: 2.3mm; } .idc-sign .eo-stamp em { font-size: 1.5mm; letter-spacing: .1em; } .idc-sign .eo-stamp i { font-size: 1.45mm; }

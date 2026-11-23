@@ -449,6 +449,8 @@
       const out = $("#vfResult"); if (!out) return;
       if (error) { out.innerHTML = `<div class="vf-bad"><div class="vf-seal">!</div><div class="vf-title">CANNOT CHECK RIGHT NOW</div><div class="vf-sub">${esc(error.message)}</div></div>`; return; }
       if (!data?.found) {
+        const sealOf = await sb.rpc("seal_by_ref", { p_ref: shown }).then((r) => r.data, () => null); // 3.99.240
+        if (sealOf && !run._seal) { run._seal = true; try { await run(sealOf); } finally { run._seal = false; } return; }
         out.innerHTML = `<div class="vf-bad"><div class="vf-seal">✖</div><div class="vf-title">NO RECORD FOUND</div>
           <div class="vf-sub">“${esc(shown)}” is not a record in the ${esc(E.APP)}. Check the number and try again.</div></div>`;
         return;
