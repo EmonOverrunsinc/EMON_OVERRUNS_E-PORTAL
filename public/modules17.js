@@ -23,6 +23,7 @@
   const shiftMonth = (m, d) => { const [y, mo] = m.split("-").map(Number); const t = new Date(y, mo - 1 + d, 1); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`; };
   const canEdit = () => E.canWrite("outlets");
   const sum = (list, f) => list.reduce((s, r) => s + num(typeof f === "function" ? f(r) : r[f]), 0);
+  const isoNow = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
   const me = () => String(S.profile?.full_name || "").toUpperCase();
   // 3.99.162: the opening / closing hours are chosen on a time wheel (HH:MM) and shown the same everywhere: 7:00 AM
   const to24 = (v) => {
@@ -791,13 +792,13 @@
   // 3.99.232: the sign-off. Left: the report no (PDF417) and STORE RESPONSIBLE BY: the employee assigned to the store (their
   // stamp and signature); with no one assigned, who recorded it. Right: the cash left stamp, room to sign, the Director's
   // stamp, and the TRX ID (word and PDF417) to check the approval on the Verify page.
-  const nameBoxes = (prep, no, bossId, trx = "", prepId = "", stamp = "", resp = null) => {
+  const nameBoxes = (prep, no, bossId, trx = "", prepId = "", stamp = "", resp = null, when = "") => {
     const code = (t) => { try { return t && E.pdf417DataUrl ? E.pdf417DataUrl(String(t)) : ""; } catch (_) { return ""; } };
     const bar = code(no), tbar = code(trx && String(trx).toUpperCase());
     const st = resp ? { name: `${resp.first_name || ""} ${resp.last_name || ""}`.trim(), pos: resp.position || "", eoid: resp.employee_no || "" } : prepId ? E.stampOf?.(prepId, prep) : null;
     const pic = E.sigPicOf?.(resp ? resp.profile_id : prepId) || "";
-    const issued = E.stampHtml?.(st && st.name ? st : { name: prep }) || `<b>${esc(String(prep || "").toUpperCase())}</b>`;
-    const boss = E.stampHtml?.(E.stampOf?.(bossId, BOSS, "", true)) || `<b>${esc(BOSS)}</b>`;
+    const issued = E.stampHtml?.({ ...(st && st.name ? st : { name: prep }), date: when }) || `<b>${esc(String(prep || "").toUpperCase())}</b>`;
+    const boss = E.stampHtml?.({ ...E.stampOf?.(bossId, BOSS, "", true), date: when }) || `<b>${esc(BOSS)}</b>`; // 3.99.268: the date inside the stamps
     return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>${resp || prepId ? "STORE RESPONSIBLE BY" : "ISSUED BY"}</small><div class="so-sign">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div>${issued}${tbar ? `<div class="so-appr-space"></div>` : ""}</div></div>
       <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
   async function printDay(o, date, sales, exps, mine, prev = 0, staff = []) {
@@ -843,7 +844,7 @@
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(a.what)}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
           <div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>`;
       })()}
-      ${nameBoxes(r.created_by_name || me() || "", no, bossId, r.id || "", r.created_by || (r.id ? "" : S.profile?.id), cashStamp, resp)}</div>`; // 3.99.231: the cash left stamp above the Director's line
+      ${nameBoxes(r.created_by_name || me() || "", no, bossId, r.id || "", r.created_by || (r.id ? "" : S.profile?.id), cashStamp, resp, mdy(date))}</div>`; // 3.99.231: the cash left stamp above the Director's line
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page]);
   }
 
@@ -896,7 +897,7 @@
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the signatures
-    blocks.push({ h: 7, html: nameBoxes(me() || "", soaNo, bossId, "", S.profile?.id) }); // 3.99.228: no sum line box; the tiles show it
+    blocks.push({ h: 7, html: nameBoxes(me() || "", soaNo, bossId, "", S.profile?.id, "", null, mdy(isoNow())) }); // 3.99.228: no sum line box; the tiles show it
     // fill the pages
     const CAP = 48, pages = [];
     let cur = [], used = 0;
