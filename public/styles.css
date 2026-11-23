@@ -5505,3 +5505,6 @@ body.os-info-open > .band-back { display: none !important; }
 .ph2 .ph-store-r small { font: 700 6px/1 Arial, sans-serif; letter-spacing: .06em; color: #8a6400; white-space: nowrap; }
 .ph2.ph-shop2 .ph-title { font-size: 14px !important; white-space: nowrap; letter-spacing: .04em; } .ph2.ph-shop2 .ph-mid { flex: none; }
 .ph2 .ph-store-r { width: auto; align-self: center; } /* 3.99.310: same place and size as the company logo */
+/* 3.99.311: the store logo on the left of the shop papers' head */
+.ph2.ph-shop3 .store-logo.ph-store { width: 16mm; height: 16mm; flex: none; }
+.ph2.ph-shop3 .ph-title { font-size: 14px !important; white-space: nowrap; letter-spacing: .04em; }

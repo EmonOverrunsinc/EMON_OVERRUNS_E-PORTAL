@@ -820,11 +820,14 @@
     return `<div class="dsr-sign"><div class="ds-left">${stamp || ""}${bar ? `<div class="ds-bar ds-foot-l"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}</div>
       <div class="ds-right"><small>VERIFIED BY</small><div class="ds-line"></div>${boss}${tbar ? `<div class="ds-bar ds-foot-r"><img src="${tbar}" alt=""><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
   };
-  // 3.99.309: the shop papers: EMON OVERRUNS stays on the left of the head; the store logo, its code and branch code on the right
+  // 3.99.311: the shop papers: the store logo in place of the company logo; EMON OVERRUNS, then the shop and its branch
+  // code, then the shop's address
   const storeHead = (o) => $$(".preview .page .ph2").forEach((h) => {
-    if (h.querySelector(".ph-store-r")) return;
-    h.classList.add("ph-shop2");
-    h.insertAdjacentHTML("beforeend", `<div class="ph-store-r">${storeLogo(o, "ph-store")}</div>`);
+    if (h.classList.contains("ph-shop3")) return;
+    h.classList.add("ph-shop3");
+    const ring = h.querySelector(".ph-logo-ring"); if (ring) ring.outerHTML = storeLogo(o, "ph-store");
+    const tg = h.querySelector(".ph-tag"); if (tg) tg.textContent = `${String(o.code || "").toUpperCase()} · BRANCH ${bidText(o)}`;
+    const ad = h.querySelector(".ph-addr"); if (ad) ad.textContent = String(o.address || "").toUpperCase();
   });
   // 3.99.309: dates on the shop papers read NOV-11-2026
   const shopDate = (d) => { const t = String(d || "").slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return mdy(d); const x = new Date(t + "T00:00:00");
