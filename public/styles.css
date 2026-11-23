@@ -5331,3 +5331,5 @@ body.os-info-open > .band-back { display: none !important; }
 .idc-photo .idc-holo { right: 3.2mm; bottom: .4mm; opacity: .7; }
 .idc-photo .idc-holo .idc-holo-st { opacity: .75; }
 .idc-sign { top: 43.4mm !important; }
+/* 3.99.272: the card front: name and position a little higher, clear space under the photo */
+.idc-name { top: 48.6mm; } .idc-pos { top: 55.2mm; }
