@@ -209,6 +209,7 @@
       E.setBusy(e.currentTarget, true);
       const { data, error } = await sb.rpc("employee_place_set", { p_employee: em.id, p_kind: k, p_to: to || null });
       if (error) { E.setBusy(e.currentTarget, false); return fail(error, /employee_place_set|PGRST202|schema cache/.test(error.message || "") ? "Run the database update 141_employee_place_link.sql first" : "Could not save"); }
+      E.refreshNotifications();
       m.close(); toast(`${fullName(em)} transferred to ${String(data || "").split(" · ")[0]}. The employee was told.`); done();
     };
   }

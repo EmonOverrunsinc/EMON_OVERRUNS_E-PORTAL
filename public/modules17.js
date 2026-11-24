@@ -742,6 +742,7 @@
         E.setBusy(e.currentTarget, true);
         const { error: er } = await sb.rpc("employee_place_set", { p_employee: id, p_kind: office, p_to: null });
         if (er) { E.setBusy(e.currentTarget, false); return fail(er, /Unknown place|employee_place_set/.test(er.message || "") ? "Run the database update 152 first" : "Could not assign"); }
+        E.refreshNotifications();
         m.close(); toast("Assigned. The employee is told and must press READ & ACCEPT."); officeStaff(el, office);
       };
     };
@@ -825,12 +826,14 @@
     el.querySelectorAll("[data-nok],[data-nno]").forEach((b) => (b.onclick = async () => {
       const { error } = await sb.rpc("outlet_closure_decide", { p_id: b.dataset.nok || b.dataset.nno, p_ok: !!b.dataset.nok });
       if (error) return fail(error, "Could not save");
+      E.refreshNotifications();
       toast(b.dataset.nok ? "Approved: the store is closed on that day." : "Not approved: the store stays open."); reload();
     }));
     el.querySelectorAll("[data-ndel]").forEach((b) => (b.onclick = async () => {
       if (!(await E.confirmBox("Take this non-working day back? The store will be open on that day.", { title: "Non-Working Day", ok: "Take Back", danger: true }))) return;
       const { error } = await sb.rpc("outlet_closure_cancel", { p_id: b.dataset.ndel });
       if (error) return fail(error, "Could not take it back");
+      E.refreshNotifications();
       toast("Taken back."); reload();
     }));
   }

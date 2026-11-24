@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.339"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.340"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.339"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.340"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -421,14 +421,14 @@
     modalClose.set(d, close);
     return { el: d, close };
   }
-  function confirmBox(message, { title = "Please confirm", ok = "OK", danger = false } = {}) {
+  function confirmBox(message, { title = "Please confirm", ok = "OK", danger = false, validate = null } = {}) {
     return new Promise((resolve) => {
       let answered = false;
       const m = modal(title, `<div class="confirm-msg">${message}</div>`, // 3.59: a div, so a message may hold a block (a warning box)
         `<button type="button" class="btn" data-no>Cancel</button><button type="button" class="btn primary${danger ? " danger-fill" : ""}" data-yes>${esc(ok)}</button>`,
         { onClose: () => { if (!answered) resolve(false); } });
       $("[data-no]", m.el).onclick = () => m.close();
-      $("[data-yes]", m.el).onclick = () => { answered = true; resolve(true); m.close(); };
+      $("[data-yes]", m.el).onclick = () => { if (validate && !validate(m.el)) return; answered = true; resolve(true); m.close(); };
       $("[data-yes]", m.el).focus();
     });
   }
@@ -1803,7 +1803,7 @@
     let box = $("#pushBox"); if (!box) { box = document.createElement("div"); box.id = "pushBox"; box.className = "push-box"; document.body.appendChild(box); }
     const el = document.createElement("div"); el.className = "push-alert"; el.setAttribute("role", "status");
     el.innerHTML = `<span class="pa-ic">${ic("bell")}</span><div class="pa-t"><b>${esc(n.title || "")}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</div><button type="button" class="pa-x" aria-label="Close">${ic("x")}</button>`;
-    const go = () => { if (n.link === "__chat") { el.remove(); window.EO.openChat?.(); return; } sb.from("notifications").update({ is_read: true }).eq("id", n.id).then(refreshBadge); el.remove();
+    const go = () => { if (n.link === "__chat") { el.remove(); window.EO.openChat?.(); return; } markNotificationsRead(n.id); el.remove();
       const chat = /^chat\/([0-9a-f-]{36})$/i.exec(n.link || ""); if (chat && window.EO.openChat) window.EO.openChat(chat[1]); else if (n.link) location.hash = n.link; };
     el.onclick = (e) => { if (e.target.closest(".pa-x")) { el.remove(); return; } go(); };
     box.prepend(el); setTimeout(() => el.classList.add("in"), 20); setTimeout(() => el.remove(), 12000);
@@ -1848,68 +1848,97 @@
   // the phone / computer asks once to allow alerts (on the first tap after sign-in)
   document.addEventListener("pointerdown", () => { try { if (S.session && "Notification" in window && Notification.permission === "default" && !localStorage.getItem("eoAskAlerts")) { localStorage.setItem("eoAskAlerts", "1"); Notification.requestPermission().then((r) => { if (r === "granted") pushSubscribe(); }).catch(() => {}); } } catch (_) {} }, { passive: true });
   const refreshBadge = () => refreshBadges(true);
-  // Requests still waiting for Approve / Reject / Read & Accept in the E-PORTAL conversation.
-  async function openRequests() {
-    const since = new Date(Date.now() - 30 * 864e5).toISOString();
-    let r = await sb.from("notifications").select("id, title, link, is_read, done_at").is("done_at", null).gte("created_at", since).limit(200);
-    if (r.error) r = await sb.from("notifications").select("id, title, link, is_read").eq("is_read", false).gte("created_at", since).limit(200);
-    return (r.data || []).filter((n) => noteAction(n)).length;
+  const notificationInbox = (history, days = null) =>
+    sb.rpc("notification_inbox", days == null ? { p_history: history } : { p_history: history, p_days: days }, { get: true });
+
+  async function refreshNotifications() {
+    document.dispatchEvent(new Event("portal-notifications-changed"));
+    await Promise.all([refreshBadge(), $("#mailPop:not([hidden])") ? loadMail() : null]);
   }
+
+  async function markNotificationsRead(id) {
+    let query = sb.from("notifications").update({ is_read: true }).eq("is_read", false);
+    if (id != null) query = query.eq("id", id);
+    else query = query.or("link.is.null,link.not.like.chat/*");
+    const { error } = await query;
+    if (error) return fail(error, "Could not mark as read");
+    await refreshNotifications();
+  }
+
   // 3.99.226: who sent a notification: the E-Portal (✔) or a person (the Director ✔ in gold)
   const noteFrom = (n) => {
     const sys = !n.sender_name || n.sender_role === "system", boss = n.sender_role === "admin";
     return `<span class="mail-from${sys ? " sys" : ""}">${sys ? "EMON OVERRUNS E-PORTAL" : boss ? bossName(n.sender_name, "admin") : esc(n.sender_name)}${sys || boss ? ` <i class="vf" title="Verified">${ic("check")}</i>` : ""}${boss ? ` ${titleHtml("admin", S.profile?.role === "admin" ? S.position : "")}` : ""}</span>`;
   };
-  // Approve / Reject right in the notification (EMON HASAN) when the record can be decided from here
-  const noteAction = (n) => {
-    const l = String(n.link || ""), id = l.split("/")[1] || "", t = String(n.title || "");
-    if (/^You now work at /i.test(t) && !isAdmin()) return { ok: () => sb.rpc("transfer_accept"), okLabel: "Read & Accept", single: true }; // 3.99.330 (SQL 152)
-    if (!isAdmin()) return null;
-    if (/^custorder\//.test(l) && /to review/i.test(t)) return { ok: () => sb.rpc("decide_customer_order", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_customer_order", { p_id: id, p_action: "cancel" }), noLabel: "Cancel Order" };
-    if (/^insurance\//.test(l) && /to review/i.test(t)) return { ok: () => sb.rpc("decide_insurance", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_insurance", { p_id: id, p_action: "reject" }) };
-    if (/^po\//.test(l) && /to review/i.test(t) && !/update/i.test(t)) return { ok: () => sb.rpc("decide_purchase_order", { p_id: id, p_action: "approve" }), no: () => sb.rpc("decide_purchase_order", { p_id: id, p_action: "cancel" }), noLabel: "Cancel" };
-    if (/^outlet\//.test(l) && /non-working day request/i.test(t)) {
-      const all = async (okv) => { const { data } = await sb.from("outlet_closures").select("id").eq("outlet_id", id).eq("status", "pending"); if (!data?.length) return { error: { message: "Nothing is waiting any more." } };
-        for (const c of data) { const r = await sb.rpc("outlet_closure_decide", { p_id: c.id, p_ok: okv }); if (r.error) return r; } return {}; };
-      return { ok: () => all(true), no: () => all(false), noLabel: "Refuse" };
-    }
-    if (l === "devices" && /device waiting/i.test(t)) {
-      const one = async (act) => { const { data } = await sb.from("user_devices").select("id").eq("status", "pending"); if (!data?.length) return { error: { message: "No device is waiting any more." } };
-        if (data.length > 1) { location.hash = "devices"; return { error: { message: `${data.length} devices are waiting: choose on Devices.` } }; } return sb.rpc("device_decide", { p_id: data[0].id, p_action: act }); };
-      return { ok: () => one("approve"), no: () => one("block"), noLabel: "Block" };
-    }
-    return null;
-  };
-  async function loadMail() {
-    const since = new Date(Date.now() - 30 * 864e5).toISOString(); // 3.99.226: the last 30 days
-    const { data, error } = await sb.from("notifications").select("*").gte("created_at", since).or("link.is.null,link.not.like.chat/*").order("created_at", { ascending: false }).limit(300);
-    const box = $("#mailList"); if (!box) return;
-    if (error) { box.innerHTML = `<div class="empty">Notifications could not be loaded.</div>`; return; }
-    if (!data.length) { box.innerHTML = `<div class="empty">No notifications yet.</div>`; return; }
-    // 3.97: Mark all as read stays at the top of the list (it was below the last notification)
-    const unread = data.filter((n) => !n.is_read).length;
-    box.innerHTML = `${alertBar()}<div class="mail-top"><span>${unread ? `${unread} unread` : "All read"}</span><button type="button" class="btn small" id="mailAllRead"${unread ? "" : " disabled"}>${ic("check")} Mark all as read</button></div>`
-      + data.map((n) => { const a0 = noteAction(n), a = (n.done_at === undefined ? !n.is_read : !n.done_at) ? a0 : null; // 3.99.338: buttons until decided (SQL 155); then the mark stays
-        return `<div class="mail-wrap"><a class="mail-item ${n.is_read ? "" : "unread"}" href="#${esc(n.link || "dashboard")}" data-n="${n.id}">${noteFrom(n)}
-      <b>${esc(n.title)}</b><span>${esc(n.body || "")}</span><small>${esc(timeAgo(n.created_at))}</small></a>${!a && a0 ? `<div class="mail-act"><span class="done-mark">${a0.single ? "✓ READ &amp; ACCEPTED" : "✓ DONE"}</span></div>` : ""}${a ? `<div class="mail-act"><button type="button" class="btn small ok" data-nok="${n.id}">${ic("check")} ${esc(a.okLabel || "Approve")}</button>${a.single ? "" : `<button type="button" class="btn small" data-nno="${n.id}">${ic("x")} ${esc(a.noLabel || "Reject")}</button>`}</div>` : ""}</div>`; }).join("");
-    const byId = new Map(data.map((n) => [String(n.id), n]));
-    const decide = async (b, ok) => {
-      const n = byId.get(b.dataset.nok || b.dataset.nno), a = n && noteAction(n); if (!a) return;
-      if (!ok && !(await confirmBox(`${esc(a.noLabel || "Reject")}: <b>${esc(n.title)}</b>?`, { title: "Notification", ok: a.noLabel || "Reject" }))) return;
-      b.disabled = true;
-      const r = await (ok ? a.ok() : a.no()).catch((e) => ({ error: e }));
-      if (r?.error) { b.disabled = false; return fail(r.error, "Could not do it"); }
-      await sb.rpc("note_done", { p_id: n.id }).then((r) => (r.error ? sb.from("notifications").update({ is_read: true }).eq("id", n.id) : r));
-      toast(ok ? (a.single ? "Read & accepted. The Director is told." : "Approved.") : "Done."); loadMail(); refreshBadge();
-    };
-    $$("[data-nok]", box).forEach((b) => (b.onclick = () => decide(b, true)));
-    $$("[data-nno]", box).forEach((b) => (b.onclick = () => decide(b, false)));
-    $$(".mail-item", box).forEach((a) => (a.onclick = (e) => {
-      sb.from("notifications").update({ is_read: true }).eq("id", Number(a.dataset.n)).then(refreshBadge);
-      const chat = /^#chat\/([0-9a-f-]{36})$/i.exec(a.getAttribute("href") || ""); // 3.99.306: a message notification opens that chat
-      if (chat && window.EO.openChat) { e.preventDefault(); window.EO.openChat(chat[1]); }
+  const declineLabels = { device: "Block", closure: "Refuse", customer: "Cancel Order", purchase: "Cancel" };
+  const savedNote = (n) => /^\d+$/.test(String(n.id));
+  function notificationActions(n) {
+    if (!n.request) return n.done_at ? '<span class="done-mark">✓ DONE</span>' : "";
+    const { kind } = n.request;
+    const approve = kind === "transfer" ? "Read & Accept" : "Approve";
+    const reject = declineLabels[kind] || "Reject";
+    return `<button type="button" class="btn small ok" data-note-action="approve" data-note-id="${esc(n.id)}">${ic("check")} ${approve}</button>`
+      + (kind === "transfer" ? "" : `<button type="button" class="btn small" data-note-action="reject" data-note-id="${esc(n.id)}">${ic("x")} ${reject}</button>`);
+  }
+
+  function bindNotificationActions(box, rows) {
+    const notes = new Map(rows.map((n) => [String(n.id), n]));
+    $$("[data-note-action]", box).forEach((button) => (button.onclick = async () => {
+      const n = notes.get(button.dataset.noteId);
+      const { kind, id, revision } = n.request;
+      const action = button.dataset.noteAction;
+      const controls = $$("[data-note-action]", button.parentElement);
+      controls.forEach((control) => (control.disabled = true));
+      try {
+        let reason = null;
+        if (action === "reject") {
+          const label = declineLabels[kind] || "Reject";
+          const askReason = kind === "insurance";
+          if (!(await confirmBox(`${label}: <b>${esc(n.title)}</b>?${askReason ? '<label>Reason<textarea id="noteRejectReason" required></textarea></label>' : ""}`, {
+            title: "Notification", ok: label,
+            validate: askReason ? (el) => {
+              const input = $("#noteRejectReason", el);
+              reason = input.value.trim();
+              input.setCustomValidity(reason ? "" : "Enter a reason.");
+              if (!input.reportValidity()) return false;
+              return true;
+            } : null
+          }))) return;
+        }
+        const { data, error } = await sb.rpc("notification_decide", {
+          p_kind: kind, p_id: id, p_revision: revision, p_action: action, p_note: reason
+        });
+        if (error) fail(error, "Could not decide the request");
+        else if (data === "resolved") toast("This request is no longer pending.");
+        else toast(kind === "transfer" ? "Read & accepted. The Director is told." : action === "approve" ? "Approved." : "Done.");
+        await refreshNotifications();
+      } finally {
+        controls.forEach((control) => (control.disabled = false));
+      }
     }));
-    $("#mailAllRead").onclick = async () => { await sb.from("notifications").update({ is_read: true }).eq("is_read", false).or("link.is.null,link.not.like.chat/*"); loadMail(); refreshBadge(); };
+  }
+
+  let mailLoad = 0;
+  async function loadMail() {
+    const load = ++mailLoad;
+    const box = $("#mailList"); if (!box) return;
+    const { data, error } = await notificationInbox(300, 30);
+    if (load !== mailLoad || !box.isConnected) return;
+    if (error) { box.innerHTML = '<div class="empty">Notifications could not be loaded.</div>'; return; }
+    const { rows } = data;
+    if (!rows.length) { box.innerHTML = '<div class="empty">No notifications yet.</div>'; return; }
+    const unread = rows.filter((n) => !n.is_read).length;
+    box.innerHTML = `${alertBar()}<div class="mail-top"><span>${unread ? `${unread} unread` : "All read"}</span><button type="button" class="btn small" id="mailAllRead"${unread ? "" : " disabled"}>${ic("check")} Mark all as read</button></div>`
+      + rows.map((n) => {
+        const content = `${noteFrom(n)}<b>${esc(n.title)}</b><span>${esc(n.body || "")}</span><small>${esc(timeAgo(n.created_at))}</small>`;
+        const item = n.link || savedNote(n) ? `<a class="mail-item ${n.is_read ? "" : "unread"}" href="#${esc(n.link || "dashboard")}"${savedNote(n) ? ` data-note-read="${esc(n.id)}"` : ""}>${content}</a>`
+          : `<div class="mail-item ${n.is_read ? "" : "unread"}">${content}</div>`;
+        const actions = notificationActions(n);
+        return `<div class="mail-wrap">${item}${actions ? `<div class="mail-act">${actions}</div>` : ""}</div>`;
+      }).join("");
+    bindNotificationActions(box, rows);
+    $$("[data-note-read]", box).forEach((a) => (a.onclick = () => markNotificationsRead(a.dataset.noteRead)));
+    $("#mailAllRead").onclick = () => markNotificationsRead();
   }
 
   // Presence ("active now" in Messages) and badge refresh while signed in.
@@ -1920,7 +1949,10 @@
     beat();
     timers = [
       setInterval(beat, 60000),
-      setInterval(() => { if (S.session && document.visibilityState === "visible") refreshBadges(true); }, 30000)
+      setInterval(() => { if (S.session && document.visibilityState === "visible") {
+        refreshBadges(true);
+        if ($("#mailPop:not([hidden])")) loadMail();
+      } }, 30000)
     ];
   }
   function stopTimers() { timers.forEach(clearInterval); timers = []; }
@@ -3292,7 +3324,7 @@
   window.addEventListener("pageshow", idleTick);
 
   Object.assign(window.EO, {
-    noteAction, pushAlert, alertBar, openRequests, // 3.99.306: Approve / Reject also in the Messenger's E-PORTAL chat
+    notificationInbox, notificationActions, bindNotificationActions, markNotificationsRead, pushAlert, alertBar, refreshNotifications,
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,

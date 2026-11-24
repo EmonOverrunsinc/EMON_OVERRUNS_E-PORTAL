@@ -666,6 +666,7 @@
       e.target.disabled = true;
       const { error } = await sb.rpc("decide_customer_order", { p_id: o.id, p_action: "approve", p_note: null });
       if (error) { e.target.disabled = false; return fail(error, "Could not approve"); }
+      E.refreshNotifications();
       toast(`Order ${o.order_no} approved: CONFIRMED.`); reload();
     };
     if ($("#coCancelO")) $("#coCancelO").onclick = () => cancelOrder(o, reload);
@@ -717,6 +718,7 @@
       e.target.disabled = true;
       const { error } = await sb.rpc("decide_customer_order", { p_id: o.id, p_action: "cancel", p_note: $("#ccNote", m.el).value.trim() || null });
       if (error) { e.target.disabled = false; return fail(error, "Could not cancel"); }
+      E.refreshNotifications();
       m.close(); toast(`Order ${o.order_no} cancelled.`); reload();
     };
   }
