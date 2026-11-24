@@ -641,6 +641,7 @@
   // Messages — chat between admin and employees, with photos and documents
   // ======================================================================
   const CH = { other: null, contacts: [], msgs: [], timer: null, tick: 0, busy: false };
+  const markingRead = new Set();
   function openChat(withId) {
     clearTimeout(CH.closing); // 3.31: opened again while it was still closing: it stays open
     let p = $(".chat-panel");
@@ -780,22 +781,35 @@
   async function loadMessages(full) {
     const other = CH.other, me = meId();
     if (!other) return;
-    let q = sb.from("messages").select("*").or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`).order("created_at", { ascending: true });
     const last = CH.msgs[CH.msgs.length - 1];
+    const incremental = !full && Boolean(last);
+    let q = sb.from("messages").select("*").or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`).order("created_at", { ascending: incremental });
     // 3.35: the last 2 minutes are asked again, so a message sent at the same moment as the last one shown (saved a
     // moment earlier, but stored a moment later) still comes; each message shows once, in time order
-    if (!full && last) q = q.gt("created_at", new Date(new Date(last.created_at).getTime() - 120000).toISOString()); else q = q.gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString()).limit(300); // 3.99.325: messages last 30 days
+    if (incremental) q = q.gt("created_at", new Date(new Date(last.created_at).getTime() - 120000).toISOString());
+    else q = q.gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString()).limit(300);
     const { data, error } = await q;
     if (error || other !== CH.other) return;
     const fresh = (data || []).filter((m) => !CH.msgs.some((x) => x.id === m.id));
-    if (!full && !fresh.length) return;
-    CH.msgs = full ? data || [] : CH.msgs.concat(fresh).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    if (CH.msgs.some((m) => m.sender_id === other && !m.read_at)) {
-      sb.rpc("mark_messages_read", { p_other: other }).then(() => { E.refreshBadge(); }, () => {});
-      const c = CH.contacts.find((x) => x.id === other);
-      if (c && c.unread) { c.unread = 0; renderContacts(); }
+    if (full || fresh.length) {
+      CH.msgs = (full ? data || [] : CH.msgs.concat(fresh)).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      await renderMessages();
     }
-    await renderMessages();
+    if (other !== CH.other || markingRead.has(other)) return;
+    const unread = CH.msgs.filter((m) => m.sender_id === other && !m.read_at);
+    if (!unread.length && !CH.contacts.find((c) => c.id === other)?.unread) return;
+    markingRead.add(other);
+    try {
+      const { error: readError } = await sb.rpc("mark_messages_read", { p_other: other });
+      if (readError) return;
+      const readAt = new Date().toISOString();
+      unread.forEach((m) => { m.read_at = readAt; });
+      const contact = CH.contacts.find((c) => c.id === other);
+      if (contact?.unread) { contact.unread = 0; renderContacts(); }
+      await E.refreshBadge();
+    } finally {
+      markingRead.delete(other);
+    }
   }
   // the time under a message, and for my own messages Sent or Seen
   const msgFoot = (m, me) => `${esc(new Date(m.created_at).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" }))}${m.sender_id === me ? (m.read_at ? ` · <b class="cv-seen">✓✓ Seen</b>` : " · ✓ Sent") : ""}`;
