@@ -503,7 +503,7 @@
         <div class="span2"><label for="osExp">Daily Operation</label><input id="osExp" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
         <div><label for="osOut">Cash Out <button type="button" class="linkbtn os-all" id="osAll">All</button></label><input id="osOut" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
         <div><label for="osOutN">${ic("lock")} Cash Out To <button type="button" class="linkbtn" id="osOutEdit" hidden>✎ Change</button></label><input id="osOutN" maxlength="120" value="EMON HASAN" readonly class="locked"></div>
-        <div class="span2 ol-left"><span>Cash Left in the Shop<small>goes on to the next day</small></span><b id="osLeft">₱ 0.00</b></div>`}
+        <div class="span2 ol-left"><span>Cash Left in the Shop</span><b id="osLeft">₱ 0.00</b></div>`}
         <div class="span2"><label for="osNote">Note</label><input id="osNote" maxlength="500" value="${esc(row?.note || "")}"></div>
         <div class="span2"><label for="osPic">Sales Report Photo</label><input id="osPic" type="file" accept="image/*,application/pdf" multiple></div>
       </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="osSave">${ic("check")} Save</button>`, { wide: true });
