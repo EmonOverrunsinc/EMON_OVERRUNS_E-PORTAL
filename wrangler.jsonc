@@ -13,5 +13,6 @@
   },
   "workers_dev": true,
   "preview_urls": false,
+  "previews": {},
   "observability": { "enabled": true }
 }
