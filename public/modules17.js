@@ -138,37 +138,38 @@
       E.allRows(() => sb.from("outlet_sales").select("outlet_id, sale_date, total, cash").in("outlet_id", ids).gte("sale_date", `${m}-01`).lte("sale_date", monthEnd(m))),
       E.allRows(() => sb.from("outlet_expenses").select("outlet_id, exp_date, kind, amount").in("outlet_id", ids).gte("exp_date", `${m}-01`).lte("exp_date", monthEnd(m))),
       custs.length ? E.allRows(() => sb.from("payments_received").select("customer_id, paid_date, amount").in("customer_id", custs).gte("paid_date", `${m}-01`).lte("paid_date", monthEnd(m))) : { data: [] }]);
-    if (s.error) throw s.error;
+    if (s.error || x.error || p.error) throw s.error || x.error || p.error;
     return { sales: s.data || [], exps: x.data || [], pays: p.data || [] };
   }
-  async function allMoney(outlets) {
-    const ids = outlets.map((o) => o.id), custs = outlets.map((o) => o.customer_id).filter(Boolean);
-    if (!ids.length) return { sales: [], exps: [], pays: [] };
-    const [s2, x2, p2] = await Promise.all([
-      E.allRows(() => sb.from("outlet_sales").select("outlet_id, total, cash").in("outlet_id", ids)),
-      E.allRows(() => sb.from("outlet_expenses").select("outlet_id, kind, amount").in("outlet_id", ids)),
-      custs.length ? E.allRows(() => sb.from("payments_received").select("customer_id, paid_date, amount").in("customer_id", custs)) : { data: [] }]);
-    return { sales: s2.data || [], exps: x2.data || [], pays: p2.data || [] };
+  function monthTotals(sales, exps, pays) {
+    const net = sum(sales, "total"), paid = sum(pays, "amount");
+    const operation = sum(exps.filter((r) => r.kind === "daily"), "amount");
+    const otherCosts = sum(exps.filter((r) => USE.includes(r.kind)), "amount");
+    const withdrawals = sum(exps.filter((r) => r.kind === "cashout"), "amount");
+    const cash = withdrawals + sales.reduce((total, sale) => total + nonCash(sale), 0);
+    return { net, paid, cash, op: operation, out: sum(exps, "amount") - withdrawals,
+      drawer: net - operation - cash, pool: cash - otherCosts - paid, used: otherCosts + paid };
   }
-  // 3.99.221: CASH LEFT = all sales − daily operation cost − cash out (in the shop now);
-  // NET BALANCE = the cash taken out − what was paid from it (rent, stock, bank deposit, bills, purchases)
-  const keep = (o, am) => {
-    if (!am) return { drawer: 0, pool: 0 };
-    const S2 = am.sales.filter((r) => r.outlet_id === o.id), X2 = am.exps.filter((r) => r.outlet_id === o.id);
-    const P2 = o.customer_id ? am.pays.filter((r) => r.customer_id === o.customer_id && r.paid_date >= String(o.created_at).slice(0, 10)) : [];
-    const k = (f) => sum(X2.filter(f), "amount");
-    const g = S2.reduce((t, r) => t + nonCash(r), 0);
-    return { drawer: sum(S2, "total") - g - k((x) => x.kind === "daily" || x.kind === "cashout"), pool: k((x) => x.kind === "cashout") + g - k((x) => USE.includes(x.kind)) - sum(P2, "amount") };
+  const shopMoney = (o, money) => {
+    const sales = money.sales.filter((r) => r.outlet_id === o.id);
+    const exps = money.exps.filter((r) => r.outlet_id === o.id);
+    const pays = o.customer_id ? money.pays.filter((r) => r.customer_id === o.customer_id && r.paid_date >= String(o.created_at).slice(0, 10)) : [];
+    return { ...monthTotals(sales, exps, pays), exps, hasActivity: Boolean(sales.length || exps.length || pays.length),
+      today: sum(sales.filter((r) => r.sale_date === today()), "total"),
+      todayOut: sum(exps.filter((r) => r.exp_date === today() && r.kind === "daily"), "amount") };
   };
-  const shopMoney = (o, mm, am = null) => {
-    const sales = mm.sales.filter((r) => r.outlet_id === o.id), exps = mm.exps.filter((r) => r.outlet_id === o.id);
-    const pays = o.customer_id ? mm.pays.filter((r) => r.customer_id === o.customer_id) : [];
-    const cash = sum(exps.filter((x) => x.kind === "cashout"), "amount") + sales.reduce((t, r) => t + nonCash(r), 0); // 3.99.157/257: the cash taken out (GCash included)
-    const net = sum(sales, "total"), out = sum(exps, "amount") - cash, paid = sum(pays, "amount");
-    const todayOut = sum(exps.filter((x) => x.exp_date === today() && x.kind === "daily"), "amount");
-    return { today: sum(sales.filter((r) => r.sale_date === today()), "total"), todayOut, net, out, cash, paid, bal: net - out - cash - paid, exps,
-      op: sum(exps.filter((x) => x.kind === "daily"), "amount"), used: sum(exps.filter((x) => USE.includes(x.kind)), "amount") + paid, ...keep(o, am) };
-  };
+
+  async function statementMonths(outlet) {
+    const id = outlet.id;
+    const results = await Promise.all([
+      E.allRows(() => sb.from("outlet_sales").select("sale_date").eq("outlet_id", id).order("sale_date")),
+      E.allRows(() => sb.from("outlet_expenses").select("exp_date").eq("outlet_id", id).order("exp_date").order("id")),
+      outlet.customer_id ? E.allRows(() => sb.from("payments_received").select("paid_date").eq("customer_id", outlet.customer_id)
+        .gte("paid_date", String(outlet.created_at).slice(0, 10)).order("paid_date").order("id")) : { data: [] }
+    ]);
+    if (results.some((result) => result.error)) return null;
+    return [...new Set(results.flatMap(({ data }) => data.map((row) => (row.sale_date || row.exp_date || row.paid_date).slice(0, 7))))].sort().reverse();
+  }
 
   // ---------- the Dashboard box: all the shops ----------
   E.outletsBox = async (holder) => {
@@ -176,8 +177,8 @@
     if (!holder || !E.hasModule("outlets") || (S.hideMoney && !isAdmin())) return gone(); // 3.99.175: no money: no box
     const { data: outlets, error } = await sb.from("outlets").select("*").eq("status", "active").order("code");
     if (error || !outlets?.length) return gone();
-    let mm, am; try { [mm, am] = await Promise.all([monthMoney(outlets, monthNow()), allMoney(outlets)]); } catch (_) { return gone(); }
-    const rows = outlets.map((o) => ({ o, ...shopMoney(o, mm, am) }));
+    let mm; try { mm = await monthMoney(outlets, monthNow()); } catch (_) { return gone(); }
+    const rows = outlets.map((o) => ({ o, ...shopMoney(o, mm) }));
     const T = (f) => rows.reduce((s, r) => s + f(r), 0);
     holder.innerHTML = `<div class="ol-dash">
       <div class="ol-kpis k4">${kpi("Today's Net Sales", T((r) => r.today))}${kpi("Today's Expenses", T((r) => r.todayOut))}${kpi("Today's Net", T((r) => r.today - r.todayOut))}${kpi("Net Balance", T((r) => r.pool), "bal")}</div>
@@ -199,10 +200,10 @@
     if (!here()) return;
     if (error) { $("#olBody").innerHTML = missing(error) ? needSql : `<div class="empty">${esc(error.message)}</div>`; return; }
     const m = monthNow();
-    let mm = { sales: [], exps: [], pays: [] }, am = null;
-    try { [mm, am] = await Promise.all([monthMoney(outlets.filter((o) => o.status === "active"), m), allMoney(outlets)]); } catch (e) { console.warn(e); }
+    let mm = { sales: [], exps: [], pays: [] };
+    try { mm = await monthMoney(outlets, m); } catch (e) { console.warn(e); }
     if (!here()) return;
-    const rows = outlets.map((o) => ({ o, ...shopMoney(o, mm, am) }));
+    const rows = outlets.map((o) => ({ o, ...shopMoney(o, mm) }));
     const act = rows.filter((r) => r.o.status === "active");
     $("#olBody").innerHTML = `
       <div class="ol-kpis">${kpi("Today's Net Sales", act.reduce((s, r) => s + r.today, 0))}${kpi("Today's Expenses", act.reduce((s, r) => s + r.todayOut, 0))}${kpi("Today's Net", act.reduce((s, r) => s + r.today - r.todayOut, 0))}
@@ -216,7 +217,7 @@
           ${r.o.address ? `<div class="ol-card-a">${ic("pin")} ${esc(r.o.address)}</div>` : ""}
           ${hoursOf(r.o) ? `<div class="ol-card-t">${ic("clock")}<span class="ol-hours" data-oid="${esc(r.o.id)}">${esc(hoursOf(r.o))}</span>${r.o.status !== "closed" && storeNow(r.o) ? `<span class="ol-live st-${storeNow(r.o).k}" data-oid="${esc(r.o.id)}">${cardLive(r.o)}</span>` : ""}</div>` : ""}
           </div>
-          <div class="ol-card-n"><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.op)}</b></div>
+          <div class="ol-card-n"${r.hasActivity ? "" : " hidden"}><div><small>Today</small><b>₱ ${peso(r.today)}</b></div><div><small>Net Sales</small><b>₱ ${peso(r.net)}</b></div><div><small>Expenses</small><b>₱ ${peso(r.op)}</b></div>
             <div><small>Cash Out</small><b>₱ ${peso(r.cash)}</b></div><div><small>Cash Left</small><b>₱ ${peso(r.drawer)}</b></div><div class="bal${r.pool < 0 ? " neg" : ""}"><small>Net Balance</small><b>₱ ${peso(r.pool)}</b></div></div></a>`;
       }).join("") : `<div class="empty">${isAdmin() ? "No store yet. Press <b>⋯</b> at the top right, then <b>Add Store</b>: it gets SHOP-1." : "No shop is assigned to you yet. EMON HASAN assigns you on the outlet's page."}</div>`}</div>`;
     rankCards($("#olBody"), m);
@@ -307,16 +308,15 @@
     if (!here()) return;
     if (error || !o) { $("#olBody").innerHTML = error && missing(error) ? needSql : `<div class="empty">This outlet was not found. <a href="#outlets">Back to Outlets</a></div>`; return; }
     const first = `${m}-01`, last = monthEnd(m), start = String(o.created_at).slice(0, 10);
-    const [st, sales, exps, pays, invs, cust, allS, allX, allP, clos, dayH] = await Promise.all([
+    const mine = !!S.hideMoney && !isAdmin();
+    const [st, sales, exps, pays, invs, cust, soaMonths, clos, dayH] = await Promise.all([
       sb.from("outlet_staff").select(STAFF_SEL).eq("outlet_id", id).then((r) => r.data || []),
       sb.from("outlet_sales").select("*").eq("outlet_id", id).gte("sale_date", first).lte("sale_date", last).order("sale_date", { ascending: false }).then((r) => r.data || []),
       sb.from("outlet_expenses").select("*").eq("outlet_id", id).gte("exp_date", first).lte("exp_date", last).order("exp_date", { ascending: false }).then((r) => r.data || []),
       o.customer_id ? sb.from("payments_received").select("id, receipt_no, paid_date, amount, method").eq("customer_id", o.customer_id).gte("paid_date", first).lte("paid_date", last).order("paid_date", { ascending: false }).then((r) => r.data || []) : [],
       o.customer_id ? sb.from("invoice_balances").select("id, invoice_no, invoice_date, due_date, total_amount, balance, pay_status").eq("customer_id", o.customer_id).gt("balance", 0).order("invoice_date").then((r) => r.data || []) : [],
       o.customer_id ? sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").eq("id", o.customer_id).maybeSingle().then((r) => r.data) : null,
-      E.allRows(() => sb.from("outlet_sales").select("total, cash, sale_date").eq("outlet_id", id)).then((r) => r.data || []),
-      E.allRows(() => sb.from("outlet_expenses").select("amount, kind, exp_date").eq("outlet_id", id)).then((r) => r.data || []),
-      o.customer_id ? E.allRows(() => sb.from("payments_received").select("amount").eq("customer_id", o.customer_id).gte("paid_date", start)).then((r) => r.data || []) : [],
+      mine ? [] : statementMonths(o),
       sb.from("outlet_closures").select("*").eq("outlet_id", id).gte("day", first < today() ? first : today()).order("day").limit(120).then((r) => (r.error ? null : r.data || []), () => null),
       sb.from("outlet_day_hours").select("*").eq("outlet_id", id).eq("day", today()).maybeSingle().then((r) => (r.error ? undefined : r.data), () => undefined)]);
     if (!here()) return;
@@ -324,20 +324,14 @@
     o._today = dayH || null; o._dayHoursOk = dayH !== undefined; // 3.99.204: today's hours (late open / early close)
     // 3.99.175: an employee without "13 See Balances & History": only the sales and expenses he or she recorded (with their
     // amounts); no totals, balance, stock account or monthly statement
-    const mine = !!S.hideMoney && !isAdmin();
     if (mine) { const me = E.meId(); sales.splice(0, sales.length, ...sales.filter((r) => r.created_by === me)); exps.splice(0, exps.length, ...exps.filter((r) => r.created_by === me)); }
     const peso = mine ? (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : E.peso;
     const ids = [...sales.map((r) => r.id), ...exps.map((r) => r.id)];
     const docs = await E.attachmentsOf("outlet", id).catch(() => []); // 3.99.119: the shop's documents
     const files = ids.length ? ((await sb.from("attachments").select("*").in("owner_type", ["outlet_sales", "outlet_expense"]).in("owner_id", ids).order("created_at", { ascending: false })).data || []) : [];
     if (!here()) return;
-    const cash = sum(exps.filter((x) => x.kind === "cashout"), "amount") + sales.reduce((t, r) => t + nonCash(r), 0); // 3.99.140/257: the cash taken out (GCash included)
-    const net = sum(sales, "total"), out = sum(exps, "amount") - cash, paid = sum(pays, "amount"), bal = net - out - cash - paid;
-    const allBal = sum(allS, "total") - sum(allX, "amount") - sum(allP, "amount");
-    // 3.99.221: CASH LEFT in the shop now; NET BALANCE of the cash taken out (what was paid from it taken off)
-    const opCost = sum(exps.filter((x) => x.kind === "daily"), "amount"), usedM = sum(exps.filter((x) => USE.includes(x.kind)), "amount") + sum(pays, "amount");
-    const drawer = sum(allS, "total") - allS.reduce((t, r) => t + nonCash(r), 0) - sum(allX.filter((x) => x.kind === "daily" || x.kind === "cashout"), "amount");
-    const pool = sum(allX.filter((x) => x.kind === "cashout"), "amount") + allS.reduce((t, r) => t + nonCash(r), 0) - sum(allX.filter((x) => USE.includes(x.kind)), "amount") - sum(allP, "amount");
+    const { net, out, paid, cash, drawer, pool, op: opCost, used: usedM } = monthTotals(sales, exps, pays);
+    const hasActivity = Boolean(sales.length || exps.length || pays.length);
     const owed = sum(invs, "balance"), rs = rentState(o, exps, m), edit = canEdit();
     const byPay = PAY.map(([k, l]) => [l, sum(sales, k)]).filter(([, v]) => v > 0);
     const filesOf = (oid) => files.filter((f) => f.owner_id === oid);
@@ -349,23 +343,22 @@
     const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" ? (isAdmin() ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit sales" aria-label="Edit sales">${ic("edit")}</button>` : "") : isAdmin() ? `<button type="button" class="btn small" data-eexp="${esc(r.id)}" title="${isAdmin() ? "Edit" : "Correct (one time)"}">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
     const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
     // 3.99.220: CASH LEFT goes on to the next day: the cash left of yesterday + today's sales − the daily operation cost − the cash out
-    const carry0 = sum(allS.filter((x) => x.sale_date < first), "total") - allS.filter((x) => x.sale_date < first).reduce((t, r) => t + nonCash(r), 0) - sum(allX.filter((x) => x.exp_date < first && (x.kind === "daily" || x.kind === "cashout")), "amount");
-    const days = chainDays(sales, exps, carry0).reverse().map((x) => ({ ...x, d: x.dt }));
-    const prevOf = (date) => prevLeft(sales, exps, carry0, date);
-    const cashNow = days.length ? days[0].left : carry0;
+    const days = chainDays(sales, exps).reverse().map((x) => ({ ...x, d: x.dt }));
+    const prevOf = (date) => prevLeft(sales, exps, date);
+    const cashNow = days[0]?.left ?? 0;
     const dEx = sum(days, "ex"), dCo = sum(days, "co");
     const pc = (v) => (num(v) ? peso(v) : "");
     const narrow = matchMedia("(max-width: 640px)").matches; // 3.99.298: a phone: the row's buttons under ⋯
     const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t os-days"><thead><tr><th>DATE</th><th class="num os-prev">YESTERDAY CASH</th><th class="num"><span class="d-l">TOTAL SALES</span><span class="d-s">SALES</span></th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">BALANCE</th><th></th></tr></thead><tbody>
         ${days.map((x) => `<tr class="os-day" data-dayrow="${esc(x.d)}"><td${num(x.prev) ? ` title="+ ₱ ${peso(x.prev)} from yesterday"` : ""}><b class="d-l">${esc(mdy(x.d))}</b><b class="d-s">${esc(new Date(x.d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "2-digit" }).toUpperCase())}</b></td><td class="num os-prev">${pc(x.prev)}</td><td class="num" data-label="Sales"><b class="os-in">${peso(x.t)}</b></td><td class="num" data-label="Expenses">${peso(x.ex)}</td><td class="num" data-label="Cash out">${peso(x.co)}</td><td class="num" data-label="Balance"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td class="os-actc"><details class="os-act"${narrow ? "" : " open"}><summary aria-label="Actions">⋯</summary><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : isAdmin() ? `<button type="button" class="btn small" data-addsale="${esc(x.d)}" title="Add this day's sales">${ic("plus")} Sales</button>` : ""}${isAdmin() ? `<button type="button" class="btn small danger" data-delday="${esc(x.d)}" title="Delete this day">${ic("trash")}</button>` : ""}</span></details></td></tr>`).join("")}</tbody>
-        <tfoot><tr><td>TOTAL</td><td class="os-prev"></td><td class="num" data-label="Sales">${peso(net)}</td><td class="num" data-label="Expenses">${peso(dEx)}</td><td class="num" data-label="Cash out">${peso(dCo)}</td><td class="num" data-label="Balance">${peso(carry0 + net - dEx - dCo)}</td><td></td></tr></tfoot></table></div>`
+        <tfoot><tr><td>TOTAL</td><td class="os-prev"></td><td class="num" data-label="Sales">${peso(net)}</td><td class="num" data-label="Expenses">${peso(dEx)}</td><td class="num" data-label="Cash out">${peso(dCo)}</td><td class="num" data-label="Balance">${peso(cashNow)}</td><td></td></tr></tfoot></table></div>`
       : empty("No sales recorded this month.");
     const xps = exps.filter((r) => r.kind !== "cashout"), cos = exps.filter((r) => r.kind === "cashout");
     const expTab = xps.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>TYPE</th><th>PAID TO / NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
         ${xps.map((r) => `<tr><td><b>${esc(mdy(r.exp_date))}</b></td><td><span class="os-kind k-${esc(r.kind)}">${esc(KIND[r.kind] || r.kind)}</span></td><td>${esc([r.payee, r.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${peso(r.amount)}</b></td><td>${tools("outlet_expenses", r)}</td></tr>`).join("")}</tbody>
         <tfoot><tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${peso(out)}</td><td></td></tr></tfoot></table></div>`
       : empty("No expense this month.");
-    const cashTab = cos.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>CASH OUT TO</th><th>NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
+    const cashTab = cash > 0 ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>CASH OUT TO</th><th>NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
         ${sales.filter((r) => nonCash(r) > 0).map((r) => `<tr class="os-gc"><td><b>${esc(mdy(r.sale_date))}</b></td><td><b>GCASH</b></td><td>Not in the shop</td><td class="num"><b class="os-co">${peso(nonCash(r))}</b></td><td></td></tr>`).join("")}
         ${cos.map((r) => `<tr><td><b>${esc(mdy(r.exp_date))}</b></td><td><b>${esc(r.payee || "—")}</b></td><td>${esc(r.note || "—")}</td><td class="num"><b class="os-co">${peso(r.amount)}</b></td><td>${tools("outlet_expenses", r)}</td></tr>`).join("")}</tbody>
         <tfoot><tr><td colspan="3">TOTAL CASH OUT</td><td class="num">${peso(cash)}</td><td></td></tr></tfoot></table></div>`
@@ -376,19 +369,17 @@
         <div class="os-two"><div><div class="ol-sub">Unpaid Invoices</div>${invRows || empty("No unpaid invoice.")}</div>
           <div><div class="ol-sub">Payments ${esc(E.monthText(m))} <small>taken off the balance</small></div>${payRows || empty("No payment this month.")}</div></div>
         ${E.canWrite("payments") || E.canWrite("invoices") ? `<div class="btnrow"><a class="btn primary small" href="#newpayment/${esc(cust.id)}">${ic("wallet")} Record Payment</a></div>` : ""}`
-      : empty(`No customer account linked.${isAdmin() ? " Press <b>Edit Outlet</b> and choose the account that receives this outlet's stock." : ""}`);
+      : empty(`No customer account linked.${isAdmin() ? " Choose <b>Edit Shop Details</b> and choose the account that receives this outlet's stock." : ""}`);
     const docTab = `${docs.length ? E.filesHtml(docs) : empty(`No document yet.${isAdmin() ? " Add the <b>Contract of Lease</b>." : ""}`)}
       ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn small" for="olDocUp">${ic("upload")} Upload</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}
       ${o.notes ? `<div class="ol-sub">Notes</div><p class="ol-notes">${esc(o.notes)}</p>` : ""}`;
     const box = (cls, k, v, sub = "") => `<div class="os-kpi ${cls}"><small>${k}</small><b>₱ ${peso(v)}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
-    // 3.99.224: every month's statement (SOA), made by itself: from the shop's first month to this month (to date)
-    const soaMonths = []; for (let x = start.slice(0, 7); x <= monthNow() && soaMonths.length < 240; x = shiftMonth(x, 1)) soaMonths.push(x);
-    const soaTab = mine ? "" : soaMonths.length ? `<div class="soa-list">${[...soaMonths].reverse().map((x) => `<button type="button" class="ol-li soa-li" data-soa="${esc(x)}">${ic("print")}<div class="ol-li-m"><b class="mono">SOA-${esc(o.code)}-${esc(x.replace("-", ""))}</b><small>${esc(E.monthText(x))}${x === monthNow() ? " · to date" : ""}</small></div><em>Print</em></button>`).join("")}</div>` : empty("No month yet.");
-    const tabs = [["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Achieved", 0, `<div id="osAchTab" data-oid="${esc(o.id)}">${busy()}</div>`], ["Documents", docs.length, docTab], ...(mine ? [] : [["Monthly SOA", soaMonths.length, soaTab]])];
+    const soaTab = mine ? "" : soaMonths?.length ? `<div class="soa-list">${soaMonths.map((x) => `<button type="button" class="ol-li soa-li" data-soa="${esc(x)}">${ic("print")}<div class="ol-li-m"><b class="mono">SOA-${esc(o.code)}-${esc(x.replace("-", ""))}</b><small>${esc(E.monthText(x))}${x === monthNow() ? " · to date" : ""}</small></div><em>Print</em></button>`).join("")}</div>` : empty(soaMonths ? "No monthly statements yet." : "Statement history could not be loaded. Refresh to try again.");
+    const tabs = [["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Achieved", 0, `<div id="osAchTab" data-oid="${esc(o.id)}">${busy()}</div>`], ["Documents", docs.length, docTab], ...(mine ? [] : [["Monthly SOA", soaMonths?.length || 0, soaTab]])];
     const moreBtns = [`<button type="button" id="olInfo">${ic("folder")} Info</button>`, mapQuery(o) ? `<button type="button" id="olMapOpen">${ic("pin")} Location</button>` : "", edit ? `<button type="button" id="olCash">${ic("wallet")} Cash Out</button><button type="button" id="olExp">${ic("plus")} Expense / Bill</button>` : "",
       edit && !mine ? `<button type="button" id="olDep">${ic("building")} Bank Deposit</button>` : "",
       edit && !mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<button type="button" id="olPayRent">${ic("receipt")} Pay Rent ₱ ${peso(rs.left)}</button>` : "",
-      mine ? "" : `<button type="button" id="olSoa">${ic("print")} Monthly Statement</button>`,
+      mine || !hasActivity ? "" : `<button type="button" id="olSoa">${ic("print")} Monthly Statement</button>`,
       isAdmin() || edit ? `<button type="button" id="olHours">${ic("clock")} Today's Hours</button><button type="button" id="olNwd">${ic("clock")} Non-Working Days</button>` : ""].join("");
     $("#olBody").innerHTML = `
       ${moreBtns ? `<div class="pg-more"><button type="button" class="pg-more-btn" id="osMore" aria-label="More" aria-haspopup="true">⋯</button><div class="pg-more-list" id="osMoreList" hidden>${moreBtns}</div></div>` : ""}
@@ -402,10 +393,10 @@
       </section>
       ${o._closed ? `<div class="banner warn os-nwd">${ic("clock")} <span><b>TODAY IS A NON-WORKING DAY</b> · the store is closed and opens again tomorrow.</span></div>` : ""}
       ${mine ? `<div class="banner info os-mine">${ic("shield")} Your records only</div>` : ""}
-      <div class="os-kpis"${mine ? " hidden" : ""}>${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", opCost, "Daily operation cost")}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("left", "Cash Left", drawer, "In the shop now")}
+      <div class="os-kpis"${mine || !hasActivity ? " hidden" : ""}>${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", opCost, "Daily operation cost")}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("left", "Cash Left", drawer, "This month")}
         <div class="os-kpi bal${pool < 0 ? " neg" : ""}"><small>Net Balance</small><b>₱ ${peso(pool)}</b><span>Cash out not used yet · used this month ₱ ${peso(usedM)} (rent · stock · bank · bills)</span></div></div>
       <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Add Daily Sales</button>` : ""}</div>
-      <section class="os-daily"><div class="os-daily-h"><b>Daily Sales · ${esc(E.monthText(m))}</b>${mine ? "" : `<button type="button" class="btn small" id="olSoa2">${ic("print")} Print</button>`}</div>${salesTab}</section>
+      <section class="os-daily"><div class="os-daily-h"><b>Daily Sales · ${esc(E.monthText(m))}</b>${mine || !hasActivity ? "" : `<button type="button" class="btn small" id="olSoa2">${ic("print")} Print</button>`}</div>${salesTab}</section>
       <section class="os-info" id="osInfo" hidden><div class="os-info-head"><b>${ic("folder")} Info · ${esc(o.code)}</b><button type="button" class="btn small" id="osInfoClose">${ic("x")} Close</button></div>
         <div class="tabs os-tabs" id="osTabs">${tabs.map(([t, n], k) => `<button type="button" class="${k ? "" : "on"}" data-t="${k}">${esc(t)}${n ? ` <em>${n}</em>` : ""}</button>`).join("")}</div>
         <div class="tabpanes os-panes" id="osPanes">${tabs.map(([, , html], k) => `<div data-p="${k}" class="os-pane"${k ? " hidden" : ""}>${html}</div>`).join("")}</div></section>`;
@@ -449,7 +440,7 @@
     }));
     if ($("#olSoa2")) $("#olSoa2").onclick = () => $("#olSoa")?.click();
     if ($("#olDep")) $("#olDep").onclick = () => expenseForm(o, null, "", { kind: "deposit", amount: pool > 0 ? pool.toFixed(2) : "", payee: "BANK", note: "" });
-    if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout", cashNow > 0 ? { amount: cashNow.toFixed(2), cashNow } : { cashNow });
+    if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout", m === monthNow() ? { amount: cashNow > 0 ? cashNow.toFixed(2) : "", cashNow } : { date: first });
     $$("[data-eexp]").forEach((b) => (b.onclick = () => {
       const expense = exps.find((r) => r.id === b.dataset.eexp);
       if (!expense) return;
@@ -486,7 +477,7 @@
     if ($("#olNwd")) $("#olNwd").onclick = () => nwdForm(o, clos, m);
     if ($("#olHours")) $("#olHours").onclick = () => hoursForm(o, m);
     if ($("#olPayRent")) $("#olPayRent").onclick = () => expenseForm(o, null, "", { kind: "rent", amount: rs.left.toFixed(2), payee: "Landlord", note: `Rent ${E.monthText(m)}${rs.paidAmt > 0 ? " (the rest)" : ""}` });
-    if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, bal, cust, owed: cust ? owed : null, carry0, op: opCost, used: usedM, pool, drawer, staff: st });
+    if ($("#olSoa")) $("#olSoa").onclick = () => printSoa(o, m, { sales, exps, pays, net, out, cash, paid, cust, owed: cust ? owed : null, op: opCost, used: usedM, pool, drawer, staff: st });
     E.setRecords(`Outlet: ${o.code}`);
     document.body.classList.remove("os-info-open");
     let want = ""; try { want = sessionStorage.getItem("eoSoaPrint") || ""; } catch (_) {}
@@ -494,13 +485,18 @@
   };
 
   // 3.99.220: the days of a month in order, each with the cash left of the day before (prev) and its own cash left
-  function chainDays(sales, exps, carry0) {
+  function chainDays(sales, exps) {
     const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
-    let prev = carry0;
+    let prev = 0;
     return [...new Set([...sales.map((r) => r.sale_date), ...exps.filter((x) => x.kind === "daily" || x.kind === "cashout").map((x) => x.exp_date)])].sort()
       .map((dt) => { const r = sales.find((x) => x.sale_date === dt), t = num(r?.total), ex = dayOf(dt, "daily"), co = dayOf(dt, "cashout") + nonCash(r), x = { dt, r, t, ex, co, prev, left: prev + t - ex - co }; prev = x.left; return x; });
   }
-  const prevLeft = (sales, exps, carry0, date) => { const before = chainDays(sales, exps, carry0).filter((x) => x.dt < date); return before.length ? before[before.length - 1].left : carry0; };
+  const prevLeft = (sales, exps, date) => {
+    const month = date.slice(0, 7);
+    const before = chainDays(sales.filter((r) => r.sale_date.startsWith(month)), exps.filter((r) => r.exp_date.startsWith(month)))
+      .filter((day) => day.dt < date);
+    return before.at(-1)?.left ?? 0;
+  };
 
   // ---------- daily sales: the cash breakdown and the report photo ----------
   function saleForm(o, row, existing, prevOf = () => 0, exps = [], day = "") {
@@ -599,7 +595,7 @@
     const isCash = (row?.kind || kind) === "cashout"; // 3.99.157: Cash Out has its own simple form
     const kinds = Object.entries(KIND).filter(([k]) => k !== "cashout");
     const m = E.modal(`${o.code} · ${isCash ? (row ? "Edit Cash Out" : "Cash Out") : row ? "Edit Expense" : "Expense / Bill"}`, `<div class="formgrid ol-form">
-        <div><label for="oxDate">Date *</label><input id="oxDate" type="date" value="${row ? v("exp_date") : today()}"></div>
+        <div><label for="oxDate">Date *</label><input id="oxDate" type="date" value="${row ? v("exp_date") : esc(pre?.date || today())}"></div>
         ${isCash ? `<input type="hidden" id="oxKind" value="cashout">${!row && pre?.cashNow != null ? `<div class="span2 ol-prev">${ic("wallet")} Cash in the Shop <b>₱ ${peso(pre.cashNow)}</b><small>less than all: the rest goes on to the next day</small></div>` : ""}<div><label for="oxAmt">Amount (₱) *</label>${row && pre?.suggested > 0 ? `<button type="button" class="linkbtn" id="oxSuggest">Use that day’s remaining sales cash (₱ ${peso(pre.suggested)})</button>` : ""}<input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>
         <div class="span2"><label for="oxPayee">Cash Out To *</label><input id="oxPayee" maxlength="120" placeholder="e.g. EMON HASAN / bank deposit" value="${v("payee")}"></div>`
         : `<div><label for="oxKind">Type *</label><select id="oxKind">${kinds.map(([k, l]) => `<option value="${k}"${row?.kind === k ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
@@ -976,7 +972,7 @@
     const mdy = shopDate; // 3.99.309
     const resp = ((d.staff || []).map((x) => x.employees).filter(Boolean))[0] || null; // 3.99.282: the store's own employee signs, not who prints
     const bossId = await loadBoss([resp?.profile_id].filter(Boolean));
-    const days = chainDays(d.sales, d.exps, num(d.carry0)); // 3.99.220: the cash left goes on to the next day
+    const days = chainDays(d.sales, d.exps); // 3.99.220: the cash left goes on to the next day
     const xps = d.exps.filter((r) => r.kind !== "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
     const cos = d.exps.filter((r) => r.kind === "cashout").sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1));
     const pays = [...d.pays].sort((a, b) => (a.paid_date < b.paid_date ? -1 : 1));
@@ -996,7 +992,7 @@
         <div class="w2 dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? ` <i>· ${esc(resp.employee_no)}</i>` : ""}${resp.position ? ` <i>· ${esc(String(resp.position).toUpperCase())}</i>` : ""}` : "—"}</b></div>
         <div class="w2 dsr-resp"><small>Authorized Responsible</small><b>${esc(BOSS)}${(() => { const e = E.stampOf?.(bossId, BOSS, "", true)?.eoid; return e ? ` <i>· ${esc(e)}</i>` : ""; })()}</b></div></div>`; // 3.99.305
     const tile = (k, v, cls = "") => `<div class="soa-tile ${cls}"><small>${k}</small><b>₱ ${P(v)}</b></div>`;
-    const tiles = `<div class="soa-tiles">${tile("Net Sales", d.net, "in")}${tile("Expenses", d.op ?? d.out, "out")}${tile("Cash Out", d.cash || 0, "co")}${tile("Cash Left", d.drawer ?? 0, "pay")}${tile("Net Balance", d.pool ?? d.bal, `bal${(d.pool ?? d.bal) < 0 ? " neg" : ""}`)}</div>
+    const tiles = `<div class="soa-tiles">${tile("Net Sales", d.net, "in")}${tile("Expenses", d.op ?? d.out, "out")}${tile("Cash Out", d.cash || 0, "co")}${tile(m === monthNow() ? "Cash Left to Date" : "Closing Cash Left", d.drawer, "pay")}${tile(m === monthNow() ? "Net Balance to Date" : "Closing Net Balance", d.pool, `bal${d.pool < 0 ? " neg" : ""}`)}</div>
       <div class="soa-pay">${PAY.map(([k, l]) => `<span>${esc(l)} <b>₱ ${P(sum(d.sales, k))}</b></span>`).join("")}<span>Sales days <b>${d.sales.length}</b></span>${d.owed != null ? `<span>Stock to pay <b>₱ ${P(d.owed)}</b></span>` : ""}</div>`;
     blocks.push({ h: 13, html: head + info + tiles });
     // a table: its title, its head, its rows (split over pages) and its total
@@ -1011,7 +1007,7 @@
     };
     table("Daily Sales", [["Date"], ...PAY.map(([, l]) => [l, 1]), ["Total Sales", 1], ["Expenses", 1], ["Cash Out", 1], ["Cash Left", 1]],
       days.map((x) => `<tr><td>${esc(sdate(x.dt))}</td>${PAY.map(([k]) => `<td class="num">${Z(x.r?.[k])}</td>`).join("")}<td class="num"><b>${Z(x.t)}</b></td><td class="num">${Z(x.ex)}</td><td class="num">${Z(x.co)}</td><td class="num"><b>${P(x.left)}</b></td></tr>`),
-      `<tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${P(sum(d.sales, k))}</td>`).join("")}<td class="num">${P(d.net)}</td><td class="num">${P(sum(days, "ex"))}</td><td class="num">${P(sum(days, "co"))}</td><td class="num">${P(num(d.carry0) + d.net - sum(days, "ex") - sum(days, "co"))}</td></tr>`);
+      `<tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${P(sum(d.sales, k))}</td>`).join("")}<td class="num">${P(d.net)}</td><td class="num">${P(sum(days, "ex"))}</td><td class="num">${P(sum(days, "co"))}</td><td class="num">${P(d.drawer)}</td></tr>`);
     table("Expenses &amp; Bills", [["Date"], ["Type"], ["Paid To / Note"], ["Amount (₱)", 1]],
       xps.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc([r.payee, r.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${P(d.out)}</td></tr>`);
