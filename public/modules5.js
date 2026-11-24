@@ -351,7 +351,7 @@
       if (e2) { b.disabled = false; return fail(e2, "Could not save the decision"); }
       if (gone?.length) sb.storage.from("records").remove(gone).then(() => {}, () => {});
       toast(a === "approve" ? `${p.po_no} approved. ${p.created_by_name || "The maker"} is told.` : a === "negotiate" ? `Sent back for negotiation. ${p.created_by_name || "The maker"} is told.` : `${p.po_no} cancelled.`);
-      E.refreshBadge?.(); V.po(id);
+      E.refreshNotifications(); V.po(id);
     }));
     $$("[data-up]").forEach((b) => (b.onclick = async () => {
       b.disabled = true;

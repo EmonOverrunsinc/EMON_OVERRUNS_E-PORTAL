@@ -318,6 +318,7 @@
       if (action === "approve" && !(await E.confirmBox(`Payment of <b>₱ ${peso(i.amount)}</b> received for <b>${esc(i.ins_no)}</b>?<br><br>The coverage is issued now (certificate with your signature) and a collection voucher is made by itself.`, { title: "Issue Coverage", ok: "Issue Coverage" }))) return;
       const { error: e2 } = await sb.rpc("decide_insurance", { p_id: i.id, p_action: action, p_note: note || null });
       if (e2) return fail(e2, "Could not save");
+      E.refreshNotifications();
       toast(action === "approve" ? `Coverage ${i.ins_no} issued. The collection voucher was made.` : "Payment not accepted: sent back."); insPage(i.id);
     };
     if ($("#ipOk")) $("#ipOk").onclick = () => decide("approve");

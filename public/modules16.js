@@ -140,6 +140,7 @@
       const { error } = await sb.rpc("device_decide", { p_id: r.id, p_action: a });
       b.disabled = false;
       if (error) return fail(error, "Could not change the device");
+      E.refreshNotifications();
       m.close(); toast(a === "approve" ? "Device approved. It opens by itself." : a === "block" ? "Device blocked." : "Device removed."); after?.();
     }));
   }
