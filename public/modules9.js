@@ -222,8 +222,8 @@
     const { data, error } = await sb.rpc("my_id_card");
     if (error || !data || !el.isConnected) { el.remove(); return; }
     el.innerHTML = `<fieldset class="opt"><legend>My ID Card</legend>
-        <p>Your ID card <b class="mono">${esc(data.card_no)}</b> (valid until ${esc(mdy(data.valid_until))}) signs you in: on the sign-in page press <b>Sign In with ID Card</b>, scan the card and type your password.</p>
-        <small class="muted">Anyone with your card and your password can open the portal as you. Lost your card? Tell EMON HASAN at once.</small></fieldset>`;
+        <p>ID card <b class="mono">${esc(data.card_no)}</b> is valid until ${esc(mdy(data.valid_until))}. To sign in, choose <b>Sign In with ID Card</b>, scan your card and enter your password.</p>
+        <small class="muted">Keep your card and password secure. Report a lost card to EMON HASAN immediately.</small></fieldset>`;
   }
 
   // ---------- a scanned card (anyone): who it belongs to and whether it is valid ----------

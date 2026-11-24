@@ -253,16 +253,16 @@
   async function editOutlet(o, count = 0, code = "") {
     const preset = o?.customer_id ? await E.getCustomer(o.customer_id).catch(() => null) : null;
     const v = (k, d = "") => esc(o?.[k] ?? d);
-    const m = E.modal(o ? `Edit ${o.code}` : `Add Store · ${code || `SHOP-${count + 1}`}`, `<div class="formgrid ol-form">
+    const m = E.modal(o ? `${o.code} · Edit Shop Details` : `Add Store · ${code || `SHOP-${count + 1}`}`, `<div class="formgrid ol-form shop-details-form">
         ${o?.branch_id ? `<div class="span2"><label>Branch ID</label><input value="${esc(String(o.branch_id).replace(/^EO-/, ""))}" readonly class="ro" title="Made by the system, never changed"></div>` : ""}
         <div><label for="olCode">Branch Code</label><input id="olCode" maxlength="30" value="${esc(o ? o.code : code || `SHOP-${count + 1}`)}" readonly class="ro" title="Given by the system"></div>
         <div><label for="olName">Store Name *</label><input id="olName" maxlength="120" value="${v("name", "RETAIL OUTLET")}" required></div>
         <div class="span2"><label for="olAddr">Address</label><input id="olAddr" maxlength="300" value="${v("address")}"></div>
         <div class="span2"><label for="olMap">Google Maps Location <button type="button" class="linkbtn" id="olMapTry">Check on Google Maps</button></label><input id="olMap" maxlength="1000" data-case="keep" placeholder="Paste the Google Maps link of the shop" value="${v("map_url")}"></div>
-        <div><label for="olOpen">Opening Hours</label><input id="olOpen" type="time" step="300" value="${esc(to24(o?.opens) || (o ? "" : "09:00"))}"></div>
-        <div><label for="olClose">Closing Hours</label><input id="olClose" type="time" step="300" value="${esc(to24(o?.closes) || (o ? "" : "21:00"))}"></div>
+        <div><label for="olOpen">Opens at</label><input id="olOpen" type="time" step="300" value="${esc(to24(o?.opens) || (o ? "" : "09:00"))}"></div>
+        <div><label for="olClose">Closes at</label><input id="olClose" type="time" step="300" value="${esc(to24(o?.closes) || (o ? "" : "21:00"))}"></div>
         <div><label for="olRent">Monthly Rental (₱)</label><input id="olRent" type="number" min="0" step="0.01" value="${v("monthly_rent", "0")}"></div>
-        <div><label for="olDay">Rental Due Day (1–31)</label><input id="olDay" type="number" min="1" max="31" value="${v("rent_day")}"></div>
+        <div><label for="olDay">Rent due day (1–31)</label><input id="olDay" type="number" min="1" max="31" value="${v("rent_day")}"></div>
         <div class="span2"><label>Customer Account (the shop's stock: orders, invoices, payments)</label><div id="olCust"></div></div>
         <div class="span2"><label for="olNote">Notes</label><textarea id="olNote" rows="2" maxlength="1000">${v("notes")}</textarea></div>
         ${o ? "" : `<div class="span2"><label for="olLease">Contract of Lease (photos of its pages or a PDF; the pages are saved as one document)</label><input id="olLease" type="file" accept="image/*,application/pdf" multiple></div>`}
@@ -279,7 +279,8 @@
       const mapUrl = $("#olMap", m.el)?.value.trim() || null;
       if (mapUrl && !/^https:\/\/([a-z0-9-]+\.)*(google\.[a-z.]+|goo\.gl|maps\.app\.goo\.gl)\//i.test(mapUrl)) return toast("Paste a Google Maps link (https://maps.google.com/… or https://maps.app.goo.gl/…).", true);
       if (mapUrl || o?.map_url) row.map_url = mapUrl;
-      if (!row.code || !row.name) return toast("Type the outlet code and name.", true);
+      if (!row.code || !row.name) return toast("Enter a shop name.", true);
+      if (!$("#olRent", m.el).reportValidity() || !$("#olDay", m.el).reportValidity()) return;
       e.target.disabled = true;
       let r = o ? await sb.from("outlets").update(row).eq("id", o.id).select().single() : await sb.from("outlets").insert(row).select().single();
       if (r.error && "map_url" in row && /map_url|schema cache|PGRST204/i.test(r.error.message || "")) { // the map needs SQL 137: the rest is saved
@@ -345,7 +346,7 @@
 
     // 3.99.153: the shop page in a new layout: the head, 4 boxes, the buttons, and tabs (Daily Sales · Expenses & Cash Out ·
     // Stock Account · Employees · Documents). Daily Sales is a day by day table: sales, the day's expenses, cash out, cash left.
-    const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" ? (isAdmin() ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit">${ic("edit")}</button>` : "") : isAdmin() ? `<button type="button" class="btn small" data-eexp="${esc(r.id)}" title="${isAdmin() ? "Edit" : "Correct (one time)"}">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
+    const tools = (tbl, r) => `<span class="ol-tools">${photoBtn(r.id)}${tbl === "outlet_sales" ? (isAdmin() ? `<button type="button" class="btn small" data-esale="${esc(r.id)}" title="Edit sales" aria-label="Edit sales">${ic("edit")}</button>` : "") : isAdmin() ? `<button type="button" class="btn small" data-eexp="${esc(r.id)}" title="${isAdmin() ? "Edit" : "Correct (one time)"}">${ic("edit")}</button>` : ""}${del(tbl, r.id)}</span>`;
     const dayOf = (d, k) => sum(exps.filter((x) => x.exp_date === d && x.kind === k), "amount");
     // 3.99.220: CASH LEFT goes on to the next day: the cash left of yesterday + today's sales − the daily operation cost − the cash out
     const carry0 = sum(allS.filter((x) => x.sale_date < first), "total") - allS.filter((x) => x.sale_date < first).reduce((t, r) => t + nonCash(r), 0) - sum(allX.filter((x) => x.exp_date < first && (x.kind === "daily" || x.kind === "cashout")), "amount");
@@ -356,8 +357,8 @@
     const pc = (v) => (num(v) ? peso(v) : "");
     const narrow = matchMedia("(max-width: 640px)").matches; // 3.99.298: a phone: the row's buttons under ⋯
     const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t os-days"><thead><tr><th>DATE</th><th class="num os-prev">YESTERDAY CASH</th><th class="num"><span class="d-l">TOTAL SALES</span><span class="d-s">SALES</span></th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">BALANCE</th><th></th></tr></thead><tbody>
-        ${days.map((x) => `<tr class="os-day" data-dayrow="${esc(x.d)}"><td${num(x.prev) ? ` title="+ ₱ ${peso(x.prev)} from yesterday"` : ""}><b class="d-l">${esc(mdy(x.d))}</b><b class="d-s">${esc(new Date(x.d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "2-digit" }).toUpperCase())}</b></td><td class="num os-prev">${pc(x.prev)}</td><td class="num"><b class="os-in">${pc(x.t)}</b></td><td class="num">${pc(x.ex)}</td><td class="num">${pc(x.co)}</td><td class="num"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td class="os-actc"><details class="os-act"${narrow ? "" : " open"}><summary aria-label="Actions">⋯</summary><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : isAdmin() ? `<button type="button" class="btn small" data-addsale="${esc(x.d)}" title="Add this day's sales">${ic("plus")} Sales</button>` : ""}${isAdmin() ? `<button type="button" class="btn small danger" data-delday="${esc(x.d)}" title="Delete this day">${ic("trash")}</button>` : ""}</span></details></td></tr>`).join("")}</tbody>
-        <tfoot><tr><td>TOTAL</td><td class="os-prev"></td><td class="num">${peso(net)}</td><td class="num">${peso(dEx)}</td><td class="num">${peso(dCo)}</td><td class="num">${peso(carry0 + net - dEx - dCo)}</td><td></td></tr></tfoot></table></div>`
+        ${days.map((x) => `<tr class="os-day" data-dayrow="${esc(x.d)}"><td${num(x.prev) ? ` title="+ ₱ ${peso(x.prev)} from yesterday"` : ""}><b class="d-l">${esc(mdy(x.d))}</b><b class="d-s">${esc(new Date(x.d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "2-digit" }).toUpperCase())}</b></td><td class="num os-prev">${pc(x.prev)}</td><td class="num" data-label="Sales"><b class="os-in">${peso(x.t)}</b></td><td class="num" data-label="Expenses">${peso(x.ex)}</td><td class="num" data-label="Cash out">${peso(x.co)}</td><td class="num" data-label="Balance"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td class="os-actc"><details class="os-act"${narrow ? "" : " open"}><summary aria-label="Actions">⋯</summary><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : isAdmin() ? `<button type="button" class="btn small" data-addsale="${esc(x.d)}" title="Add this day's sales">${ic("plus")} Sales</button>` : ""}${isAdmin() ? `<button type="button" class="btn small danger" data-delday="${esc(x.d)}" title="Delete this day">${ic("trash")}</button>` : ""}</span></details></td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>TOTAL</td><td class="os-prev"></td><td class="num" data-label="Sales">${peso(net)}</td><td class="num" data-label="Expenses">${peso(dEx)}</td><td class="num" data-label="Cash out">${peso(dCo)}</td><td class="num" data-label="Balance">${peso(carry0 + net - dEx - dCo)}</td><td></td></tr></tfoot></table></div>`
       : empty("No sales recorded this month.");
     const xps = exps.filter((r) => r.kind !== "cashout"), cos = exps.filter((r) => r.kind === "cashout");
     const expTab = xps.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>TYPE</th><th>PAID TO / NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
@@ -388,8 +389,7 @@
       edit && !mine ? `<button type="button" id="olDep">${ic("building")} Bank Deposit</button>` : "",
       edit && !mine && (rs.k === "unpaid" || rs.k === "overdue") ? `<button type="button" id="olPayRent">${ic("receipt")} Pay Rent ₱ ${peso(rs.left)}</button>` : "",
       mine ? "" : `<button type="button" id="olSoa">${ic("print")} Monthly Statement</button>`,
-      isAdmin() || edit ? `<button type="button" id="olHours">${ic("clock")} Today's Hours</button><button type="button" id="olNwd">${ic("clock")} Non-Working Days</button>` : "",
-      isAdmin() ? `<button type="button" id="olEdit">${ic("edit")} Edit Outlet</button>` : ""].join("");
+      isAdmin() || edit ? `<button type="button" id="olHours">${ic("clock")} Today's Hours</button><button type="button" id="olNwd">${ic("clock")} Non-Working Days</button>` : ""].join("");
     $("#olBody").innerHTML = `
       ${moreBtns ? `<div class="pg-more"><button type="button" class="pg-more-btn" id="osMore" aria-label="More" aria-haspopup="true">⋯</button><div class="pg-more-list" id="osMoreList" hidden>${moreBtns}</div></div>` : ""}
       <section class="os-hero">
@@ -397,13 +397,14 @@
           <div class="os-hero-m"><div class="os-code-row"><span class="os-code">${esc(o.code)}</span></div><h2>${esc(o.name)}</h2>${o.address ? `<p>${ic("pin")} ${esc(o.address)}</p>` : ""}</div></div>
         <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span>${o._today ? "" : `<span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>`}${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive" title="${storeNow(o).sales ? `Sales hours ${o._today ? "today" : "a day"}: ${storeNow(o).sales}` : ""}">${liveHtml(o)}</span><span class="os-next" id="osNext">${ic("clock")} ${liveNext(o)}</span>` : ""}${o._today ? `<span class="os-todayh" title="Changed for today${o._today.set_by_name ? ` by ${esc(o._today.set_by_name)}` : ""}${o._today.note ? ` · ${esc(o._today.note)}` : ""}">${ic("clock")} Today ${esc(todayText(o))}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? ic("check") + " " : ""}${esc(rentLine(rs))}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
+        ${isAdmin() ? `<div class="os-details-action"><button type="button" class="btn small" id="olEdit">${ic("edit")} Edit Shop Details</button></div>` : ""}
         <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
       </section>
       ${o._closed ? `<div class="banner warn os-nwd">${ic("clock")} <span><b>TODAY IS A NON-WORKING DAY</b> · the store is closed and opens again tomorrow.</span></div>` : ""}
       ${mine ? `<div class="banner info os-mine">${ic("shield")} Your records only</div>` : ""}
       <div class="os-kpis"${mine ? " hidden" : ""}>${box("in", "Net Sales", net, byPay.map(([l, v]) => `${esc(l)} ₱ ${peso(v)}`).join(" · "))}${box("out", "Expenses", opCost, "Daily operation cost")}${box("co", "Cash Out", cash, `${cos.length} time(s)`)}${box("left", "Cash Left", drawer, "In the shop now")}
         <div class="os-kpi bal${pool < 0 ? " neg" : ""}"><small>Net Balance</small><b>₱ ${peso(pool)}</b><span>Cash out not used yet · used this month ₱ ${peso(usedM)} (rent · stock · bank · bills)</span></div></div>
-      <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Daily Sales</button>` : ""}</div>
+      <div class="os-actions">${edit ? `<button type="button" class="btn primary" id="olSale">${ic("plus")} Add Daily Sales</button>` : ""}</div>
       <section class="os-daily"><div class="os-daily-h"><b>Daily Sales · ${esc(E.monthText(m))}</b>${mine ? "" : `<button type="button" class="btn small" id="olSoa2">${ic("print")} Print</button>`}</div>${salesTab}</section>
       <section class="os-info" id="osInfo" hidden><div class="os-info-head"><b>${ic("folder")} Info · ${esc(o.code)}</b><button type="button" class="btn small" id="osInfoClose">${ic("x")} Close</button></div>
         <div class="tabs os-tabs" id="osTabs">${tabs.map(([t, n], k) => `<button type="button" class="${k ? "" : "on"}" data-t="${k}">${esc(t)}${n ? ` <em>${n}</em>` : ""}</button>`).join("")}</div>
@@ -423,7 +424,7 @@
       toast(f ? `${f} file(s) could not be uploaded.` : "Document saved.", !!f); E.route();
     };
     E.bindFiles($("#olBody"));
-    if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales, prevOf, exps);
+    if ($("#olSale")) $("#olSale").onclick = () => saleForm(o, null, sales, prevOf, exps, m === monthNow() ? today() : first);
     $$("[data-delday]").forEach((b) => (b.onclick = async (e) => { // 3.99.289: the Director deletes the whole day (SQL 148)
       e.stopPropagation(); const d = b.dataset.delday;
       if (!(await E.confirmBox(`Delete <b>${esc(mdy(d))}</b>?<br><br>Its sales, daily operation cost and cash out are all deleted. This cannot be undone.`, { title: "Delete Day", ok: "Delete", danger: true }))) return;
@@ -449,7 +450,17 @@
     if ($("#olSoa2")) $("#olSoa2").onclick = () => $("#olSoa")?.click();
     if ($("#olDep")) $("#olDep").onclick = () => expenseForm(o, null, "", { kind: "deposit", amount: pool > 0 ? pool.toFixed(2) : "", payee: "BANK", note: "" });
     if ($("#olCash")) $("#olCash").onclick = () => expenseForm(o, null, "cashout", cashNow > 0 ? { amount: cashNow.toFixed(2), cashNow } : { cashNow });
-    $$("[data-eexp]").forEach((b) => (b.onclick = () => expenseForm(o, exps.find((r) => r.id === b.dataset.eexp))));
+    $$("[data-eexp]").forEach((b) => (b.onclick = () => {
+      const expense = exps.find((r) => r.id === b.dataset.eexp);
+      if (!expense) return;
+      const d = expense.exp_date;
+      const sale = sales.find((r) => r.sale_date === d);
+      const suggested = expense.kind === "cashout" && sale
+        ? num(sale.cash) - dayOf(d, "daily") - (dayOf(d, "cashout") - num(expense.amount))
+        : null;
+      if (info && !info.hidden) infoClose();
+      expenseForm(o, expense, "", { suggested });
+    }));
     bindStaff($("#olBody"), "outlet", { id: o.id, label: o.code }, st);
     // the store status counts by itself (every 30 seconds while this page is open)
     const live = setInterval(() => { const el = $("#osLive"), s = storeNow(o); if (!el || !s) { clearInterval(live); return; } el.className = `os-live st-${s.k}`; el.innerHTML = liveHtml(o); const nx = $("#osNext"); if (nx) nx.innerHTML = `${ic("clock")} ${liveNext(o)}`; }, 30000);
@@ -493,21 +504,30 @@
 
   // ---------- daily sales: the cash breakdown and the report photo ----------
   function saleForm(o, row, existing, prevOf = () => 0, exps = [], day = "") {
-    const m = E.modal(`${o.code} · Daily Sales`, `<div class="formgrid ol-form">
-        <div><label for="osDate">Date *</label><input id="osDate" type="date" value="${esc(row?.sale_date || day || today())}" ${row ? "disabled" : ""}></div><div></div>
+    const m = E.modal(`${o.code} · ${row ? "Edit Daily Sales" : "Add Daily Sales"}`, `<div class="formgrid ol-form sales-entry-form">
+        <div class="span2"><label for="osDate">Sales date</label><input id="osDate" type="date" required value="${esc(row?.sale_date || day || today())}" aria-describedby="osDateHelp">
+          <small id="osDateHelp">${row ? "Changing the sales date leaves separately recorded expenses and cash outs on their original dates." : "Choose the date the sales were made."}</small></div>
+        <p class="span2 hint err" id="osSaveError" role="alert" hidden></p>
         <div class="span2"><label for="osNet">Total Net Sales *</label><input id="osNet" class="os-amt os-net" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row.total) ? esc(row.total) : ""}" placeholder="0.00"></div>
         <div><label for="os_gcash">GCash</label><input id="os_gcash" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${row && num(row.gcash) ? esc(row.gcash) : ""}" placeholder="0.00"></div>
         <div><label for="os_cash">${ic("lock")} Cash</label><input id="os_cash" class="locked" type="number" readonly tabindex="-1" value="${row ? esc(num(row.cash)) : ""}" placeholder="0.00"></div>
-        <b id="osTot" hidden></b>
+
         ${row ? "" : `<div class="span2 ol-prev">${ic("lock")} Cash Left from Yesterday <b id="osPrev">₱ 0.00</b></div>
         <div class="span2"><label for="osExp">Daily Operation</label><input id="osExp" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
         <div><label for="osOut">Cash Out <button type="button" class="linkbtn os-all" id="osAll">All</button></label><input id="osOut" class="os-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
         <div><label for="osOutN">${ic("lock")} Cash Out To <button type="button" class="linkbtn" id="osOutEdit" hidden>✎ Change</button></label><input id="osOutN" maxlength="120" value="EMON HASAN" readonly class="locked"></div>
         <div class="span2 ol-left"><span>Cash Left in the Shop</span><b id="osLeft">₱ 0.00</b></div>`}
+        ${row && nonCash(row) > 0 ? `<label class="span2 os-all-cash"><input type="checkbox" id="osAllCash"> Record the full sales amount as cash</label>` : ""}
         <div class="span2"><label for="osNote">Note</label><input id="osNote" maxlength="500" value="${esc(row?.note || "")}"></div>
-        <div class="span2"><label for="osPic">Sales Report Photo</label><input id="osPic" type="file" accept="image/*,application/pdf" multiple></div>
+        <div class="span2"><label for="osPic">Sales report attachments</label><input id="osPic" type="file" accept="image/*,application/pdf" multiple></div>
       </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="osSave">${ic("check")} Save</button>`, { wide: true });
-    const total = () => PAY.reduce((s, [k]) => s + num($(`#os_${k}`, m.el).value), 0);
+    const legacyKeys = ["maya", "bank", "card", "other"];
+    const legacyOther = legacyKeys.reduce((sum, key) => sum + num(row?.[key]), 0);
+    const allCash = $("#osAllCash", m.el);
+    const gcash = $("#os_gcash", m.el);
+    const otherPayments = () => allCash?.checked ? 0 : legacyOther;
+    const gcashAmount = () => allCash?.checked ? 0 : val("os_gcash");
+    const total = () => val("os_cash") + gcashAmount() + otherPayments();
     const val = (id) => num($("#" + id, m.el)?.value);
     // 3.99.220: the cash left of the day before is added by itself (locked); the day's expenses and cash out already saved count too
     const dateNow = () => $("#osDate", m.el).value || today();
@@ -515,34 +535,44 @@
     const prev = () => num(prevOf(dateNow()));
     const avail = () => prev() + num($("#os_cash", m.el)?.value) - dayX("daily") - dayX("cashout") - val("osExp"); // 3.99.257: GCash is not in the shop
     const show = () => {
-      const net = num($("#osNet", m.el).value), gc = num($("#os_gcash", m.el).value); // 3.99.337: Cash = Net Sales − GCash (locked)
-      $("#os_cash", m.el).value = (Math.max(0, net - gc)).toFixed(2);
-      $("#os_gcash", m.el).classList.toggle("bad", gc > net + 0.004);
-      $("#osTot", m.el).textContent = `₱ ${peso(total())}`;
+      const net = num($("#osNet", m.el).value), gc = gcashAmount(); // 3.99.337: Cash = Net Sales − GCash (locked)
+      $("#os_cash", m.el).value = (Math.max(0, net - gc - otherPayments())).toFixed(2);
+      $("#os_gcash", m.el).classList.toggle("bad", gc + otherPayments() > net + 0.004);
       if ($("#osPrev", m.el)) $("#osPrev", m.el).textContent = `₱ ${peso(prev())}`;
       if ($("#osOutEdit", m.el)) $("#osOutEdit", m.el).hidden = !(val("osOut") > 0); // 3.99.338
       if ($("#osLeft", m.el)) { const left = avail() - val("osOut"); $("#osLeft", m.el).textContent = `₱ ${peso(left)}`; $("#osLeft", m.el).classList.toggle("neg", left < 0); }
     };
+    if (allCash) allCash.onchange = () => { gcash.disabled = allCash.checked; show(); };
     $$(".os-amt", m.el).forEach((i) => (i.oninput = show)); show();
-    if ($("#osDate", m.el)) $("#osDate", m.el).onchange = show;
     if ($("#osOutEdit", m.el)) $("#osOutEdit", m.el).onclick = () => { const i = $("#osOutN", m.el); i.readOnly = false; i.classList.remove("locked"); i.select(); i.focus(); };
     if ($("#osAll", m.el)) $("#osAll", m.el).onclick = () => { $("#osOut", m.el).value = Math.max(0, avail()).toFixed(2); show(); };
     $("[data-x]", m.el).onclick = () => m.close();
+    const errorBox = $("#osSaveError", m.el);
+    const showError = (message) => { errorBox.textContent = message; errorBox.hidden = false; };
+    const dateField = $("#osDate", m.el);
+    dateField.onchange = () => { errorBox.hidden = true; show(); };
     $("#osSave", m.el).onclick = async (e) => {
-      const date = $("#osDate", m.el).value;
-      if (!date) return toast("Choose the date.", true);
-      if (!num($("#osNet", m.el).value)) return toast("Type the Total Net Sales.", true);
-      if (num($("#os_gcash", m.el).value) > num($("#osNet", m.el).value) + 0.004) return toast("GCash cannot be more than the Total Net Sales.", true);
-      if (!total()) return toast("Type the sales amounts.", true);
-      // 3.99.157: a day that has its sales already: asked, then changed (the expenses / cash out typed are kept)
-      const had = !row && existing.find((r) => r.sale_date === date);
-      if (had && !(await E.confirmBox(`<b>${esc(mdy(date))}</b> has its sales already: <b>₱ ${esc(peso(had.total))}</b>.<br><br>Change them to <b>₱ ${esc(peso(total()))}</b>?`, { title: "Daily Sales", ok: "Change" }))) return;
-      const target = row || had;
-      const data = { outlet_id: o.id, sale_date: date, note: $("#osNote", m.el).value.trim() || had?.note || null, ...(target ? {} : { created_by_name: me() }) };
-      PAY.forEach(([k]) => (data[k] = num($(`#os_${k}`, m.el).value)));
-      e.target.disabled = true;
-      const r = target ? await sb.from("outlet_sales").update(data).eq("id", target.id).select().single() : await sb.from("outlet_sales").insert(data).select().single();
-      if (r.error) { e.target.disabled = false; return fail(r.error, /duplicate|unique/i.test(r.error.message) ? `${mdy(date)} has its sales already.` : "Could not save the sales"); }
+      const button = e.currentTarget, date = dateField.value;
+      errorBox.hidden = true;
+      if (!dateField.reportValidity()) return;
+      if (!$("#osNet", m.el).reportValidity() || !$("#os_gcash", m.el).reportValidity()) return;
+      if (!total()) return showError("Enter the total net sales.");
+      if (gcashAmount() + otherPayments() > val("osNet") + 0.004) return showError("Non-cash payments cannot exceed total net sales.");
+      const occupied = `${mdy(date)} already has a sales report. Edit that report, or move it to its correct date first.`;
+      if (existing.some((sale) => sale.sale_date === date && sale.id !== row?.id)) return showError(occupied);
+      const data = { outlet_id: o.id, sale_date: date, note: $("#osNote", m.el).value.trim() || null };
+      if (!row) data.created_by_name = me();
+      data.cash = val("os_cash");
+      data.gcash = gcashAmount();
+      if (allCash?.checked) legacyKeys.forEach((key) => { data[key] = 0; });
+      button.disabled = true;
+      const r = row
+        ? await sb.from("outlet_sales").update(data).eq("id", row.id).eq("sale_date", row.sale_date).select().maybeSingle()
+        : await sb.from("outlet_sales").insert(data).select().single();
+      if (r.error || !r.data) {
+        button.disabled = false;
+        return showError(r.error?.code === "23505" ? occupied : r.error ? "Could not save the sales report. Check your connection and try again." : "This report changed or you no longer have permission to edit it. Reopen it and try again.");
+      }
       // 3.99.140: the day's expenses and the cash taken out, saved with the sales
       const outs = row ? [] : [["daily", val("osExp"), null, "DAILY OPERATION COST"], ["cashout", val("osOut"), $("#osOutN", m.el).value.trim().toUpperCase() || null, null]].filter((x) => x[1] > 0);
       let bad = null;
@@ -555,7 +585,10 @@
       m.close();
       const why = bad ? (bad.code === "23514" || /kind_check/.test(bad.message || "") ? "run the database update 113 on the updates page, then add them with Expense / Bill" : bad.message || "try again with Expense / Bill") : "";
       toast(bad ? `Sales saved, but the expenses / cash out were NOT saved: ${why}.` : failed ? `Sales saved; ${failed} photo(s) could not be uploaded.` : `Sales saved: ₱ ${peso(r.data.total)}${outs.length ? ` · out ₱ ${peso(outs.reduce((t, x) => t + x[1], 0))}` : ""}.`, !!(bad || failed));
-      E.route();
+      const destination = `#outlet/${o.id}/${date.slice(0, 7)}`;
+      const currentMonth = location.hash.split("/")[2] || monthNow();
+      if (date.slice(0, 7) !== currentMonth) location.hash = destination;
+      else E.route();
     };
   }
 
@@ -567,7 +600,7 @@
     const kinds = Object.entries(KIND).filter(([k]) => k !== "cashout");
     const m = E.modal(`${o.code} · ${isCash ? (row ? "Edit Cash Out" : "Cash Out") : row ? "Edit Expense" : "Expense / Bill"}`, `<div class="formgrid ol-form">
         <div><label for="oxDate">Date *</label><input id="oxDate" type="date" value="${row ? v("exp_date") : today()}"></div>
-        ${isCash ? `<input type="hidden" id="oxKind" value="cashout">${!row && pre?.cashNow != null ? `<div class="span2 ol-prev">${ic("wallet")} Cash in the Shop <b>₱ ${peso(pre.cashNow)}</b><small>less than all: the rest goes on to the next day</small></div>` : ""}<div><label for="oxAmt">Amount (₱) *</label><input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>
+        ${isCash ? `<input type="hidden" id="oxKind" value="cashout">${!row && pre?.cashNow != null ? `<div class="span2 ol-prev">${ic("wallet")} Cash in the Shop <b>₱ ${peso(pre.cashNow)}</b><small>less than all: the rest goes on to the next day</small></div>` : ""}<div><label for="oxAmt">Amount (₱) *</label>${row && pre?.suggested > 0 ? `<button type="button" class="linkbtn" id="oxSuggest">Use that day’s remaining sales cash (₱ ${peso(pre.suggested)})</button>` : ""}<input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>
         <div class="span2"><label for="oxPayee">Cash Out To *</label><input id="oxPayee" maxlength="120" placeholder="e.g. EMON HASAN / bank deposit" value="${v("payee")}"></div>`
         : `<div><label for="oxKind">Type *</label><select id="oxKind">${kinds.map(([k, l]) => `<option value="${k}"${row?.kind === k ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
         <div><label for="oxPayee">Paid To</label><input id="oxPayee" maxlength="120" placeholder="Supplier / landlord / company" value="${v("payee")}"></div>
@@ -578,6 +611,11 @@
     if (pre && !row) { // 3.99.204: Pay Rent: the type, the amount still unpaid, the landlord and a note
       const set = (sel, v) => { const x = m.el.querySelector(sel); if (x && v != null) x.value = v; };
       set("#oxKind", pre.kind); set("#oxAmt", pre.amount); set("#oxPayee", pre.payee); set("#oxNote", pre.note);
+    }
+    const suggestion = $("#oxSuggest", m.el);
+    if (suggestion) {
+      suggestion.onclick = () => { $("#oxAmt", m.el).value = pre.suggested.toFixed(2); };
+      $("#oxDate", m.el).addEventListener("change", (e) => { suggestion.hidden = e.target.value !== row.exp_date; });
     }
     if (!isCash) $("#oxKind", m.el).onchange = (e) => { if (e.target.value === "rent" && !$("#oxAmt", m.el).value && num(o.monthly_rent)) $("#oxAmt", m.el).value = num(o.monthly_rent).toFixed(2); };
     $("[data-x]", m.el).onclick = () => m.close();
@@ -727,7 +765,7 @@
     if (error) { el.hidden = true; return; }
     const list = data || [];
     el.innerHTML = `<div class="off-h"><h3>${ic("users")} Assigned Employees</h3>${isAdmin() ? `<button type="button" class="btn small primary" id="offAdd">${ic("plus")} Assign Employee</button>` : ""}</div>
-      ${list.length ? `<div class="off-list">${list.map((x) => `<a class="off-emp" href="#employee/${esc(x.id)}"><b>${esc(String(x.full_name || "").toUpperCase())}</b><small>${esc([x.employee_no, x.job_position].filter(Boolean).join(" · ").toUpperCase())}</small></a>`).join("")}</div>` : `<div class="muted off-none">No employee assigned to ${OFFICE_NAME[office]} yet.</div>`}`;
+      ${list.length ? `<div class="off-list">${list.map((x) => `<a class="off-emp" href="#employee/${esc(x.id)}"><b>${esc(String(x.full_name || "").toUpperCase())}</b><small>${esc([x.employee_no, x.job_position].filter(Boolean).join(" · ").toUpperCase())}</small></a>`).join("")}</div>` : `<div class="muted off-none">No employees are assigned to this office yet.</div>`}`;
     el.hidden = false;
     if ($("#offAdd", el)) $("#offAdd", el).onclick = async () => {
       const { data: emps } = await sb.from("employees").select("id, first_name, last_name, employee_no, position, status").neq("status", "terminated").order("first_name");
@@ -1003,12 +1041,12 @@
   // ======================================================================
   // 3.99.156: REGIONAL OFFICE: one menu item with Purchase Order, Billing and E-Bill inside
   // ======================================================================
-  E.regTabs = (on) => { const it = E.regionalItems(); return it.length > 1 ? `<nav class="subnav reg-nav"><a href="#regional" class="${on === "regional" ? "on" : ""}">${ic("globe")} Regional Office Dhaka</a>${it.map(([k, l]) => `<a href="#${k}" class="${k === on ? "on" : ""}">${esc(l)}</a>`).join("")}</nav>` : ""; };
-  const REG_SAY = { purchase: "Buying lots: requests, negotiation, approval", billing: "Payments to the companies and their vouchers", inventory: "E-Bills of the shipments: ship, released, sold, paid" };
+  E.regTabs = (on) => { const it = E.regionalItems(); return it.length > 1 ? `<nav class="subnav reg-nav" aria-label="Dhaka office sections"><a href="#regional" class="${on === "regional" ? "on" : ""}">${ic("globe")} Regional Office Dhaka</a>${it.map(([k, l]) => `<a href="#${k}" class="${k === on ? "on" : ""}">${esc(l)}</a>`).join("")}</nav>` : ""; };
+  const REG_SAY = { purchase: "Purchase requests, negotiations and approvals", billing: "Company payments and vouchers", inventory: "Shipment bills, release status and payments" };
   V.regional = async () => {
     const it = E.regionalItems();
     if (it.length === 1) { location.replace("#" + it[0][0]); return; } // only one page inside: open it
-    E.shell("regional", "Regional Office Dhaka", `${E.regTabs("regional")}<section class="off-staff" id="offStaff" hidden></section><div class="reg-cards">${it.map(([k, l, icon]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(REG_SAY[k] || "")}</small><em id="regN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>`);
+    E.shell("regional", "Regional Office Dhaka", `<section class="off-staff" id="offStaff" hidden></section><div class="reg-cards">${it.map(([k, l, icon]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(REG_SAY[k] || "")}</small><em id="regN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>`);
     const here = E.stillHere();
     officeStaff($("#offStaff"), "dhaka"); // 3.99.326
     const cnt = (q) => q.then((r) => (r.error ? null : r.count), () => null);

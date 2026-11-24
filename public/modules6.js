@@ -44,19 +44,19 @@
   // EO-Office page: mini dashboard, QC Test tab, Collection Voucher tab
   // ======================================================================
   // The pages of EO-Office: QC Test and Collection Voucher (this page), Employees and Payroll (3.23), Credit Memo and Project (3.24: no Job Applications / Job Positions)
-  const eoTabs = (on) => `<nav class="subnav reg-nav">${[["eooffice", `${ic("shield")} Regional Office Manila`, "eooffice"], ["custorders", "Customer Order", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memo", "creditmemos"], ["projects", "Project", "projects"], ["insurance", "Coverage", "eooffice"], ["mbilling", "Billing", "mbilling"]]
-    .filter((x) => E.hasModule(x[2]) && (x[2] !== "eooffice" || E.isStaff())).map(([k, l]) => `<a href="#${k}" class="${k === on ? "on" : ""}">${l}</a>`).join("")}</nav>`;
+  const eoTabs = (on) => `<nav class="subnav reg-nav" aria-label="Manila office sections">${[["eooffice", `${ic("shield")} Regional Office Manila`, "eooffice"], ["custorders", "Customer Orders", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memos", "creditmemos"], ["projects", "Projects", "projects"], ["insurance", "Coverage", "eooffice"], ["mbilling", "Billing", "mbilling"]]
+    .filter((x) => E.hasModule(x[2]) && (x[2] !== "eooffice" || E.isStaff())).map(([k, l]) => `<a href="#${k}" class="${k === on ? "on" : ""}" ${k === on ? 'aria-current="page"' : ""}>${l}</a>`).join("")}</nav>`;
   // 3.99.158: REGIONAL OFFICE MANILA (was EO-Office): a card for every part on top, with its number
-  const MNL = [["custorders", "Customer Order", "box", "Orders, boxes, delivery and the invoice", "eooffice"], ["employees", "Employees", "users", "Staff, ID cards and documents", "employees"],
-    ["payroll", "Payroll", "wallet", "Salaries and payslips", "employees"], ["creditmemos", "Credit Memo", "receipt", "Returns, credits and discounts", "creditmemos"],
-    ["projects", "Project", "folder", "Projects and their payments", "projects"], ["insurance", "Coverage", "shield", "Order coverage certificates", "eooffice"],
+  const MNL = [["custorders", "Customer Orders", "box", "Orders, boxes, deliveries and invoices", "eooffice"], ["employees", "Employees", "users", "Staff, ID cards and documents", "employees"],
+    ["payroll", "Payroll", "wallet", "Salaries and payslips", "employees"], ["creditmemos", "Credit Memos", "receipt", "Returns, credits and discounts", "creditmemos"],
+    ["projects", "Projects", "folder", "Projects and payments", "projects"], ["insurance", "Coverage", "shield", "Order coverage certificates", "eooffice"],
     ["mbilling", "Billing", "building", "Manila companies, payments and vouchers", "mbilling"],
-    ["register", "Document Register", "doc", "Every paper: number, date, who, TRX ID", "__dir"]]; // 3.99.279: the Director only
+    ["register", "Document Register", "doc", "Document numbers, dates and transaction IDs", "__dir"]]; // 3.99.279: the Director only
   const mnlCount = {
-    custorders: () => sb.from("customer_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "approved"]).then((r) => (r.error ? "" : r.count ? `${r.count} open order(s)` : "No open order")),
+    custorders: () => sb.from("customer_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "approved"]).then((r) => (r.error ? "" : r.count ? `${r.count} open order${r.count === 1 ? "" : "s"}` : "No open orders")),
     employees: () => sb.from("employees").select("id", { count: "exact", head: true }).eq("status", "active").then((r) => (r.error ? "" : `${r.count || 0} active`)),
     creditmemos: () => sb.from("credit_memos").select("id", { count: "exact", head: true }).eq("status", "pending").then((r) => (r.error ? "" : r.count ? `${r.count} waiting for approval` : "Nothing waiting")),
-    projects: () => sb.from("projects").select("id", { count: "exact", head: true }).then((r) => (r.error ? "" : `${r.count || 0} project(s)`)),
+    projects: () => sb.from("projects").select("id", { count: "exact", head: true }).then((r) => (r.error ? "" : `${r.count || 0} project${r.count === 1 ? "" : "s"}`)),
     mbilling: () => sb.from("pay_companies").select("id", { count: "exact", head: true }).eq("office", "manila").then((r) => (r.error ? "" : `${r.count || 0} compan${r.count === 1 ? "y" : "ies"}`)),
     insurance: () => sb.from("order_insurance").select("id", { count: "exact", head: true }).in("status", ["unpaid", "review"]).then((r) => (r.error ? "" : r.count ? `${r.count} to check` : "Nothing to check"))
   };
@@ -73,9 +73,9 @@
     ["payslips", "PAYSLIP", "payslip_no", "pay_date", "", "net_pay"]];
   V.register = async () => {
     if (!E.isAdmin()) { E.shell("register", "Document Register", `<div class="empty">Only the Director opens the Document Register.</div>`); return; }
-    E.shell("register", "Document Register", `<div class="reg-bar"><input type="search" id="rgQ" placeholder="Search number, name, who, TRX ID" aria-label="Search">
-      <select id="rgT" aria-label="Type"><option value="">All papers</option>${REG.map((x) => `<option>${x[1]}</option>`).join("")}<option>DAILY SALES REPORT</option></select>
-      <button type="button" class="btn" id="rgLog">${ic("download")} Download Log</button></div><div id="rgList">${busy("Loading the papers")}</div>`);
+    E.shell("register", "Document Register", `<div class="reg-bar"><input type="search" id="rgQ" placeholder="Search by number, name or transaction ID" aria-label="Search">
+      <select id="rgT" aria-label="Type"><option value="">All documents</option>${REG.map((x) => `<option>${x[1]}</option>`).join("")}<option>DAILY SALES REPORT</option></select>
+      <button type="button" class="btn" id="rgLog">${ic("download")} Download Log</button></div><div id="rgList">${busy("Loading documents")}</div>`);
     const here = E.stillHere();
     const got = await Promise.all(REG.map(([t, kind, noK, dK, route, amtK]) => sb.from(t).select("*").order("created_at", { ascending: false }).limit(400)
       .then(({ data }) => (data || []).filter((r) => r[noK]).map((r) => ({ kind, no: r[noK], date: r[dK] || r.created_at, at: r.created_at, by: r.created_by_name || r.prepared_by_name || r.approved_by_name || "",
@@ -90,7 +90,7 @@
     const show = () => {
       const q = $("#rgQ").value.trim().toLowerCase(), t = $("#rgT").value;
       const rows = all.filter((r) => (!t || r.kind === t) && (!q || [r.no, r.who, r.by, r.id, r.kind].join(" ").toLowerCase().includes(q)));
-      $("#rgList").innerHTML = `<p class="muted reg-n">${rows.length} paper(s)</p>` + E.grid({ cols: [
+      $("#rgList").innerHTML = `<p class="muted reg-n">${rows.length} document${rows.length === 1 ? "" : "s"}</p>` + E.grid({ cols: [
         { label: "Date", get: (r) => mdy(String(r.date).slice(0, 10)) }, { label: "Paper", get: (r) => r.kind }, { label: "No", html: (r) => `<b class="mono">${esc(r.no)}</b>` },
         { label: "Name", get: (r) => String(r.who || "").toUpperCase() }, { label: "Amount (₱)", get: (r) => (r.amt != null ? peso(r.amt) : "") }, { label: "By", get: (r) => String(r.by || "").toUpperCase() },
         { label: "TRX ID", html: (r) => `<small class="mono reg-trx">${esc(String(r.id).toUpperCase())}</small>` }],
@@ -101,7 +101,7 @@
   };
   V.eooffice = async (tab, month) => {
     const cards = MNL.filter((x) => (x[4] === "__dir" ? E.isAdmin() : E.hasModule(x[4]) && (x[4] !== "eooffice" || E.isStaff())));
-    E.shell("eooffice", "Regional Office Manila", `${eoTabs("eooffice")}<section class="off-staff" id="offStaff" hidden></section><div class="reg-cards mnl-cards">${cards.map(([k, l, icon, say]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(say)}</small><em id="mnlN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>
+    E.shell("eooffice", "Regional Office Manila", `<section class="off-staff" id="offStaff" hidden></section><div class="reg-cards mnl-cards">${cards.map(([k, l, icon, say]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(say)}</small><em id="mnlN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>
       <section class="prize-pool" id="dPrize" hidden></section>
       <div id="eoBody">${busy()}</div>`);
     E.officeStaff?.($("#offStaff"), "manila"); // 3.99.326: the office's assigned employees on top

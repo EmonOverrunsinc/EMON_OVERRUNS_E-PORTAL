@@ -601,7 +601,7 @@
     const first = String(myName() || "").trim().replace(/\s+/g, " "); // 3.99.251: the full name on the dashboard
     // the key numbers: [name, icon, the list it opens, the line under the number]
     const tiles = [["Active Customers", "users", "customers", "Open accounts"], ["Pending Applications", "order", "customers", "Awaiting approval"],
-      ["Unpaid This Month", "wallet", "invoices", `Billed in ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`], ["Collections This Month", "check", "payments", `Received in ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`]];
+      ["Unpaid This Month", "wallet", "invoices", `Billed in ${now.toLocaleDateString("en-US", { month: "long" })}`], ["Collections This Month", "check", "payments", `Received in ${now.toLocaleDateString("en-US", { month: "long" })}`]];
     const tile = ([k, icon, page, sub]) => {
       const tag = E.canOpen(page) ? "a" : "div";
       return `<${tag} class="tile"${tag === "a" ? ` href="#${page}"` : ""}><div class="tile-top"><span class="k">${k}</span><span class="tile-ic">${ic(icon)}</span></div>
@@ -612,7 +612,7 @@
       <section class="hero home-hero">${E.logoHtml("hero-logo")}<div>
         <p class="hero-date">${esc(today)}</p>
         <h2>${esc(greet)}${first ? `, ${esc(first.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()))}` : ""}</h2>
-        <p class="welcome"><span class="hero-tag">${esc(C.company.name)} E-PORTAL</span> · <b>${E.titleHtml(S.profile.role, S.position)}</b></p><div id="dPlace" class="ch-place"></div></div></section>
+        <p class="welcome"><span class="hero-tag">${esc(C.company.name)} E-PORTAL</span> <b>${E.titleHtml(S.profile.role, S.position)}</b></p><div id="dPlace" class="ch-place"></div></div></section>
       ${H("outlets") ? `<section class="nwd-notice" id="dClosed" hidden></section>` : ""}
       ${isAdmin() ? `<section class="todo" id="dTodo" hidden></section>` : ""}
       <section class="box my-dlv" id="dDlv" hidden></section>
@@ -660,9 +660,10 @@
       sb.from("customers").select("id", { count: "exact", head: true }).in("status", ["pending", "verified"])
     ]);
     if (!here()) return;
-    if (cust.error) {
-      $("#main").insertAdjacentHTML("afterbegin", `<div class="hint err">The customer database is not set up yet. Ask EMON HASAN to run the setup script <b>002_customers_invoices_payments.sql</b>.</div>`);
-      return;
+    const sources = [activeN, waitN, bal, month];
+    if ([...sources, cust, inv, pay].some((result) => result.error)) {
+      $("#main").insertAdjacentHTML("afterbegin", '<div class="hint err" role="status">Some dashboard data could not be loaded. <button type="button" class="linkbtn" id="retryDashboard">Try again</button></div>');
+      $("#retryDashboard").onclick = () => E.route();
     }
     const cs = cust.data || [];
     const unpaidRows = bal.data || [], due = unpaidRows.reduce((s, b) => s + Math.max(0, num(b.balance)), 0);
@@ -670,9 +671,17 @@
     const monthPaid = (month.data || []).reduce((s, p) => s + num(p.amount), 0);
     const waiting = cs.filter((c) => ["pending", "verified"].includes(c.status)), waitCount = waitN.count ?? waiting.length;
     const vals = [["ok", activeN.count || 0], [waitCount ? "warn" : "", waitCount], [due > 0 ? "warn" : "ok", "₱ " + peso(due)], ["ok", "₱ " + peso(monthPaid)]];
-    $$("#dTiles .tile").forEach((t, i) => { t.className = "tile " + vals[i][0]; $(".v", t).textContent = vals[i][1]; });
+    $$("#dTiles .tile").forEach((tile, i) => {
+      if (sources[i].error) {
+        $(".v", tile).textContent = "—";
+        $(".s", tile).textContent = "Unavailable";
+      } else {
+        tile.className = "tile " + vals[i][0];
+        $(".v", tile).textContent = vals[i][1];
+      }
+    });
     const ut = $$("#dTiles .tile")[2]; // 3.95: how many of this month's invoices are unpaid
-    if (ut && $(".s", ut)) $(".s", ut).textContent = `${unpaidRows.length} unpaid invoice${unpaidRows.length === 1 ? "" : "s"} of ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`;
+    if (!bal.error && ut && $(".s", ut)) $(".s", ut).textContent = `${unpaidRows.length} unpaid invoice${unpaidRows.length === 1 ? "" : "s"} from ${now.toLocaleDateString("en-US", { month: "long" })}`;
     if ($("#dApps") && waiting.length) { // shown only when an application waits
       $("#dAppsBox").hidden = false;
       $("#dApps").innerHTML = E.grid({ cols: [
@@ -689,7 +698,7 @@
         { label: "Invoice / Customer", html: (r) => `<b>${esc(r.invoice_no)}</b><br><small>${esc(fullName(r))}</small>` },
         { label: "Balance (₱)", num: true, get: (r) => peso(r.balance) },
         { label: "Status", html: payPill }],
-        rows, onRow: true, empty: "No invoices yet." });
+        rows, onRow: true, empty: inv.error ? "Invoices could not be loaded." : "No invoices yet." });
       E.bindGrid($("#dInv"), rows, (r) => (location.hash = "invoice/" + r.id));
     }
     if ($("#dPay")) {
@@ -698,10 +707,10 @@
         // 3.99.82: the receipt with the customer under it (like Latest Invoices), so the 3 columns fit the box
         { label: "Receipt / Customer", html: (r) => `<b>${esc(r.receipt_no)}</b><br><small>${esc(fullName(r.customers || {}))}</small>` },
         { label: "Amount (₱)", num: true, get: (r) => peso(r.amount) }, { label: "Date", get: (r) => mdy(r.paid_date) }],
-        rows: rp, onRow: true, empty: "No payments yet." });
+        rows: rp, onRow: true, empty: pay.error ? "Payments could not be loaded." : "No payments yet." });
       E.bindGrid($("#dPay"), rp, (r) => (location.hash = "payment/" + r.id));
     }
-    E.setRecords(`Customers: ${activeN.count || 0}`);
+    E.setRecords(`Customers: ${activeN.error ? "—" : activeN.count || 0}`);
   };
   // 3.0: Purchase Orders on the dashboard: the ones waiting for review, then this month's approved lots with their
   // quantity and average price.
@@ -2670,11 +2679,11 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         <fieldset class="opt dev-card" id="mpDev" hidden></fieldset>
       </div>
       ${emp ? `<div id="mpCard"></div>` : ""}
-      <fieldset class="opt stampset"><legend>My Stamp</legend><div class="stamp-show">${stampHtml({ name: S.profile.full_name || "", pos: E.personTitle?.(S.profile.role, emp?.position) || "", eoid: emp?.employee_no || "" })}</div><p class="muted">On papers · made by the system</p></fieldset>
+      <fieldset class="opt stampset"><legend>My Stamp</legend><div class="stamp-show">${stampHtml({ name: S.profile.full_name || "", pos: E.personTitle?.(S.profile.role, emp?.position) || "", eoid: emp?.employee_no || "" })}</div><p class="muted">The portal adds this stamp to your documents.</p></fieldset>
       <fieldset class="opt sigset" id="mpSigBox"><legend>My Signature</legend>
         ${myPic ? `<div class="sig-show"><img src="${esc(myPic)}" alt="My signature"></div><div class="sig-st">${sigPill(sp.signature_status)}${sp.signature_status === "approved" && sp.signature_approved_by_name ? ` <small>by ${esc(sp.signature_approved_by_name)} on ${mdy(sp.signature_approved_at)}</small>` : ""}</div>` : `<p><b>No signature yet.</b></p>`}
         ${sp.signature_status === "rejected" && sp.signature_note ? `<div class="hint err">Not approved: ${esc(sp.signature_note)}. Upload a clearer signature.</div>` : ""}
-        <p class="muted">White paper · dark ink · clear photo</p>
+        <p class="muted">Sign on white paper in dark ink, then upload a clear photo.</p>
         <div class="btnrow"><label class="btn primary" for="mpSig">${ic("upload")} ${myPic ? "Change Signature" : "Upload Signature"}</label><input type="file" id="mpSig" accept="image/*" hidden data-save-now="preview">
           ${sp.signature_path ? `<button type="button" class="btn" id="mpSigForm">${ic("print")} Signature Verification Form</button><button type="button" class="btn danger" id="mpSigRm">${ic("trash")} Remove</button>`
             : `<button type="button" class="btn" id="mpSigBlank">${ic("print")} Blank Signature Verification Form</button>`}</div>

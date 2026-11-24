@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.341"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.342"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.341"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.342"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -691,6 +691,8 @@
   // ---------- company header (every page) ----------
   // Built-in company logo (an uploaded logo under Company Logo replaces the built-in one).
   const DEFAULT_LOGO = "brand/logo.jpg";
+  const UI_LOGO = "brand/logo-ui.webp";
+  const smallLogos = new Set(["login-logo", "hero-logo", "drawer-logo", "lg-logo"]);
   S.logoUrl = DEFAULT_LOGO;
   const publicUrl = (bucket, path) => path ? sb.storage.from(bucket).getPublicUrl(path).data.publicUrl : "";
   async function loadBranding() {
@@ -699,10 +701,10 @@
       S.logoUrl = data?.logo_path ? publicUrl("branding", data.logo_path) : DEFAULT_LOGO;
     } catch (_) { S.logoUrl = DEFAULT_LOGO; }
     // a page drawn before the logo was known shows it now
-    if (S.logoUrl !== DEFAULT_LOGO) $$(`img[src="${DEFAULT_LOGO}"]`).forEach((im) => { if (!im.closest(".boot")) im.src = S.logoUrl; });
+    if (S.logoUrl !== DEFAULT_LOGO) $$(`img[src="${DEFAULT_LOGO}"], img[src="${UI_LOGO}"]`).forEach((im) => { if (!im.closest(".boot")) im.src = S.logoUrl; });
   }
   const logoHtml = (cls = "co-logo") => S.logoUrl
-    ? `<img class="${cls}" src="${esc(S.logoUrl)}" alt="${esc(C.company.name)} logo">`
+    ? `<img class="${cls}" src="${esc(S.logoUrl === DEFAULT_LOGO && smallLogos.has(cls) ? UI_LOGO : S.logoUrl)}" alt="${esc(C.company.name)} logo">`
     : `<span class="${cls} co-logo-fallback" aria-hidden="true">EO</span>`;
 
   // 3.99.93: the SECURITY SEAL of a printed record (our own design): dark navy and gold, a rosette of fine lines, an
@@ -1489,8 +1491,8 @@
       document.body.insertAdjacentHTML("beforeend", `<div class="quick-add"><a class="qa-plus" href="${h}" aria-label="${esc(l)}" title="${esc(l)}">${ic("plus")}</a></div>`);
     } else document.body.insertAdjacentHTML("beforeend", `<div class="quick-add"><div class="qa-menu" id="qaMenu" hidden>${items.map(([, h, l, i]) => `<a href="${h}">${ic(i)}<span>${esc(l)}</span></a>`).join("")}</div>
       <button type="button" class="qa-plus" id="qaPlus" aria-label="Add new" aria-haspopup="true" aria-expanded="false">${ic("plus")}</button></div>`);
-    const qa = $("body > .quick-add"), menu = $("#qaMenu"), plus = $("#qaPlus");
-    if (!menu) return place(qa);
+    const menu = $("#qaMenu"), plus = $("#qaPlus");
+    if (!menu) return;
     const away = (e) => { if (!e.target.closest?.(".quick-add")) show(false); };
     const key = (e) => { if (e.key === "Escape") show(false); };
     const show = (on) => {
@@ -1500,18 +1502,11 @@
     };
     plus.onclick = () => show(menu.hidden);
     $$("a", menu).forEach((a) => a.addEventListener("click", () => show(false)));
-    place(qa);
   }
-  const place = (qa) => requestAnimationFrame(() => { // on the left of the Back button
-    const bb = $("body > .band-back");
-    if (qa) qa.style.right = bb?.offsetWidth ? `${Math.round(window.innerWidth - bb.getBoundingClientRect().left + 8)}px` : "";
-  });
   function bindBack(home) {
-    // 3.52: the button is moved out of the page (the page slides in, which would carry it along) to float at the bottom left
-    $$("body > .band-back").forEach((x) => x.remove());
     quickAdd();
-    const b = $("#bandBack");
-    if (b) { document.body.append(b); b.onclick = () => goBack(home); }
+    const button = $("#bandBack");
+    if (button) button.onclick = () => goBack(home);
   }
   // 2.4: a signed-in person asks the Director to delete their account. The request arrives in Contact Messages; the
   // Director then deletes the account on Login Accounts. Gives the reference number, or null.
@@ -1661,7 +1656,7 @@
     const currency = ["inventory", "newstockbill", "stockbill", "ebill"].includes(key) ? "BDT" : "PHP (₱)";
     // 3.36: no "?" on any page; the dashboard has no title (its greeting stands in its place)
     const over = (MENU.find((m) => m.k === cur) || {}).label || `${C.company.name} E-Portal`; // 3.99.191 · 3.99.209: same section as the menu (a payment shows PAYMENTS)
-    const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1 data-over="${esc(String(over).toUpperCase())}">${esc(title)}</h1></div>`;
+    const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1${over.toLowerCase() === title.toLowerCase() ? "" : ` data-over="${esc(over.toUpperCase())}"`}>${esc(title)}</h1></div>`;
     const mainHtml = `<main id="main">${body}</main>${pageFoot()}`; // 3.99.213: no Hint boxes
     // 2.7.2: moving between pages keeps the top bar and the side menu in place (no flash); only the page itself is
     // swapped, with a soft fade. The whole frame is drawn again only when the menu or the person changes.
@@ -1693,9 +1688,9 @@
         <button type="button" class="iconbtn burger" id="tbMenu" aria-label="Menu" aria-controls="drawer" aria-expanded="false"><span></span><span></span><span></span></button>
         <form class="tb-search" id="tbSearch" role="search">
           <span class="tb-sic">${ic("search")}</span>
-          <input type="search" id="tbQ" placeholder="Search name, account, invoice, receipt…" aria-label="Search records" autocomplete="off">
+          <input type="search" id="tbQ" placeholder="Search" aria-label="Search records" autocomplete="off">
           <span class="spin sm" id="tbSpin" hidden></span>
-          <button type="button" class="scanbtn" id="tbScan" title="Scan a QR code or barcode">${ic("scan")}<span>Scan</span></button>
+          <button type="button" class="scanbtn" id="tbScan" aria-label="Scan a QR code or barcode" title="Scan a QR code or barcode">${ic("scan")}<span>Scan</span></button>
         </form>
         <div class="tb-right">
           ${canAI() ? `<button type="button" class="iconbtn tb-eva" id="tbEva" aria-label="Ask EVA AI" title="Ask EVA AI">${ic("ai")}<span class="badge" id="tbEvaBadge" hidden>0</span></button>` : ""}
@@ -1809,44 +1804,81 @@
     box.prepend(el); setTimeout(() => el.classList.add("in"), 20); setTimeout(() => el.remove(), 12000);
     try { if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") { const sn = new Notification(n.title || "EMON OVERRUNS E-PORTAL", { body: n.body || "", icon: "brand/icon-192.png", tag: "eo-" + n.id }); sn.onclick = () => { window.focus(); go(); sn.close(); }; } } catch (_) {}
   }
-  // 3.99.331: an "Allow notifications" bar in the message areas (a phone asks only when a button is pressed)
-  const alertBar = () => {
-    if (!("Notification" in window)) return "";
-    const p = Notification.permission;
-    if (p === "granted") return "";
-    return p === "denied"
-      ? `<div class="al-bar off">${ic("bell")}<span>Notifications are blocked. Turn them on in the phone / browser settings for this site.</span></div>`
-      : `<div class="al-bar">${ic("bell")}<span>Get a message alert on this phone / computer</span><button type="button" class="btn small primary" data-allow-alerts>Allow</button></div>`;
-  };
-  // 3.99.335: this device gets alerts even when the portal is closed (web push, SQL 154). The Director's device makes the
-  // keys the first time.
+  let pushUser = null;
+  let registrationTask = null;
+  let registrationUser = null;
+  const supportsPush = () => "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+  function alertBar() {
+    let message, action;
+    if (!supportsPush()) {
+      const apple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      message = apple ? "For background alerts, add the portal to your Home Screen, then open it there." : "For background alerts, open the portal in a browser that supports push notifications.";
+    } else if (Notification.permission === "denied") {
+      message = "To receive alerts, allow notifications for this portal in your device or browser settings.";
+    } else if (Notification.permission === "granted" && pushUser === meId()) {
+      return "";
+    } else {
+      message = "Get alerts for new messages and notifications when the portal is closed.";
+      action = Notification.permission === "granted" ? "Connect device" : "Enable alerts";
+    }
+    return `<div class="al-bar${action ? "" : " off"}">${ic("bell")}<span>${message}</span>${action ? `<button type="button" class="btn small primary" data-allow-alerts>${action}</button>` : ""}</div>`;
+  }
+  function refreshAlertBars() {
+    document.querySelectorAll(".al-bar").forEach((bar) => { bar.outerHTML = alertBar(); });
+  }
   const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const fromB64u = (t) => Uint8Array.from(atob(String(t).replace(/-/g, "+").replace(/_/g, "/") + "===".slice((String(t).length + 3) % 4)), (c) => c.charCodeAt(0));
-  async function pushSubscribe() {
-    try {
-      if (!S.session || !("serviceWorker" in navigator) || !("PushManager" in window) || Notification.permission !== "granted") return;
-      let { data: pub, error } = await sb.rpc("push_public_key"); if (error) return; // SQL 154 not run yet
-      if (!pub && isAdmin()) {
-        const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
-        const jwk = await crypto.subtle.exportKey("jwk", kp.privateKey), raw = await crypto.subtle.exportKey("raw", kp.publicKey);
-        const r = await sb.rpc("push_setup", { p_public: b64u(raw), p_private: jwk }); if (r.error) return; pub = r.data;
-      }
-      if (!pub) return;
-      const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
-      if (sub) { const k = sub.options?.applicationServerKey; if (k && b64u(k) !== pub) { await sub.unsubscribe(); sub = null; } }
-      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64u(pub) });
-      await sb.rpc("push_subscribe", { p_endpoint: sub.endpoint });
-    } catch (_) { /* this browser cannot get alerts */ }
+  async function registerPush(user) {
+    let { data: pub, error } = await sb.rpc("push_public_key");
+    if (error) throw error;
+    if (!pub && isAdmin()) {
+      const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+      const jwk = await crypto.subtle.exportKey("jwk", kp.privateKey), raw = await crypto.subtle.exportKey("raw", kp.publicKey);
+      const setup = await sb.rpc("push_setup", { p_public: b64u(raw), p_private: jwk });
+      if (setup.error) throw setup.error;
+      pub = setup.data;
+    }
+    if (!pub) throw new Error("A director needs to enable portal alerts first.");
+    await navigator.serviceWorker.register("sw.js");
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (sub?.options.applicationServerKey && b64u(sub.options.applicationServerKey) !== pub) {
+      await sub.unsubscribe();
+      sub = null;
+    }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64u(pub) });
+    if (meId() !== user) return;
+    const saved = await sb.rpc("push_subscribe", { p_endpoint: sub.endpoint });
+    if (saved.error) throw saved.error;
+    if (meId() === user) pushUser = user;
   }
-  setTimeout(pushSubscribe, 6000);
+  function pushSubscribe() {
+    const user = meId();
+    if (!user || !supportsPush() || Notification.permission !== "granted") return Promise.resolve();
+    if (registrationTask && user === registrationUser) return registrationTask;
+    registrationUser = user;
+    registrationTask = registerPush(user).finally(() => {
+      if (registrationUser === user) registrationTask = null;
+      refreshAlertBars();
+    });
+    return registrationTask;
+  }
   document.addEventListener("click", async (e) => {
-    const b = e.target.closest?.("[data-allow-alerts]"); if (!b) return;
-    try { const r = await Notification.requestPermission(); toast(r === "granted" ? "Notifications are on." : "Notifications were not allowed.", r !== "granted"); if (r === "granted") pushSubscribe(); } catch (_) {}
-    document.querySelectorAll(".al-bar").forEach((x) => { const h = alertBar(); if (h) x.outerHTML = h; else x.remove(); });
+    const b = e.target.closest?.("[data-allow-alerts]");
+    if (!b || b.disabled) return;
+    b.disabled = true;
+    try {
+      const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+      if (permission === "granted") {
+        await pushSubscribe();
+        if (pushUser && pushUser === meId()) toast("Background alerts are on for this device.");
+      } else {
+        toast("Permission is needed for background alerts.", true);
+      }
+    } catch {
+      toast("Couldn’t connect this device to background alerts. Try again or contact your portal administrator.", true);
+    } finally { refreshAlertBars(); }
   });
-  // the phone / computer asks once to allow alerts (on the first tap after sign-in)
-  document.addEventListener("pointerdown", () => { try { if (S.session && "Notification" in window && Notification.permission === "default" && !localStorage.getItem("eoAskAlerts")) { localStorage.setItem("eoAskAlerts", "1"); Notification.requestPermission().then((r) => { if (r === "granted") pushSubscribe(); }).catch(() => {}); } } catch (_) {} }, { passive: true });
   const refreshBadge = () => refreshBadges(true);
   const notificationInbox = (history, days = null) =>
     sb.rpc("notification_inbox", days == null ? { p_history: history } : { p_history: history, p_days: days }, { get: true });
@@ -1947,6 +1979,7 @@
     if (timers.length) return;
     const beat = () => { if (S.session && document.visibilityState === "visible") sb.rpc("touch_presence").then(() => {}, () => {}); };
     beat();
+    pushSubscribe().catch(() => {});
     timers = [
       setInterval(beat, 60000),
       setInterval(() => { if (S.session && document.visibilityState === "visible") {
@@ -3178,14 +3211,20 @@
     };
     requestAnimationFrame(go);
   }
+  const modulesReady = new Promise((resolve) => {
+    if (document.readyState === "complete") resolve();
+    else document.addEventListener("DOMContentLoaded", resolve, { once: true });
+  });
   async function route() {
-    navs++;
+    await modulesReady;
+    const navigation = ++navs;
     const h = location.hash || "#dashboard";
     const back = trail.length > 1 && trail[trail.length - 2] === h;
     if (h !== shownHash) memoPage();
     if (back) trail.pop(); else if (trail[trail.length - 1] !== h) { trail.push(h); if (trail.length > 60) trail.shift(); }
     navDir = back ? "back" : "fwd";
     await routePage();
+    if (navigation !== navs || (location.hash || "#dashboard") !== h) return;
     const again = shownHash === h;
     shownHash = h;
     if (back && !again) restorePage(h);
@@ -3198,7 +3237,8 @@
     const [rawKey, id, extra] = (location.hash.slice(1) || "dashboard").split("/");
     if (ALIAS[rawKey]) { location.replace("#" + ALIAS[rawKey]); return; }
     const key = rawKey || "dashboard";
-    const arg = id ? decodeURIComponent(id) : id;
+    let arg = id;
+    try { if (id) arg = decodeURIComponent(id); } catch { /* A pasted link may contain a literal percent sign. */ }
     const V = window.EO_VIEWS || {};
     if (!S.session) {
       stopTimers();
@@ -3239,6 +3279,11 @@
     if (view) return view(arg, extra);
     return V.dashboard ? V.dashboard() : shell("dashboard", "Dashboard", "");
   }
+  navigator.serviceWorker?.addEventListener("message", (event) => {
+    if (event.data?.type !== "open-messages") return;
+    if (S.session && S.profile?.status === "active" && $("#tbChat")) window.EO.openChat();
+    else location.hash = "chat";
+  });
   window.addEventListener("hashchange", route);
 
   // Supabase calls must not run inside the auth callback itself, so routing is deferred a tick.
@@ -3262,8 +3307,8 @@
     if (S.resetting) return; // the reset-code form finishes and routes itself
     if (event === "PASSWORD_RECOVERY") { booted = true; S.profile = null; setTimeout(() => renderSetPassword(true), 0); return; }
     // 3.0: the first page does not wait more than a moment for the company logo (it is set as soon as it comes)
-    if (!booted) { booted = true; S.profile = null; setTimeout(() => Promise.race([loadBranding(), new Promise((r) => setTimeout(r, 350))]).then(route), 0); return; }
-    if (changedUser) { S.profile = null; S.deviceOk = null; $$(".dev-ov").forEach((x) => x.remove()); badgeState.at = 0; pageMemo.clear(); trail.length = 0; stopTimers(); setTimeout(route, 0); }
+    if (!booted) { booted = true; S.profile = null; setTimeout(() => { loadBranding(); route(); }, 0); return; }
+    if (changedUser) { pushUser = null; S.profile = null; S.deviceOk = null; $$(".dev-ov").forEach((x) => x.remove()); badgeState.at = 0; pageMemo.clear(); trail.length = 0; stopTimers(); setTimeout(route, 0); }
   });
 
   // 3.66: every date box shows the portal's date (JUNE 30 2026; a month box: JUNE 2026), not the phone's own format
