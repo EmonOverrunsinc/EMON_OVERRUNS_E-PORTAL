@@ -719,19 +719,25 @@
       toast(b.dataset.to === "authorizer" ? "Now an AUTHORIZER of the company." : "Now an EMPLOYEE of the company."); E.route();
     }));
   }
+  async function activeOfficePosts() {
+    const results = await Promise.all(["manila", "dhaka"].map(office => sb.rpc("office_director_post", { p_office: office })));
+    for (const result of results) if (result.error) throw result.error;
+    return new Set(results.flatMap(result => (result.data || []).map(employee => employee.id)));
+  }
   async function assignForm(kind, place, have) {
     const { data, error } = await sb.from("employees").select("id, first_name, last_name, employee_no, position, status").order("first_name");
     if (error) return fail(error, "Could not load the employees");
-    const list = (data || []).filter((x) => !have.includes(x.id) && !["closed", "suspended", "rejected", "terminated"].includes(x.status));
-    if (!list.length) return toast("Every employee is assigned already (or there is none).");
+    let posted;
+    try { posted = await activeOfficePosts(); } catch (error) { return fail(error, "Could not check office posts"); }
+    const list = (data || []).filter((x) => !posted.has(x.id) && !have.includes(x.id) && !["closed", "suspended", "rejected", "terminated"].includes(x.status));
+    if (!list.length) return toast("No eligible employees are available.");
     const m = E.modal(`${place.label} · Assign Employee`, `<label for="oaEmp">Employee</label><select id="oaEmp">${list.map((x) => `<option value="${esc(x.id)}">${esc(empName(x))}${x.employee_no ? ` · ${esc(x.employee_no)}` : ""}${x.position ? ` · ${esc(x.position)}` : ""}</option>`).join("")}</select>
-      <small class="muted">The employee gets a notification.</small>`,
+      <small class="muted">This becomes the employee’s workplace and replaces their previous assignment.</small>`,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="oaSave">${ic("check")} Assign</button>`);
     $("[data-x]", m.el).onclick = () => m.close();
     $("#oaSave", m.el).onclick = async (e) => {
       e.target.disabled = true;
-      const k = STAFF[kind];
-      const r = await sb.from(k.tbl).insert({ [k.col]: place.id, employee_id: $("#oaEmp", m.el).value });
+      const r = await sb.rpc("employee_place_set", { p_kind: kind, p_to: place.id, p_employee: $("#oaEmp", m.el).value });
       if (r.error) { e.target.disabled = false; return fail(r.error, need114(r.error, "pay_company_staff") || "Could not assign"); }
       m.close(); toast("Employee assigned. The employee is notified."); E.route();
     };
@@ -757,7 +763,7 @@
       m.close(); toast(`Transferred to ${String(r.data || "").split(" · ")[0]}. The employee is notified.`); E.route();
     };
   }
-  E.staffHtml = staffHtml; E.bindStaff = bindStaff; E.STAFF_SEL = STAFF_SEL;
+  E.assignStaff = assignForm; E.staffHtml = staffHtml; E.bindStaff = bindStaff; E.STAFF_SEL = STAFF_SEL;
   // 3.99.326: the ASSIGNED EMPLOYEES of a regional office (Manila / Dhaka), on top of its page; the Director assigns
   const OFFICE_NAME = { manila: "REGIONAL OFFICE MANILA", dhaka: "REGIONAL OFFICE DHAKA" };
   async function officeStaff(el, office) {
@@ -766,26 +772,30 @@
       sb.rpc("office_staff", { p_office: office }), sb.rpc("office_director_post", { p_office: office })
     ]);
     if (error) { el.hidden = true; return; }
-    const list = data || [];
     const holder = post.data?.[0];
+    const list = (data || []).filter(x => x.id !== holder?.id);
     el.innerHTML = `<section class="off-slot"><div class="off-h"><h3>AUTHORIZED RESPONSIVE</h3>${isAdmin() && !post.error ? `<button type="button" class="btn small" id="offPost">${holder ? "Replace" : "Appoint employee"}</button>` : ""}</div>
       ${post.error ? "Office post unavailable. Apply database update 157." : holder ? `<a class="off-emp" href="#employee/${esc(holder.id)}"><b>${esc(holder.full_name)}</b><small>${esc([holder.card_no,holder.job_position].filter(Boolean).join(" · "))}</small></a>` : "No employee appointed."}</section>
       <section class="off-slot"><div class="off-h"><h3>${ic("users")} Assigned Employees</h3>${isAdmin() ? `<button type="button" class="btn small primary" id="offAdd">${ic("plus")} Assign Employee</button>` : ""}</div>
       ${list.length ? `<div class="off-list">${list.map((x) => `<a class="off-emp" href="#employee/${esc(x.id)}"><b>${esc(String(x.full_name || "").toUpperCase())}</b><small>${esc([x.employee_no, x.job_position].filter(Boolean).join(" · ").toUpperCase())}</small></a>`).join("")}</div>` : `<div class="muted off-none">No employees are assigned to this office yet.</div>`}</section>`;
     el.hidden = false;
     const choose = async (postRole) => {
-      const { data: emps } = await sb.from("employees").select("id, first_name, last_name, employee_no, position, status").neq("status", "terminated").order("first_name");
+      const { data: emps, error: empError } = await sb.from("employees").select("id, first_name, last_name, employee_no, position, status").neq("status", "terminated").order("first_name");
+      if (empError) return fail(empError, "Could not load employees");
+      let posted;
+      try { posted = await activeOfficePosts(); } catch (error) { return fail(error, "Could not check office posts"); }
       const have = new Set(list.map((x) => x.id));
-      const rows = (emps || []).filter((x) => postRole ? x.status === "active" && x.id !== holder?.id : !have.has(x.id));
-      const m = E.modal(`${postRole ? "AUTHORIZED RESPONSIVE" : "Assign Employee"} · ${OFFICE_NAME[office]}`, `<p class="muted">${postRole ? "This employee holds the post until replaced." : "The employee moves to this office and receives an assignment notification."}</p>
+      const rows = (emps || []).filter((x) => !posted.has(x.id) && x.status === "active" && (postRole || !have.has(x.id)));
+      const m = E.modal(`${postRole ? "AUTHORIZED RESPONSIVE" : "Assign Employee"} · ${OFFICE_NAME[office]}`, `<p class="muted">${postRole ? "This becomes the employee’s only workplace. They hold this post until replaced." : "The employee moves to this office and receives an assignment notification."}</p>
         <div class="asg-list">${rows.map((x) => `<label class="asg-row"><input type="radio" name="offEmp" value="${esc(x.id)}"><span><b>${esc(`${x.first_name || ""} ${x.last_name || ""}`.trim().toUpperCase())}</b><small>${esc([x.employee_no, x.position].filter(Boolean).join(" · "))}</small></span></label>`).join("") || `<div class="muted">No other employee.</div>`}</div>`,
         `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-ok>${ic("check")} Assign</button>`);
       $("[data-x]", m.el).onclick = m.close;
       $("[data-ok]", m.el).onclick = async (e) => {
         const id = $("input[name=offEmp]:checked", m.el)?.value; if (!id) return toast("Choose the employee.", true);
-        E.setBusy(e.currentTarget, true);
+        const button = e.currentTarget;
+        E.setBusy(button, true);
         const { error: er } = postRole ? await sb.rpc("set_office_director_post", { p_employee: id, p_office: office }) : await sb.rpc("employee_place_set", { p_employee: id, p_kind: office, p_to: null });
-        if (er) { E.setBusy(e.currentTarget, false); return fail(er, /Unknown place|employee_place_set/.test(er.message || "") ? "Run the database update 152 first" : "Could not assign"); }
+        if (er) { E.setBusy(button, false); return fail(er, /Unknown place|employee_place_set/.test(er.message || "") ? "Run the database update 152 first" : "Could not assign"); }
         E.refreshNotifications();
         m.close(); toast(postRole ? "AUTHORIZED RESPONSIVE updated." : "Employee assigned."); officeStaff(el, office);
       };

@@ -5782,3 +5782,13 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
   .pv-desk > .page:not(.a4l):not(.landscape):not(.a5l) { min-height:296mm; }
 }
 .modal.pdf-ready { z-index:6400; }
+
+.tbadge:not(.assigned-profile-badge),
+.tbadge:not(.assigned-profile-badge)::after,
+.tbadge:not(.assigned-profile-badge) .ic { animation:none !important; }
+@media screen and (prefers-reduced-motion:no-preference) {
+  .assigned-profile-badge::after { animation:rkShine 4s ease-in-out infinite; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .assigned-profile-badge, .assigned-profile-badge::after, .assigned-profile-badge .ic { animation:none !important; }
+}

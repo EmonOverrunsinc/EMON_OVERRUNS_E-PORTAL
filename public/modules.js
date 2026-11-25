@@ -2642,6 +2642,20 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
   // ======================================================================
   // My Profile (photo, username, employee record, payslip history) and Company Logo
   // ======================================================================
+  E.profileBadgeMotion = async (root, employee, place) => {
+    const badge = root?.querySelector(".tbadge");
+    if (!badge || !employee || employee.status !== "active") return;
+    if (place === undefined) {
+      const result = await sb.rpc("employee_place", { p_employee: employee.id });
+      place = result.data;
+    }
+    let animate = place?.kind === "outlet";
+    if (!animate && employee.employee_no) {
+      const result = await sb.rpc("document_people", { p_numbers: [employee.employee_no], p_profiles: [] });
+      animate = (result.data || []).some(person => person.posts?.some(([, end]) => end === null));
+    }
+    badge.classList.toggle("assigned-profile-badge", animate);
+  };
   V.profile = async () => {
     const av = E.publicUrl("avatars", S.profile.avatar_path);
     E.shell("profile", "My Profile", busy());
@@ -2697,6 +2711,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       ${emp ? `<h3>My Salary</h3>${E.salaryTiles(emp, E.salaryTotals(slips, myPays.rows))}
         <h3>My Payslips</h3><div id="mpSlips">${E.slipGrid(slips, "No payslips yet.")}</div>
         <h3>My Salary Payments</h3><div id="mpPays">${E.payGrid(myPays.rows, slips, "No salary paid yet.")}</div>` : ""}`;
+    E.profileBadgeMotion($(".me-card"), emp);
     E.documentCards?.($(".stamp-show"));
     S.hideMoney = hid;
     if (emp) { E.bindGrid($("#mpSlips"), slips, (r) => (location.hash = "payslip/" + r.id)); E.bindGrid($("#mpPays"), myPays.rows, (r) => (location.hash = "payslip/" + r.payslip_id)); }
