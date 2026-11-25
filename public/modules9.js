@@ -83,12 +83,12 @@
     // each side its own line of whole words (never cut at a corner)
     const w = 26.8, h = 30.8, p = 0.55, unit = words.join(" · "), uw = unit.length * 0.37 + 1.1;
     const side = (id, d, len) => { const n = Math.max(1, Math.floor((len + 1.1) / uw)); const t = Array(n).fill(unit).join(" · ");
-      return `<path id="${id}" d="${d}"/><text font-family="Arial, sans-serif" font-size=".62" font-weight="700" fill="#1f4fa3"><textPath href="#${id}" textLength="${n2(len)}" lengthAdjust="spacing">${esc(t)}</textPath></text>`; };
+      return `<path id="${id}" d="${d}"/><text font-family="Arial, sans-serif" font-size=".8" font-weight="700" fill="#15396f"><textPath href="#${id}" textLength="${n2(len)}" lengthAdjust="spacing">${esc(t)}</textPath></text>`; };
     const lx = w - 2 * p - 2.4, ly = h - 2 * p - 2.4;
     return `<svg class="idc-pframe" viewBox="0 0 ${w} ${h}" aria-hidden="true">
-      <rect x=".12" y=".12" width="${w - .24}" height="${h - .24}" rx="1.4" fill="none" stroke="#c9a227" stroke-width=".18"/>
-      ${side(`pft${k}`, `M${p + 1.2} ${p + .2}H${w - p - 1.2}`, lx)}${side(`pfb${k}`, `M${w - p - 1.2} ${h - p - .2}H${p + 1.2}`, lx)}
-      ${side(`pfr${k}`, `M${w - p - .2} ${p + 1.2}V${h - p - 1.2}`, ly)}${side(`pfl${k}`, `M${p + .2} ${h - p - 1.2}V${p + 1.2}`, ly)}</svg>`;
+      <rect x=".12" y=".12" width="${w - .24}" height="${h - .24}" rx="1.4" fill="#fff" stroke="#c9a227" stroke-width=".18"/>
+      ${side(`pft${k}`, `M${p + 1.2} ${p + .65}H${w - p - 1.2}`, lx)}${side(`pfb${k}`, `M${p + 1.2} ${h - p - .05}H${w - p - 1.2}`, lx)}
+      ${side(`pfr${k}`, `M${w - p - .65} ${p + 1.2}V${h - p - 1.2}`, ly)}${side(`pfl${k}`, `M${p + .65} ${h - p - 1.2}V${p + 1.2}`, ly)}</svg>`;
   }
 
   // ---------- the card ----------

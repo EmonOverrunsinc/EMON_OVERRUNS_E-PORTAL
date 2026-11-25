@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.354"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.355"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.354"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.355"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2739,6 +2739,21 @@
         angle, horizontalScale: width * mmPerPixel / pdf.getTextWidth(value)
       });
     }
+    for (const frame of page.querySelectorAll(".idc-pframe")) {
+      const outer = frame.getBoundingClientRect();
+      const photo = frame.closest(".idc-face").querySelector(".idc-photo").getBoundingClientRect();
+      const x = left + (outer.left - bounds.left) * mmPerPixel, y = top + (outer.top - bounds.top) * mmPerPixel;
+      const width = outer.width * mmPerPixel, height = outer.height * mmPerPixel;
+      const insetX = (photo.left - outer.left) * mmPerPixel, insetY = (photo.top - outer.top) * mmPerPixel;
+      pdf.setFillColor("#ffffff");
+      pdf.rect(x, y, width, insetY, "F");
+      pdf.rect(x, y + height - insetY, width, insetY, "F");
+      pdf.rect(x, y + insetY, insetX, height - 2 * insetY, "F");
+      pdf.rect(x + width - insetX, y + insetY, insetX, height - 2 * insetY, "F");
+      pdf.setDrawColor("#c9a227");
+      pdf.setLineWidth(.18);
+      pdf.roundedRect(x + .12, y + .12, width - .24, height - .24, 1.4, 1.4, "S");
+    }
     for (const text of page.querySelectorAll(".idc-pframe textPath")) {
       const path = page.querySelector(text.getAttribute("href"));
       const matrix = path.getScreenCTM();
@@ -2746,7 +2761,8 @@
       const end = path.getPointAtLength(path.getTotalLength()).matrixTransform(matrix);
       const dx = end.x - start.x, dy = end.y - start.y;
       line(text.textContent, start.x, start.y, Math.hypot(dx, dy),
-        .62 * Math.hypot(matrix.a, matrix.b), -Math.atan2(dy, dx) * 180 / Math.PI, "#1f4fa3");
+        Number(text.parentElement.getAttribute("font-size")) * Math.hypot(matrix.a, matrix.b),
+        -Math.atan2(dy, dx) * 180 / Math.PI, text.parentElement.getAttribute("fill"));
     }
     for (const text of page.querySelectorAll(".idc-foot .idc-micro")) {
       const rect = text.getBoundingClientRect();
@@ -2767,7 +2783,7 @@
       const card = pg.querySelector(".idc-pair.print");
       const canvas = await h2c(pg, { scale, useCORS: true, backgroundColor: "#ffffff", logging: false,
         onclone: card ? (_, clone) => {
-          for (const text of clone.querySelectorAll(".idc-pframe text, .idc-foot .idc-micro")) text.style.visibility = "hidden";
+          for (const text of clone.querySelectorAll(".idc-pframe, .idc-foot .idc-micro")) text.style.visibility = "hidden";
         } : undefined });
       const cw = canvas.width, perSheet = Math.round((cw * h) / w);
       // where each sheet ends: a white line a little above the sheet's end (not through a row of writing)
