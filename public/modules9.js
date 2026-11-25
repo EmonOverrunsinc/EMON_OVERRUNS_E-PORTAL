@@ -195,7 +195,8 @@
       try { localStorage.removeItem(key); } catch {}
       return true;
     }).catch(err => {
-      toast("ID card PDF pending: " + (err.message || "Storage unavailable") + ". Reopen the dashboard to retry.", true);
+      const missingBucket = /bucket not found/i.test(err.message || "");
+      toast(missingBucket ? "ID card PDF storage is not set up. Run supabase/eoid_original_pdfs.sql, then reopen the dashboard." : "ID card PDF pending: " + (err.message || "Storage unavailable") + ". Reopen the dashboard to retry.", true);
       return false;
     }).finally(() => pendingSaves.delete(key));
     pendingSaves.set(key, job);
@@ -301,7 +302,7 @@
       return;
     }
     const url = URL.createObjectURL(file);
-    box.innerHTML = `<div data-card-page></div><div class="btnrow"><a class="btn primary" href="${url}" download="${esc(name)}">Download original PDF</a><a class="btn" href="${url}" target="_blank" rel="noopener">Open original</a></div>`;
+    box.innerHTML = `<div data-card-page></div><div class="btnrow"><a class="btn primary" href="${url}" download="${esc(name)}">Download original ZIP</a><a class="btn" href="${url}" target="_blank" rel="noopener">Open original PDF</a></div>`;
     const release = new MutationObserver(() => {
       if (box.isConnected) return;
       release.disconnect();

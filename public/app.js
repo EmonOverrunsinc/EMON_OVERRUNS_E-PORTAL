@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.361"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.362"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.361"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.362"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -294,9 +294,21 @@
     const rows = (entries || []).filter((e) => e && e.at).sort((a, b) => String(a.at).localeCompare(String(b.at)))
       .map((e) => `${iso(e.at)}   ${[e.what + (e.eoid ? ` ${String(e.eoid).replace(/-/g, "")}` : ""), e.by, e.note].filter((x) => x != null && String(x).trim() !== "").join(" · ")}`);
     const text = [`${C.company.name} E-PORTAL · LOG · ${title}`, `Downloaded ${iso(new Date())} by ${S.profile?.full_name || ""}`, "", ...rows, "", `${rows.length} line(s)`].join("\n");
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
-    a.download = `LOG-${String(title).replace(/[^A-Za-z0-9-]+/g, "-").replace(/^-|-$/g, "")}.txt`; document.body.appendChild(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    const name = `LOG-${String(title).replace(/[^A-Za-z0-9-]+/g, "-").replace(/^-|-$/g, "")}.txt`;
+    downloadZip(name, new Blob([text], { type: "text/plain" })).catch((error) => toast(`Could not download the log: ${error.message || error}`, true));
+  }
+  async function downloadZip(name, original) {
+    const Zip = await need("zip"), archive = new Zip();
+    archive.file(name, original);
+    const blob = await archive.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+    const url = URL.createObjectURL(blob), save = document.createElement("a");
+    save.href = url;
+    save.download = name.replace(/\.[^.]+$/, "") + ".zip";
+    save.dataset.zipReady = "1";
+    document.body.appendChild(save);
+    save.click();
+    save.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
   document.addEventListener("click", async (event) => {
     const link = event.target.closest?.("a[download]");
@@ -306,25 +318,11 @@
     const url = link.href;
     try {
       link.setAttribute("aria-busy", "true");
-      const [Zip, response] = await Promise.all([need("zip"), fetch(url)]);
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Download unavailable");
-      const archive = new Zip();
-      archive.file(originalName, await response.blob());
-      const blob = await archive.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
-      const zipUrl = URL.createObjectURL(blob);
-      const save = document.createElement("a");
-      save.href = zipUrl;
-      save.download = originalName.replace(/\.[^.]+$/, "") + ".zip";
-      save.dataset.zipReady = "1";
-      document.body.appendChild(save);
-      save.click();
-      save.remove();
-      setTimeout(() => URL.revokeObjectURL(zipUrl), 60000);
+      await downloadZip(originalName, await response.blob());
     } catch (error) {
-      toast(`ZIP unavailable. Downloading the file directly.`, true);
-      link.dataset.zipReady = "1";
-      link.click();
-      delete link.dataset.zipReady;
+      toast(`Could not download the ZIP: ${error.message || error}`, true);
     } finally {
       link.removeAttribute("aria-busy");
     }
@@ -2753,10 +2751,9 @@
 
   // ---------- report preview window ----------
   // size: "" (A4 portrait), "landscape" (A4 landscape) or "a5l" (A5 landscape slip).
-  // 3.99.20: Download PDF: each page of the preview becomes a page of a PDF file, as it prints (A4; A5 or A4 across), but
+  // Download: each page of the preview becomes a page of an original-resolution PDF inside a ZIP (A4; A5 or A4 across), but
   // without the web address, date and page number that an iPad (Safari) prints at the bottom of every web page. A page
-  // longer than one sheet goes on to the next sheet (cut at a white line between rows). On a phone or tablet the file
-  // opens in Share (Print, Save to Files, WhatsApp ...); a computer downloads it.
+  // longer than one sheet goes on to the next sheet (cut at a white line between rows). The ZIP downloads directly.
   // Keep the straight security lines as PDF text so magnifying an issued card preserves each letter.
   function drawCardMicrotext(pdf, page, mmPerPixel, left, top, sheetHeight) {
     const bounds = page.getBoundingClientRect();
@@ -2860,7 +2857,7 @@
       desk.style.zoom = 1;
       const blob = await renderPdf(desk);
       const name = (String(title).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "Document") + ".pdf";
-      pdfReady(new File([blob], name, { type: "application/pdf" }));
+      await downloadZip(name, blob);
     } catch (e) {
       console.error(e);
       toast(`Could not make the PDF: ${e.message || e}. Use Print instead.`, true);
@@ -2868,20 +2865,6 @@
       desk.style.zoom = zoom; pvFit?.();
       btn.disabled = false; btn.innerHTML = label;
     }
-  }
-  // the PDF is ready: Share (a phone or tablet: Print, Save to Files, WhatsApp ...) or Download
-  function pdfReady(file) {
-    const url = URL.createObjectURL(file);
-    const share = !!navigator.canShare?.({ files: [file] });
-    const m = modal("PDF Ready", `<p style="margin-top:0"><b>${esc(file.name)}</b> · ${Math.max(1, Math.round(file.size / 1024))} KB</p>
-      `,
-      `<a class="btn primary" id="pdSave" href="${url}" download="${esc(file.name)}">${ic("download")} Download PDF</a>
-       ${share ? `<button type="button" class="btn" id="pdShare">${ic("upload")} Share</button>` : ""}
-       <button type="button" class="btn" id="pdClose">Close</button>`,
-      { cls: "pdf-ready", onClose: () => setTimeout(() => URL.revokeObjectURL(url), 60000) });
-    $("#pdSave", m.el).click();
-    $("#pdClose", m.el).onclick = () => m.close();
-    if ($("#pdShare", m.el)) $("#pdShare", m.el).onclick = () => navigator.share({ files: [file], title: file.name }).catch((e) => { if (e?.name !== "AbortError") toast("Could not open Share. Press Download.", true); });
   }
   // 3.99.192: the security band of every printed page: fine waves and two lines of EMON OVERRUNS with the document's own number
   // (from the title: Invoice INV-202611-0001 → INV-202611-0001), small to big; nothing else
@@ -3049,7 +3032,7 @@
       <div class="pv-title">Preview — ${esc(title)}</div>
       <div class="pv-tools">
         <button type="button" class="btn primary" id="pvPrint">${ic("print")} Print</button>
-        <button type="button" class="btn" id="pvPdf">${ic("download")} Download PDF</button>
+        <button type="button" class="btn" id="pvPdf">${ic("download")} Download ZIP</button>
         <label for="pvZoom">Zoom</label>
         <select id="pvZoom" style="width:auto"><option value="fit">Fit</option><option>50</option><option>75</option><option selected>100</option><option>125</option><option>150</option></select>
         <button type="button" class="btn" id="pvClose">Close</button>
@@ -3106,7 +3089,7 @@
     // 3.99.104: the Windows app (1.8.7) opens the print as a PDF in the Windows PDF viewer: a full preview, and the printer,
     // copies, pages and size can be changed there
     $("#pvPrint", pv).onclick = async () => {
-      if (!window.EOApp?.printPdf) return window.print();
+      if (!window.EOApp?.printPdf) { window.print(); return; }
       toast("Opening the print preview…");
       const r = await window.EOApp.printPdf(title).catch((e) => ({ error: String(e) }));
       if (r?.error) window.print();
