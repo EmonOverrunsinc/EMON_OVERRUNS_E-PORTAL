@@ -359,7 +359,7 @@
         <tfoot><tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${peso(out)}</td><td></td></tr></tfoot></table></div>`
       : empty("No expense this month.");
     const cashTab = cash > 0 ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>CASH OUT TO</th><th>NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
-        ${sales.filter((r) => nonCash(r) > 0).map((r) => `<tr class="os-gc"><td><b>${esc(mdy(r.sale_date))}</b></td><td><b>GCASH</b></td><td>Not in the shop</td><td class="num"><b class="os-co">${peso(nonCash(r))}</b></td><td></td></tr>`).join("")}
+        ${sales.filter((r) => nonCash(r) > 0).map((r) => `<tr class="os-gc"><td><b>${esc(mdy(r.sale_date))}</b></td><td><b>GCash</b></td><td>—</td><td class="num"><b class="os-co">${peso(nonCash(r))}</b></td><td></td></tr>`).join("")}
         ${cos.map((r) => `<tr><td><b>${esc(mdy(r.exp_date))}</b></td><td><b>${esc(r.payee || "—")}</b></td><td>${esc(r.note || "—")}</td><td class="num"><b class="os-co">${peso(r.amount)}</b></td><td>${tools("outlet_expenses", r)}</td></tr>`).join("")}</tbody>
         <tfoot><tr><td colspan="3">TOTAL CASH OUT</td><td class="num">${peso(cash)}</td><td></td></tr></tfoot></table></div>`
       : empty("No cash out this month.");
@@ -967,7 +967,7 @@
       <div class="soa-tiles t5">${[["Total Sales", tot, "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash Out", cash, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
-      ${list("Cash Out", [...(gc > 0 ? [`<tr><td>GCASH (NOT IN THE SHOP)</td><td class="num"><b>${P(gc)}</b></td></tr>`] : []), ...co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`)], [["Cash Out To"], ["Amount (₱)", 1]])}
+      ${list("Cash Out", [...(gc > 0 ? [`<tr><td>GCash</td><td class="num"><b>${P(gc)}</b></td></tr>`] : []), ...co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`)], [["Cash Out To"], ["Amount (₱)", 1]])}
       ${(() => { // 3.99.226: every activity of the day, each with its TRX ID; the employees on duty
         const tm = (at) => (at ? new Date(at).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "—");
         const acts = [
@@ -1035,7 +1035,7 @@
       xps.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc([r.payee, r.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${P(d.out)}</td></tr>`);
     table("Cash Out", [["Date"], ["Cash Out To"], ["Note"], ["Amount (₱)", 1]],
-      [...d.sales.filter((r) => nonCash(r) > 0).map((r) => ({ exp_date: r.sale_date, payee: "GCASH", note: "Not in the shop", amount: nonCash(r) })), ...cos].sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1)).map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(r.payee || "—")}</td><td>${esc(r.note || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
+      [...d.sales.filter((r) => nonCash(r) > 0).map((r) => ({ exp_date: r.sale_date, payee: "GCash", amount: nonCash(r) })), ...cos].sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1)).map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(r.payee || "—")}</td><td>${esc(r.note || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL CASH OUT</td><td class="num">${P(d.cash || 0)}</td></tr>`);
     table("Stock Payments", [["Receipt No"], ["Date"], ["Amount (₱)", 1]],
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
