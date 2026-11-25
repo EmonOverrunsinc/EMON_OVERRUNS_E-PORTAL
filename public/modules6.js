@@ -44,13 +44,14 @@
   // EO-Office page: mini dashboard, QC Test tab, Collection Voucher tab
   // ======================================================================
   // The pages of EO-Office: QC Test and Collection Voucher (this page), Employees and Payroll (3.23), Credit Memo and Project (3.24: no Job Applications / Job Positions)
-  const eoTabs = (on) => `<nav class="subnav reg-nav" aria-label="Manila office sections">${[["eooffice", `${ic("shield")} Regional Office Manila`, "eooffice"], ["custorders", "Customer Orders", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memos", "creditmemos"], ["projects", "Projects", "projects"], ["insurance", "Coverage", "eooffice"], ["mbilling", "Billing", "mbilling"]]
+  const eoTabs = (on) => `<nav class="subnav reg-nav" aria-label="Manila office sections">${[["eooffice", `${ic("shield")} Regional Office Manila`, "eooffice"], ["custorders", "Customer Orders", "eooffice"], ["employees", "Employees", "employees"], ["payroll", "Payroll", "employees"], ["creditmemos", "Credit Memos", "creditmemos"], ["projects", "Projects", "projects"], ["insurance", "Coverage", "eooffice"], ["mbilling", "Billing", "mbilling"], ["outlets","Retail Outlets","outlets"]]
     .filter((x) => E.hasModule(x[2]) && (x[2] !== "eooffice" || E.isStaff())).map(([k, l]) => `<a href="#${k}" class="${k === on ? "on" : ""}" ${k === on ? 'aria-current="page"' : ""}>${l}</a>`).join("")}</nav>`;
   // 3.99.158: REGIONAL OFFICE MANILA (was EO-Office): a card for every part on top, with its number
   const MNL = [["custorders", "Customer Orders", "box", "Orders, boxes, deliveries and invoices", "eooffice"], ["employees", "Employees", "users", "Staff, ID cards and documents", "employees"],
     ["payroll", "Payroll", "wallet", "Salaries and payslips", "employees"], ["creditmemos", "Credit Memos", "receipt", "Returns, credits and discounts", "creditmemos"],
     ["projects", "Projects", "folder", "Projects and payments", "projects"], ["insurance", "Coverage", "shield", "Order coverage certificates", "eooffice"],
     ["mbilling", "Billing", "building", "Manila companies, payments and vouchers", "mbilling"],
+    ["outlets", "Retail Outlets", "building", "Shop dashboards, sales and monthly statements", "outlets"],
     ["register", "Document Register", "doc", "Document numbers, dates and transaction IDs", "__dir"]]; // 3.99.279: the Director only
   const mnlCount = {
     custorders: () => sb.from("customer_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "approved"]).then((r) => (r.error ? "" : r.count ? `${r.count} open order${r.count === 1 ? "" : "s"}` : "No open orders")),
@@ -99,12 +100,32 @@
     $("#rgQ").oninput = show; $("#rgT").onchange = show; show();
     $("#rgLog").onclick = () => E.downloadLog("DOCUMENT REGISTER", all.map((r) => ({ at: r.at || r.date, what: `${r.kind} ${r.no}${r.amt != null ? ` · PHP ${peso(r.amt)}` : ""}`, by: r.by, note: `${String(r.who || "").toUpperCase()}${r.who ? " · " : ""}TRX ${String(r.id).toUpperCase()}` })));
   };
+  E.officeReport = (title) => {
+    const cards = document.querySelector(".reg-cards");
+    if (!cards) return;
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "btn small"; btn.textContent = "Print office dashboard";
+    cards.before(btn);
+    btn.onclick = () => {
+      const rows = [...cards.querySelectorAll(".reg-card")].map(card =>
+        `<tr><td>${esc(card.querySelector("b")?.textContent || "")}</td><td>${esc(card.querySelector("em")?.textContent || card.querySelector("small")?.textContent || "")}</td></tr>`).join("");
+      const posts = [...document.querySelectorAll("#offStaff .off-slot")].map(slot =>
+        `<p><b>${esc(slot.querySelector("h3").textContent)}</b> · ${esc([...slot.querySelectorAll(".off-emp b")].map(b=>b.textContent).join(", ") || "No assignment shown")}</p>`).join("");
+      const metrics = [...document.querySelectorAll("#eoBody .tile, #officeOutlets .ol-kpi")].map(tile => {
+        const label = tile.querySelector(".k, small")?.textContent || "";
+        const value = tile.querySelector(".v, b")?.textContent || "";
+        return `<tr><td>${esc(label)}</td><td>${esc(value)}</td></tr>`;
+      }).join("");
+      E.openPreview(title + " dashboard", [E.printHead(title.toUpperCase()) + posts + `<table class="soa-t"><thead><tr><th>Office area</th><th>Summary</th></tr></thead><tbody>${rows}${metrics}</tbody></table>`]);
+    };
+  };
   V.eooffice = async (tab, month) => {
     const cards = MNL.filter((x) => (x[4] === "__dir" ? E.isAdmin() : E.hasModule(x[4]) && (x[4] !== "eooffice" || E.isStaff())));
     E.shell("eooffice", "Regional Office Manila", `<section class="off-staff" id="offStaff" hidden></section><div class="reg-cards mnl-cards">${cards.map(([k, l, icon, say]) => `<a class="reg-card" href="#${k}"><span class="reg-ic">${ic(icon)}</span><div><b>${esc(l)}</b><small>${esc(say)}</small><em id="mnlN-${k}"></em></div><span class="reg-go">${ic("next")}</span></a>`).join("")}</div>
+      ${E.hasModule("outlets") ? '<section class="box"><h3>Manila retail outlets</h3><div id="officeOutlets"></div></section>' : ""}
       <section class="prize-pool" id="dPrize" hidden></section>
       <div id="eoBody">${busy()}</div>`);
-    E.officeStaff?.($("#offStaff"), "manila"); // 3.99.326: the office's assigned employees on top
+    E.officeReport("Regional Office Manila"); E.outletsBox?.($("#officeOutlets")); E.officeStaff?.($("#offStaff"), "manila"); // 3.99.326: the office's assigned employees on top
     if ($("#dPrize")) sb.rpc("prize_pool").then(({ data: p }) => { // 3.99.250: the prize pool, on the office page
       const el = $("#dPrize"); if (!el || !p) return;
       el.innerHTML = `<div class="pz-ic">${ic("crown")}</div><div class="pz-main"><small>PRIZE POOL</small><b>₱ ${peso(p.redeemed)}</b><em>REDEEMED · ${p.redeemed_n} TIME${p.redeemed_n === 1 ? "" : "S"}</em></div>
@@ -257,7 +278,7 @@
   // The 2 stickers on plain paper: nothing else on the page (no heading, no footer, no date).
   // 3.99.106: each sticker carries the security seal of the QC test (its unique seal no)
   const stickerPage = (t, res, code = "") => `<div class="qc-cards qc-sticker">${qcCard(t, res, code)}${qcCard(t, res, code)}</div>`;
-  const openStickers = async (t, r) => { const code = await E.sealCode("qc", t.qc_no); E.openPreview(`QC Stickers ${t.qc_no}`, [stickerPage(t, resultOf(t, r), code)], { bare: true }); };
+  const openStickers = async (t, r) => { const code = await E.sealCode("qc", t.qc_no); E.openPreview(`QC Stickers ${t.qc_no}`, [stickerPage(t, resultOf(t, r), code)], { bare: true, trx: t.id }); };
 
   // The plain QC TEST form (Download Forms): no barcode and no number, filled in by hand; the result sticker goes in its box.
   function qcPaper() {
@@ -724,7 +745,7 @@
     if ($("#cvOpen")) $("#cvOpen").onclick = () => E.viewFile({ storage_path: v.receipt_path, mime: isPdf ? "application/pdf" : "image/jpeg", file_name: `${v.cv_no} Receipt` });
     // 3.94: A5 landscape; 3.95: the QR code of an unpaid voucher holds its key (it unlocks Receive Payment)
     // 3.95: 2 copies on one A4 page (the customer's copy and the office copy), the receipt picture on its own page
-    $("#cvPdf").onclick = async () => E.openPreview(`Collection Voucher ${v.cv_no}`, [cvTwo(v, unpaid(v) ? await cvKey(v) : ""), ...(url && !isPdf ? [cvPicPage(v, url)] : [])], { bare: true });
+    $("#cvPdf").onclick = async () => E.openPreview(`Collection Voucher ${v.cv_no}`, [cvTwo(v, unpaid(v) ? await cvKey(v) : ""), ...(url && !isPdf ? [cvPicPage(v, url)] : [])], { bare: true, trx: v.id });
     if ($("#cvRecv")) $("#cvRecv").onclick = () => receivePayment(v); // 3.91
     if ($("#cvDel")) $("#cvDel").onclick = async () => {
       if (!(await E.confirmBox(`Delete collection voucher <b>${esc(v.cv_no)}</b> (₱ ${peso(v.amount)} from ${esc(v.received_from)})? This cannot be undone.`, { ok: "Delete", danger: true }))) return;

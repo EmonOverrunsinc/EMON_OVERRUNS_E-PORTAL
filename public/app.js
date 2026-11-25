@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.344"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.345"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.344"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.345"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1531,7 +1531,7 @@
     { k: "outlets", icon: "building", label: "Outlets" } // 3.99.116: the shops
   ];
   // 3.2: EO-Office holds QC Test, Collection Voucher, Job Applications, Job Positions, Credit Memo and Project: it opens for anyone who may open one of them
-  const EO_MODULES = ["eooffice", "creditmemos", "projects", "employees", "mbilling"]; // 3.99.163: + Manila Billing
+  const EO_MODULES = ["eooffice", "creditmemos", "projects", "employees", "mbilling", "outlets"]; // 3.99.163: + Manila Billing
   // Which menu item (module) each page belongs to; pages a user has no access to are blocked.
   const MODULE_OF = {
     customers: "customers", newcustomer: "customers", customer: "customers", statements: "customers", order: "customers",
@@ -2830,8 +2830,43 @@
     const re = new RegExp(forms.join("|"), "gi");
     return pages.map((p) => String(p).replace(re, esc(c.public_ident)));
   };
+  async function documentCards(root, issuedOn) {
+    if (!root) return;
+    const pattern = /\bEO-\d{7,}\b/g;
+    const nodes = [], numbers = new Set();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode, value = node.nodeValue;
+      const found = value.match(pattern);
+      if (found) {
+        found.forEach(n => numbers.add(n));
+        nodes.push({ node, value });
+        node.nodeValue = value.replace(pattern, "");
+      }
+      if (/^(employee (id|no|number)( no)?|id no)\.?$/i.test(value.trim())) node.nodeValue = "EOID";
+    }
+    if (!numbers.size) return;
+    const { data, error } = await sb.rpc("document_people", { p_numbers: [...numbers], p_profiles: [] });
+    if (error) { toast("EOID details unavailable. Check your connection and database update 157.", true); return; }
+    const byNumber = new Map((data || []).map(row => [row.employee_no, row]));
+    const localDay = stamp => new Date(stamp).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+    for (const { node, value } of nodes) {
+      node.nodeValue = value.replace(pattern, n => byNumber.get(n)?.card_no || "");
+      const stamp = node.parentElement?.closest(".eo-stamp");
+      if (!stamp) continue;
+      const person = byNumber.get(value.trim());
+      const printedDate = stamp.querySelector(".st-date")?.textContent;
+      const parsed = printedDate && Date.parse(printedDate);
+      const day = issuedOn || (Number.isFinite(parsed) ? new Date(parsed).toISOString().slice(0, 10) : "");
+      const holdsPost = person?.posts?.some(([start, end]) => day
+        ? localDay(start) <= day && (!end || localDay(end) > day)
+        : !end);
+      if (person?.is_director || holdsPost) stamp.classList.add("st-boss");
+    }
+  }
+
   function openPreview(title, pages, opts = {}) {
-    const trx = opts.noTrx ? "" : opts.trx || trxNow(); // 3.99.220: the TRX ID on every page of a transaction's paper
+    const trx = Object.hasOwn(opts, "trx") ? opts.trx : trxNow(); // 3.99.220: the TRX ID on every page of a transaction's paper
     pages = pages.map((p) => String(p).replace(/>(\s|&nbsp;)*[—–-](\s|&nbsp;)*</g, "><")); // 3.99.228: nothing written: nothing printed
     // the barcodes are drawn first: a print made while the barcode maker was still loading opens when it is there
     if (!window.bwipjs) { need("bwip").then(() => openPreview(title, pages, opts), (e) => toast(e.message, true)); return; }
@@ -2859,6 +2894,22 @@
       </div>
       <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${onePage ? `<div class="pg-fit">${p}</div>` : p}${trx ? `<div class="pg-trx">TRX ID ${esc(trx.toUpperCase())}</div>` : ""}${pages.length > 1 ? `<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div>` : ""}<div class="pg-sec" aria-hidden="true" style="background-image:${band} !important"></div></div>`)).join("")}</div>
       <div class="statusbar"><span id="pvCur">Current Page No: 1</span><span>Total Page No: ${pages.length}</span><span id="pvZf">Zoom Factor: 100%</span></div>`;
+    const footers = $$(".page", pv).map(page => {
+      const footer = page.querySelector(":scope > .pg-trx") || document.createElement("div");
+      footer.className = "pg-trx"; page.appendChild(footer);
+      footer.textContent = trx ? "TRX ID " + trx.toUpperCase() : "";
+      return footer;
+    });
+    const ready = Promise.all([
+      documentCards($("#pvDesk", pv), opts.issuedOn),
+      trx ? null : sb.rpc("issue_document_trx").then(({ data, error }) => {
+        if (error || !data) { toast("Document TRX unavailable. Check your connection and database update 157.", true); return; }
+        footers.forEach(f => { f.textContent = "TRX ID " + String(data).toUpperCase(); });
+      })
+    ]);
+    const printButtons = [$("#pvPrint",pv), $("#pvPdf",pv)];
+    printButtons.forEach(b => { b.disabled = true; });
+    ready.catch(() => toast("Document details could not be loaded.",true)).finally(() => printButtons.forEach(b => { b.disabled = false; }));
     document.body.appendChild(pv);
     bwPictures($("#pvDesk", pv)); // 3.99.15
     // 3.99.239: the paper's barcode (PDF417) goes from the head to the bottom right of the page, with its number; the TRX ID
@@ -3375,7 +3426,7 @@
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
     shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, outletWeekRanks, titleHtml, bossName, customerRanks, medalHtml, achHtml, medalMini, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
-    roleName, personTitle, placeBadge, downloadLog, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
+    documentCards, roleName, personTitle, placeBadge, downloadLog, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
   });
 })();

@@ -391,6 +391,13 @@
       if (trx) {
         $("#vfResult").innerHTML = `<div class="vf-wait">${busy("Checking the TRX ID")}</div>`;
         const { data: no, error: te } = await sb.rpc("verify_trx", { p_id: trx.toLowerCase() }).then((r) => r, (e) => ({ error: e }));
+        if (!te && !no) {
+          const { data: issued } = await sb.rpc("document_trx_date", { p_id: trx.toLowerCase() });
+          if (issued && $("#vfResult")) {
+            $("#vfResult").innerHTML = `<div class="vf-title">Document print recorded</div><div class="vf-sub">${esc(E.dateTime(issued))} · TRX ID ${esc(trx.toUpperCase())}</div>`;
+            return;
+          }
+        }
         if (te || !no) {
           const out = $("#vfResult"); if (!out) return;
           out.innerHTML = `<div class="vf-bad"><div class="vf-seal">${te ? "!" : "✖"}</div><div class="vf-title">${te ? "CANNOT CHECK RIGHT NOW" : "NO RECORD FOUND"}</div><div class="vf-sub">${te ? "Please try again in a moment." : `TRX ID ${esc(trx.toUpperCase())} is not a record in the ${esc(E.APP)}.`}</div></div>`;

@@ -5757,3 +5757,13 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 }
 .sales-entry-form .os-all-cash { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 #oxSuggest { margin: 0 0 6px; white-space: normal; text-align: left; }
+
+.off-staff:has(.off-slot) { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:16px; }
+.off-slot { min-width:0; padding:12px; border:1px solid #d9e1ef; border-radius:12px; }
+.off-slot .off-h { flex-wrap:wrap; }
+.dsr-sign { align-items:start; margin-top:3mm; }
+.dsr-sign .ds-left { align-content:start; }
+.dsr-sign .ds-left .dsr-cash { width:fit-content; max-width:100%; }
+.dsr-resp b i { display:block; font-style:normal; }
+.eo-stamp.st-boss { --ink:#b74c55; max-width:100%; text-align:center; }
+.page.bare > .pg-trx { z-index:2; }

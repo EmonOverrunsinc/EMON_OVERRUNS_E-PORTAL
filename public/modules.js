@@ -237,7 +237,7 @@
   const EOIDS = new Map(), eoidOf = (id) => (id && EOIDS.get(id)) || "";
   const stampOf = (id, name = "", pos = "", boss = false) => { const s = (id && STAMPS.get(id)) || {}; return { name: s.name || name, pos: s.pos || pos, eoid: s.eoid || eoidOf(id), boss: s.boss || boss }; };
   // 3.99.242: on papers the stamp is the name, the position (from the employee profile) and the EOID (no crown, no mark)
-  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${s.boss ? " st-boss" : ""}${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.pos ? `<em>${esc(String(s.pos).toUpperCase())}</em>` : ""}${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}${s.date ? `<small class="st-date">${esc(s.date)}</small>` : ""}</span>` : "");
+  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${s.boss ? " st-boss" : ""}${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}${s.pos ? `<em>${esc(String(s.pos).toUpperCase().replace(/^OPERATIONS OFFICER$/, "OPERATIONAL OFFICER"))}</em>` : ""}${s.date ? `<small class="st-date">${esc(s.date)}</small>` : ""}</span>` : "");
   // on a paper: the blue words of who signs, under the line (never the signature picture; they sign by hand after printing)
   const sigMark = (sign) => (sign ? stampHtml(sign.stamp || (sign.name ? { name: sign.name } : null)) : "");
   // 3.99.219: the id of a Director by name (from the Directors' signatures list), e.g. to print EMON HASAN's EOID
@@ -2679,7 +2679,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         <fieldset class="opt dev-card" id="mpDev" hidden></fieldset>
       </div>
       ${emp ? `<div id="mpCard"></div>` : ""}
-      <fieldset class="opt stampset"><legend>My Stamp</legend><div class="stamp-show">${stampHtml({ name: S.profile.full_name || "", pos: E.personTitle?.(S.profile.role, emp?.position) || "", eoid: emp?.employee_no || "" })}</div><p class="muted">The portal adds this stamp to your documents.</p></fieldset>
+      <fieldset class="opt stampset"><legend>My Stamp</legend><div class="stamp-show">${stampHtml({ name: S.profile.full_name || "", pos: E.personTitle?.(S.profile.role, emp?.position) || "", eoid: emp?.employee_no || "", boss: isAdmin() })}</div><p class="muted">The portal adds this stamp to your documents.</p></fieldset>
       <fieldset class="opt sigset" id="mpSigBox"><legend>My Signature</legend>
         ${myPic ? `<div class="sig-show"><img src="${esc(myPic)}" alt="My signature"></div><div class="sig-st">${sigPill(sp.signature_status)}${sp.signature_status === "approved" && sp.signature_approved_by_name ? ` <small>by ${esc(sp.signature_approved_by_name)} on ${mdy(sp.signature_approved_at)}</small>` : ""}</div>` : `<p><b>No signature yet.</b></p>`}
         ${sp.signature_status === "rejected" && sp.signature_note ? `<div class="hint err">Not approved: ${esc(sp.signature_note)}. Upload a clearer signature.</div>` : ""}
@@ -2697,6 +2697,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       ${emp ? `<h3>My Salary</h3>${E.salaryTiles(emp, E.salaryTotals(slips, myPays.rows))}
         <h3>My Payslips</h3><div id="mpSlips">${E.slipGrid(slips, "No payslips yet.")}</div>
         <h3>My Salary Payments</h3><div id="mpPays">${E.payGrid(myPays.rows, slips, "No salary paid yet.")}</div>` : ""}`;
+    E.documentCards?.($(".stamp-show"));
     S.hideMoney = hid;
     if (emp) { E.bindGrid($("#mpSlips"), slips, (r) => (location.hash = "payslip/" + r.id)); E.bindGrid($("#mpPays"), myPays.rows, (r) => (location.hash = "payslip/" + r.payslip_id)); }
     if (emp && E.cardInfoBox) E.cardInfoBox($("#mpCard")); // the ID card (3.28: no PIN)

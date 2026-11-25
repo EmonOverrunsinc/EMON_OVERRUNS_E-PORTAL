@@ -186,7 +186,7 @@
       const { data: code, error } = await sb.rpc("employee_card_code", { p_card: card.id });
       if (error) return fail(error, "Could not print the ID card");
       const seal = E.sealCode ? await E.sealCode("idcard", card.card_no) : ""; // 3.99.123: the card's unique seal no
-      E.openPreview(`${fullName(em).toUpperCase()} ${em.employee_no || card.card_no}`, [sheet({ ...d, seal, qr: E.qrDataUrl(code) })], { bare: true }); // 3.99.275: the file is named NAME EOID
+      E.openPreview(`${fullName(em).toUpperCase()} ${card.card_no}`, [sheet({ ...d, seal, qr: E.qrDataUrl(code) })], { bare: true, trx: card.id }); // 3.99.275: the file is named NAME EOID
       idCardTab(em, el, reload);
     };
     // 3.99.123: block a lost or stolen card (it stops at once; then Issue ID Card), change the expiration date
