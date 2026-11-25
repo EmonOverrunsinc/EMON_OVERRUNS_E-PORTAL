@@ -20,7 +20,6 @@
   const today = () => E.isoToday();
   const monthNow = () => today().slice(0, 7);
   const monthEnd = (m) => { const [y, mo] = m.split("-").map(Number); return `${m}-${String(new Date(y, mo, 0).getDate()).padStart(2, "0")}`; };
-  const shiftMonth = (m, d) => { const [y, mo] = m.split("-").map(Number); const t = new Date(y, mo - 1 + d, 1); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`; };
   const canEdit = () => E.canWrite("outlets");
   const sum = (list, f) => list.reduce((s, r) => s + num(typeof f === "function" ? f(r) : r[f]), 0);
   const isoNow = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
@@ -159,12 +158,13 @@
       todayOut: sum(exps.filter((r) => r.exp_date === today() && r.kind === "daily"), "amount") };
   };
 
-  async function statementMonths(outlet) {
+  async function statementMonths(outlet, mine) {
     const id = outlet.id;
+    const visible = (query) => mine ? query.eq("created_by", E.meId()) : query;
     const results = await Promise.all([
-      E.allRows(() => sb.from("outlet_sales").select("sale_date").eq("outlet_id", id).order("sale_date")),
-      E.allRows(() => sb.from("outlet_expenses").select("exp_date").eq("outlet_id", id).order("exp_date").order("id")),
-      outlet.customer_id ? E.allRows(() => sb.from("payments_received").select("paid_date").eq("customer_id", outlet.customer_id)
+      E.allRows(() => visible(sb.from("outlet_sales").select("sale_date").eq("outlet_id", id)).order("sale_date")),
+      E.allRows(() => visible(sb.from("outlet_expenses").select("exp_date").eq("outlet_id", id)).order("exp_date").order("id")),
+      !mine && outlet.customer_id ? E.allRows(() => sb.from("payments_received").select("paid_date").eq("customer_id", outlet.customer_id)
         .gte("paid_date", String(outlet.created_at).slice(0, 10)).order("paid_date").order("id")) : { data: [] }
     ]);
     if (results.some((result) => result.error)) return null;
@@ -316,7 +316,7 @@
       o.customer_id ? sb.from("payments_received").select("id, receipt_no, paid_date, amount, method").eq("customer_id", o.customer_id).gte("paid_date", first).lte("paid_date", last).order("paid_date", { ascending: false }).then((r) => r.data || []) : [],
       o.customer_id ? sb.from("invoice_balances").select("id, invoice_no, invoice_date, due_date, total_amount, balance, pay_status").eq("customer_id", o.customer_id).gt("balance", 0).order("invoice_date").then((r) => r.data || []) : [],
       o.customer_id ? sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").eq("id", o.customer_id).maybeSingle().then((r) => r.data) : null,
-      mine ? [] : statementMonths(o),
+      statementMonths(o, mine),
       sb.from("outlet_closures").select("*").eq("outlet_id", id).gte("day", first < today() ? first : today()).order("day").limit(120).then((r) => (r.error ? null : r.data || []), () => null),
       sb.from("outlet_day_hours").select("*").eq("outlet_id", id).eq("day", today()).maybeSingle().then((r) => (r.error ? undefined : r.data), () => undefined)]);
     if (!here()) return;
@@ -374,6 +374,11 @@
       ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small primary" id="olLeaseBtn">${ic("doc")} Contract of Lease</button><label class="btn small" for="olDocUp">${ic("upload")} Upload</label><input type="file" id="olDocUp" accept="image/*,application/pdf" multiple hidden></div>` : ""}
       ${o.notes ? `<div class="ol-sub">Notes</div><p class="ol-notes">${esc(o.notes)}</p>` : ""}`;
     const box = (cls, k, v, sub = "") => `<div class="os-kpi ${cls}"><small>${k}</small><b>₱ ${peso(v)}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
+    const monthLink = (target, icon, label) => target
+      ? `<a href="#outlet/${esc(id)}/${esc(target)}" aria-label="${label}, ${esc(E.monthText(target))}">${ic(icon)}</a>`
+      : '<span aria-hidden="true"></span>';
+    const previous = soaMonths?.find((value) => value < m);
+    const next = soaMonths?.filter((value) => value > m).pop();
     const soaTab = mine ? "" : soaMonths?.length ? `<div class="soa-list">${soaMonths.map((x) => `<button type="button" class="ol-li soa-li" data-soa="${esc(x)}">${ic("print")}<div class="ol-li-m"><b class="mono">SOA-${esc(o.code)}-${esc(x.replace("-", ""))}</b><small>${esc(E.monthText(x))}${x === monthNow() ? " · to date" : ""}</small></div><em>Print</em></button>`).join("")}</div>` : empty(soaMonths ? "No monthly statements yet." : "Statement history could not be loaded. Refresh to try again.");
     const tabs = [["Expenses", xps.length, expTab], ["Cash Out", cos.length, cashTab], ...(mine ? [] : [["Stock Account", invs.length, stockTab]]), ["Employees", st.length, staffHtml(st)], ["Achieved", 0, `<div id="osAchTab" data-oid="${esc(o.id)}">${busy()}</div>`], ["Documents", docs.length, docTab], ...(mine ? [] : [["Monthly SOA", soaMonths?.length || 0, soaTab]])];
     const moreBtns = [`<button type="button" id="olInfo">${ic("folder")} Info</button>`, mapQuery(o) ? `<button type="button" id="olMapOpen">${ic("pin")} Location</button>` : "", edit ? `<button type="button" id="olCash">${ic("wallet")} Cash Out</button><button type="button" id="olExp">${ic("plus")} Expense / Bill</button>` : "",
@@ -389,7 +394,7 @@
         <div class="os-chips"><span class="os-bid">${ic("lock")} Branch ID ${esc(bidText(o))}</span>${o._today ? "" : `<span>${ic("clock")} ${esc(hoursOf(o) || "Hours not set")}</span>`}${storeNow(o) && o.status !== "closed" ? `<span class="os-live st-${storeNow(o).k}" id="osLive" title="${storeNow(o).sales ? `Sales hours ${o._today ? "today" : "a day"}: ${storeNow(o).sales}` : ""}">${liveHtml(o)}</span><span class="os-next" id="osNext">${ic("clock")} ${liveNext(o)}</span>` : ""}${o._today ? `<span class="os-todayh" title="Changed for today${o._today.set_by_name ? ` by ${esc(o._today.set_by_name)}` : ""}${o._today.note ? ` · ${esc(o._today.note)}` : ""}">${ic("clock")} Today ${esc(todayText(o))}</span>` : ""}
           ${rs.k === "none" ? "" : `<span class="r-${rs.k}">${rs.k === "paid" ? ic("check") + " " : ""}${esc(rentLine(rs))}</span>`}${o.status === "closed" ? `<span class="r-overdue">CLOSED</span>` : ""}</div>
         ${isAdmin() ? `<div class="os-details-action"><button type="button" class="btn small" id="olEdit">${ic("edit")} Edit Shop Details</button></div>` : ""}
-        <div class="os-month"><a href="#outlet/${esc(id)}/${shiftMonth(m, -1)}" aria-label="Previous month">${ic("back")}</a><b>${esc(E.monthText(m))}</b><a href="#outlet/${esc(id)}/${shiftMonth(m, 1)}" aria-label="Next month">${ic("next")}</a></div>
+        <div class="os-month">${monthLink(previous, "back", "Previous recorded month")}<b>${esc(E.monthText(m))}</b>${monthLink(next, "next", "Next recorded month")}</div>
       </section>
       ${o._closed ? `<div class="banner warn os-nwd">${ic("clock")} <span><b>TODAY IS A NON-WORKING DAY</b> · the store is closed and opens again tomorrow.</span></div>` : ""}
       ${mine ? `<div class="banner info os-mine">${ic("shield")} Your records only</div>` : ""}
