@@ -303,8 +303,8 @@
     const profileHero = $("#emPlace").closest(".cust-hero");
     sb.rpc("employee_place", { p_employee: em.id }).then(({ data: pl }) => {
       if (!profileHero.isConnected) return;
-      E.profileBadgeMotion(profileHero, em, pl);
       const b = $("#emPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl);
+      E.profileBadgeMotion(profileHero, em, pl);
       const n = $("#emWorkNow"); if (!n) return;
       n.innerHTML = pl ? `${E.placeBadge(pl, "lg")}<div class="wp-meta"><span>Position <b>${esc(String(em.position || "—").toUpperCase())}</b></span>${pl.address ? `<span>Address <b>${esc(String(pl.address).toUpperCase())}</b></span>` : ""}${pl.kind === "outlet" && pl.id ? `<a class="btn small" href="#outlet/${esc(pl.id)}">${ic("building")} Open Store</a>` : ""}</div>` : `<div class="muted">Not set yet.</div>`;
     }, () => { const n = $("#emWorkNow"); if (n) n.innerHTML = `<div class="muted">Not set yet.</div>`; });

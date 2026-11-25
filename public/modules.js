@@ -2657,12 +2657,13 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       const result = await sb.rpc("employee_place", { p_employee: employee.id });
       place = result.data;
     }
-    let animate = place?.kind === "outlet";
+    let animate = !!place?.kind;
     if (!animate && employee.employee_no) {
       const result = await sb.rpc("document_people", { p_numbers: [employee.employee_no], p_profiles: [] });
       animate = (result.data || []).some(person => person.posts?.some(([, end]) => end === null));
     }
-    badge.classList.toggle("assigned-profile-badge", animate);
+    root.classList.toggle("assigned-person", animate);
+    root.querySelectorAll(".tbadge").forEach((item) => item.classList.toggle("assigned-profile-badge", animate));
   };
   V.profile = async () => {
     const av = E.publicUrl("avatars", S.profile.avatar_path);

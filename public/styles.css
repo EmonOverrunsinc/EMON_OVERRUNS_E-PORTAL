@@ -5807,3 +5807,18 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .page.dsr-page .dsr-sign .ds-line { height: 7mm; }
 .page.dsr-page .ph-left .ds-head-bar { justify-items: start; margin-top: 1mm; }
 .page.dsr-page .ph-left .ds-head-bar img { width: 36mm; height: 5mm; }
+
+/* Active workplace assignments: show the person's name and workplace mark with a restrained motion. */
+.assigned-work-person { display: flex !important; align-items: center; gap: 9px; min-width: 0; }
+.assigned-work-person > span:last-child { min-width: 0; }
+.assigned-work-person .wp-ic, .assigned-work-person .wp-logo { width: 34px; height: 34px; flex: 0 0 34px; }
+.assigned-work-person .wp-logo { font-size: 0; }
+.wp-badge.wp-office .wp-ic, .off-emp .wp-ic { background: #fff6dc; color: #8e6b13; }
+.assigned-person h2, .assigned-person .assigned-profile-name, .assigned-work-person b { animation: assignedNameGlow 4s ease-in-out infinite; }
+@keyframes assignedNameGlow { 0%,100% { opacity: 1; } 50% { opacity: .72; } }
+.loading.sk { opacity: 0; animation: loadingAppear .16s ease .18s forwards; }
+@keyframes loadingAppear { to { opacity: 1; } }
+@media print, (prefers-reduced-motion: reduce) {
+  .assigned-person h2, .assigned-person .assigned-profile-name, .assigned-work-person b { animation: none !important; }
+  .loading.sk { opacity: 1; animation: none !important; }
+}

@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.362"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.364"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.362"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.364"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -274,14 +274,14 @@
   // in-charge, coordinator, cashier), else plain
   const titleTier = (pos) => { const p = String(pos || "").toLowerCase();
     return /director|manager|officer|head|accountant|chief|admin/.test(p) ? "staff-silver" : /supervisor|lead|in[- ]?charge|coordinator|cashier|team/.test(p) ? "staff-bronze" : "staff-plain"; };
-  const titleHtml = (role, position) => { // 3.99.255: the title as a badge like VIP: gold (the Director), silver, bronze, plain
+  const titleHtml = (role, position, assigned = false) => { // 3.99.255: the title as a badge like VIP: gold (the Director), silver, bronze, plain
     const t = esc(String(position || (role === "admin" ? "Operational Director" : roleName(role)) || "").toUpperCase());
     const k = role === "admin" ? "gold" : ({ "staff-silver": "silver", "staff-bronze": "bronze" })[titleTier(position)] || "plain";
-    return `<span class="tbadge tb-${k}">${k === "gold" ? ic("crown") : ""}<b>${t}</b></span>`; };
+    return `<span class="tbadge tb-${k}${assigned ? " assigned-profile-badge" : ""}">${k === "gold" ? ic("crown") : ""}<b>${t}</b></span>`; };
   // 3.99.234: where someone works: the shop (its logo, code and name), a company, or the EO OFFICE; and since when
   const placeBadge = (pl, cls = "") => {
     if (!pl || !pl.kind) return "";
-    const logo = pl.kind === "outlet" && pl.outlet && window.EO.storeLogo ? window.EO.storeLogo(pl.outlet, "wp-logo") : `<span class="wp-ic">${ic("building")}</span>`;
+    const logo = pl.kind === "outlet" && pl.outlet && window.EO.storeLogo ? window.EO.storeLogo(pl.outlet, "wp-logo") : `<span class="wp-ic">${ic(pl.kind === "office" ? "warehouse" : "building")}</span>`;
     const since = pl.since ? `<small>SINCE ${esc(mdy(String(pl.since).slice(0, 10)))}</small>` : "";
     return `<span class="wp-badge wp-${esc(pl.kind)} ${cls}">${logo}<span><b>${esc(String(pl.code || "").toUpperCase())}</b>${pl.name && pl.name !== pl.code ? `<em>${esc(String(pl.name).toUpperCase())}</em>` : ""}${since}</span></span>`;
   };
@@ -346,6 +346,7 @@
   // Line icons (stroke drawn with the text colour).
   const ICONS = {
     menu: '<path d="M4 6h16M4 12h16M4 18h16"/>', // 3.98: the Actions button
+    warehouse: '<path d="M3 10 12 4l9 6v10H3zM3 10h18M7 20v-8h10v8M9 15h6M9 18h6"/>',
     search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>',
     scan: '<path d="M3 8V4h4M17 4h4v4M21 16v4h-4M7 20H3v-4"/><path d="M7 12h10"/>',
     qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM18 14h2M14 18h2M18 18h2v2"/>',
@@ -1732,7 +1733,7 @@
         </div>
         <div class="pop" id="mailPop" hidden><div class="pop-head">Notifications</div><div id="mailList">${busy()}</div></div>
         <div class="pop" id="userPop" hidden>
-          <div class="pop-head">${esc(S.profile.full_name || "")}<small>${esc(S.session.user.email)} · ${titleHtml(S.profile.role, S.position)}</small></div>
+          <div class="pop-head${S.employee?.status === "active" ? " assigned-person" : ""}"><span class="assigned-profile-name">${esc(S.profile.full_name || "")}</span><small>${esc(S.session.user.email)} · ${titleHtml(S.profile.role, S.position, S.employee?.status === "active")}</small></div>
           <a href="#profile">${ic("user")} My Profile</a>
           <button type="button" id="chPw">${ic("key")} Change Password</button>
           ${window.EOApp?.menu ? `<button type="button" id="upAppMenu">${ic("box")} App Menu (scanner, about)</button>` : ""}
@@ -2851,18 +2852,25 @@
   }
   async function savePdf(pv, desk, title, btn) {
     if (btn.disabled) return;
-    const label = btn.innerHTML, zoom = desk.style.zoom;
-    btn.disabled = true; btn.innerHTML = `<span class="spin sm"></span> Making PDF…`;
+    const label = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = `<span class="spin sm"></span> Preparing ZIP…`;
+    const capture = desk.cloneNode(true);
+    capture.removeAttribute("id");
+    capture.classList.add("pdf-capture");
+    capture.setAttribute("aria-hidden", "true");
+    capture.style.cssText = "position:fixed;left:-10000px;top:0;width:297mm;max-width:none;overflow:visible;zoom:1;pointer-events:none";
+    pv.appendChild(capture);
     try {
-      desk.style.zoom = 1;
-      const blob = await renderPdf(desk);
+      const originals = $$("canvas", desk), copies = $$("canvas", capture);
+      copies.forEach((canvas, i) => { canvas.width = originals[i].width; canvas.height = originals[i].height; canvas.getContext("2d").drawImage(originals[i], 0, 0); });
+      const blob = await renderPdf(capture);
       const name = (String(title).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "Document") + ".pdf";
       await downloadZip(name, blob);
     } catch (e) {
       console.error(e);
       toast(`Could not make the PDF: ${e.message || e}. Use Print instead.`, true);
     } finally {
-      desk.style.zoom = zoom; pvFit?.();
+      capture.remove();
       btn.disabled = false; btn.innerHTML = label;
     }
   }
