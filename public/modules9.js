@@ -151,40 +151,6 @@
   }
 
   // ---------- the Director's ID Card tab on the employee profile ----------
-  // Original PDFs are stored in a private bucket, keyed by the existing card number.
-  function bindOriginalPdf(el, cardNo, admin = false) {
-    if (!/^EOID-\d{4}-\d{4,}$/.test(cardNo || "")) return;
-    const path = cardNo + ".pdf", bucket = sb.storage.from("eoid-originals");
-    const wrap = document.createElement("div");
-    wrap.className = "btnrow";
-    wrap.innerHTML = `<button type="button" class="btn" data-eoid-view>View / Print Original PDF</button><button type="button" class="btn" data-eoid-download>Download Original PDF</button>${admin ? '<button type="button" class="btn" data-eoid-upload>Upload Original PDF</button><input type="file" accept="application/pdf,.pdf" hidden>' : ""}`;
-    el.appendChild(wrap);
-    const open = async (download) => {
-      const { data, error } = await bucket.download(path);
-      if (error) return fail(error, "Original PDF unavailable");
-      const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
-      const a = document.createElement("a"); a.href = url;
-      if (download) a.download = path; else { a.target = "_blank"; a.rel = "noopener noreferrer"; }
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 120000);
-    };
-    wrap.querySelector("[data-eoid-view]").onclick = () => open(false);
-    wrap.querySelector("[data-eoid-download]").onclick = () => open(true);
-    if (admin) {
-      const input = wrap.querySelector("input");
-      wrap.querySelector("[data-eoid-upload]").onclick = () => input.click();
-      input.onchange = async () => {
-        const file = input.files[0]; input.value = "";
-        if (!file) return;
-        if (file.size > 20 * 1024 * 1024 || await file.slice(0,5).text() !== "%PDF-") return toast("Choose a valid PDF up to 20 MB.", true);
-        if (!(await E.confirmBox("Save this original PDF for " + esc(cardNo) + "? Confirm that the card number printed in the PDF matches.", { ok: "Save PDF" }))) return;
-        const { error } = await bucket.upload(path, file, { contentType: "application/pdf", upsert: true });
-        if (error) return fail(error, "Could not save original PDF");
-        toast("Original PDF saved.");
-      };
-    }
-  }
-
   const STATE = { active: "ACTIVE", replaced: "REPLACED", revoked: "ENDED", blocked: "BLOCKED" };
   async function idCardTab(em, el, reload) {
     if (!isAdmin() || !el) return;
@@ -216,7 +182,6 @@
         </div></div>
       ${list.length ? `<h4>Card History</h4>${E.grid({ cols: [{ label: "Card No", get: (r) => r.card_no }, { label: "Issued", get: (r) => mdy(r.issued_at) }, { label: "Issued By", get: (r) => r.issued_by_name || "" },
         { label: "Valid Until", get: (r) => mdy(r.valid_until) }, { label: "Status", get: (r) => STATE[r.status] || r.status.toUpperCase() }, { label: "Ended", get: (r) => (r.ended_at ? mdy(r.ended_at) : "") }], rows: list })}` : ""}`;
-    if (card) bindOriginalPdf(el.querySelector(".idc-side"), card.card_no, true);
     if ($("#idcPrint", el)) $("#idcPrint", el).onclick = async () => {
       const { data: code, error } = await sb.rpc("employee_card_code", { p_card: card.id });
       if (error) return fail(error, "Could not print the ID card");
