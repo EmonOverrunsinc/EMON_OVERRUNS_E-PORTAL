@@ -5796,3 +5796,14 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .own-id-page { min-width: 0; }
 .own-id-page canvas { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto 12px; }
 .own-id-page .btnrow, .pdf-ready .wfoot { flex-wrap: wrap; }
+
+/* Daily sales report keeps the receipt stamp beside the cash-out figures. */
+.page.dsr-page { padding-bottom: 10mm; }
+.page.dsr-page .dsr-cash { width: fit-content; max-width: 100%; margin: 2mm 0 2mm auto; }
+.page.dsr-page .dsr-cash .vst { min-width: 44mm; padding: 2mm 4mm; }
+.page.dsr-page .dsr-cash .vst em { display: block; font-style: normal; }
+.page.dsr-page .dsr-sign { display: flex; justify-content: flex-end; margin-top: 2mm; }
+.page.dsr-page .dsr-sign .ds-right { width: 42%; gap: .6mm; }
+.page.dsr-page .dsr-sign .ds-line { height: 7mm; }
+.page.dsr-page .ph-left .ds-head-bar { justify-items: start; margin-top: 1mm; }
+.page.dsr-page .ph-left .ds-head-bar img { width: 36mm; height: 5mm; }

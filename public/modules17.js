@@ -335,7 +335,7 @@
     const owed = sum(invs, "balance"), rs = rentState(o, exps, m), edit = canEdit();
     const byPay = PAY.map(([k, l]) => [l, sum(sales, k)]).filter(([, v]) => v > 0);
     const filesOf = (oid) => files.filter((f) => f.owner_id === oid);
-    const photoBtn = (oid) => { const n = filesOf(oid).length; return n ? `<button type="button" class="btn small" data-files="${esc(oid)}">${ic("image")} ${n}</button>` : ""; };
+    const photoBtn = (oid) => { const n = filesOf(oid).length; return n ? `<button type="button" class="btn small" data-files="${esc(oid)}">${ic("image")} View uploaded document${n === 1 ? "" : "s"} (${n})</button>` : ""; };
     const del = () => ""; // 3.99.262: no delete on the shop's records (the Director edits them; the paper says CORRECTED)
 
     // 3.99.153: the shop page in a new layout: the head, 4 boxes, the buttons, and tabs (Daily Sales · Expenses & Cash Out ·
@@ -916,14 +916,10 @@
     const boss = E.stampHtml?.({ ...bossStamp(bossId), date: when }) || `<b>${esc(BOSS)}</b>`; // 3.99.268: the date inside the stamps
     return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>${resp || prepId ? "STORE RESPONSIBLE BY" : "ISSUED BY"}</small><div class="so-sign">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div>${issued}${tbar ? `<div class="so-appr-space"></div>` : ""}</div></div>
       <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
-  // 3.99.300: the Daily Sales Report sign-off: left the CASH LEFT stamp and the report no (PDF417); right the line, the
-  // Director's stamp and the TRX ID (PDF417)
-  const dsrSign = (no, bossId, trx, stamp, when) => {
-    const code = (t) => { try { return t && E.pdf417DataUrl ? E.pdf417DataUrl(String(t)) : ""; } catch (_) { return ""; } };
-    const bar = code(no), tbar = code(trx && String(trx).toUpperCase());
+  // Report sign-off: verification signature; the cash stamp stays next to cash-out and the barcode stays in the header.
+  const dsrSign = (bossId, when) => {
     const boss = E.stampHtml?.({ ...bossStamp(bossId), date: when }) || `<b>${esc(BOSS)}</b>`;
-    return `<div class="dsr-sign"><div class="ds-left">${stamp || ""}${bar ? `<div class="ds-bar ds-foot-l"><img src="${bar}" alt=""><span>${esc(no)}</span></div>` : ""}</div>
-      <div class="ds-right"><small>VERIFIED BY</small><div class="ds-line"></div>${boss}${tbar ? `<div class="ds-bar ds-foot-r"><img src="${tbar}" alt=""><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
+    return `<div class="dsr-sign"><div class="ds-right"><small>VERIFIED BY</small><div class="ds-line"></div>${boss}</div></div>`;
   };
   // 3.99.311: the shop papers: the store logo in place of the company logo; EMON OVERRUNS, then the shop and its branch
   // code, then the shop's address
@@ -949,18 +945,19 @@
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), gc = nonCash(r), paidOut = sum(co, "amount");
     const cashAfterCost = num(prev) + num(r.cash) - ex;
-    const cash = paidOut + gc, left = cashAfterCost - paidOut;
+    const left = cashAfterCost - paidOut;
     const no = dsrNo(o, date);
+    const reportCode = E.pdf417DataUrl(no);
     const row = (k, v, cls = "") => `<tr class="${cls}"><td>${k}</td><td class="num">${v}</td></tr>`;
     // 3.99.229: the CASH LEFT stamp: nothing left: VERIFIED; cash left: VERIFIED once the next sales record took it (its date,
     // record no, TRX ID and system time), PENDING until then; less than nothing: CASH SHORT
     const vst = (cls, lines) => `<div class="dsr-cash"><span class="eo-stamp vst ${cls}">${lines}</span></div>`;
-    const cashStamp = !r.id ? "" : Math.abs(left) < 0.005 ? vst("ok", `<b>✔ VERIFIED</b><em>CASH LEFT ₱ ${P(0)}</em>`) // 3.99.306: simple: the word and the amount only
-      : left < 0 ? vst("bad", `<b>CASH SHORT</b><em>₱ ${P(-left)}</em>`)
-      : after ? vst("ok", `<b>✔ VERIFIED</b><em>CASH LEFT ₱ ${P(left)}</em>`)
-      : vst("wait", `<b>PENDING</b><em>CASH LEFT ₱ ${P(left)}</em>`);
+    const stampAmount = `<em>CASH OUT ₱ ${P(paidOut)}</em><em>BALANCE ₱ ${P(left)}</em>`;
+    const cashStamp = !r.id ? "" : left < 0 ? vst("bad", `<b>CASH SHORT</b>${stampAmount}`)
+      : Math.abs(left) < 0.005 || after ? vst("ok", `<b>✔ VERIFIED</b>${stampAmount}`)
+      : vst("wait", `<b>PENDING</b>${stampAmount}`);
     const list = (title, rows, cols) => `<div class="soa-sec"><h4>${title}</h4>${rows.length ? `<table class="soa-t"><thead><tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>` : `<div class="soa-none">None this day.</div>`}</div>`;
-    const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small>${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? `<small class="soa-corr">CORRECTED ${esc(mdy(new Date(r.updated_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })))}</small>` : ""}${r.id ? `<small class="soa-trx">TRX ID<span>${esc(String(r.id).toUpperCase())}</span></small>` : ""}</div>`)}
+    const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>${esc(mdy(date))}</small><div class="ds-head-bar"><img src="${esc(reportCode)}" alt="Sales record barcode"><span>${esc(no)}</span></div>${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? `<small class="soa-corr">CORRECTED ${esc(mdy(new Date(r.updated_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })))}</small>` : ""}</div>`)}
       <div class="soa-info"><div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div><div><small>Date</small><b>${esc(mdy(date))}</b></div>
         <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div><div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div><div><small>Issued By</small><b>${esc(String(r.created_by_name || "").toUpperCase())}${(() => { const e = r.created_by ? E.stampOf?.(r.created_by, r.created_by_name)?.eoid : ""; return e ? ` <i class="dsr-eoid">· ${esc(e)}</i>` : ""; })()}${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? ` · CORRECTED BY ${esc(BOSS)}` : ""}</b></div>
         <div class="dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}${resp.position ? `<i>${esc(String(resp.position).toUpperCase().replace(/^OPERATIONS OFFICER$/, "OPERATIONAL OFFICER"))}</i>` : ""}` : "—"}</b></div>
@@ -970,6 +967,7 @@
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL NET SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
       ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
+      ${cashStamp}
       <div class="soa-sec"><h4>I Received</h4><table class="soa-t"><tbody>
         ${row("GCash received", P(gc))}${row("Cash received", P(paidOut))}${row("<b>Total received</b>", `<b>${P(gc + paidOut)}</b>`, "tot")}
         ${row("Balance after cash out", P(left))}
@@ -989,13 +987,16 @@
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(String(a.what || "").replace(/₱\s?/g, "PHP ").toUpperCase())}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
           ${duty.length > 1 ? `<div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>` : ""}`;
       })()}
-      ${dsrSign(no, bossId, r.id || "", cashStamp, mdy(date))}</div>`; // 3.99.300: no Store Responsible signature (the name is in the box on top)
+      ${dsrSign(bossId, mdy(date))}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page], { trx: r.id, issuedOn: date });
-    // 3.99.301: the two barcodes go to the bottom of the page: the report no on the left, the TRX ID on the right
+    // Keep one transaction ID in the page footer and the report barcode in the header.
     storeHead(o);
     // 3.99.303: the report no barcode goes up into the head, under DAILY SALES REPORT
-    $$(".preview .page").forEach((pg) => { pg.classList.add("dsr-page"); const mid = pg.querySelector(".ph2 .ph-mid"), l = pg.querySelector(".ds-foot-l");
-      if (l && mid) { l.classList.replace("ds-foot-l", "ds-head-bar"); mid.appendChild(l); } pg.querySelectorAll(".ds-foot-r").forEach((b) => pg.appendChild(b)); });
+    $$(".preview .page").forEach((pg) => {
+      pg.classList.add("dsr-page");
+      const left = pg.querySelector(".ph2 .ph-left > div"), barcode = pg.querySelector(".soa-no .ds-head-bar");
+      if (left && barcode) { barcode.classList.replace("ds-foot-l", "ds-head-bar"); left.appendChild(barcode); }
+    });
   }
 
   // 3.99.164: the OUTLET STATEMENT in a document layout: the company head, the shop, 5 summary boxes, the daily sales,
@@ -1047,11 +1048,11 @@
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the signatures
-    blocks.push(dsrSign(soaNo, bossId, "", "", mdy(isoNow()))); // 3.99.305: no Store Responsible signature // 3.99.228: no sum line box; the tiles show it
+    blocks.push(dsrSign(bossId, mdy(isoNow()))); // no Store Responsible signature; the tiles show the sums
     const html = [`<div class="soa-doc">${blocks.join("")}</div>`];
     E.openPreview(`Outlet Statement ${o.code} ${E.monthText(m)}`, html, { trx: null });
     storeHead(o);
-    $$(".preview .page").forEach((pg, i) => { const mid = pg.querySelector(".ph2 .ph-mid"), l = pg.querySelector(".ds-foot-l"); // 3.99.305: the statement no barcode in the head
+    $$(".preview .page").forEach((pg, i) => { const mid = pg.querySelector(".ph2 .ph-mid"), l = pg.querySelector(".soa-no .ds-head-bar"); // 3.99.305: the statement no barcode in the head
       if (l && mid) { l.classList.replace("ds-foot-l", "ds-head-bar"); mid.appendChild(l); } else if (l) l.remove(); });
   }
 
