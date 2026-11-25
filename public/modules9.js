@@ -105,7 +105,7 @@
       ${d.photo ? `<div class="idc-ghost"><img src="${esc(d.photo)}" alt=""><span>${esc(`${d.em.employee_no} `.repeat(14))}</span></div>` : ""}
       <div class="idc-name" style="font-size:${nameSize(name)}mm">${esc(name)}</div>
       <div class="idc-pos"><span>${esc((d.em.position || "EMPLOYEE").toUpperCase())}</span></div>
-      <div class="idc-rows"><div><small>ID NO</small><b>${esc(d.em.employee_no)}</b></div>
+      <div class="idc-rows"><div><small>EMPLOYEE ID NO</small><b>${esc(d.em.employee_no)}</b></div>
         <div><small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b></div></div>
       <div class="idc-bar"><img src="${esc(E.pdf417DataUrl("EMONEMP|" + d.em.employee_no))}" alt="PDF417 barcode ${esc(d.em.employee_no)}"></div>
       <div class="idc-hsig">${d.holderSig ? `<img src="${esc(d.holderSig)}" alt="">` : ""}<i></i><small>HOLDER'S SIGNATURE</small></div>

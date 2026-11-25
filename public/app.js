@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.350"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.351"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.350"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.351"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2726,6 +2726,36 @@
   // without the web address, date and page number that an iPad (Safari) prints at the bottom of every web page. A page
   // longer than one sheet goes on to the next sheet (cut at a white line between rows). On a phone or tablet the file
   // opens in Share (Print, Save to Files, WhatsApp ...); a computer downloads it.
+  // Keep the straight security lines as PDF text so magnifying an issued card preserves each letter.
+  function drawCardMicrotext(pdf, page, mmPerPixel, left, top, sheetHeight) {
+    const bounds = page.getBoundingClientRect();
+    function line(value, x, y, width, size, angle, color) {
+      const baseline = (y - bounds.top) * mmPerPixel + top;
+      if (baseline < 0 || baseline >= sheetHeight || !value || !width) return;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(size * mmPerPixel * 72 / 25.4);
+      pdf.setTextColor(color);
+      pdf.text(value, left + (x - bounds.left) * mmPerPixel, baseline, {
+        angle, horizontalScale: width * mmPerPixel / pdf.getTextWidth(value)
+      });
+    }
+    for (const text of page.querySelectorAll(".idc-pframe textPath")) {
+      const path = page.querySelector(text.getAttribute("href"));
+      const matrix = path.getScreenCTM();
+      const start = path.getPointAtLength(0).matrixTransform(matrix);
+      const end = path.getPointAtLength(path.getTotalLength()).matrixTransform(matrix);
+      const dx = end.x - start.x, dy = end.y - start.y;
+      line(text.textContent, start.x, start.y, Math.hypot(dx, dy),
+        .62 * Math.hypot(matrix.a, matrix.b), -Math.atan2(dy, dx) * 180 / Math.PI, "#1f4fa3");
+    }
+    for (const text of page.querySelectorAll(".idc-foot .idc-micro")) {
+      const rect = text.getBoundingClientRect();
+      const fontSize = parseFloat(getComputedStyle(text).fontSize);
+      const repeats = Math.max(1, Math.floor(rect.width / (fontSize * 8)));
+      line("EMON OVERRUNS · ".repeat(repeats).trim(), rect.left, rect.top + rect.height / 2 + fontSize * .35,
+        rect.width, fontSize, 0, "#aacbff");
+    }
+  }
   async function savePdf(pv, desk, title, btn) {
     if (btn.disabled) return;
     const label = btn.innerHTML, zoom = desk.style.zoom;
@@ -2739,7 +2769,11 @@
         const [w, h] = pg.matches(".a4l,.landscape") ? [297, 210] : pg.classList.contains("a5l") ? [210, 148] : [210, 297];
         // Cap the pixel count for mobile canvas limits while preserving fine print.
         const scale = Math.min(4, Math.sqrt(15000000 / (pg.offsetWidth * pg.offsetHeight)));
-        const canvas = await h2c(pg, { scale, useCORS: true, backgroundColor: "#ffffff", logging: false });
+        const card = pg.querySelector(".idc-pair.print");
+        const canvas = await h2c(pg, { scale, useCORS: true, backgroundColor: "#ffffff", logging: false,
+          onclone: card ? (_, clone) => {
+            for (const text of clone.querySelectorAll(".idc-pframe text, .idc-foot .idc-micro")) text.style.visibility = "hidden";
+          } : undefined });
         const cw = canvas.width, perSheet = Math.round((cw * h) / w);
         // where each sheet ends: a white line a little above the sheet's end (not through a row of writing)
         const g = canvas.getContext("2d"), cuts = [0];
@@ -2768,6 +2802,7 @@
           else pdf.addPage([sw, sh], sw > sh ? "landscape" : "portrait");
           const png = await new Promise((resolve, reject) => part.toBlob(blob => blob ? resolve(blob) : reject(new Error("Page image unavailable")), "image/png"));
           pdf.addImage(new Uint8Array(await png.arrayBuffer()), "PNG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
+          if (card) drawCardMicrotext(pdf, pg, k * cw / pg.getBoundingClientRect().width, (w - cw * k) / 2, -cuts[i] * k, ph * k);
           part.width = part.height = 0;
         }
         canvas.width = canvas.height = 0;
@@ -2839,6 +2874,7 @@
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
       const node = walker.currentNode, value = node.nodeValue;
+      if (node.parentElement?.closest(".idc-front")) continue;
       const found = value.match(pattern);
       if (found) {
         found.forEach(n => numbers.add(n));
