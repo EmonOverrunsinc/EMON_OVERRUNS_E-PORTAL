@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.353"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.354"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.353"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.354"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2756,60 +2756,64 @@
         rect.width, fontSize, 0, "#aacbff");
     }
   }
+  async function renderPdf(desk) {
+    const [h2c, lib] = await Promise.all([need("h2c"), need("jspdf")]);
+    await Promise.all([document.fonts?.ready, ...$$("img", desk).map((im) => im.decode().catch(() => {}))]);
+    let pdf = null;
+    for (const pg of $$(".page", desk)) {
+      const [w, h] = pg.matches(".a4l,.landscape") ? [297, 210] : pg.classList.contains("a5l") ? [210, 148] : [210, 297];
+      // Cap the pixel count for mobile canvas limits while preserving fine print.
+      const scale = Math.min(4, Math.sqrt(15000000 / (pg.offsetWidth * pg.offsetHeight)));
+      const card = pg.querySelector(".idc-pair.print");
+      const canvas = await h2c(pg, { scale, useCORS: true, backgroundColor: "#ffffff", logging: false,
+        onclone: card ? (_, clone) => {
+          for (const text of clone.querySelectorAll(".idc-pframe text, .idc-foot .idc-micro")) text.style.visibility = "hidden";
+        } : undefined });
+      const cw = canvas.width, perSheet = Math.round((cw * h) / w);
+      // where each sheet ends: a white line a little above the sheet's end (not through a row of writing)
+      const g = canvas.getContext("2d"), cuts = [0];
+      while (canvas.height - cuts[cuts.length - 1] > perSheet * 1.02) {
+        let cut = cuts[cuts.length - 1] + perSheet;
+        for (let y = cut, stop = cut - Math.round(perSheet * 0.12); y > stop; y -= 2) {
+          const row = g.getImageData(0, y, cw, 1).data;
+          let white = true;
+          for (let i = 0; i < row.length; i += 16) if (row[i] < 245 || row[i + 1] < 245 || row[i + 2] < 245) { white = false; break; }
+          if (white) { cut = y; break; }
+        }
+        cuts.push(cut);
+      }
+      cuts.push(canvas.height);
+      for (let i = 0; i + 1 < cuts.length; i++) {
+        const ph = cuts[i + 1] - cuts[i];
+        const part = cuts.length === 2 ? canvas : document.createElement("canvas");
+        if (part !== canvas) {
+          part.width = cw; part.height = ph;
+          part.getContext("2d").drawImage(canvas, 0, cuts[i], cw, ph, 0, 0, cw, ph);
+        }
+        const k = Math.min(w / cw, h / ph);
+        // 3.99.169: every sheet is A4 (an A5 receipt sits on the top half of an A4 portrait sheet)
+        const [sw, sh] = w > h && w === 297 ? [297, 210] : [210, 297];
+        if (!pdf) pdf = new lib.jsPDF({ orientation: sw > sh ? "landscape" : "portrait", unit: "mm", format: [sw, sh], compress: true });
+        else pdf.addPage([sw, sh], sw > sh ? "landscape" : "portrait");
+        const png = await new Promise((resolve, reject) => part.toBlob(blob => blob ? resolve(blob) : reject(new Error("Page image unavailable")), "image/png"));
+        pdf.addImage(new Uint8Array(await png.arrayBuffer()), "PNG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
+        if (card) drawCardMicrotext(pdf, pg, k * cw / pg.getBoundingClientRect().width, (w - cw * k) / 2, -cuts[i] * k, ph * k);
+        part.width = part.height = 0;
+      }
+      canvas.width = canvas.height = 0;
+    }
+    if (!pdf) throw new Error("there is no page");
+    return pdf.output("blob");
+  }
   async function savePdf(pv, desk, title, btn) {
     if (btn.disabled) return;
     const label = btn.innerHTML, zoom = desk.style.zoom;
     btn.disabled = true; btn.innerHTML = `<span class="spin sm"></span> Making PDF…`;
     try {
-      const [h2c, lib] = await Promise.all([need("h2c"), need("jspdf")]);
-      await Promise.all([document.fonts?.ready, ...$$("img", desk).map((im) => im.decode().catch(() => {}))]);
-      desk.style.zoom = 1; // the pages at their real size (Fit / Zoom only changes the screen)
-      let pdf = null;
-      for (const pg of $$(".page", desk)) {
-        const [w, h] = pg.matches(".a4l,.landscape") ? [297, 210] : pg.classList.contains("a5l") ? [210, 148] : [210, 297];
-        // Cap the pixel count for mobile canvas limits while preserving fine print.
-        const scale = Math.min(4, Math.sqrt(15000000 / (pg.offsetWidth * pg.offsetHeight)));
-        const card = pg.querySelector(".idc-pair.print");
-        const canvas = await h2c(pg, { scale, useCORS: true, backgroundColor: "#ffffff", logging: false,
-          onclone: card ? (_, clone) => {
-            for (const text of clone.querySelectorAll(".idc-pframe text, .idc-foot .idc-micro")) text.style.visibility = "hidden";
-          } : undefined });
-        const cw = canvas.width, perSheet = Math.round((cw * h) / w);
-        // where each sheet ends: a white line a little above the sheet's end (not through a row of writing)
-        const g = canvas.getContext("2d"), cuts = [0];
-        while (canvas.height - cuts[cuts.length - 1] > perSheet * 1.02) {
-          let cut = cuts[cuts.length - 1] + perSheet;
-          for (let y = cut, stop = cut - Math.round(perSheet * 0.12); y > stop; y -= 2) {
-            const row = g.getImageData(0, y, cw, 1).data;
-            let white = true;
-            for (let i = 0; i < row.length; i += 16) if (row[i] < 245 || row[i + 1] < 245 || row[i + 2] < 245) { white = false; break; }
-            if (white) { cut = y; break; }
-          }
-          cuts.push(cut);
-        }
-        cuts.push(canvas.height);
-        for (let i = 0; i + 1 < cuts.length; i++) {
-          const ph = cuts[i + 1] - cuts[i];
-          const part = cuts.length === 2 ? canvas : document.createElement("canvas");
-          if (part !== canvas) {
-            part.width = cw; part.height = ph;
-            part.getContext("2d").drawImage(canvas, 0, cuts[i], cw, ph, 0, 0, cw, ph);
-          }
-          const k = Math.min(w / cw, h / ph);
-          // 3.99.169: every sheet is A4 (an A5 receipt sits on the top half of an A4 portrait sheet)
-          const [sw, sh] = w > h && w === 297 ? [297, 210] : [210, 297];
-          if (!pdf) pdf = new lib.jsPDF({ orientation: sw > sh ? "landscape" : "portrait", unit: "mm", format: [sw, sh], compress: true });
-          else pdf.addPage([sw, sh], sw > sh ? "landscape" : "portrait");
-          const png = await new Promise((resolve, reject) => part.toBlob(blob => blob ? resolve(blob) : reject(new Error("Page image unavailable")), "image/png"));
-          pdf.addImage(new Uint8Array(await png.arrayBuffer()), "PNG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
-          if (card) drawCardMicrotext(pdf, pg, k * cw / pg.getBoundingClientRect().width, (w - cw * k) / 2, -cuts[i] * k, ph * k);
-          part.width = part.height = 0;
-        }
-        canvas.width = canvas.height = 0;
-      }
-      if (!pdf) throw new Error("there is no page");
+      desk.style.zoom = 1;
+      const blob = await renderPdf(desk);
       const name = (String(title).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "Document") + ".pdf";
-      pdfReady(new File([pdf.output("blob")], name, { type: "application/pdf" }));
+      pdfReady(new File([blob], name, { type: "application/pdf" }));
     } catch (e) {
       console.error(e);
       toast(`Could not make the PDF: ${e.message || e}. Use Print instead.`, true);
@@ -3520,7 +3524,7 @@
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
     shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, outletWeekRanks, titleHtml, bossName, customerRanks, medalHtml, achHtml, medalMini, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
-    documentCards, roleName, personTitle, placeBadge, downloadLog, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
+    renderPdf, documentCards, roleName, personTitle, placeBadge, downloadLog, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
   });
 })();

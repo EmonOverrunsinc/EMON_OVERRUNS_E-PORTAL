@@ -338,7 +338,9 @@
       if (!(await E.confirmBox(`Approve <b>${esc(fullName(em))}</b> (${esc(em.employee_no)}) with the access <b>${esc(accessText(em.role, em.modules))}</b>?<br><br>The employee ID card is made now and the login opens.`, { ok: "Approve Employee" }))) return;
       const { data, error } = await sb.rpc("approve_employee", { p_id: id });
       if (error) return fail(error, "Could not approve the employee");
-      toast(`${data.employee_no} approved. The ID card is ready on the ID Card tab.`); V.employee(id);
+      toast(`${data.employee_no} approved. Saving the ID card PDF…`);
+      if (await E.saveApprovedCard(id)) toast("ID card PDF saved.");
+      V.employee(id);
     };
     // 3.23: the Director adds or changes the employee photo (it is also the photo on the ID card)
     if ($("#emPhoto")) $("#emPhoto").onchange = async (e) => {
@@ -990,7 +992,8 @@
       btn.disabled = true; // 3.35: one employee is made, never two
       const { data, error } = await sb.rpc("review_job_application", { p_id: id, p_action: "approve", p_role: acc.role, p_modules: acc.modules, p_note: $("#jaNote").value.trim() || null });
       if (error) { btn.disabled = false; return fail(error, "Could not approve"); }
-      toast(`Approved ${data.approval_no}. ${a.full_name} is now an employee and can use the portal.`);
+      toast(`Approved ${data.approval_no}. Saving the ID card PDF…`);
+      if (await E.saveApprovedCard(data.employee_id)) toast("ID card PDF saved.");
       V.jobapp(id);
     };
     if ($("#jaReject")) $("#jaReject").onclick = async () => {

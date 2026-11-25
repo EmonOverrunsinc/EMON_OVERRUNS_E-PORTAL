@@ -584,6 +584,7 @@
     el.hidden = false;
   }
   V.dashboard = async () => {
+    E.retryCardPdfs?.();
     const H = E.hasModule, here = E.stillHere();
     const quick = [
       [E.canWrite("customers"), "#newcustomer", "New Customer Account", "user", "blue"],

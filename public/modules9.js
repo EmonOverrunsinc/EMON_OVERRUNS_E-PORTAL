@@ -151,6 +151,68 @@
   }
 
   // ---------- the Director's ID Card tab on the employee profile ----------
+  async function storeIssuedCard(employeeId) {
+    const { data: employee, error: empError } = await sb.from("employees").select("*").eq("id", employeeId).single();
+    if (empError) throw empError;
+    const { data: card, error: cardError } = await sb.from("employee_cards").select("*").eq("employee_id", employeeId).eq("status", "active").single();
+    if (cardError) throw cardError;
+    const bucket = sb.storage.from("eoid-originals"), path = card.card_no + ".pdf";
+    const { data: files, error: listError } = await bucket.list("", { search: path });
+    if (listError) throw listError;
+    if (files.some(file => file.name === path)) return;
+    await E.needLib("bwip");
+    const data = await cardData(employee, card);
+    if (employee.photo_path && !data.photo) throw new Error("Employee photo unavailable");
+    const { data: code, error } = await sb.rpc("employee_card_code", { p_card: card.id });
+    if (error || !code) throw error || new Error("Card code unavailable");
+    const qr = E.qrDataUrl(code);
+    if (!qr) throw new Error("Card QR unavailable");
+    const seal = await E.sealCode("idcard", card.card_no);
+    const desk = document.createElement("div");
+    desk.className = "pv-desk";
+    desk.style.cssText = "position:fixed;top:0;left:-320mm;width:210mm;pointer-events:none";
+    desk.setAttribute("aria-hidden", "true");
+    desk.innerHTML = `<div class="page bare">${sheet({ ...data, seal, qr })}<div class="pg-trx">TRX ID ${esc(card.id.toUpperCase())}</div></div>`;
+    document.body.appendChild(desk);
+    try {
+      await E.documentCards(desk, card.issued_at);
+      await Promise.all(Array.from(desk.querySelectorAll("img[src]"), image => image.decode()));
+      const file = await E.renderPdf(desk);
+      const { error: uploadError } = await bucket.upload(path, file, { contentType: "application/pdf", upsert: false });
+      if (uploadError && String(uploadError.statusCode) !== "409" && uploadError.error !== "Duplicate") throw uploadError;
+    } finally {
+      desk.remove();
+    }
+  }
+
+  const pendingSaves = new Map();
+  const queuePrefix = () => "eoPendingCardPdf:" + E.S.profile.id + ":";
+  function saveApprovedCard(employeeId) {
+    const key = queuePrefix() + employeeId;
+    if (pendingSaves.has(key)) return pendingSaves.get(key);
+    try { localStorage.setItem(key, "1"); } catch {}
+    const job = storeIssuedCard(employeeId).then(() => {
+      try { localStorage.removeItem(key); } catch {}
+      return true;
+    }).catch(err => {
+      toast("ID card PDF pending: " + (err.message || "Storage unavailable") + ". Reopen the dashboard to retry.", true);
+      return false;
+    }).finally(() => pendingSaves.delete(key));
+    pendingSaves.set(key, job);
+    return job;
+  }
+
+  async function retryCardPdfs() {
+    if (!isAdmin()) return;
+    const prefix = queuePrefix();
+    let keys;
+    try { keys = Object.keys(localStorage).filter(key => key.startsWith(prefix)); } catch { return; }
+    for (const key of keys) {
+      if (!isAdmin() || prefix !== queuePrefix()) return;
+      await saveApprovedCard(key.slice(prefix.length));
+    }
+  }
+
   const STATE = { active: "ACTIVE", replaced: "REPLACED", revoked: "ENDED", blocked: "BLOCKED" };
   async function idCardTab(em, el, reload) {
     if (!isAdmin() || !el) return;
@@ -291,5 +353,5 @@
     if (open) $("[data-open]", m.el).onclick = () => { m.close(); location.hash = "employee/" + r.data.employee_id; };
   }
 
-  Object.assign(E, { idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet }); // idCardSheet: for the print checks
+  Object.assign(E, { saveApprovedCard, retryCardPdfs, idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet }); // idCardSheet: for the print checks
 })();
