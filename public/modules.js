@@ -628,7 +628,14 @@
       </div>`);
     myDeliveries();
 
-    if (S.empId) sb.rpc("my_place").then(({ data: pl }) => { const b = $("#dPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl, "sm"); }, () => {}); // 3.99.234
+    if (S.empId) {
+      const placeBox = $("#dPlace"), employee = S.employee;
+      sb.rpc("my_place").then(({ data: place }) => {
+        if (!placeBox?.isConnected) return;
+        if (place) placeBox.innerHTML = E.placeBadge(place, "sm");
+        return E.profileBadgeMotion(placeBox.parentElement, employee, place);
+      }).catch(() => {});
+    }
     E.outletsBox?.($("#dOutlets")); // 3.99.116: the shops' sales on the Dashboard
     // 3.99.196: a shop with an approved non-working day today: everyone of that shop sees it here
     if ($("#dClosed")) sb.from("outlet_closures").select("outlet_id, outlets(code, name)").eq("day", isoToday()).eq("status", "approved").then(({ data, error }) => {
@@ -2715,7 +2722,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     E.documentCards?.($(".stamp-show"));
     S.hideMoney = hid;
     if (emp) { E.bindGrid($("#mpSlips"), slips, (r) => (location.hash = "payslip/" + r.id)); E.bindGrid($("#mpPays"), myPays.rows, (r) => (location.hash = "payslip/" + r.payslip_id)); }
-    if (emp && E.cardInfoBox) E.cardInfoBox($("#mpCard")); // the ID card (3.28: no PIN)
+    if (emp && E.cardInfoBox) E.cardInfoBox($("#mpCard"), emp); // the ID card (3.28: no PIN)
     $("#mpPw").onclick = () => E.changePassword();
     E.myDevices?.($("#mpDev")); // 3.80: the devices this login signs in on
     // 2.4: the request goes to the Director's Contact Messages, who then deletes the account on Login Accounts

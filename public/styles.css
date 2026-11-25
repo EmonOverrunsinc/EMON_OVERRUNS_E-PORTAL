@@ -5792,3 +5792,7 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 @media (prefers-reduced-motion:reduce) {
   .assigned-profile-badge, .assigned-profile-badge::after, .assigned-profile-badge .ic { animation:none !important; }
 }
+
+.own-id-page { min-width: 0; }
+.own-id-page canvas { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto 12px; }
+.own-id-page .btnrow, .pdf-ready .wfoot { flex-wrap: wrap; }

@@ -252,14 +252,56 @@
   }
 
   // ---------- the employee's ID card in My Profile (3.28: signs in with the card and the account password, no PIN) ----------
-  async function cardInfoBox(el) {
+  async function cardInfoBox(el, employee) {
     if (!el) return;
-    const { data, error } = await sb.rpc("my_id_card");
-    if (error || !data || !el.isConnected) { el.remove(); return; }
-    el.innerHTML = `<fieldset class="opt"><legend>My ID Card</legend>
-        <p>ID card <b class="mono">${esc(data.card_no)}</b> is valid until ${esc(mdy(data.valid_until))}. To sign in, choose <b>Sign In with ID Card</b>, scan your card and enter your password.</p>
-        <small class="muted">Keep your card and password secure. Report a lost card to EMON HASAN immediately.</small></fieldset>`;
-    bindOriginalPdf(el.querySelector("fieldset"), data.card_no);
+    el.innerHTML = `<fieldset class="opt"><legend>My ID Card</legend><div class="own-id-page" aria-live="polite">Loading card…</div></fieldset>`;
+    const box = el.querySelector(".own-id-page");
+    const { data: card, error } = await sb.rpc("my_id_card");
+    if (!box.isConnected) return;
+    if (error || !card?.card_no) {
+      box.textContent = error ? "Your card could not be loaded." : "No active ID card.";
+      return;
+    }
+    const name = card.card_no + ".pdf";
+    const { data: file } = await sb.storage.from("eoid-originals").download(name);
+    if (!box.isConnected) return;
+    if (!file) {
+      await E.needLib("bwip");
+      const details = await cardData(employee, card);
+      if (!box.isConnected) return;
+      box.innerHTML = `<div class="idc-pair screen">${front(details)}${back(details)}</div><small>Original PDF unavailable.</small>`;
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    box.innerHTML = `<div data-card-page></div><div class="btnrow"><a class="btn primary" href="${url}" download="${esc(name)}">Download original PDF</a><a class="btn" href="${url}" target="_blank" rel="noopener">Open original</a></div>`;
+    const release = new MutationObserver(() => {
+      if (box.isConnected) return;
+      release.disconnect();
+      URL.revokeObjectURL(url);
+    });
+    release.observe(document.body, { childList: true, subtree: true });
+    const pageBox = box.querySelector("[data-card-page]");
+    let task;
+    try {
+      const renderer = await import("./vendor/pdfjs-4.10.38/pdf.min.mjs");
+      renderer.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdfjs-4.10.38/pdf.worker.min.mjs", document.baseURI).href;
+      task = renderer.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false });
+      const doc = await task.promise;
+      if (!box.isConnected) return;
+      const page = await doc.getPage(1);
+      const base = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: Math.min(1800 / Math.max(base.width, base.height), Math.max(1, pageBox.clientWidth * 2 / base.width)) });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+      canvas.setAttribute("role", "img");
+      canvas.setAttribute("aria-label", "ID card " + card.card_no);
+      await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+      pageBox.replaceChildren(canvas);
+    } catch {
+      pageBox.textContent = "Open the original PDF to see your card.";
+    } finally {
+      if (task) await task.destroy();
+    }
   }
 
   // ---------- a scanned card (anyone): who it belongs to and whether it is valid ----------

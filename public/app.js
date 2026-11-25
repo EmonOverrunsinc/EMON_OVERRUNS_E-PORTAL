@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.349"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.350"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.349"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.350"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -774,6 +774,7 @@
   // Sign out of this device only; the same account stays signed in on the user's other phones and computers.
   const signOut = () => sb.auth.signOut({ scope: "local" });
   async function loadProfile() {
+    S.employee = null; S.empId = "";
     if (!S.session) { S.profile = null; S.hideMoney = false; staffMark(null); return; }
     const { data, error } = await sb.from("profiles").select("*").eq("id", S.session.user.id).maybeSingle();
     if (error) fail(error, "Could not load your profile");
@@ -782,7 +783,7 @@
     // name (the Director is shown as Director). 3.0: both asked at the same time.
     const [md, pos] = await Promise.all([
       data && data.role === "admin" && data.status === "active" ? sb.rpc("is_main_director").then((r) => r.data, () => false) : false,
-      data ? sb.from("employees").select("id, position").eq("profile_id", data.id).limit(1).maybeSingle().then((r) => { S.empId = r.data?.id || ""; return r.data?.position || ""; }, () => "") : "", // 3.99.234: the Director too
+      data ? sb.from("employees").select("id, position, employee_no, status").eq("profile_id", data.id).limit(1).maybeSingle().then((r) => { S.employee = r.data; S.empId = r.data?.id || ""; return r.data?.position || ""; }, () => "") : "", // 3.99.234: the Director too
       data && ["admin", "staff"].includes(data.role) ? loadMiddleNames() : null // 3.99.71: the customers' middle names (FIRST MIDDLE LAST everywhere)
     ]);
     S.mainDirector = md === true; S.position = pos;
@@ -2736,8 +2737,9 @@
       let pdf = null;
       for (const pg of $$(".page", desk)) {
         const [w, h] = pg.matches(".a4l,.landscape") ? [297, 210] : pg.classList.contains("a5l") ? [210, 148] : [210, 297];
-        // Print resolution (300 pixels per inch). PNG preserves fine lines, text and barcodes.
-        const canvas = await h2c(pg, { scale: 300 / 96, useCORS: true, backgroundColor: "#ffffff", logging: false });
+        // Cap the pixel count for mobile canvas limits while preserving fine print.
+        const scale = Math.min(4, Math.sqrt(15000000 / (pg.offsetWidth * pg.offsetHeight)));
+        const canvas = await h2c(pg, { scale, useCORS: true, backgroundColor: "#ffffff", logging: false });
         const cw = canvas.width, perSheet = Math.round((cw * h) / w);
         // where each sheet ends: a white line a little above the sheet's end (not through a row of writing)
         const g = canvas.getContext("2d"), cuts = [0];
@@ -2764,7 +2766,8 @@
           const [sw, sh] = w > h && w === 297 ? [297, 210] : [210, 297];
           if (!pdf) pdf = new lib.jsPDF({ orientation: sw > sh ? "landscape" : "portrait", unit: "mm", format: [sw, sh], compress: true });
           else pdf.addPage([sw, sh], sw > sh ? "landscape" : "portrait");
-          pdf.addImage(part.toDataURL("image/png"), "PNG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
+          const png = await new Promise((resolve, reject) => part.toBlob(blob => blob ? resolve(blob) : reject(new Error("Page image unavailable")), "image/png"));
+          pdf.addImage(new Uint8Array(await png.arrayBuffer()), "PNG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
           part.width = part.height = 0;
         }
         canvas.width = canvas.height = 0;
@@ -2786,10 +2789,11 @@
     const share = !!navigator.canShare?.({ files: [file] });
     const m = modal("PDF Ready", `<p style="margin-top:0"><b>${esc(file.name)}</b> · ${Math.max(1, Math.round(file.size / 1024))} KB</p>
       `,
-      `${share ? `<button type="button" class="btn primary" id="pdShare">${ic("upload")} Share / Print</button>` : ""}
-       <a class="btn${share ? "" : " primary"}" id="pdSave" href="${url}" download="${esc(file.name)}">${ic("download")} Download</a>
+      `<a class="btn primary" id="pdSave" href="${url}" download="${esc(file.name)}">${ic("download")} Download PDF</a>
+       ${share ? `<button type="button" class="btn" id="pdShare">${ic("upload")} Share</button>` : ""}
        <button type="button" class="btn" id="pdClose">Close</button>`,
       { cls: "pdf-ready", onClose: () => setTimeout(() => URL.revokeObjectURL(url), 60000) });
+    $("#pdSave", m.el).click();
     $("#pdClose", m.el).onclick = () => m.close();
     if ($("#pdShare", m.el)) $("#pdShare", m.el).onclick = () => navigator.share({ files: [file], title: file.name }).catch((e) => { if (e?.name !== "AbortError") toast("Could not open Share. Press Download.", true); });
   }
