@@ -19282,7 +19282,8 @@ begin
 end $$;
 revoke execute on function public.notifications_push() from public, anon, authenticated;
 drop trigger if exists notifications_push on public.notifications;
-create trigger notifications_push after insert on public.notifications for each row execute function public.notifications_push();
+create trigger notifications_push after insert or update of title, body, created_at on public.notifications
+  for each row when (new.is_read = false) execute function public.notifications_push();
 
 notify pgrst, 'reload schema';
 
