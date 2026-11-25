@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.345"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.346"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.345"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.346"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2727,7 +2727,7 @@
   // opens in Share (Print, Save to Files, WhatsApp ...); a computer downloads it.
   async function savePdf(pv, desk, title, btn) {
     if (btn.disabled) return;
-    const label = btn.innerHTML, zoom = desk.style.zoom, undo = [];
+    const label = btn.innerHTML, zoom = desk.style.zoom;
     btn.disabled = true; btn.innerHTML = `<span class="spin sm"></span> Making PDF…`;
     try {
       const [h2c, lib] = await Promise.all([need("h2c"), need("jspdf")]);
@@ -2735,15 +2735,9 @@
       desk.style.zoom = 1; // the pages at their real size (Fit / Zoom only changes the screen)
       let pdf = null;
       for (const pg of $$(".page", desk)) {
-        const [w, h] = pg.classList.contains("a4l") ? [297, 210] : pg.classList.contains("a5l") ? [210, 148] : [210, 297];
-        const sheetPx = (pg.offsetWidth * h) / w;
-        // a page made smaller to fit on one sheet (onePage): the picture maker does not know "zoom", so it is a scale here
-        const fit = $(".pg-fit", pg), z = fit ? parseFloat(fit.style.zoom) || 1 : 1;
-        if (fit && z !== 1) {
-          undo.push([fit, fit.getAttribute("style") || ""]);
-          fit.style.zoom = ""; fit.style.transformOrigin = "0 0"; fit.style.transform = `scale(${z})`; fit.style.width = `${100 / z}%`;
-        }
-        const canvas = await h2c(pg, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, ...(fit ? { height: Math.min(pg.scrollHeight, Math.floor(sheetPx)) } : {}) });
+        const [w, h] = pg.matches(".a4l,.landscape") ? [297, 210] : pg.classList.contains("a5l") ? [210, 148] : [210, 297];
+        // Print resolution (300 pixels per inch). PNG preserves fine lines, text and barcodes.
+        const canvas = await h2c(pg, { scale: 300 / 96, useCORS: true, backgroundColor: "#ffffff", logging: false });
         const cw = canvas.width, perSheet = Math.round((cw * h) / w);
         // where each sheet ends: a white line a little above the sheet's end (not through a row of writing)
         const g = canvas.getContext("2d"), cuts = [0];
@@ -2759,16 +2753,21 @@
         }
         cuts.push(canvas.height);
         for (let i = 0; i + 1 < cuts.length; i++) {
-          const part = document.createElement("canvas"), ph = cuts[i + 1] - cuts[i];
-          part.width = cw; part.height = ph;
-          const pc = part.getContext("2d"); pc.fillStyle = "#fff"; pc.fillRect(0, 0, cw, ph); pc.drawImage(canvas, 0, cuts[i], cw, ph, 0, 0, cw, ph);
+          const ph = cuts[i + 1] - cuts[i];
+          const part = cuts.length === 2 ? canvas : document.createElement("canvas");
+          if (part !== canvas) {
+            part.width = cw; part.height = ph;
+            part.getContext("2d").drawImage(canvas, 0, cuts[i], cw, ph, 0, 0, cw, ph);
+          }
           const k = Math.min(w / cw, h / ph);
           // 3.99.169: every sheet is A4 (an A5 receipt sits on the top half of an A4 portrait sheet)
           const [sw, sh] = w > h && w === 297 ? [297, 210] : [210, 297];
           if (!pdf) pdf = new lib.jsPDF({ orientation: sw > sh ? "landscape" : "portrait", unit: "mm", format: [sw, sh], compress: true });
           else pdf.addPage([sw, sh], sw > sh ? "landscape" : "portrait");
-          pdf.addImage(part.toDataURL("image/jpeg", 0.92), "JPEG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
+          pdf.addImage(part.toDataURL("image/png"), "PNG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
+          part.width = part.height = 0;
         }
+        canvas.width = canvas.height = 0;
       }
       if (!pdf) throw new Error("there is no page");
       const name = (String(title).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "Document") + ".pdf";
@@ -2777,7 +2776,6 @@
       console.error(e);
       toast(`Could not make the PDF: ${e.message || e}. Use Print instead.`, true);
     } finally {
-      undo.forEach(([el, st]) => el.setAttribute("style", st));
       desk.style.zoom = zoom; pvFit?.();
       btn.disabled = false; btn.innerHTML = label;
     }
@@ -2865,6 +2863,79 @@
     }
   }
 
+  // Measure at the paper's physical width. Move intact boxes first, then split a long table between rows.
+  function paginatePaper(desk) {
+    const zoom = desk.style.zoom;
+    desk.style.zoom = 1;
+    try {
+      for (const first of $$(".page", desk)) {
+        let pg = first;
+        while (pg) {
+          const sheet = pg.getBoundingClientRect(), landscape = pg.matches(".a4l,.landscape");
+          const height = sheet.width * (pg.matches(".a5l") ? 148 / 210 : landscape ? 210 / 297 : 297 / 210);
+          if (pg.scrollHeight <= height + 2) break;
+          const css = getComputedStyle(pg);
+          const top = sheet.top + parseFloat(css.paddingTop);
+          const bottom = sheet.top + height - Math.max(34, parseFloat(css.paddingBottom)) - 20;
+          const furniture = [...pg.children].filter(el => getComputedStyle(el).position === "absolute");
+          const blocks = [...pg.querySelectorAll("div, table, tr, .pbox, .box, .soa-sec, .soa-info, .soa-tiles, .dsr-sign, .sign-off, .psig, figure, fieldset, section, p, img, h2, h3, h4, .ph2, .doc-seal, .inv-sealsig")];
+          const cut = blocks.find(el => {
+            if (el.closest("thead,tfoot") || furniture.some(f => f.contains(el))) return false;
+            const r = el.getBoundingClientRect();
+            return r.height > 0 && r.top > top + 2 && r.bottom > bottom && (r.top >= bottom || r.height <= bottom - top);
+          });
+          if (!cut) break;
+          let start = cut;
+          // A heading and the first row belong on the same sheet.
+          if (cut.matches("tr") && !cut.previousElementSibling) start = cut.closest("table") || cut;
+          if (start.matches("table") && start.parentElement.matches(".soa-sec")) {
+            if (start === cut || cut === start.tBodies[0]?.rows[0]) start = start.parentElement;
+          }
+          if (start.previousElementSibling?.matches("h2,h3,h4")) start = start.previousElementSibling;
+          if (start.getBoundingClientRect().top <= top + 2) break;
+          const before = document.createRange();
+          before.selectNodeContents(pg);
+          before.setEndBefore(start);
+          if (!before.toString().trim() && !before.cloneContents().querySelector("img,svg,canvas")) break;
+          const table = start.matches("tr") ? start.closest("table") : null;
+          const head = table?.tHead?.cloneNode(true);
+          const columns = table?.querySelector(":scope > colgroup")?.cloneNode(true);
+          const sectionTitle = table?.closest(".soa-sec")?.querySelector(":scope > h4")?.cloneNode(true);
+          const next = pg.cloneNode(false);
+          furniture.forEach(el => el.remove());
+          const range = document.createRange();
+          range.setStartBefore(start);
+          range.setEnd(pg, pg.childNodes.length);
+          next.appendChild(range.extractContents());
+          if (head) {
+            const continued = next.querySelector("table");
+            if (continued && !continued.tHead) {
+              continued.prepend(head);
+              if (columns) continued.prepend(columns);
+              if (sectionTitle) continued.before(sectionTitle);
+            }
+          }
+          furniture.forEach(el => {
+            pg.appendChild(el);
+            if (el.matches(".pg-trx,.pg-num,.pg-sec,.pg-web")) next.appendChild(el.cloneNode(true));
+          });
+          pg.after(next);
+          pg = next;
+        }
+      }
+      const sheets = $$(".page", desk);
+      sheets.forEach((pg, i) => {
+        if (sheets.length < 2) return;
+        let label = pg.querySelector(":scope > .pg-num");
+        if (!label) { label = document.createElement("div"); label.className = "pg-num"; pg.appendChild(label); }
+        label.textContent = `PAGE ${i + 1} OF ${sheets.length}`;
+      });
+      return sheets.length;
+    } finally {
+      desk.style.zoom = zoom;
+    }
+  }
+
   function openPreview(title, pages, opts = {}) {
     const trx = Object.hasOwn(opts, "trx") ? opts.trx : trxNow(); // 3.99.220: the TRX ID on every page of a transaction's paper
     pages = pages.map((p) => String(p).replace(/>(\s|&nbsp;)*[—–-](\s|&nbsp;)*</g, "><")); // 3.99.228: nothing written: nothing printed
@@ -2873,7 +2944,7 @@
     if (opts.customerId && !docCust.has(opts.customerId)) { loadDocCust(opts.customerId).then(() => openPreview(title, pages, opts)); return; }
     const dc = opts.customerId ? docCust.get(opts.customerId) : null;
     pages = hideNames(pages.map(fillCodes), dc);
-    const { landscape = false, size = "", bare = false, onePage = false } = opts; // bare: only the page itself (no date, no website footer, no page number)
+    const { landscape = false, size = "", bare = false } = opts; // bare: only the page itself (no date, no website footer, no page number)
     closePreview();
     const cls = size ? " " + size : landscape ? " landscape" : "";
     const band = secBand(opts.secId || docId(title), dc?.public_ident || "");
@@ -2892,8 +2963,8 @@
         <select id="pvZoom" style="width:auto"><option value="fit">Fit</option><option>50</option><option>75</option><option selected>100</option><option>125</option><option>150</option></select>
         <button type="button" class="btn" id="pvClose">Close</button>
       </div>
-      <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${onePage ? `<div class="pg-fit">${p}</div>` : p}${trx ? `<div class="pg-trx">TRX ID ${esc(trx.toUpperCase())}</div>` : ""}${pages.length > 1 ? `<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div>` : ""}<div class="pg-sec" aria-hidden="true" style="background-image:${band} !important"></div></div>`)).join("")}</div>
-      <div class="statusbar"><span id="pvCur">Current Page No: 1</span><span>Total Page No: ${pages.length}</span><span id="pvZf">Zoom Factor: 100%</span></div>`;
+      <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${p}${trx ? `<div class="pg-trx">TRX ID ${esc(trx.toUpperCase())}</div>` : ""}${pages.length > 1 ? `<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div>` : ""}<div class="pg-sec" aria-hidden="true" style="background-image:${band} !important"></div></div>`)).join("")}</div>
+      <div class="statusbar"><span id="pvCur">Current Page No: 1</span><span id="pvTotal">Total pages: ${pages.length}</span><span id="pvZf">Zoom Factor: 100%</span></div>`;
     const footers = $$(".page", pv).map(page => {
       const footer = page.querySelector(":scope > .pg-trx") || document.createElement("div");
       footer.className = "pg-trx"; page.appendChild(footer);
@@ -2909,7 +2980,12 @@
     ]);
     const printButtons = [$("#pvPrint",pv), $("#pvPdf",pv)];
     printButtons.forEach(b => { b.disabled = true; });
-    ready.catch(() => toast("Document details could not be loaded.",true)).finally(() => printButtons.forEach(b => { b.disabled = false; }));
+    Promise.all([ready, document.fonts?.ready, ...$$("img", pv).map(im => im.decode().catch(() => {}))]).then(() => {
+      if (!pv.isConnected) return;
+      const count = paginatePaper($("#pvDesk", pv));
+      $("#pvTotal", pv).textContent = "Total pages: " + count;
+      requestAnimationFrame(underStamp);
+    }).catch(() => toast("Document details could not be loaded.",true)).finally(() => printButtons.forEach(b => { b.disabled = false; }));
     document.body.appendChild(pv);
     bwPictures($("#pvDesk", pv)); // 3.99.15
     // 3.99.239: the paper's barcode (PDF417) goes from the head to the bottom right of the page, with its number; the TRX ID
@@ -2959,28 +3035,6 @@
     zoomTo(zs.value);
     pvFit = () => { if (zs.value === "fit") zoomTo("fit"); };
     window.addEventListener("resize", pvFit);
-    // 3.29.1: onePage: a page whose content is longer than one A4 sheet is made smaller, so it prints on one sheet.
-    // Sizes are measured on the screen (all at the same preview zoom), once the fonts and pictures are in.
-    if (onePage) Promise.all([document.fonts?.ready, ...$$("img", desk).map((im) => im.decode().catch(() => {}))]).then(() => $$(".page", desk).forEach((pg) => {
-      const fit = $(".pg-fit", pg), foot = $(".pg-web", pg), r = (el) => el.getBoundingClientRect();
-      fit.style.zoom = "";
-      const mm = r(pg).width / 210; // screen pixels per millimetre
-      const room = 293 * mm - (r(fit).top - r(pg).top) - (foot ? r(foot).height : 0) - 9 * mm; // 9 mm: the bottom margin
-      if (r(fit).height > room) fit.style.zoom = Math.max(0.6, room / r(fit).height).toFixed(3);
-    }));
-    // 3.99.175: a one-page document (an invoice, an order, a receipt …) a little longer than an A4 sheet is made smaller to
-    // fit ONE sheet (down to 72%): its writing goes into a box that is scaled; the date box, the page no and the security layer stay.
-    if (!onePage && !bare && pages.length === 1) Promise.all([document.fonts?.ready, ...$$("img", desk).map((im) => im.decode().catch(() => {}))]).then(() => $$(".page", desk).forEach((pg) => {
-      const mm = pg.getBoundingClientRect().width / 210, room = 296 * mm, h = pg.scrollHeight * (pg.getBoundingClientRect().width / pg.offsetWidth);
-      if (h <= room + 1 || h > room / 0.72) return; // fits, or far too long (a document of several pages)
-      const keep = new Set(["pg-date", "pg-num", "pg-sec", "pg-web", "rp-stamp", "rp-foot", "vp-sys"]);
-      const box = document.createElement("div"); box.className = "pg-fit";
-      [...pg.childNodes].filter((n) => !(n.nodeType === 1 && [...n.classList].some((c) => keep.has(c)))).forEach((n) => box.appendChild(n));
-      pg.insertBefore(box, pg.firstChild);
-      const st = getComputedStyle(pg), pad = (parseFloat(st.paddingTop) + parseFloat(st.paddingBottom)) * (pg.getBoundingClientRect().width / pg.offsetWidth);
-      const need = box.getBoundingClientRect().height, can = room - pad;
-      if (need > can) box.style.zoom = Math.max(0.72, can / need).toFixed(3);
-    }));
     desk.onscroll = () => {
       const pg = $$(".page", desk); let cur = 1;
       pg.forEach((p, i) => { if (p.offsetTop - desk.scrollTop < desk.clientHeight / 2) cur = i + 1; });

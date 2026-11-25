@@ -5767,3 +5767,18 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .dsr-resp b i { display:block; font-style:normal; }
 .eo-stamp.st-boss { --ink:#b74c55; max-width:100%; text-align:center; }
 .page.bare > .pg-trx { z-index:2; }
+
+.page :is(.pbox,.soa-info,.soa-tiles,.dsr-sign,.sign-off,.psig,figure,fieldset,tr) { break-inside:avoid; page-break-inside:avoid; }
+.page :is(h2,h3,h4,thead) { break-after:avoid; }
+.page thead { display:table-header-group; }
+.soa-doc .soa-sec { margin:3mm 0; }
+.soa-doc .soa-t td, .soa-doc .soa-t th { padding-block:1mm; }
+@media screen and (max-width:640px) {
+  .preview .pv-title { font-size:15px; padding:8px 12px; }
+  .preview .pv-tools { gap:6px; padding:6px 8px; }
+  .preview .pv-tools .btn, .preview .pv-tools select { min-height:40px; padding:5px 9px; font-size:13px; }
+}
+@media screen {
+  .pv-desk > .page:not(.a4l):not(.landscape):not(.a5l) { min-height:296mm; }
+}
+.modal.pdf-ready { z-index:6400; }

@@ -1011,16 +1011,12 @@
     const tile = (k, v, cls = "") => `<div class="soa-tile ${cls}"><small>${k}</small><b>₱ ${P(v)}</b></div>`;
     const tiles = `<div class="soa-tiles">${tile("Net Sales", d.net, "in")}${tile("Expenses", d.op ?? d.out, "out")}${tile("Cash Out", d.cash || 0, "co")}${tile(m === monthNow() ? "Cash Left to Date" : "Closing Cash Left", d.drawer, "pay")}${tile(m === monthNow() ? "Net Balance to Date" : "Closing Net Balance", d.pool, `bal${d.pool < 0 ? " neg" : ""}`)}</div>
       <div class="soa-pay">${PAY.map(([k, l]) => `<span>${esc(l)} <b>₱ ${P(sum(d.sales, k))}</b></span>`).join("")}<span>Sales days <b>${d.sales.length}</b></span>${d.owed != null ? `<span>Stock to pay <b>₱ ${P(d.owed)}</b></span>` : ""}</div>`;
-    blocks.push({ h: 13, html: head + info + tiles });
+    blocks.push(head + info + tiles);
     // a table: its title, its head, its rows (split over pages) and its total
     const table = (title, cols, rows, foot) => {
       const th = `<tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr>`;
-      if (!rows.length) { blocks.push({ h: 3, html: `<div class="soa-sec"><h4>${title}</h4><div class="soa-none">None this month.</div></div>` }); return; }
-      const PER = 26;
-      for (let k = 0; k < rows.length; k += PER) {
-        const part = rows.slice(k, k + PER), last = k + PER >= rows.length;
-        blocks.push({ h: part.length + 3 + (last ? 1 : 0), html: `<div class="soa-sec"><h4>${title}${k ? " <small>(continued)</small>" : ""}</h4><table class="soa-t"><thead>${th}</thead><tbody>${part.join("")}</tbody>${last ? `<tfoot>${foot}</tfoot>` : ""}</table></div>` });
-      }
+      if (!rows.length) { blocks.push(`<div class="soa-sec"><h4>${title}</h4><div class="soa-none">None this month.</div></div>`); return; }
+      blocks.push(`<div class="soa-sec"><h4>${title}</h4><table class="soa-t"><thead>${th}</thead><tbody>${rows.join("")}</tbody><tfoot>${foot}</tfoot></table></div>`);
     };
     table("Daily Sales", [["Date"], ...PAY.map(([, l]) => [l, 1]), ["Total Sales", 1], ["Expenses", 1], ["Cash Out", 1], ["Cash Left", 1]],
       days.map((x) => `<tr><td>${esc(sdate(x.dt))}</td>${PAY.map(([k]) => `<td class="num">${Z(x.r?.[k])}</td>`).join("")}<td class="num"><b>${Z(x.t)}</b></td><td class="num">${Z(x.ex)}</td><td class="num">${Z(x.co)}</td><td class="num"><b>${P(x.left)}</b></td></tr>`),
@@ -1035,16 +1031,8 @@
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the signatures
-    blocks.push({ h: 7, html: dsrSign(soaNo, bossId, "", "", mdy(isoNow())) }); // 3.99.305: no Store Responsible signature // 3.99.228: no sum line box; the tiles show it
-    // fill the pages
-    const CAP = 48, pages = [];
-    let cur = [], used = 0;
-    for (const b of blocks) {
-      if (used + b.h > CAP && cur.length) { pages.push(cur); cur = []; used = 0; }
-      cur.push(b.html); used += b.h;
-    }
-    if (cur.length) pages.push(cur);
-    const html = pages.map((pg, i) => `<div class="soa-doc">${i ? `<div class="soa-cont"><b>${esc(C.company.name)}</b> · OUTLET STATEMENT · ${esc(o.code)} · ${esc(E.monthText(m))}<span>${esc(soaNo)}</span></div>` : ""}${pg.join("")}${pages.length > 1 ? `<div class="soa-pg">Page ${i + 1} of ${pages.length}</div>` : ""}</div>`);
+    blocks.push(dsrSign(soaNo, bossId, "", "", mdy(isoNow()))); // 3.99.305: no Store Responsible signature // 3.99.228: no sum line box; the tiles show it
+    const html = [`<div class="soa-doc">${blocks.join("")}</div>`];
     E.openPreview(`Outlet Statement ${o.code} ${E.monthText(m)}`, html, { trx: null });
     storeHead(o);
     $$(".preview .page").forEach((pg, i) => { const mid = pg.querySelector(".ph2 .ph-mid"), l = pg.querySelector(".ds-foot-l"); // 3.99.305: the statement no barcode in the head
