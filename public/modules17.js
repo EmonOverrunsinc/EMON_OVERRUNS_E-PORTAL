@@ -947,7 +947,9 @@
     const [bossId, dh, before, after] = await Promise.all([loadBoss([r.created_by, resp?.profile_id]), sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", date).maybeSingle().then((r) => r.data, () => null), near("lt", false), near("gt", true)]);
     const xp = day.filter((x) => x.kind === "daily"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), gc = nonCash(r), cash = sum(co, "amount") + gc, left = num(prev) + tot - ex - cash;
+    const P = mine ? fmt : peso, tot = num(r.total), ex = sum(xp, "amount"), gc = nonCash(r), paidOut = sum(co, "amount");
+    const cashAfterCost = num(prev) + num(r.cash) - ex;
+    const cash = paidOut + gc, left = cashAfterCost - paidOut;
     const no = dsrNo(o, date);
     const row = (k, v, cls = "") => `<tr class="${cls}"><td>${k}</td><td class="num">${v}</td></tr>`;
     // 3.99.229: the CASH LEFT stamp: nothing left: VERIFIED; cash left: VERIFIED once the next sales record took it (its date,
@@ -964,10 +966,14 @@
         <div class="dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}${resp.position ? `<i>${esc(String(resp.position).toUpperCase().replace(/^OPERATIONS OFFICER$/, "OPERATIONAL OFFICER"))}</i>` : ""}` : "—"}</b></div>
         <div class="dsr-resp"><small>Report Submitted By</small><b>${esc(BOSS)}${(() => { const e = bossStamp(bossId).eoid; return e ? `<i>${esc(e)}</i>` : ""; })()}</b></div>
         ${r.note ? `<div class="w3"><small>Note</small><b>${esc(r.note)}</b></div>` : ""}</div>
-      <div class="soa-tiles t5">${[["Total Sales", tot, "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash Out", cash, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
-      <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
+      <div class="soa-tiles t5">${[["Net Sales", tot, "in"], ["GCash", gc, "pay"], ["Cash", num(r.cash), "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash After Cost", cashAfterCost, "pay"], ["Cash Out", paidOut, "co"], ["Balance", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
+      <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL NET SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
-      ${list("Cash Out", [...(gc > 0 ? [`<tr><td>GCash</td><td class="num"><b>${P(gc)}</b></td></tr>`] : []), ...co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`)], [["Cash Out To"], ["Amount (₱)", 1]])}
+      ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
+      <div class="soa-sec"><h4>I Received</h4><table class="soa-t"><tbody>
+        ${row("GCash received", P(gc))}${row("Cash received", P(paidOut))}${row("<b>Total received</b>", `<b>${P(gc + paidOut)}</b>`, "tot")}
+        ${row("Balance after cash out", P(left))}
+      </tbody></table></div>
       ${(() => { // 3.99.226: every activity of the day, each with its TRX ID; the employees on duty
         const tm = (at) => (at ? new Date(at).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "—");
         const acts = [

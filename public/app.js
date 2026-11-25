@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.355"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.357"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.355"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.357"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -298,6 +298,34 @@
     a.download = `LOG-${String(title).replace(/[^A-Za-z0-9-]+/g, "-").replace(/^-|-$/g, "")}.txt`; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
   }
+  document.addEventListener("click", async (event) => {
+    const link = event.target.closest?.("a[download]");
+    if (!link || link.dataset.zipReady === "1" || !/\.(pdf|txt|csv|docx?|xlsx?)$/i.test(link.getAttribute("download") || "")) return;
+    event.preventDefault();
+    const originalName = link.getAttribute("download") || "Document";
+    const url = link.href;
+    try {
+      link.setAttribute("aria-busy", "true");
+      const [Zip, response] = await Promise.all([need("zip"), fetch(url)]);
+      if (!response.ok) throw new Error("Download unavailable");
+      const archive = new Zip();
+      archive.file(originalName, await response.blob());
+      const blob = await archive.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+      const zipUrl = URL.createObjectURL(blob);
+      const save = document.createElement("a");
+      save.href = zipUrl;
+      save.download = originalName.replace(/\.[^.]+$/, "") + ".zip";
+      save.dataset.zipReady = "1";
+      document.body.appendChild(save);
+      save.click();
+      save.remove();
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 60000);
+    } catch (error) {
+      toast(`Could not prepare ZIP: ${error.message || error}`, true);
+    } finally {
+      link.removeAttribute("aria-busy");
+    }
+  });
   // 3.99.227: the Director's name with a gold crown on top
   const bossName = (name, role) => role === "admin" ? `<span class="boss-name"><span class="boss-crown" aria-hidden="true">${ic("crown")}</span>${esc(name)}</span>` : esc(name);
   // Seen in the last 3 minutes = active now.
@@ -463,7 +491,7 @@
   // the page, so the first page comes sooner); a print or a barcode wanted before then waits for it. The code reader
   // (ZXing) loads the first time something is scanned or read from a photo without the phone's own barcode reader.
   const LIBS = { bwip: ["vendor/bwip-js-min.js", "bwipjs"], zxing: ["vendor/zxing.min.js", "ZXing"], jsqr: ["vendor/jsqr.js", "jsQR"], // 3.78.3: jsQR reads QR codes well on iPhone
-    h2c: ["vendor/html2canvas.min.js", "html2canvas"], jspdf: ["vendor/jspdf.umd.min.js", "jspdf"] }; // 3.99.20: Download PDF
+    h2c: ["vendor/html2canvas.min.js", "html2canvas"], jspdf: ["vendor/jspdf.umd.min.js", "jspdf"], zip: ["vendor/jszip.min.js", "JSZip"] }; // 3.99.20: Download PDF
   const libs = {};
   function need(name) {
     const [src, global] = LIBS[name];
