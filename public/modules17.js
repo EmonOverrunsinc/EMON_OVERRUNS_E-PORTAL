@@ -349,9 +349,9 @@
     const dEx = sum(days, "ex"), dCo = sum(days, "co");
     const pc = (v) => (num(v) ? peso(v) : "");
     const narrow = matchMedia("(max-width: 640px)").matches; // 3.99.298: a phone: the row's buttons under ⋯
-    const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t os-days"><thead><tr><th>DATE</th><th class="num os-prev">YESTERDAY CASH</th><th class="num"><span class="d-l">TOTAL SALES</span><span class="d-s">SALES</span></th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">BALANCE</th><th></th></tr></thead><tbody>
-        ${days.map((x) => `<tr class="os-day" data-dayrow="${esc(x.d)}"><td${num(x.prev) ? ` title="+ ₱ ${peso(x.prev)} from yesterday"` : ""}><b class="d-l">${esc(mdy(x.d))}</b><b class="d-s">${esc(new Date(x.d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "2-digit" }).toUpperCase())}</b></td><td class="num os-prev">${pc(x.prev)}</td><td class="num" data-label="Sales"><b class="os-in">${peso(x.t)}</b></td><td class="num" data-label="Expenses">${peso(x.ex)}</td><td class="num" data-label="Cash out">${peso(x.co)}</td><td class="num" data-label="Balance"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td class="os-actc"><details class="os-act"${narrow ? "" : " open"}><summary aria-label="Actions">⋯</summary><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : isAdmin() ? `<button type="button" class="btn small" data-addsale="${esc(x.d)}" title="Add this day's sales">${ic("plus")} Sales</button>` : ""}${isAdmin() ? `<button type="button" class="btn small danger" data-delday="${esc(x.d)}" title="Delete this day">${ic("trash")}</button>` : ""}</span></details></td></tr>`).join("")}</tbody>
-        <tfoot><tr><td>TOTAL</td><td class="os-prev"></td><td class="num" data-label="Sales">${peso(net)}</td><td class="num" data-label="Expenses">${peso(dEx)}</td><td class="num" data-label="Cash out">${peso(dCo)}</td><td class="num" data-label="Balance">${peso(cashNow)}</td><td></td></tr></tfoot></table></div>`
+    const salesTab = days.length ? `<div class="grid-scroll"><table class="os-t os-days"><thead><tr><th>DATE</th><th class="num os-prev">YESTERDAY CASH</th><th class="num"><span class="d-l">TOTAL SALES</span><span class="d-s">SALES</span></th><th class="num">EXPENSES</th><th class="num">CASH OUT</th><th class="num">CASH LEFT</th><th></th></tr></thead><tbody>
+        ${days.map((x) => `<tr class="os-day" data-dayrow="${esc(x.d)}"><td${num(x.prev) ? ` title="+ ₱ ${peso(x.prev)} from yesterday"` : ""}><b class="d-l">${esc(mdy(x.d))}</b><b class="d-s">${esc(new Date(x.d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "2-digit" }).toUpperCase())}</b></td><td class="num os-prev">${pc(x.prev)}</td><td class="num" data-label="Sales"><b class="os-in">${peso(x.t)}</b></td><td class="num" data-label="Expenses">${peso(x.ex)}</td><td class="num" data-label="Cash out">${peso(x.co)}</td><td class="num" data-label="Cash Left"><b class="${x.left < 0 ? "os-neg" : ""}">${peso(x.left)}</b></td><td class="os-actc"><details class="os-act"${narrow ? "" : " open"}><summary aria-label="Actions">⋯</summary><span class="ol-tools"><button type="button" class="btn small" data-day="${esc(x.d)}" title="Day Report">${ic("print")}</button>${x.r ? tools("outlet_sales", x.r) : isAdmin() ? `<button type="button" class="btn small" data-addsale="${esc(x.d)}" title="Add this day's sales">${ic("plus")} Sales</button>` : ""}${isAdmin() ? `<button type="button" class="btn small danger" data-delday="${esc(x.d)}" title="Delete this day">${ic("trash")}</button>` : ""}</span></details></td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>TOTAL</td><td class="os-prev"></td><td class="num" data-label="Sales">${peso(net)}</td><td class="num" data-label="Expenses">${peso(dEx)}</td><td class="num" data-label="Cash out">${peso(dCo)}</td><td class="num" data-label="Cash Left">${peso(cashNow)}</td><td></td></tr></tfoot></table></div>`
       : empty("No sales recorded this month.");
     const xps = exps.filter((r) => r.kind !== "cashout"), cos = exps.filter((r) => r.kind === "cashout");
     const expTab = xps.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>TYPE</th><th>PAID TO / NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
@@ -918,9 +918,10 @@
       <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
   // Report sign-off: keep the report PDF417 in the header and repeat it below the Director's stamp,
   // on one line with the report TRX ID for quick scanning and verification.
-  const dsrSign = (bossId, when, stamp = "", reportCode = "", trx = "") => {
-    const boss = E.stampHtml?.({ ...bossStamp(bossId), date: when }) || `<b>${esc(BOSS)}</b>`;
-    return `<div class="dsr-sign"><div class="ds-left">${stamp}</div><div class="ds-right"><small>VERIFIED BY</small><div class="ds-line"></div>${boss}${reportCode && trx ? `<div class="ds-bar ds-verify"><img src="${esc(reportCode)}" alt="Sales record barcode"><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
+  const dsrSign = (bossId, when, stamp = "", reportCode = "", trx = "", received = {}) => {
+    const boss = E.stampHtml?.(bossStamp(bossId)) || `<b>${esc(BOSS)}</b>`;
+    const ack = received.total ? `<div class="dsr-ack"><b>ACKNOWLEDGMENT OF RECEIPT</b><p>I acknowledge and confirm that I received <strong>Cash ₱ ${esc(received.cash)}</strong> and <strong>GCash ₱ ${esc(received.gcash)}</strong>, for a total amount of <strong>₱ ${esc(received.total)}</strong>, for this sales report dated <strong>${esc(when)}</strong>.</p></div>` : "";
+    return `<div class="dsr-sign"><div class="ds-left">${stamp}</div><div class="ds-right">${ack}<small>RECEIVED AND ACKNOWLEDGED BY</small><div class="ds-line"></div>${boss}${reportCode && trx ? `<div class="ds-bar ds-verify"><img src="${esc(reportCode)}" alt="Sales record barcode"><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
   };
   // 3.99.311: the shop papers: the store logo in place of the company logo; EMON OVERRUNS, then the shop and its branch
   // code, then the shop's address
@@ -953,7 +954,7 @@
     // 3.99.229: the CASH LEFT stamp: nothing left: VERIFIED; cash left: VERIFIED once the next sales record took it (its date,
     // record no, TRX ID and system time), PENDING until then; less than nothing: CASH SHORT
     const vst = (cls, lines) => `<div class="dsr-cash"><span class="eo-stamp vst ${cls}">${lines}</span></div>`;
-    const stampAmount = `<em>CASH OUT ₱ ${P(paidOut)}</em><em>BALANCE ₱ ${P(left)}</em>`;
+    const stampAmount = `<em>CASH OUT ₱ ${P(paidOut)}</em><em>CASH LEFT ₱ ${P(left)}</em>`;
     const cashStamp = !r.id ? "" : left < 0 ? vst("bad", `<b>CASH SHORT</b>${stampAmount}`)
       : Math.abs(left) < 0.005 || after ? vst("ok", `<b>✔ VERIFIED</b>${stampAmount}`)
       : vst("wait", `<b>PENDING</b>${stampAmount}`);
@@ -964,13 +965,13 @@
         <div class="dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}${resp.position ? `<i>${esc(String(resp.position).toUpperCase().replace(/^OPERATIONS OFFICER$/, "OPERATIONAL OFFICER"))}</i>` : ""}` : "—"}</b></div>
         <div class="dsr-resp w2"><small>Report Submitted By</small><b>${esc(BOSS)}${(() => { const e = bossStamp(bossId).eoid; return e ? `<i>${esc(e)}</i>` : ""; })()}</b></div>
         ${r.note ? `<div class="w3"><small>Note</small><b>${esc(r.note)}</b></div>` : ""}</div>
-      <div class="soa-tiles t5">${[["Net Sales", tot, "in"], ["GCash", gc, "pay"], ["Cash", num(r.cash), "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash After Cost", cashAfterCost, "pay"], ["Cash Out", paidOut, "co"], ["Balance", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
+      <div class="soa-tiles t5">${[["Net Sales", tot, "in"], ["GCash", gc, "pay"], ["Cash", num(r.cash), "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash After Cost", cashAfterCost, "pay"], ["Cash Out", paidOut, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL NET SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
       ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
       <div class="soa-sec"><h4>I Received</h4><table class="soa-t"><tbody>
         ${row("GCash received", P(gc))}${row("Cash received", P(paidOut))}${row("<b>Total received</b>", `<b>${P(gc + paidOut)}</b>`, "tot")}
-        ${row("Balance after cash out", P(left))}
+        ${row("Cash Left", P(left))}
       </tbody></table></div>
       ${(() => { // 3.99.226: every activity of the day, each with its TRX ID; the employees on duty
         const tm = (at) => (at ? new Date(at).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "—");
@@ -987,7 +988,7 @@
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(String(a.what || "").replace(/₱\s?/g, "PHP ").toUpperCase())}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
           ${duty.length > 1 ? `<div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>` : ""}`;
       })()}
-      ${dsrSign(bossId, mdy(date), cashStamp, reportCode, r.id)}</div>`;
+      ${dsrSign(bossId, mdy(date), cashStamp, reportCode, r.id, { cash: P(paidOut), gcash: P(gc), total: P(gc + paidOut) })}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page], { trx: r.id, issuedOn: date });
     // Keep the header barcode; the single report TRX ID is paired with the lower barcode under the Director stamp.
     storeHead(o);

@@ -375,7 +375,7 @@
     let timer = null;
     const choose = (c) => {
       list.hidden = true; q.value = fullName(c); // 2.9: the chosen name stays in the box
-      chosen.innerHTML = `<div class="chosen"><b>${esc(fullName(c))}</b> <span class="mono">${esc(c.account_no)}</span> ${pill(c.status)}
+      chosen.innerHTML = `<div class="chosen"><b class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</b> <span class="mono">${esc(c.account_no)}</span> ${pill(c.status)}
         ${c.business_name ? `<small>${esc(c.business_name)}</small>` : ""}</div>`;
       onPick(c);
     };
@@ -396,7 +396,7 @@
       const rank = (c) => (starts(c.first_name, words2[0]) ? 0 : starts(c.last_name, words2[0]) ? 1 : 2);
       const rows = (data || []).filter((c) => words2.every((x) => starts(`${fullName(c)} ${c.business_name || ""}`, x) || String(c.account_no || "").toLowerCase().includes(x) || String(c.phone || "").includes(x)))
         .sort((a, b) => rank(a) - rank(b) || fullName(a).localeCompare(fullName(b))).slice(0, 20);
-      list.innerHTML = rows.length ? rows.map((c, i) => `<button type="button" data-i="${i}"><b>${esc(fullName(c))}</b> <span class="mono">${esc(c.account_no)}</span> ${pill(c.status)}</button>`).join("")
+      list.innerHTML = rows.length ? rows.map((c, i) => `<button type="button" data-i="${i}"><b class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</b> <span class="mono">${esc(c.account_no)}</span> ${pill(c.status)}</button>`).join("")
         : `<div class="empty">No ${statuses ? statuses.join(" / ") + " " : ""}customer matches.</div>`;
       $$("button", list).forEach((b) => (b.onclick = () => choose(rows[Number(b.dataset.i)])));
     };
@@ -850,7 +850,7 @@
       rows.forEach((r, i) => (r._no = i + 1));
       $("#cuRes").innerHTML = E.grid({ cols: [
         { label: ws.length ? "No." : "Rank", num: true, get: (r) => r._no, html: (r) => { const x = !ws.length && rk.get(r.id); return x ? E.rankNo(x.rank, x.rank <= 10 ? "customer-rank-live" : "", x.tier || null) : String(r._no); } },
-        { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r), html: (r) => `<span class="${num(r.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(E.shortName(r))}</span>${num(r.credit_limit) >= 1000000 ? `<span class="grid-vip">${E.vipBox(r.credit_limit)}</span>` : ""}` }, // VIP stays visible in the list; CLOSED appears once in Status
+        { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r), html: (r) => `<span class="${num(r.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(E.shortName(r))}</span>` }, // VIP is shown by the name colour/motion only; CLOSED appears once in Status
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
         { label: "Balance Due", key: "due", num: true, get: (r) => peso(r.due) }],
@@ -1133,12 +1133,12 @@
     $(".band h1").textContent = `Customer › ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c, orders, ev.data || [])}
-      <section class="cust-hero st-${esc(c.status)}">${c.status === "closed" ? closedInfo(c, orders, ev.data || []) : ""}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span><span class="ch-medals" id="pfMedals"></span></div><span class="weekly-rank-watermark" id="pfWeekly" data-cid="${esc(c.id)}" hidden>WEEKLY RANKING <b>#1</b></span>` : ""}
+      <section class="cust-hero st-${esc(c.status)}">${c.status === "closed" ? closedInfo(c, orders, ev.data || []) : ""}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span></div><span class="weekly-rank-watermark" id="pfWeekly" data-cid="${esc(c.id)}" hidden>WEEKLY RANKING <b>#1</b></span>` : ""}
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span></div>` : ""}</div>
         <div class="ch-main">
-          <div class="ch-name"><h2 class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
-          <div class="ch-sub">${c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""}</div>
+          <div class="ch-name"><h2 class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</h2>${pill(c.status)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
+          <div class="ch-sub">${[isStaff() ? `<span class="ch-medals" id="pfMedals"></span>` : "", c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""].filter(Boolean).join(`<span class="ch-dot"> · </span>`) || "—"}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
           </div>
