@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.365"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.366"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.365"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.366"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -70,16 +70,17 @@
   const fullName = (r) => [r?.first_name, middleOf(r), r?.last_name].filter(Boolean).join(" ").trim();
   // 3.99.161: a long name made short for the lists (one line): FIRST M. LAST - the middle name as its initial; still long,
   // the words of the surname before its last one as initials too (DELA CRUZ SANTOS: D. C. SANTOS). Profiles and prints keep the full name.
-  // 3.99.178: SALES RANK · TOP 10 (SQL 125). The badge: 1 gold that shines by itself, 2 gold, 3 dark gold, 4 platinum,
-  // 5 silver, 6 to 10 blue. The ranks are kept for 2 minutes, so a page and its list make one call.
+  // 3.99.366: customer rank is the current calendar month and requires a current-month invoice. Every ranked customer keeps a number, but only
+  // the Top 10 badges animate. The ranks are kept for 2 minutes, so a page and its list make one call.
   const MEDAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="rk-rib" d="M6.6 1.8h4l2.1 5.6-2.6 2.4zM17.4 1.8h-4l-2.1 5.6 2.6 2.4z"/><circle class="rk-coin" cx="12" cy="15.2" r="6.8"/><path class="rk-star" d="m12 11 1.27 2.58 2.85.41-2.06 2.01.49 2.83L12 17.5l-2.55 1.34.49-2.83L7.88 14l2.85-.41z"/></svg>';
   // 3.99.185: the rank as a ROUND number (1 to 10 in their colours): lists, cards, the rank window and the status chip
   // 3.99.194: the rank under a profile picture / store logo: #1, #2 … (1 to 10 in their colours)
-  // 3.99.200: tier given (a customer): the colour of the TIER (gold / silver / bronze; none: plain); no tier given (a shop): its place
-  const rkCls = (k, tier) => (tier !== undefined ? (tier ? `tier-${tier}` : "rkx") : k <= 10 ? `rk${Math.min(k, 6)}` : "rkx");
-  const tierTip = (tier) => (tier ? ` · ${tier.toUpperCase()} TIER` : "");
-  const rankTag = (k, tier) => { k = Number(k); return k >= 1 ? `<span class="rk-no rk-tag ${rkCls(k, tier)}" title="Rank ${k}${tierTip(tier)}">#${k}</span>` : ""; };
-  const rankNo = (k, cls = "", tier) => { k = Number(k); return k >= 1 ? `<span class="rk-no ${rkCls(k, tier)}${cls ? " " + cls : ""}" title="Rank ${k}${tierTip(tier)}">${k}</span>` : ""; };
+  // Customer ranks 1–5 are gold, 6–10 silver and 11–15 bronze. With no customer marker, a shop keeps its place colour.
+  const customerRankBand = (k) => k <= 5 ? "gold" : k <= 10 ? "silver" : k <= 15 ? "bronze" : "";
+  const rkCls = (k, customerMarker) => (customerMarker !== undefined ? (customerRankBand(k) ? `tier-${customerRankBand(k)}` : "rkx") : k <= 10 ? `rk${Math.min(k, 6)}` : "rkx");
+  const rankTip = (k, customerMarker) => (customerMarker !== undefined && customerRankBand(k) ? ` · ${customerRankBand(k).toUpperCase()} RANK` : "");
+  const rankTag = (k, customerMarker, animate = customerMarker === undefined && Number(k) <= 3) => { k = Number(k); return k >= 1 ? `<span class="rk-no rk-tag ${rkCls(k, customerMarker)}${animate ? " rk-live" : ""}" title="Rank ${k}${rankTip(k, customerMarker)}">#${k}</span>` : ""; };
+  const rankNo = (k, cls = "", customerMarker) => { k = Number(k); return k >= 1 ? `<span class="rk-no ${rkCls(k, customerMarker)}${cls ? " " + cls : ""}" title="Rank ${k}${rankTip(k, customerMarker)}">${k}</span>` : ""; };
   const rankMemo = new Map();
   const rankList = (key, call) => {
     const hit = rankMemo.get(key);
@@ -118,7 +119,8 @@
 `;
   };
   // 3.99.323: the small medal row under a customer's photo: gold, silver and bronze with their counts
-  const medalMini = (a) => !a ? "" : `<div class="md-mini">${[1, 2, 3].map((k) => `<span class="mm md${k}" title="${MEDAL_NAME[k]}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b></span>`).join("")}</div>`;
+  const medalMini = (a) => { const won = a ? [1, 2, 3].filter((k) => num(a[MKEY[k]]) > 0) : [];
+    return won.length ? `<div class="md-mini" aria-label="Medals won">${won.map((k) => `<span class="mm md${k}" title="${MEDAL_NAME[k]} · ${num(a[MKEY[k]])} won">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b></span>`).join("")}</div>` : ""; };
   // 3.99.204: WEEK 2 OF NOVEMBER (the week a medal is for); the Redeem button of a customer's Achieved tab
   const weekOf = (p) => { const d = new Date(`${String(p).slice(0, 10)}T00:00:00`); return `WEEK ${Math.ceil(d.getDate() / 7)} OF ${MON[d.getMonth()]}`; };
   const bindAch = (el, customerId, reload) => el?.querySelectorAll("[data-redeem]").forEach((b) => (b.onclick = async () => {
@@ -135,7 +137,7 @@
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
   // 3.99.185: VIP = a customer with a credit limit of ₱1,000,000 or more: a special box (animated) near the name
   const vipBox = (limit) => (num(limit) >= 1000000 ? `<span class="vip-box" title="VIP · credit limit ₱ ${peso(limit)}">${ic("crown")}<b>VIP</b></span>` : "");
-  const customerRanks = () => rankList("c", () => sb.rpc("customer_ranks"));
+  const customerRanks = () => rankList("c-monthly", () => sb.rpc("customer_ranks"));
   const shortName = (r, max = 22) => {
     const full = fullName(r);
     if (full.length <= max) return full;

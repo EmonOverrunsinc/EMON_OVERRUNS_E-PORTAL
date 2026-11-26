@@ -4941,15 +4941,15 @@ input.locked { background: #f1f4f9; color: #42506b; font-weight: 700; letter-spa
 .ol-card .ol-card-top .store-logo { box-shadow: 0 0 0 2px rgba(255, 255, 255, .55); border-radius: 50%; }
 .ol-card .ol-card-top .ol-card-s .pill.paid { background: #e8f7ec; }
 .ol-card-s .pill.ol-rent b { white-space: nowrap; }
-/* 3.99.220: VIP and the ranks #1 #2 #3 shine all the time (also with Reduce Motion on) */
-.rk-no.rk-tag.tier-gold, .rk-no.rk-tag.tier-silver, .rk-no.rk-tag.tier-bronze, .rk-no.rk-tag.rk1, .rk-no.rk-tag.rk2, .rk-no.rk-tag.rk3 { position: relative; overflow: hidden; isolation: isolate; animation: rkGlow 2.4s ease-in-out infinite; }
-.rk-no.rk-tag.tier-gold::after, .rk-no.rk-tag.tier-silver::after, .rk-no.rk-tag.tier-bronze::after, .rk-no.rk-tag.rk1::after, .rk-no.rk-tag.rk2::after, .rk-no.rk-tag.rk3::after {
+/* 3.99.366: only explicitly selected rank badges animate (customer Top 10; shop Top 3). */
+.rk-no.rk-live, .rk-no.customer-rank-live { position: relative; overflow: hidden; isolation: isolate; animation: rkGlow 2.4s ease-in-out infinite; }
+.rk-no.rk-live::after, .rk-no.customer-rank-live::after {
   content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .8) 48%, transparent 66%); transform: translateX(-120%); animation: rkShine 2.4s ease-in-out infinite; }
 @keyframes rkGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(255, 255, 255, .3), 0 2px 6px rgba(15, 42, 102, .22); } 50% { box-shadow: 0 0 0 3px rgba(245, 197, 66, .35), 0 3px 10px rgba(15, 42, 102, .28); } }
 @media (prefers-reduced-motion: reduce) {
   .vip-box { animation: vipGold 2.4s ease-in-out infinite !important; } .vip-box .ic { animation: vipCrown 2.4s ease-in-out infinite !important; } .vip-box::after { animation: rkShine 2.4s ease-in-out infinite !important; }
-  .rk-no.rk-tag.tier-gold, .rk-no.rk-tag.tier-silver, .rk-no.rk-tag.tier-bronze, .rk-no.rk-tag.rk1, .rk-no.rk-tag.rk2, .rk-no.rk-tag.rk3 { animation: rkGlow 2.4s ease-in-out infinite !important; }
-  .rk-no.rk-tag.tier-gold::after, .rk-no.rk-tag.tier-silver::after, .rk-no.rk-tag.tier-bronze::after, .rk-no.rk-tag.rk1::after, .rk-no.rk-tag.rk2::after, .rk-no.rk-tag.rk3::after { animation: rkShine 2.4s ease-in-out infinite !important; }
+  .rk-no.rk-live, .rk-no.customer-rank-live { animation: rkGlow 2.4s ease-in-out infinite !important; }
+  .rk-no.rk-live::after, .rk-no.customer-rank-live::after { animation: rkShine 2.4s ease-in-out infinite !important; }
 }
 /* 3.99.221: rent tags (light), money boxes, the simple daily list */
 .ol-card-s .pill.ol-rent.paid { background: #e9f7ee; color: #15803d; border: 1px solid #bfe5cb; }
@@ -5540,6 +5540,14 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 #main .cust-hero:has(.auth-st) > .ch-band-tag { right: 84px; }
 #main .cust-hero > .ch-band-tag:not(:has(*:not(:empty))) { display: none; }
 #main .cust-hero > .ch-band-tag * { font-size: 10px !important; line-height: 1.2 !important; } #main .cust-hero > .ch-band-tag > span > * { padding: 3px 9px !important; min-height: 0 !important; height: auto !important; } #main .cust-hero > .ch-band-tag svg { width: 11px !important; height: 11px !important; }
+#main .cust-hero > .ch-band-tag { display: flex; align-items: center; justify-content: flex-end; gap: 7px; max-width: calc(100% - 130px); }
+#main .cust-hero > .ch-band-tag .ch-medals { display: inline-flex; margin: 0; }
+#main .cust-hero > .ch-band-tag .ch-medals:empty { display: none; }
+#main .cust-hero > .ch-band-tag .md-mini { padding: 0; gap: 5px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#main .cust-hero > .ch-band-tag .md-mini .mm { gap: 3px; }
+#main .cust-hero > .ch-band-tag .md-mini .mm > :first-child { width: 19px !important; height: 19px !important; min-width: 19px; }
+#main .cust-hero > .ch-band-tag .md-mini .mm b { color: #fff; font-size: 11px !important; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+#main .cust-hero .ch-sub:empty { display: none; }
 #main .cust-hero .ch-pic { align-self: start; align-content: start; } #main .cust-hero .ch-pic-tools { margin-bottom: 0 !important; } #main .cust-hero .ch-tags { margin-top: 2px !important; } /* 3.99.318: NOT VERIFIED right under Add Photo */
 #main .cust-hero .ch-pic-tools { height: auto !important; min-height: 0 !important; } #main .cust-hero .ch-pic-tools .linkbtn { min-height: 0 !important; height: auto !important; padding: 3px 4px !important; line-height: 1.2; }
 /* 3.99.321: CLOSED ACCOUNT in the red band, on the right */
@@ -5829,3 +5837,30 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
   .assigned-person h2, .assigned-person .assigned-profile-name, .assigned-work-person b { animation: none !important; }
   .loading.sk { opacity: 1; animation: none !important; }
 }
+
+/* 3.99.366: restrained portal-wide interaction polish. Keep navigation quick and motion light. */
+.pill.active { animation: none !important; }
+.pill.active::after { content: none !important; display: none !important; animation: none !important; }
+:where(button, a, input, select, textarea, summary, [role="button"]):focus-visible {
+  outline: 3px solid rgba(29, 79, 176, .28);
+  outline-offset: 2px;
+}
+:where(.btn, .iconbtn, .scanbtn, .qa, .todo-chip, .doccard, .ol-card, .reg-card, .tabs button, .subnav a) {
+  -webkit-tap-highlight-color: transparent;
+}
+@media screen and (prefers-reduced-motion: no-preference) {
+  :where(.btn, .iconbtn, .scanbtn, .qa, .todo-chip, .doccard, .ol-card, .reg-card, .tabs button, .subnav a) {
+    transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, background-color .22s ease, border-color .22s ease, color .18s ease, opacity .18s ease;
+  }
+  :where(.grid tbody tr, .kv-table tr, .rank-row, .ach-row, .off-slot, .ol-emp) {
+    transition: background-color .2s ease, border-color .2s ease, box-shadow .22s ease;
+  }
+  .tabpanes > div:not([hidden]) { animation: smoothPanelIn .22s cubic-bezier(.2,.8,.2,1) both; }
+  .pop:not([hidden]), .am-list:not([hidden]) { animation: smoothMenuIn .18s cubic-bezier(.2,.8,.2,1) both; transform-origin: top right; }
+}
+@media (hover: hover) and (pointer: fine) {
+  :where(.doccard, .ol-card, .reg-card, .rank-row):hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15,58,140,.12); }
+  .grid tbody tr.click:hover { background: #f5f8fd; }
+}
+@keyframes smoothPanelIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes smoothMenuIn { from { opacity: 0; transform: translateY(-5px) scale(.985); } to { opacity: 1; transform: none; } }

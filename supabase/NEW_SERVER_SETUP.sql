@@ -1,5 +1,5 @@
 -- =====================================================================
--- EMON OVERRUNS E-PORTAL - NEW SERVER SETUP (everything up to update 2.2) in ONE file. RUN ONLY THIS FILE, ONCE,
+-- EMON OVERRUNS E-PORTAL - COMPLETE NEW SERVER SETUP in ONE file. RUN ONLY THIS FILE, ONCE,
 -- on the NEW, EMPTY project.
 -- Supabase > your new project > SQL Editor > New query > paste ALL of this file > Run (if asked: "Run this query").
 -- At the end it shows: E-PORTAL SERVER READY. If anything fails, nothing is changed and it can be run again.
@@ -19328,6 +19328,566 @@ grant execute on function public.transfer_accept() to authenticated;
 notify pgrst, 'reload schema';
 
 select '155 OK - requests stay open until decided' as result;
+
+-- ======== 156_notification_requests.sql ========
+-- 3.99.340. Apply after 155. Keeps existing notification rows and permissions.
+begin;
+
+alter table public.notifications add column if not exists device_request_id uuid;
+create index if not exists notifications_device_request_idx
+  on public.notifications (device_request_id, created_at) where device_request_id is not null;
+
+-- Record the exact device for newly issued alerts. Older alerts remain
+-- readable, and the live queue still lists any pending pre-migration device.
+create or replace function public.notify_device_request(p_device uuid, p_title text, p_body text) returns void
+language sql security definer set search_path = '' as $$
+  insert into public.notifications (user_id, title, body, link, device_request_id)
+  select p.id, p_title, p_body, 'devices', p_device
+  from public.profiles p where p.role = 'admin' and p.status = 'active';
+$$;
+revoke execute on function public.notify_device_request(uuid, text, text) from public, anon, authenticated;
+
+create or replace function public.device_check(p_device text, p_name text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid := auth.uid(); p public.profiles; d public.user_devices; on_ boolean; grace timestamptz; st text; how_ text; nm text;
+begin
+  if uid is null then raise exception 'Sign in first.'; end if;
+  if p_device is null or p_device !~ '^[A-Za-z0-9-]{16,64}$' then raise exception 'This device has no device ID. Allow the browser to keep site data and try again.'; end if;
+  select * into p from public.profiles where id = uid;
+  if not found then raise exception 'Your profile is not ready yet.'; end if;
+  select coalesce(s.device_approval, true), s.device_grace_until into on_, grace from public.company_settings s where s.id = 1;
+  on_ := coalesce(on_, true);
+  nm := left(upper(trim(coalesce(p_name, ''))), 120);
+  select * into d from public.user_devices where user_id = uid and device_id = p_device for update;
+  if not found then
+    if not exists (select 1 from public.user_devices where user_id = uid) then st := 'approved'; how_ := 'FIRST DEVICE [[U+00B7]] REGISTERED AUTOMATICALLY';
+    elsif grace is not null and now() < grace then st := 'approved'; how_ := 'DEVICE IN USE [[U+00B7]] REGISTERED AUTOMATICALLY';
+    elsif not on_ then st := 'approved'; how_ := 'REGISTERED AUTOMATICALLY (DEVICE APPROVAL OFF)';
+    else st := 'pending'; how_ := null; end if;
+    insert into public.user_devices (user_id, device_id, name, status, how, ip_address)
+      values (uid, p_device, nm, st, how_, public.legal_ip())
+      on conflict (user_id, device_id) do nothing returning * into d;
+    if not found then
+      select * into d from public.user_devices where user_id = uid and device_id = p_device;
+    elsif d.status = 'pending' then
+      perform public.notify_device_request(d.id, 'NEW DEVICE WAITING FOR APPROVAL',
+        coalesce(nullif(p.full_name, ''), p.email, 'A login') || ' signed in on a new device: ' || coalesce(nullif(nm, ''), 'UNKNOWN DEVICE') || '. Approve or block it on Devices.');
+    end if;
+  else
+    -- a removed device signing in again asks for approval again (approved at once while the approval is off)
+    if d.status = 'removed' then
+      update public.user_devices set status = case when on_ then 'pending' else 'approved' end, how = case when on_ then null else 'REGISTERED AUTOMATICALLY (DEVICE APPROVAL OFF)' end,
+        decided_by = null, decided_by_name = null, decided_at = null, first_seen = now() where id = d.id;
+      if on_ then
+        perform public.notify_device_request(d.id, 'NEW DEVICE WAITING FOR APPROVAL',
+          coalesce(nullif(p.full_name, ''), p.email, 'A login') || ' signed in again on a removed device: ' || coalesce(nullif(nm, ''), d.name, 'UNKNOWN DEVICE') || '. Approve or block it on Devices.');
+      end if;
+    end if;
+    update public.user_devices set last_seen = now(), ip_address = coalesce(public.legal_ip(), ip_address), name = coalesce(nullif(nm, ''), name)
+      where id = d.id returning * into d;
+  end if;
+  return jsonb_build_object('status', case when not on_ and d.status <> 'blocked' then 'approved' else d.status end, 'id', d.id, 'name', d.name,
+    'how', d.how, 'admin', p.role = 'admin', 'grace_until', grace, 'approval', on_);
+end;
+$$;
+
+create or replace function public.finish_device_notification() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  update public.notifications set is_read = true, done_at = coalesce(done_at, now())
+  where device_request_id = old.id and created_at = old.first_seen and link = 'devices';
+  return null;
+end $$;
+revoke execute on function public.finish_device_notification() from public, anon, authenticated;
+drop trigger if exists finish_device_notification on public.user_devices;
+create trigger finish_device_notification after update of status on public.user_devices
+for each row when (old.status = 'pending' and new.status <> 'pending')
+execute function public.finish_device_notification();
+
+-- Only the unique, non-terminated employee record linked to this active login
+-- can supply a transfer request. An administrator follows the same rule.
+create or replace function public.notification_employee() returns uuid
+language sql stable security definer set search_path = '' as $$
+  select (array_agg(e.id))[1]
+  from public.employees e
+  where e.profile_id = auth.uid() and e.status <> 'terminated' and public.is_active()
+  having count(*) = 1;
+$$;
+revoke execute on function public.notification_employee() from public, anon, authenticated;
+
+-- Each live request has an exact subject and revision. The live queues supply actionable
+-- rows when historical notifications lack an exact request reference.
+create or replace function public.notification_requests()
+returns table (kind text, request_id uuid, revision timestamptz, title text, body text, link text)
+language sql stable security definer set search_path = '' as $$
+  select 'device', d.id, d.first_seen, 'New device waiting for approval',
+    concat_ws(' [[U+00B7]] ', coalesce(nullif(p.full_name, ''), p.email), coalesce(nullif(d.name, ''), 'Unknown device')), 'devices'
+  from public.user_devices d join public.profiles p on p.id = d.user_id
+  where (select public.is_admin()) and d.status = 'pending'
+  union all
+  select 'closure', c.id, c.created_at, o.code || ' [[U+00B7]] Non-working day request',
+    concat_ws(' [[U+00B7]] ', c.day::text, c.reason, c.requested_by_name), 'outlet/' || c.outlet_id
+  from public.outlet_closures c join public.outlets o on o.id = c.outlet_id
+  where (select public.is_admin()) and c.status = 'pending'
+  union all
+  select 'customer', o.id, o.updated_at, 'Customer order ' || o.order_no || ' to review', null, 'custorder/' || o.id
+  from public.customer_orders o where (select public.is_admin()) and o.status = 'pending'
+  union all
+  select 'purchase', p.id, coalesce(p.updated_at, p.created_at), 'Purchase order ' || p.po_no || ' to review', p.lot_name, 'po/' || p.id
+  from public.purchase_orders p where (select public.is_admin()) and p.status = 'pending'
+  union all
+  select 'insurance', i.id, coalesce(i.proof_at, i.created_at), 'Insurance ' || i.ins_no || ' payment to review', 'Order ' || i.order_no, 'insurance/' || i.id
+  from public.order_insurance i where (select public.is_admin()) and i.status = 'review'
+  union all
+  select 'transfer', t.id, t.moved_at, 'You now work at ' || split_part(t.to_place, ' [[U+00B7]] ', 1),
+    'Your workplace: ' || t.to_place, null
+  from (
+    select x.* from public.employee_transfers x
+    where x.employee_id = public.notification_employee()
+    order by x.moved_at desc, x.id desc limit 1
+  ) t
+  where t.accepted_at is null and t.moved_by is not null;
+$$;
+revoke execute on function public.notification_requests() from public, anon, authenticated;
+
+-- Read and action state come from the same snapshot in both surfaces. Pending
+-- requests bypass the history window and list limit.
+create or replace function public.notification_inbox(p_history integer default 150, p_days integer default null)
+returns jsonb
+language sql stable security definer set search_path = '' as $$
+  with own as not materialized (
+    select n.* from public.notifications n where n.user_id = auth.uid()
+      and (select public.is_active()) and (n.link is null or n.link not like 'chat/%')
+  ), requests as materialized (
+    select * from public.notification_requests()
+  ), pending as materialized (
+    select r.*, n.id as note_id
+    from requests r
+    left join lateral (
+      select o.id from own o
+      where (r.kind = 'device' and o.device_request_id = r.request_id
+        and o.created_at = r.revision and o.link = r.link)
+      or (o.title = r.title and (
+        (r.kind = 'transfer' and o.created_at = r.revision)
+        or (r.kind in ('customer', 'purchase') and o.link = r.link)
+        or (r.kind = 'insurance' and o.link = r.link and o.created_at = r.revision)
+      ))
+      order by o.id desc limit 1
+    ) n on true
+    where p_history >= 0
+  ), history as (
+    select o.* from own o
+    where (p_days is null or o.created_at >= now() - make_interval(days => p_days))
+      and not exists (select 1 from pending p where p.note_id = o.id)
+    order by o.created_at desc, o.id desc limit greatest(0, least(p_history, 300))
+  ), rows as (
+    select to_jsonb(h) as item, h.created_at from history h
+    union all
+    select case when o.id is not null then to_jsonb(o) else jsonb_build_object(
+      'id', p.kind || '/' || p.request_id, 'title', p.title, 'body', p.body,
+      'link', p.link, 'created_at', p.revision, 'is_read', true) end
+      || jsonb_build_object('request', jsonb_build_object('kind', p.kind, 'id', p.request_id, 'revision', p.revision)),
+      coalesce(o.created_at, p.revision)
+    from pending p left join own o on o.id = p.note_id
+  )
+  select jsonb_build_object(
+    'pending', (select count(*) from requests),
+    'rows', coalesce((select jsonb_agg(item order by (item ? 'request') desc, created_at desc, item->>'id' desc) from rows), '[]'::jsonb)
+  );
+$$;
+revoke execute on function public.notification_inbox(integer, integer) from public, anon;
+grant execute on function public.notification_inbox(integer, integer) to authenticated;
+
+-- A normal read stays independent of approval, including for transfers.
+drop trigger if exists notifications_keep_transfer on public.notifications;
+
+-- Lock the exact request before checking its current revision. This also
+-- guards against an old tab racing a decision or a resubmission.
+create or replace function public.notification_decide(
+  p_kind text, p_id uuid, p_revision timestamptz, p_action text, p_note text default null
+) returns text
+language plpgsql security definer set search_path = '' as $$
+declare emp uuid; t public.employee_transfers; r record;
+begin
+  if p_kind = 'transfer' then
+    if p_action is distinct from 'approve' then raise exception 'Unknown action.'; end if;
+    emp := public.notification_employee();
+    if emp is null then raise exception 'Your active login must be linked to one employee profile.'; end if;
+    perform 1 from public.employees where id = emp and profile_id = auth.uid() for update;
+    if not found then return 'resolved'; end if;
+    perform 1 from public.employee_transfers where id = p_id and employee_id = emp for update;
+  else
+    if not public.is_admin() then raise exception 'Only the Director decides this request.'; end if;
+    if p_action is null or p_action not in ('approve', 'reject') then raise exception 'Unknown action.'; end if;
+    case p_kind
+      when 'device' then perform 1 from public.user_devices where id = p_id for update;
+      when 'closure' then perform 1 from public.outlet_closures where id = p_id for update;
+      when 'customer' then perform 1 from public.customer_orders where id = p_id for update;
+      when 'purchase' then perform 1 from public.purchase_orders where id = p_id for update;
+      when 'insurance' then perform 1 from public.order_insurance where id = p_id for update;
+      else raise exception 'Unknown request.';
+    end case;
+  end if;
+  select * into r from public.notification_requests() q
+  where q.kind = p_kind and q.request_id = p_id and q.revision = p_revision;
+  if not found then return 'resolved'; end if;
+
+  case p_kind
+    when 'device' then perform public.device_decide(p_id, case p_action when 'approve' then 'approve' else 'block' end);
+    when 'closure' then perform public.outlet_closure_decide(p_id, p_action = 'approve');
+    when 'customer' then perform public.decide_customer_order(p_id, case p_action when 'approve' then 'approve' else 'cancel' end);
+    when 'purchase' then perform public.decide_purchase_order(p_id, case p_action when 'approve' then 'approve' else 'cancel' end);
+    when 'insurance' then perform public.decide_insurance(p_id, p_action, p_note);
+    when 'transfer' then
+      update public.employee_transfers set accepted_at = now() where id = p_id returning * into t;
+      perform public.notify_admins(
+        (select trim(concat_ws(' ', e.first_name, e.last_name)) from public.employees e where e.id = emp) || ' accepted the transfer',
+        'READ & ACCEPTED [[U+00B7]] ' || split_part(t.to_place, ' [[U+00B7]] ', 1)
+          || coalesce(' [[U+00B7]] ' || (select e.employee_no from public.employees e where e.id = emp), ''), 'employee/' || emp);
+  end case;
+
+  update public.notifications n set is_read = true, done_at = coalesce(n.done_at, now())
+  where (p_kind = 'device' and n.device_request_id = p_id
+    and n.created_at = p_revision and n.link = r.link)
+  or (n.title = r.title and (
+    (p_kind = 'transfer' and n.user_id = auth.uid() and n.created_at = p_revision)
+    or (p_kind in ('customer', 'purchase') and n.link = r.link)
+    or (p_kind = 'insurance' and n.link = r.link and n.created_at = p_revision)
+  ));
+  return 'ok';
+end $$;
+revoke execute on function public.notification_decide(text, uuid, timestamptz, text, text) from public, anon;
+grant execute on function public.notification_decide(text, uuid, timestamptz, text, text) to authenticated;
+
+-- Keep the earlier client entry point, with the same login and transfer checks.
+create or replace function public.transfer_accept() returns text
+language plpgsql security definer set search_path = '' as $$
+declare r record;
+begin
+  if public.notification_employee() is null then
+    raise exception 'Your active login must be linked to one employee profile.';
+  end if;
+  select * into r from public.notification_requests() where kind = 'transfer';
+  if not found then return 'already'; end if;
+  return public.notification_decide('transfer', r.request_id, r.revision, 'approve');
+end $$;
+
+-- Keep the existing order decisions and permissions, and retain their notification history.
+create or replace function public.decide_purchase_order(p_id uuid, p_action text, p_note text default null, p_items jsonb default null) returns text[]
+language plpgsql security definer set search_path = '' set timezone to 'Asia/Manila' as $$
+declare po public.purchase_orders; me text := (select full_name from public.profiles where id = auth.uid()); it jsonb; gone text[];
+begin
+  if not public.is_admin() then raise exception 'Only the Director decides a purchase order'; end if;
+  select * into po from public.purchase_orders where id = p_id for update;
+  if not found then raise exception 'Purchase order not found'; end if;
+  if po.status not in ('pending','negotiation') then raise exception 'Purchase order % is already %', po.po_no, upper(po.status); end if;
+  if p_action = 'approve' then
+    gone := po.voices; -- the voice notes are deleted from the server once the order is approved
+    update public.purchase_orders set status = 'approved', approved_by = auth.uid(), approved_by_name = me, approved_at = now(), voices = '{}',
+      director_note = nullif(trim(coalesce(p_note, '')), ''), updated_at = now() where id = p_id;
+    perform public.notify_user(po.created_by, 'Your ' || po.lot_name || ' lot was APPROVED (' || po.po_no || ')',
+      'Approved by Director ' || coalesce(me, '') || '. Buy at the approved price.', 'po/' || po.id);
+  elsif p_action = 'negotiate' then
+    it := case when p_items is null then po.items else public.po_clean_items(p_items) end;
+    update public.purchase_orders set status = 'negotiation', items = it,
+      total_qty = (select sum((x ->> 'qty')::numeric) from jsonb_array_elements(it) x), total_amount = (select sum((x ->> 'amount')::numeric) from jsonb_array_elements(it) x),
+      director_note = nullif(trim(coalesce(p_note, '')), ''), updated_at = now() where id = p_id;
+    perform public.notify_user(po.created_by, 'Price not agreed: ' || po.lot_name || ' (' || po.po_no || ')',
+      'EMON OVERRUNS authority does not agree with that price. Please negotiate the price, then edit and submit again.' || coalesce(' Note: ' || nullif(trim(p_note), ''), ''), 'po/' || po.id);
+    if po.created_by is not null and po.created_by <> auth.uid() then
+      insert into public.messages (sender_id, recipient_id, body)
+      values (auth.uid(), po.created_by, 'Purchase order ' || po.po_no || ' (' || po.lot_name || '): EMON OVERRUNS authority does not agree with that price. '
+        || 'Please negotiate the price, then edit the details and submit again.' || coalesce(' Note: ' || nullif(trim(p_note), ''), ''));
+    end if;
+  elsif p_action = 'cancel' then
+    gone := po.photos || po.voices;
+    update public.purchase_orders set status = 'cancelled', photos = '{}', voices = '{}', cancelled_by_name = me, cancelled_at = now(),
+      director_note = nullif(trim(coalesce(p_note, '')), ''), updated_at = now() where id = p_id;
+    perform public.notify_user(po.created_by, 'Purchase order ' || po.po_no || ' was cancelled', po.lot_name || coalesce(' - ' || nullif(trim(p_note), ''), ''), 'po/' || po.id);
+  else
+    raise exception 'Unknown action %', p_action;
+  end if;
+  update public.notifications set is_read = true, done_at = coalesce(done_at, now())
+  where link = 'po/' || po.id and title = 'Purchase order ' || po.po_no || ' to review';
+  return coalesce(gone, '{}');
+end;
+$$;
+
+create or replace function public.decide_customer_order(p_id uuid, p_action text, p_note text default null) returns public.customer_orders
+language plpgsql security definer set search_path = '' as $$
+declare o public.customer_orders; me text := (select full_name from public.profiles where id = auth.uid());
+begin
+  select * into o from public.customer_orders where id = p_id for update;
+  if not found then raise exception 'Order not found'; end if;
+  if p_action = 'approve' then
+    if not public.is_admin() then raise exception 'Only the Director can approve an order'; end if;
+    if o.status <> 'pending' then raise exception 'Order % is % (not waiting for approval)', o.order_no, upper(o.status); end if;
+    update public.customer_orders set status = 'approved', approved_by = auth.uid(), approved_by_name = me, approved_at = now(), updated_at = now()
+    where id = p_id returning * into o;
+    if o.created_by is distinct from auth.uid() then
+      perform public.notify_user(o.created_by, 'Customer order ' || o.order_no || ' APPROVED', 'Ready for delivery', 'custorder/' || o.id);
+    end if;
+  elsif p_action = 'cancel' then
+    if o.status not in ('pending','approved') then raise exception 'Order % is % and cannot be cancelled', o.order_no, upper(o.status); end if;
+    if not (public.is_admin() or (o.created_by = auth.uid() and o.status = 'pending')) then raise exception 'Only the Director can cancel this order'; end if;
+    update public.customer_orders set status = 'cancelled', cancelled_at = now(), cancelled_by_name = me, cancel_note = nullif(left(trim(coalesce(p_note, '')), 300), ''), updated_at = now()
+    where id = p_id returning * into o;
+    if o.created_by is distinct from auth.uid() then
+      perform public.notify_user(o.created_by, 'Customer order ' || o.order_no || ' was cancelled', coalesce(o.cancel_note, ''), 'custorder/' || o.id);
+    end if;
+  else
+    raise exception 'Unknown action';
+  end if;
+  update public.notifications set is_read = true, done_at = coalesce(done_at, now())
+  where link = 'custorder/' || o.id and title = 'Customer order ' || o.order_no || ' to review';
+  return o;
+end;
+$$;
+
+notify pgrst, 'reload schema';
+commit;
+
+-- ======== 157_office_posts_and_document_cards.sql ========
+begin;
+create table if not exists private.office_director_posts (
+  id uuid primary key default gen_random_uuid(),
+  office text not null check (office in ('manila','dhaka')),
+  employee_id uuid not null references public.employees(id),
+  appointed_by uuid not null references public.profiles(id),
+  starts_at timestamptz not null default now(),
+  ends_at timestamptz
+);
+create unique index if not exists office_one_director_post on private.office_director_posts(office) where ends_at is null;
+
+create or replace function public.office_director_post(p_office text)
+returns table(id uuid, full_name text, card_no text, job_position text, since timestamptz)
+language sql stable security definer set search_path='' as $$
+ select e.id,trim(concat_ws(' ',e.first_name,e.last_name)),c.card_no,e.position,h.starts_at
+ from private.office_director_posts h join public.employees e on e.id=h.employee_id
+ left join public.employee_cards c on c.employee_id=e.id and c.status='active'
+ where public.is_active() and (public.is_staff() or public.is_admin()) and h.office=p_office and h.ends_at is null
+$$;
+create or replace function public.set_office_director_post(p_office text,p_employee uuid)
+returns void language plpgsql security definer set search_path='' as $$
+begin
+ if not coalesce(public.is_active() and public.is_admin(),false) then raise exception 'Only the Director can change this post.'; end if;
+ if p_office not in ('manila','dhaka') or p_office is null then raise exception 'Unknown office'; end if;
+ perform pg_advisory_xact_lock(hashtext('office-post:'||p_office));
+ if not exists(select 1 from public.employees where id=p_employee and status='active') then raise exception 'Choose an active employee.'; end if;
+ if exists(select 1 from private.office_director_posts where office=p_office and employee_id=p_employee and ends_at is null) then return; end if;
+ update private.office_director_posts set ends_at=clock_timestamp() where office=p_office and ends_at is null;
+ insert into private.office_director_posts(office,employee_id,appointed_by,starts_at) values(p_office,p_employee,auth.uid(),clock_timestamp());
+end $$;
+create or replace function public.document_people(p_numbers text[],p_profiles uuid[])
+returns table(employee_no text,profile_id uuid,card_no text,full_name text,job_position text,is_director boolean,posts jsonb)
+language sql stable security definer set search_path='' as $$
+ select e.employee_no,e.profile_id,c.card_no,trim(concat_ws(' ',e.first_name,e.last_name)),e.position,p.role='admin',
+ coalesce((select jsonb_agg(jsonb_build_array(h.starts_at,h.ends_at)) from private.office_director_posts h where h.employee_id=e.id),'[]'::jsonb)
+ from public.employees e left join public.profiles p on p.id=e.profile_id
+ left join public.employee_cards c on c.employee_id=e.id and c.status='active'
+ where public.is_active() and (public.is_staff() or public.is_admin() or e.profile_id=auth.uid())
+ and (e.employee_no=any(p_numbers) or e.profile_id=any(p_profiles))
+$$;
+revoke all on function public.office_director_post(text),public.set_office_director_post(text,uuid),public.document_people(text[],uuid[]) from public,anon;
+grant execute on function public.office_director_post(text),public.set_office_director_post(text,uuid),public.document_people(text[],uuid[]) to authenticated;
+create table if not exists private.document_prints (
+  id uuid primary key default gen_random_uuid(), issued_by uuid not null, issued_at timestamptz not null default now()
+);
+create or replace function public.issue_document_trx() returns uuid
+language plpgsql security definer set search_path='' as $$
+declare v uuid;
+begin
+ if not coalesce(public.is_active(),false) then raise exception 'Active account required'; end if;
+ insert into private.document_prints(issued_by) values(auth.uid()) returning id into v;
+ return v;
+end $$;
+create or replace function public.document_trx_date(p_id uuid) returns timestamptz
+language sql stable security definer set search_path='' as $$
+ select issued_at from private.document_prints where id=p_id
+$$;
+revoke all on function public.issue_document_trx(),public.document_trx_date(uuid) from public;
+grant execute on function public.issue_document_trx() to authenticated;
+grant execute on function public.document_trx_date(uuid) to authenticated,anon;
+notify pgrst,'reload schema';
+commit;
+
+-- ======== 158_single_employee_workplace.sql ========
+-- After update 157. A current office post is the employee's sole workplace.
+begin;
+create unique index if not exists employee_one_office_post on private.office_director_posts(employee_id) where ends_at is null;
+
+create or replace function public.employee_place_set(p_employee uuid, p_kind text, p_to uuid) returns text
+language plpgsql security definer set search_path = '' as $$
+declare who uuid; b text; by_name text;
+begin
+  if not public.is_admin() then raise exception 'Only the Director moves an employee.'; end if;
+  perform 1 from public.employees where id=p_employee for update;
+  if exists(select 1 from private.office_director_posts where employee_id=p_employee and ends_at is null) then
+    raise exception 'Replace this employee in AUTHORIZED RESPONSIVE before assigning another workplace.';
+  end if;
+  if p_kind not in ('outlet', 'company', 'office', 'manila', 'dhaka') then raise exception 'Unknown place'; end if;
+  if p_kind in ('outlet', 'company') and p_to is null then raise exception 'Choose where the employee goes.'; end if;
+  select e.profile_id into who from public.employees e where e.id = p_employee;
+  if not found then raise exception 'Employee not found.'; end if;
+  b := public.staff_place(p_kind, p_to);
+  if b is null then raise exception 'That place was not found.'; end if;
+  perform set_config('eo.staff_quiet', '1', true);
+  delete from public.outlet_staff where employee_id = p_employee and not (p_kind = 'outlet' and outlet_id = p_to);
+  delete from public.pay_company_staff where employee_id = p_employee and not (p_kind = 'company' and company_id = p_to);
+  if p_kind = 'outlet' then insert into public.outlet_staff (outlet_id, employee_id) values (p_to, p_employee) on conflict do nothing;
+  elsif p_kind = 'company' then insert into public.pay_company_staff (company_id, employee_id) values (p_to, p_employee) on conflict do nothing; end if;
+  perform set_config('eo.staff_quiet', '', true);
+  perform set_config('eo.allow_change', 'on', true);
+  update public.employees set work_location = left(b, 300) where id = p_employee;
+  perform set_config('eo.allow_change', '', true);
+  if p_kind in ('manila', 'dhaka') then perform public.employee_transfer_log(p_employee, p_kind, b); end if;
+  perform public.employee_place_access(p_employee, p_kind, p_to);
+  by_name := coalesce((select p.full_name from public.profiles p where p.id = auth.uid()), 'EMON HASAN');
+  if who is not null then
+    perform public.notify_user(who, 'You now work at ' || split_part(b, ' [[U+00B7]] ', 1), 'Your workplace: ' || b || '. Set by ' || by_name || '. Press READ & ACCEPT.',
+      case when p_kind = 'outlet' then 'outlets' when p_kind = 'manila' then 'eooffice' when p_kind = 'dhaka' then 'regional' else 'dashboard' end);
+  end if;
+  return b;
+end $$;
+
+create or replace function public.set_office_director_post(p_office text,p_employee uuid)
+returns void language plpgsql security definer set search_path='' as $$
+begin
+ if not coalesce(public.is_active() and public.is_admin(),false) then raise exception 'Only the Director can change this post.'; end if;
+ if p_office not in ('manila','dhaka') or p_office is null then raise exception 'Unknown office'; end if;
+ perform pg_advisory_xact_lock(hashtext('office-post:'||p_office));
+ perform 1 from public.employees where id=p_employee for update;
+ if not exists(select 1 from public.employees where id=p_employee and status='active') then raise exception 'Choose an active employee.'; end if;
+ if exists(select 1 from private.office_director_posts where office=p_office and employee_id=p_employee and ends_at is null) then return; end if;
+ perform public.employee_place_set(p_employee,p_office,null);
+ update private.office_director_posts set ends_at=clock_timestamp() where office=p_office and ends_at is null;
+ insert into private.office_director_posts(office,employee_id,appointed_by,starts_at) values(p_office,p_employee,auth.uid(),clock_timestamp());
+end $$;
+
+create or replace function public.office_staff(p_office text) returns table (id uuid, employee_no text, full_name text, job_position text, since timestamptz)
+language sql stable security definer set search_path = '' as $$
+  select e.id, e.employee_no, trim(concat_ws(' ', e.first_name, e.last_name)), e.position,
+         (select t.moved_at from public.employee_transfers t where t.employee_id = e.id order by t.moved_at desc limit 1)
+    from public.employees e
+   where public.is_active() and (public.is_admin() or public.is_staff()) and e.status <> 'terminated'
+     and e.work_location = case lower(p_office) when 'manila' then 'REGIONAL OFFICE MANILA' when 'dhaka' then 'REGIONAL OFFICE DHAKA' else '-' end
+     and not exists (select 1 from public.outlet_staff s where s.employee_id = e.id)
+     and not exists (select 1 from public.pay_company_staff s where s.employee_id = e.id)
+     and not exists (select 1 from private.office_director_posts h where h.employee_id=e.id and h.ends_at is null)
+   order by 3;
+$$;
+
+-- Older clients may still insert staff links directly.
+create or replace function private.guard_staff_workplace() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ perform 1 from public.employees where id=new.employee_id for update;
+ if exists(select 1 from private.office_director_posts where employee_id=new.employee_id and ends_at is null) then
+   raise exception 'Replace the AUTHORIZED RESPONSIVE appointment first.';
+ end if;
+ if exists(select 1 from public.outlet_staff where employee_id=new.employee_id and
+         (tg_table_name<>'outlet_staff' or outlet_id is distinct from (to_jsonb(new)->>'outlet_id')::uuid))
+ or exists(select 1 from public.pay_company_staff where employee_id=new.employee_id and
+         (tg_table_name<>'pay_company_staff' or company_id is distinct from (to_jsonb(new)->>'company_id')::uuid)) then
+   raise exception 'Use Transfer to change the employee[[U+2019]]s workplace.';
+ end if;
+ return new;
+end $$;
+drop trigger if exists single_workplace on public.outlet_staff;
+create trigger single_workplace before insert or update of employee_id,outlet_id on public.outlet_staff
+for each row execute function private.guard_staff_workplace();
+drop trigger if exists single_workplace on public.pay_company_staff;
+create trigger single_workplace before insert or update of employee_id,company_id on public.pay_company_staff
+for each row execute function private.guard_staff_workplace();
+
+create or replace function public.employee_transfer(p_employee uuid, p_from_kind text, p_from uuid, p_to_kind text, p_to uuid)
+returns text
+language plpgsql security definer set search_path = '' as $$
+begin
+ if not coalesce(public.is_admin(), false) then raise exception 'Only the Director transfers employees.'; end if;
+ perform 1 from public.employees where id=p_employee for update;
+ if not ((p_from_kind='outlet' and exists(select 1 from public.outlet_staff where outlet_id=p_from and employee_id=p_employee))
+   or (p_from_kind='company' and exists(select 1 from public.pay_company_staff where company_id=p_from and employee_id=p_employee))) then
+   raise exception 'This assignment has changed. Refresh the page.';
+ end if;
+ return public.employee_place_set(p_employee,p_to_kind,p_to);
+end $$;
+
+-- Align legacy active appointments with their office. Keep the post history intact.
+select set_config('eo.staff_quiet','1',true),set_config('eo.allow_change','on',true);
+delete from public.outlet_staff s using private.office_director_posts h where h.ends_at is null and h.employee_id=s.employee_id;
+delete from public.pay_company_staff s using private.office_director_posts h where h.ends_at is null and h.employee_id=s.employee_id;
+update public.employees e set work_location=public.staff_place(h.office,null)
+from private.office_director_posts h where h.ends_at is null and h.employee_id=e.id and e.work_location is distinct from public.staff_place(h.office,null);
+select public.employee_place_access(employee_id,office,null) from private.office_director_posts where ends_at is null;
+notify pgrst,'reload schema';
+commit;
+
+-- ======== 159_message_push_on_updates.sql ========
+-- Send a device alert for each new message, including messages from a sender
+-- whose unread portal notification is updated instead of inserted.
+begin;
+drop trigger if exists notifications_push on public.notifications;
+create trigger notifications_push
+  after insert or update of title, body, created_at on public.notifications
+  for each row when (new.is_read = false)
+  execute function public.notifications_push();
+commit;
+
+-- ======== 160_customer_monthly_rank.sql ========
+-- Customer ranking uses the current calendar month in Asia/Manila and resets at the next month.
+-- The best 15 eligible customers receive a monthly rank; the portal animates only ranks 1 to 10.
+-- Safe to run again.
+
+create or replace function public.customer_ranks()
+returns table (customer_id uuid, rank int, net numeric, as_of date, tier text)
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  month_start date := date_trunc('month', now() at time zone 'Asia/Manila')::date;
+  month_end date := (month_start + interval '1 month')::date;
+begin
+  if not (public.is_admin() or (public.is_active() and public.has_module('customers'))) then return; end if;
+  return query
+    with totals as (
+      select c.id, c.account_no,
+        coalesce((select sum(i.total_amount)
+                  from public.customer_invoices i
+                  where i.customer_id = c.id
+                    and i.invoice_date >= month_start and i.invoice_date < month_end), 0)
+        - coalesce((select sum(m.request_amount)
+                    from public.credit_memos m
+                    where m.customer_id = c.id
+                      and m.status in ('approved', 'paid') and m.off_balance
+                      and m.memo_date >= month_start and m.memo_date < month_end), 0) as value
+      from public.customers c
+      where c.status = 'active'
+        and exists (
+          select 1 from public.customer_invoices q
+          where q.customer_id = c.id
+            and q.invoice_date >= month_start and q.invoice_date < month_end)
+        -- A restored account returns to ranking on the next calendar-month cycle, not immediately.
+        and not exists (
+          select 1 from public.customer_events e
+          where e.customer_id = c.id and e.created_at >= month_start
+            and (e.action ~* '^active by ' or e.action ~* '^reopened'))),
+    ranked as (
+      select t.id, t.value::numeric(14,2) as value,
+        (row_number() over (order by t.value desc, t.account_no))::int as place
+      from totals t)
+    select r.id, r.place, case when public.sees_money() then r.value end, month_start,
+      case when r.value >= 100000 then 'gold'
+           when r.value >= 60000 then 'silver'
+           when r.value >= 25000 then 'bronze' end
+    from ranked r where r.place <= 15
+    order by r.place;
+end $$;
+
+revoke execute on function public.customer_ranks() from public, anon;
+grant execute on function public.customer_ranks() to authenticated;
+
+notify pgrst, 'reload schema';
+
+select '160 OK - customer ranks use current-month invoiced net sales' as result;
 $sql$;
 begin
   s := replace(s, chr(13), '');  -- Windows line breaks
@@ -19361,6 +19921,7 @@ begin
   s := replace(s, '[[U+00FC]]', chr(252));
   s := replace(s, '[[U+2013]]', chr(8211));
   s := replace(s, '[[U+2014]]', chr(8212));
+  s := replace(s, '[[U+2019]]', chr(8217));
   s := replace(s, '[[U+2022]]', chr(8226));
   s := replace(s, '[[U+2026]]', chr(8230));
   s := replace(s, '[[U+203A]]', chr(8250));
@@ -19382,6 +19943,7 @@ select case when to_regclass('public.customers') is not null
              and exists (select 1 from storage.buckets where id = 'records')
              and exists (select 1 from pg_trigger where tgname = 'statements_follow')
              and to_regclass('public.customer_orders') is not null and to_regclass('public.ai_gate_log') is not null and to_regclass('public.box_stock') is not null and to_regprocedure('public.save_order_with_boxes(uuid,jsonb,text[])') is not null
+             and to_regprocedure('public.customer_ranks()') is not null
         then 'E-PORTAL SERVER READY - ' || (select count(*) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE')
              || ' tables, ' || (select count(*) from pg_proc where pronamespace = 'public'::regnamespace) || ' functions. Next: sign up on the E-Portal.'
-        else 'NOT COMPLETE: tell Claude' end as result;
+        else 'NOT COMPLETE: contact portal support' end as result;
