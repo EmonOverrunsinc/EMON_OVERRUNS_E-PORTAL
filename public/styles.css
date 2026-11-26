@@ -5817,16 +5817,19 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .page.dsr-page .ph-left .ds-head-bar { justify-items: start; margin-top: 1mm; }
 .page.dsr-page .ph-left .ds-head-bar img { width: 36mm; height: 5mm; }
 
-/* 3.99.368: DSR keeps its top PDF417 and repeats it below the EMON HASAN stamp;
-   the only report TRX ID stays on the same line at the right. */
+/* DSR keeps its top PDF417 and repeats it below the EMON HASAN stamp.
+   The lower block is: sales record number, barcode, then the single TRX ID. */
 .page.dsr-page .dsr-sign .ds-verify {
-  width: 100%; margin-top: 1.2mm; display: flex; align-items: center; justify-content: center;
-  gap: 2mm; white-space: nowrap;
+  width: 100%; margin-top: 1.2mm; display: grid; justify-items: center;
+  gap: .55mm; white-space: nowrap;
 }
-.page.dsr-page .dsr-sign .ds-verify img { width: 34mm; height: 5mm; flex: 0 0 auto; object-fit: fill; image-rendering: pixelated; }
+.page.dsr-page .dsr-sign .ds-verify img { width: 42mm; height: 5mm; object-fit: fill; image-rendering: pixelated; }
 .page.dsr-page .dsr-sign .ds-verify span {
   min-width: 0; font: 700 5.2px/1 ui-monospace, Menlo, Consolas, monospace;
   letter-spacing: 0; color: #42506b; white-space: nowrap;
+}
+.page.dsr-page .dsr-sign .ds-verify .ds-serial {
+  color: #0f2a66; font-size: 5.6px; letter-spacing: .04em;
 }
 .page.dsr-page .dsr-ack {
   justify-self: stretch; text-align: left; padding: 1.5mm 2mm; border-left: .7mm solid #d4a017;

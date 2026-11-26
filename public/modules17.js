@@ -916,12 +916,12 @@
     const boss = E.stampHtml?.({ ...bossStamp(bossId), date: when }) || `<b>${esc(BOSS)}</b>`; // 3.99.268: the date inside the stamps
     return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>${resp || prepId ? "STORE RESPONSIBLE BY" : "ISSUED BY"}</small><div class="so-sign">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div>${issued}${tbar ? `<div class="so-appr-space"></div>` : ""}</div></div>
       <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
-  // Report sign-off: keep the report PDF417 in the header and repeat it below the Director's stamp,
-  // on one line with the report TRX ID for quick scanning and verification.
+  // Report sign-off: keep the report PDF417 in the header and repeat it below the Director's stamp.
+  // The lower verification block reads vertically: sales record number, PDF417, then TRX ID.
   const dsrSign = (bossId, when, stamp = "", reportCode = "", trx = "", received = {}) => {
     const boss = E.stampHtml?.(bossStamp(bossId)) || `<b>${esc(BOSS)}</b>`;
     const ack = received.total ? `<div class="dsr-ack"><b>ACKNOWLEDGMENT OF RECEIPT</b><p>I acknowledge and confirm that I received <strong>Cash ₱ ${esc(received.cash)}</strong> and <strong>GCash ₱ ${esc(received.gcash)}</strong>, for a total amount of <strong>₱ ${esc(received.total)}</strong>, for this sales report dated <strong>${esc(when)}</strong>.</p></div>` : "";
-    return `<div class="dsr-sign"><div class="ds-left">${stamp}</div><div class="ds-right">${ack}<small>RECEIVED AND ACKNOWLEDGED BY</small><div class="ds-line"></div>${boss}${reportCode && trx ? `<div class="ds-bar ds-verify"><img src="${esc(reportCode)}" alt="Sales record barcode"><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
+    return `<div class="dsr-sign"><div class="ds-left">${stamp}</div><div class="ds-right">${ack}<small>RECEIVED AND ACKNOWLEDGED BY</small><div class="ds-line"></div>${boss}${reportCode && trx ? `<div class="ds-bar ds-verify"><span class="ds-serial">SALES RECORD NO. ${esc(String(reportCode.serial || ""))}</span><img src="${esc(reportCode.image || reportCode)}" alt="Sales record barcode"><span>TRX ID ${esc(String(trx).toUpperCase())}</span></div>` : ""}</div></div>`;
   };
   // 3.99.311: the shop papers: the store logo in place of the company logo; EMON OVERRUNS, then the shop and its branch
   // code, then the shop's address
@@ -988,9 +988,9 @@
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(String(a.what || "").replace(/₱\s?/g, "PHP ").toUpperCase())}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
           ${duty.length > 1 ? `<div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>` : ""}`;
       })()}
-      ${dsrSign(bossId, mdy(date), cashStamp, reportCode, r.id, { cash: P(paidOut), gcash: P(gc), total: P(gc + paidOut) })}</div>`;
+      ${dsrSign(bossId, mdy(date), cashStamp, { image: reportCode, serial: no }, r.id, { cash: P(paidOut), gcash: P(gc), total: P(gc + paidOut) })}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page], { trx: r.id, issuedOn: date });
-    // Keep the header barcode; the single report TRX ID is paired with the lower barcode under the Director stamp.
+    // Keep the header barcode; the single report TRX ID sits below the lower barcode under the Director stamp.
     storeHead(o);
     // 3.99.303: the report no barcode goes up into the head, under DAILY SALES REPORT
     $$(".preview .page").forEach((pg) => {
