@@ -1133,12 +1133,12 @@
     $(".band h1").textContent = `Customer › ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c, orders, ev.data || [])}
-      <section class="cust-hero st-${esc(c.status)}">${c.status === "closed" ? closedInfo(c, orders, ev.data || []) : ""}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span></div>` : ""}
+      <section class="cust-hero st-${esc(c.status)}">${c.status === "closed" ? closedInfo(c, orders, ev.data || []) : ""}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span><span class="ch-medals" id="pfMedals"></span></div>` : ""}
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<span class="weekly-rank-watermark" id="pfWeekly" data-cid="${esc(c.id)}" hidden><small>WEEKLY RANKING</small><b>#1</b></span>` : ""}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span></div>` : ""}</div>
         <div class="ch-main">
           <div class="ch-name"><h2 class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</h2>${pill(c.status)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
-          <div class="ch-sub">${[isStaff() ? `<span class="ch-medals" id="pfMedals"></span>` : "", c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""].filter(Boolean).join(`<span class="ch-dot"> · </span>`) || "—"}</div>
+          <div class="ch-sub">${c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
           </div>
