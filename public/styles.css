@@ -5797,23 +5797,30 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .own-id-page canvas { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto 12px; }
 .own-id-page .btnrow, .pdf-ready .wfoot { flex-wrap: wrap; }
 
-/* Daily sales report keeps the receipt stamp beside the cash-out figures. */
+/* Daily sales report: keep the receipt stamp in the original lower-left sign-off area. */
 .page.dsr-page { padding-bottom: 10mm; }
-.page.dsr-page .dsr-cash { width: fit-content; max-width: 100%; margin: 2mm 0 2mm auto; }
+.page.dsr-page .dsr-cash { width: fit-content; max-width: 100%; margin: 0; }
 .page.dsr-page .dsr-cash .vst { min-width: 44mm; padding: 2mm 4mm; }
 .page.dsr-page .dsr-cash .vst em { display: block; font-style: normal; }
-.page.dsr-page .dsr-sign { display: flex; justify-content: flex-end; margin-top: 2mm; }
-.page.dsr-page .dsr-sign .ds-right { width: 42%; gap: .6mm; }
+.page.dsr-page .dsr-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-top: 2mm; }
+.page.dsr-page .dsr-sign .ds-left { min-width: 0; justify-items: start; }
+.page.dsr-page .dsr-sign .ds-right { width: auto; min-width: 0; gap: .6mm; }
 .page.dsr-page .dsr-sign .ds-line { height: 7mm; }
 .page.dsr-page .ph-left .ds-head-bar { justify-items: start; margin-top: 1mm; }
 .page.dsr-page .ph-left .ds-head-bar img { width: 36mm; height: 5mm; }
 
 /* Active workplace assignments: show the person's name and workplace mark with a restrained motion. */
 .assigned-work-person { display: flex !important; align-items: center; gap: 9px; min-width: 0; }
-.assigned-work-person > span:last-child { min-width: 0; }
+.assigned-work-person > span:last-child { display: grid; gap: 2px; min-width: 0; }
+.assigned-work-person b, .assigned-work-person small { display: block; overflow-wrap: anywhere; }
 .assigned-work-person .wp-ic, .assigned-work-person .wp-logo { width: 34px; height: 34px; flex: 0 0 34px; }
 .assigned-work-person .wp-logo { font-size: 0; }
 .wp-badge.wp-office .wp-ic, .off-emp .wp-ic { background: #fff6dc; color: #8e6b13; }
+@media (max-width: 640px) {
+  .ol-emp { flex-wrap: wrap; }
+  .ol-emp > .assigned-work-person { flex: 1 1 100%; }
+  .ol-emp > .ol-emp-btns { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
+}
 .assigned-person h2, .assigned-person .assigned-profile-name, .assigned-work-person b { animation: assignedNameGlow 4s ease-in-out infinite; }
 @keyframes assignedNameGlow { 0%,100% { opacity: 1; } 50% { opacity: .72; } }
 .loading.sk { opacity: 0; animation: loadingAppear .16s ease .18s forwards; }

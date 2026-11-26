@@ -335,7 +335,7 @@
     const owed = sum(invs, "balance"), rs = rentState(o, exps, m), edit = canEdit();
     const byPay = PAY.map(([k, l]) => [l, sum(sales, k)]).filter(([, v]) => v > 0);
     const filesOf = (oid) => files.filter((f) => f.owner_id === oid);
-    const photoBtn = (oid) => { const n = filesOf(oid).length; return n ? `<button type="button" class="btn small" data-files="${esc(oid)}">${ic("image")} View uploaded document${n === 1 ? "" : "s"} (${n})</button>` : ""; };
+    const photoBtn = (oid) => filesOf(oid).length ? `<button type="button" class="btn small" data-files="${esc(oid)}" title="View uploaded image" aria-label="View uploaded image">${ic("eye")} View</button>` : "";
     const del = () => ""; // 3.99.262: no delete on the shop's records (the Director edits them; the paper says CORRECTED)
 
     // 3.99.153: the shop page in a new layout: the head, 4 boxes, the buttons, and tabs (Daily Sales · Expenses & Cash Out ·
@@ -917,9 +917,9 @@
     return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>${resp || prepId ? "STORE RESPONSIBLE BY" : "ISSUED BY"}</small><div class="so-sign">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div>${issued}${tbar ? `<div class="so-appr-space"></div>` : ""}</div></div>
       <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
   // Report sign-off: verification signature; the cash stamp stays next to cash-out and the barcode stays in the header.
-  const dsrSign = (bossId, when) => {
+  const dsrSign = (bossId, when, stamp = "") => {
     const boss = E.stampHtml?.({ ...bossStamp(bossId), date: when }) || `<b>${esc(BOSS)}</b>`;
-    return `<div class="dsr-sign"><div class="ds-right"><small>VERIFIED BY</small><div class="ds-line"></div>${boss}</div></div>`;
+    return `<div class="dsr-sign"><div class="ds-left">${stamp}</div><div class="ds-right"><small>VERIFIED BY</small><div class="ds-line"></div>${boss}</div></div>`;
   };
   // 3.99.311: the shop papers: the store logo in place of the company logo; EMON OVERRUNS, then the shop and its branch
   // code, then the shop's address
@@ -967,7 +967,6 @@
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL NET SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
       ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
       ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
-      ${cashStamp}
       <div class="soa-sec"><h4>I Received</h4><table class="soa-t"><tbody>
         ${row("GCash received", P(gc))}${row("Cash received", P(paidOut))}${row("<b>Total received</b>", `<b>${P(gc + paidOut)}</b>`, "tot")}
         ${row("Balance after cash out", P(left))}
@@ -987,7 +986,7 @@
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(String(a.what || "").replace(/₱\s?/g, "PHP ").toUpperCase())}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
           ${duty.length > 1 ? `<div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>` : ""}`;
       })()}
-      ${dsrSign(bossId, mdy(date))}</div>`;
+      ${dsrSign(bossId, mdy(date), cashStamp)}</div>`;
     E.openPreview(`Daily Sales Report ${o.code} ${mdy(date)}`, [page], { trx: r.id, issuedOn: date });
     // Keep one transaction ID in the page footer and the report barcode in the header.
     storeHead(o);

@@ -226,7 +226,6 @@
     const d = card ? await cardData(em, card) : null;
     if (!el.isConnected) return;
     const expired = card && card.valid_until < E.isoToday();
-    const missing = !em.emergency_name || !em.emergency_phone;
     el.innerHTML = `<div class="idc-panel">
         ${card ? `<div class="idc-pair screen">${front(d)}${back(d)}</div>` : `<div class="empty">${em.status === "terminated" ? "No active ID card: the employee is terminated." : "No active ID card."}</div>`}
         <div class="idc-side">
@@ -234,15 +233,13 @@
             ["Card No", "", `<b class="mono">${esc(card.card_no)}</b> ${expired ? `<span class="pill rejected">EXPIRED</span>` : `<span class="pill approved">ACTIVE</span>`}`],
             ["Issued", `${mdy(card.issued_at)}${card.issued_by_name ? ` · by ${card.issued_by_name}` : ""}`],
             ["Valid Until", mdy(card.valid_until)],
-            ["Portal Account", "", em.profile_id ? `<span class="pill approved">LINKED</span>` : `<span class="pill pending">NOT LINKED</span> — the card works after ${esc(em.email)} creates an account (Create Account), or after you link the login account in Access &amp; Status`],
+            ["Portal Account", "", em.profile_id ? `<span class="pill approved">LINKED</span>` : `<span class="pill pending">NOT LINKED</span>`],
             ["Printed", card.print_count ? `${card.print_count} time${card.print_count === 1 ? "" : "s"} · last ${mdy(card.last_printed_at)}` : "Not printed yet"]]) : ""}
-          ${missing && card ? `<div class="hint warn">The emergency contact is missing. Add it with <b>Correction</b> on this employee (Details), or the card prints empty lines to fill in by hand.</div>` : ""}
           <div class="btnrow">
             ${card ? `<button type="button" class="btn primary" id="idcPrint">${ic("print")} Print / Download ID Card</button>` : ""}
             ${em.status !== "terminated" ? `<button type="button" class="btn" id="idcNew">${ic("plus")} ${card ? "Issue New Card" : "Issue ID Card"}</button>` : ""}
             ${card ? `<button type="button" class="btn" id="idcExp">${ic("edit")} Edit Expiration Date</button><button type="button" class="btn danger" id="idcBlock">${ic("x")} Block Card</button>` : ""}
           </div>
-          <p class="muted small">Only EMON HASAN sees and prints the ID card. A new card stops the old one at once (lost or damaged card). The first time, the employee scans the card and makes a password there (no email needed); after that the employee scans the card and types that password. Give the card only to its employee: its first scan makes the password.</p>
         </div></div>
       ${list.length ? `<h4>Card History</h4>${E.grid({ cols: [{ label: "Card No", get: (r) => r.card_no }, { label: "Issued", get: (r) => mdy(r.issued_at) }, { label: "Issued By", get: (r) => r.issued_by_name || "" },
         { label: "Valid Until", get: (r) => mdy(r.valid_until) }, { label: "Status", get: (r) => STATE[r.status] || r.status.toUpperCase() }, { label: "Ended", get: (r) => (r.ended_at ? mdy(r.ended_at) : "") }], rows: list })}` : ""}`;
