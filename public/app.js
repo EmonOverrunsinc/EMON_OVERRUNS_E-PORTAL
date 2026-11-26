@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.366"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.367"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.366"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.367"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -70,8 +70,8 @@
   const fullName = (r) => [r?.first_name, middleOf(r), r?.last_name].filter(Boolean).join(" ").trim();
   // 3.99.161: a long name made short for the lists (one line): FIRST M. LAST - the middle name as its initial; still long,
   // the words of the surname before its last one as initials too (DELA CRUZ SANTOS: D. C. SANTOS). Profiles and prints keep the full name.
-  // 3.99.366: customer rank is the current calendar month and requires a current-month invoice. Every ranked customer keeps a number, but only
-  // the Top 10 badges animate. The ranks are kept for 2 minutes, so a page and its list make one call.
+  // 3.99.367: the main customer rank is the original lifetime net rank, fixed at each Monday. A separate current-week RPC supplies only
+  // the #1 profile watermark. The ranks are kept for 2 minutes, so a page and its list make one call.
   const MEDAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="rk-rib" d="M6.6 1.8h4l2.1 5.6-2.6 2.4zM17.4 1.8h-4l-2.1 5.6 2.6 2.4z"/><circle class="rk-coin" cx="12" cy="15.2" r="6.8"/><path class="rk-star" d="m12 11 1.27 2.58 2.85.41-2.06 2.01.49 2.83L12 17.5l-2.55 1.34.49-2.83L7.88 14l2.85-.41z"/></svg>';
   // 3.99.185: the rank as a ROUND number (1 to 10 in their colours): lists, cards, the rank window and the status chip
   // 3.99.194: the rank under a profile picture / store logo: #1, #2 … (1 to 10 in their colours)
@@ -137,7 +137,8 @@
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
   // 3.99.185: VIP = a customer with a credit limit of ₱1,000,000 or more: a special box (animated) near the name
   const vipBox = (limit) => (num(limit) >= 1000000 ? `<span class="vip-box" title="VIP · credit limit ₱ ${peso(limit)}">${ic("crown")}<b>VIP</b></span>` : "");
-  const customerRanks = () => rankList("c-monthly", () => sb.rpc("customer_ranks"));
+  const customerRanks = () => rankList("c-all", () => sb.rpc("customer_ranks"));
+  const customerWeeklyWinner = () => rankList("c-weekly-winner", () => sb.rpc("customer_weekly_winner"));
   const shortName = (r, max = 22) => {
     const full = fullName(r);
     if (full.length <= max) return full;
@@ -3567,7 +3568,7 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, outletWeekRanks, titleHtml, bossName, customerRanks, medalHtml, achHtml, medalMini, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, outletWeekRanks, titleHtml, bossName, customerRanks, customerWeeklyWinner, medalHtml, achHtml, medalMini, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText,
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
     renderPdf, documentCards, roleName, personTitle, placeBadge, downloadLog, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)

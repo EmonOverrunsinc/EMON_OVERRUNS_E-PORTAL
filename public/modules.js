@@ -845,12 +845,12 @@
       rows.sort((a, b) => acctNo(a) - acctNo(b));
       // 2.9: names that start with what was typed come first (first name, then last name)
       if (ws.length) { const st0 = (v) => String(v || "").toLowerCase().startsWith(ws[0]); const rk = (c) => (st0(c.first_name) ? 0 : st0(c.last_name) ? 1 : 2); rows.sort((a, b) => rk(a) - rk(b)); }
-      // 3.99.366: no search: eligible customers keep the current month's rank; only the Top 10 badges animate.
+      // 3.99.367: no search: every eligible customer keeps the original lifetime net rank; only the Top 10 badges animate.
       else { const rnk = (c) => rk.get(c.id)?.rank ?? 1e9; rows.sort((a, b) => rnk(a) - rnk(b)); }
       rows.forEach((r, i) => (r._no = i + 1));
       $("#cuRes").innerHTML = E.grid({ cols: [
         { label: ws.length ? "No." : "Rank", num: true, get: (r) => r._no, html: (r) => { const x = !ws.length && rk.get(r.id); return x ? E.rankNo(x.rank, x.rank <= 10 ? "customer-rank-live" : "", x.tier || null) : String(r._no); } },
-        { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r) }, // 3.99.159: CLOSED once (in Status)
+        { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r), html: (r) => `<span class="${num(r.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(E.shortName(r))}</span>${num(r.credit_limit) >= 1000000 ? `<span class="grid-vip">${E.vipBox(r.credit_limit)}</span>` : ""}` }, // VIP stays visible in the list; CLOSED appears once in Status
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
         { label: "Balance Due", key: "due", num: true, get: (r) => peso(r.due) }],
@@ -1133,11 +1133,11 @@
     $(".band h1").textContent = `Customer › ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c, orders, ev.data || [])}
-      <section class="cust-hero st-${esc(c.status)}">${c.status === "closed" ? closedInfo(c, orders, ev.data || []) : ""}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span><span class="ch-medals" id="pfMedals"></span></div>` : ""}
+      <section class="cust-hero st-${esc(c.status)}">${c.status === "closed" ? closedInfo(c, orders, ev.data || []) : ""}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span><span class="ch-medals" id="pfMedals"></span></div><span class="weekly-rank-watermark" id="pfWeekly" data-cid="${esc(c.id)}" hidden>WEEKLY RANKING <b>#1</b></span>` : ""}
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span></div>` : ""}</div>
         <div class="ch-main">
-          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
+          <div class="ch-name"><h2 class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
           <div class="ch-sub">${c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
@@ -1270,10 +1270,15 @@
     if ($("#pfRequest")) $("#pfRequest").onclick = () => E.customerRequest(c, gctx);
     E.bindRequests(c, orders, gctx);
     E.standingBadge($("#pfStanding"), c, gctx);
-    if ($("#pfRank")) E.customerRanks().then((rk) => { // current month's invoiced rank; only the Top 10 badge animates
+    if ($("#pfRank")) E.customerRanks().then((rk) => { // original lifetime net rank, fixed at Monday; only the Top 10 badge animates
       const el = $("#pfRank"), r = rk.get(c.id);
       if (!r || !el || el.dataset.cid !== c.id) return;
-      el.innerHTML = E.rankTag(r.rank, r.tier || null, r.rank <= 10); el.title = `Rank ${r.rank} · ${monthText(String(r.as_of).slice(0, 7))} net sales`; el.hidden = false;
+      el.innerHTML = E.rankTag(r.rank, r.tier || null, r.rank <= 10); el.title = `Rank ${r.rank} · lifetime net sales up to Monday ${mdy(r.as_of)}`; el.hidden = false;
+    });
+    if ($("#pfWeekly")) E.customerWeeklyWinner().then((rk) => {
+      const el = $("#pfWeekly"), winner = [...rk.values()][0];
+      if (!el || el.dataset.cid !== c.id || winner?.customer_id !== c.id) return;
+      el.title = `Latest completed week #1 · net purchases from ${mdy(winner.week_start)}`; el.hidden = false;
     });
     if ($("#pfAchTab") || $("#pfMedals")) E.achievements("customer", c.id).then((a) => {
       const m = $("#pfMedals"); if (m && a) m.innerHTML = E.medalMini(a); // only medal types actually won, beside the account standing
@@ -1295,18 +1300,18 @@
   };
 
   // 2.7: the account amounts are listed here; the profile shows only the Balance Due
-  // 3.99.366: TOP 15 CUSTOMERS by current-month invoiced net sales; only ranks 1–10 animate.
+  // 3.99.367: original customer ranking: every active customer with positive lifetime net sales, fixed each Monday.
   async function topCustomers() {
-    const m = E.modal("Current Month · Top 15 Customers", `<div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
+    const m = E.modal("Customer Ranking", `<div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
     m.el.querySelector("[data-x]").onclick = m.close;
-    const rk = await E.customerRanks(), list = [...rk.values()].sort((a, b) => a.rank - b.rank).slice(0, 15);
+    const rk = await E.customerRanks(), list = [...rk.values()].sort((a, b) => a.rank - b.rank);
     const { data } = list.length ? await sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").in("id", list.map((r) => r.customer_id)) : { data: [] };
     const box = m.el.querySelector("#rkBoard"), cm = new Map((data || []).map((c) => [c.id, c]));
     if (!box) return;
-    box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} ${esc(monthText(String(list[0].as_of).slice(0, 7)))} invoiced net purchases · ranks 1–10 animate; ranks 11–15 stay static. Suspended customers are excluded; a restored account returns next month.</p>
+    box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} Lifetime net purchases up to Monday ${esc(mdy(list[0].as_of))} · every active customer is ranked. The latest completed week's #1 receives a separate profile watermark.</p>
       <div class="rank-board">${list.map((r) => { const c = cm.get(r.customer_id) || {};
         return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankNo(r.rank, `lg${r.rank <= 10 ? " customer-rank-live" : ""}`, r.tier || null)}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
-      : `<div class="empty">No customer has a qualifying invoice this month.</div>`;
+      : `<div class="empty">No active customer has positive net purchases yet.</div>`;
     box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => m.close()));
   }
 

@@ -5864,3 +5864,23 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 }
 @keyframes smoothPanelIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 @keyframes smoothMenuIn { from { opacity: 0; transform: translateY(-5px) scale(.985); } to { opacity: 1; transform: none; } }
+
+/* 3.99.367: only the latest completed week's #1 customer receives this subtle profile watermark. */
+.weekly-rank-watermark {
+  position: absolute; z-index: 2; right: 24px; top: 118px; pointer-events: none;
+  color: rgba(162, 112, 0, .52); border: 2px solid rgba(216, 158, 28, .28);
+  background: rgba(255, 248, 218, .38); border-radius: 10px; padding: 7px 12px;
+  font-size: 11px; font-weight: 900; letter-spacing: 1.4px; line-height: 1;
+  transform: rotate(-8deg); text-transform: uppercase;
+}
+.weekly-rank-watermark b { font-size: 15px; color: rgba(133, 88, 0, .68); }
+.vip-customer-name { color: #8a6200 !important; animation: vipNameSoft 4.8s ease-in-out infinite; }
+.grid-vip { display: inline-flex; margin-left: 7px; vertical-align: middle; }
+.grid-vip .vip-box { padding: 2px 6px 2px 4px; gap: 3px; font-size: 9px; border-width: 1px; letter-spacing: .1em; border-radius: 5px; }
+.grid-vip .vip-box .ic { width: 11px; height: 11px; }
+@keyframes vipNameSoft { 0%, 100% { text-shadow: none; opacity: 1; } 50% { text-shadow: 0 0 8px rgba(216,158,28,.28); opacity: .9; } }
+@media (max-width: 760px) {
+  .weekly-rank-watermark { right: 16px; top: 112px; font-size: 9px; padding: 6px 9px; letter-spacing: 1px; }
+  .weekly-rank-watermark b { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .vip-customer-name { animation: none !important; } }
