@@ -5836,6 +5836,25 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .page.dsr-page .dsr-ack p { margin: 0; font-size: 6.5px; line-height: 1.35; }
 .page.dsr-page .dsr-ack strong { color: #17233d; font-weight: 800; white-space: nowrap; }
 
+/* 3.99.372: keep a normal daily report together on one clean A4 sheet.
+   The shared document rules are deliberately roomier for long statements; the
+   daily report has several short sections, so compact only those local gaps. */
+.page.dsr-page .soa-doc { min-height: auto; }
+.page.dsr-page .soa-info { margin: 1.5mm 0; }
+.page.dsr-page .soa-info > div { padding: 1.1mm 2mm; }
+.page.dsr-page .soa-tiles { margin: 1.5mm 0 1mm; gap: 1.2mm; }
+.page.dsr-page .soa-tile { padding: 1.2mm 2mm; }
+.page.dsr-page .soa-tile b { margin-top: .4mm; }
+.page.dsr-page .soa-sec { margin: 1mm 0; }
+.page.dsr-page .soa-sec h4 { margin-bottom: .5mm; padding-block: .7mm; }
+.page.dsr-page .soa-t td,
+.page.dsr-page .soa-t th { padding-block: .45mm; }
+.page.dsr-page .dsr-acts .soa-t td { line-height: 1.2; }
+.page.dsr-page .dsr-sign { margin-top: 1.5mm; }
+.page.dsr-page .dsr-sign .ds-line { height: 5mm; }
+.page.dsr-page .dsr-ack { padding: 1mm 1.5mm; }
+.page.dsr-page .dsr-ack > b { margin-bottom: .4mm; }
+
 /* Active workplace assignments: show the person's name and workplace mark with a restrained motion. */
 .assigned-work-person { display: flex !important; align-items: center; gap: 9px; min-width: 0; }
 .assigned-work-person > span:last-child { display: grid; gap: 2px; min-width: 0; }
