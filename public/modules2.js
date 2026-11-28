@@ -261,7 +261,6 @@
         <span class="grow"></span>
         ${tools("employees", em, `${em.employee_no} ${fullName(em)}`, { reload: () => V.employee(id), afterDelete: () => (location.hash = "employees") })}
       </div>
-      ${isAdmin() ? `<div id="emCardMini" class="em-card-mini-box"></div>` : ""}
       <div class="tabs" id="emTabs">${(() => { const L = ["Salary Account", `Payslips (${slips.length})`, `Salary Payments (${pays.rows.length})`, "Documents", ...(isAdmin() ? ["Access & Status", "ID Card"] : []), "Details"], d = L.length - 1; // 3.99.397: Details first, open by default
           return [d, ...L.keys()].filter((v, k, x) => x.indexOf(v) === k).map((i) => `<button type="button" class="${i === d ? "on" : ""}" data-t="${i}">${esc(L[i])}</button>`).join(""); })()}</div>
       <div class="tabpanes" id="emPanes">
@@ -325,7 +324,6 @@
     $$("#emTabs button").forEach((t) => (t.onclick = () => { $$("#emTabs button").forEach((x) => x.classList.toggle("on", x === t)); $$("#emPanes > div").forEach((p) => (p.hidden = p.dataset.p !== t.dataset.t)); }));
     E.keepTab("#emTabs", "employee:" + id);
     if (isAdmin() && E.idCardTab) E.idCardTab(em, $("#emCard"), () => V.employee(id)); // 3.21: the ID card (Director only)
-    if (isAdmin() && E.cardMini) E.cardMini($("#emCardMini"), em); // 3.99.391: a small picture of the ID card
     E.bindGrid($("#emSlips"), slips, (r) => (location.hash = "payslip/" + r.id));
     E.bindGrid($("#emPays"), pays.rows, (r) => (location.hash = "payslip/" + r.payslip_id));
     E.bindFiles($("#main"));

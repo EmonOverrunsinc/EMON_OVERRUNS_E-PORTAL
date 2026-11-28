@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.404"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.405"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.404"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.405"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1786,7 +1786,7 @@
       e.preventDefault();
       let q = $("#tbQ").value.trim();
       if (!q) return;
-      // 3.99.404: a new document code (INV / ACK / COV / CLN / RPT-2026-0001) is searched by its record's number
+      // 3.99.405: a new document code (INV / ACK / COV / CLN / RPT-2026-0001) is searched by its record's number
       if (/^(INV|ACK|COV|CLN|RPT)-\d{4}-\d{4,}$/i.test(q)) { const { data: old } = await Promise.resolve(sb.rpc("doc_code_old", { p_code: q })).then((r) => r, () => ({ data: null })); if (old) q = old; }
       $("#tbSpin").hidden = false;
       const h = "find/" + encodeURIComponent(q);
@@ -2943,7 +2943,7 @@
     const map = new Map(data.map((r) => [r.old_no, r.code]));
     nodes.forEach((n) => { n.nodeValue = n.nodeValue.replace(OLD_NO, (x) => map.get(x) || x); });
   }
-  // 3.99.404: the screens and lists show the new codes too: every number shown in the portal is swapped as it appears
+  // 3.99.405: the screens and lists show the new codes too: every number shown in the portal is swapped as it appears
   const codeKnown = new Map(), codeAsk = new Set(); let codeT = 0, codeBusy = false;
   const swapCodes = (root) => {
     if (!root || !S.session) return;
