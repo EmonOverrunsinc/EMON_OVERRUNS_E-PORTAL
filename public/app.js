@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.383"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.384"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.383"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.384"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -135,7 +135,7 @@
     ${[[1, "GOLD", "100,000", "10,000"], [2, "SILVER", "60,000", "6,000"], [3, "BRONZE", "25,000", "3,000"]].map(([k, n, m, p]) => `<tr><td><span class="mr-dot ${MKEY[k]}"></span>#${k} ${n}</td><td>₱ ${m}</td><td>₱ ${p}</td></tr>`).join("")}</tbody></table>
     <p class="mr-small">Week = Monday to Sunday · saved on Monday · a redeemed prize is taken off the balance due</p>`;
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
-  // 3.99.383: VIP = a customer with a credit limit of ₱1,000,000 or more: the gold animated badge near the name (back again)
+  // 3.99.384: VIP = a customer with a credit limit of ₱1,000,000 or more: the gold animated badge near the name (back again)
   const vipBox = (limit) => (num(limit) >= 1000000 ? `<span class="vip-box" title="VIP · credit limit ₱ ${peso(limit)}">${ic("crown")}<b>VIP</b></span>` : "");
   const customerRanks = () => rankList("c-all", () => sb.rpc("customer_ranks"));
   const customerWeeklyWinner = () => rankList("c-weekly-winner", () => sb.rpc("customer_weekly_winner"));
@@ -2857,7 +2857,7 @@
     if (btn.disabled) return;
     const label = btn.innerHTML;
     btn.disabled = true; btn.innerHTML = `<span class="spin sm"></span> Preparing ZIP…`;
-    // 3.99.383: a loading pop-up while the PDF is made; "Downloaded" when it is done
+    // 3.99.384: a loading pop-up while the PDF is made; "Downloaded" when it is done
     const pop = document.createElement("div"); pop.className = "dl-pop"; pop.setAttribute("role", "status");
     pop.innerHTML = `<div class="dl-card"><span class="dl-ring"><i></i></span><b>Preparing your document</b><small>${esc(title)}</small><span class="dl-bar"><i></i></span></div>`;
     document.body.appendChild(pop); requestAnimationFrame(() => pop.classList.add("in"));
