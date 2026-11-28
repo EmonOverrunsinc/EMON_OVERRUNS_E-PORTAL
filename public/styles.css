@@ -6158,3 +6158,5 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .page .ovp-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; padding: 6mm 3mm 3mm; text-align: center; }
 .page .ovp-sign .sl { border-bottom: .3mm solid #0f2a66; height: 8mm; margin-bottom: 1mm; } .page .ovp-sign small { font-size: 7pt; font-weight: 800; letter-spacing: .06em; color: #3d4f75; }
 .page .ovp-note { font-size: 7.4pt; color: #3d4f75; text-align: center; letter-spacing: .04em; }
+/* 3.99.409: no band at the top and the bottom of the documents */
+.page > .pg-band { display: none !important; }
