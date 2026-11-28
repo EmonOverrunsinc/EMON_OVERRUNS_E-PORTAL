@@ -245,7 +245,7 @@
         ${row("ID CARD FEE", feeTxt)}${row("COLLECTION RECEIPT NO", cv?.cv_no, 1)}${row("DATE PAID", cv ? mdy(cv.paid_at || cv.cv_date).toUpperCase() : card.fee_deducted_at ? mdy(card.fee_deducted_at).toUpperCase() : "")}
         ${row("RECEIVED AT OFFICE", card.received_at ? mdy(card.received_at).toUpperCase() : "—")}${row("STATUS", stepName)}</tbody></table>
         <div class="idcol-qr">${qr ? `<img src="${qr}" alt="">` : ""}<small>CODED RECORD · SCAN TO VERIFY</small>
-          ${tpin ? `<div class="idcol-pin"><small>TEMPORARY PIN · ONE TIME</small><b class="mono">${esc(tpin)}</b><small>CHANGE IT AT YOUR FIRST SIGN-IN</small></div>` : ""}</div></div>
+          ${tpin ? `<div class="idcol-pin"><small class="nw">ONE-TIME PIN</small><b class="mono">${esc(tpin)}</b><small>CHANGE IT AT YOUR FIRST SIGN-IN</small></div>` : ""}</div></div>
       <div class="idcol-cards">${front(d)}${back(d)}</div>
       <div class="idcol-terms"><h4>IMPORTANT</h4><ol>
         <li>THIS CARD IS THE PROPERTY OF EMON OVERRUNS. IT IS FOR THE NAMED EMPLOYEE ONLY AND MUST NOT BE LENT OR COPIED.</li>

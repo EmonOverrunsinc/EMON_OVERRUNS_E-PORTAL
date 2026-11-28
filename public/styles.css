@@ -6100,3 +6100,6 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .pin-ok > .ic { width: 44px; height: 44px; padding: 8px; border-radius: 50%; background: #e7f6ee; color: #17794a; stroke: #17794a; }
 .pin-ok b { font-size: 16px; color: #17794a; } .pin-ok small { color: #5b6b8c; }
 .pin-ok-t { border-collapse: collapse; font-size: 13px; } .pin-ok-t th { text-align: left; padding: 4px 12px 4px 0; color: #5b6b8c; font-size: 11px; letter-spacing: .06em; } .pin-ok-t td { padding: 4px 0; font-weight: 800; color: #0f2a66; overflow-wrap: anywhere; }
+/* 3.99.395: the temporary PIN label on one line */
+.page .idcol-pin small { white-space: nowrap; }
+.page .idcol-pin { min-width: 34mm; }
