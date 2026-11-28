@@ -6036,3 +6036,5 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .pf-mmedal.md1 { background: linear-gradient(135deg, #fff4b8, #f5c542); color: #5a3d00; border: 1px solid #e2b33c; }
 .pf-mmedal.md2 { background: linear-gradient(135deg, #f4f6f9, #c9d1dc); color: #37465f; border: 1px solid #aab4c3; }
 .pf-mmedal.md3 { background: linear-gradient(135deg, #f8e2cf, #d39a6a); color: #5a2f0d; border: 1px solid #c0834f; }
+/* 3.99.388: the VIP badge under the customer QR */
+#main .cust-hero .ch-qrid .vip-box { margin: 2px 0 3px; }

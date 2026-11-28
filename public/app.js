@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.387"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.388"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.387"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.388"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -99,7 +99,7 @@
   // line (numbered) and, for a customer, the PRIZE POOL of the year (gold 10,000 · silver 6,000 · bronze 3,000 each)
   const PRIZE = [0, 10000, 6000, 3000], MKEY = ["", "gold", "silver", "bronze"];
   const amt = (v) => Number(v || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  // 3.99.387: the 1st of the month after a monthly medal (its achievement date)
+  // 3.99.388: the 1st of the month after a monthly medal (its achievement date)
   const nextMonth1 = (p) => { const [y, m] = String(p).slice(0, 7).split("-").map(Number); return `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-01`; };
   const achHtml = (a, kind) => {
     if (!a) return `<div class="empty">No achievement yet. It needs the database updates <b>126</b> and <b>130</b>.</div>`;
