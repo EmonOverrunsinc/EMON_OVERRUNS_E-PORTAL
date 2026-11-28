@@ -6069,3 +6069,11 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .page .idcol-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 14mm; margin-top: 16mm; text-align: center; }
 .page .idcol-sign .sl { border-bottom: .3mm solid #0f2a66; height: 14mm; margin-bottom: 1.5mm; }
 .page .idcol-sign b { display: block; font-size: 9pt; color: #0f2a66; } .page .idcol-sign small { font-size: 7.5pt; font-weight: 800; letter-spacing: .08em; color: #5b6b8c; }
+/* 3.99.391: the mini ID card picture on the employee profile; the fee choice */
+.em-card-mini-box:empty { display: none; }
+.em-card-mini-box { margin: 10px 0 4px; }
+.em-card-mini { display: inline-grid; gap: 6px; justify-items: start; padding: 8px; border: 1px solid #d9e1ef; border-radius: 14px; background: #fff; cursor: pointer; max-width: 100%; }
+.em-card-mini img { display: block; width: 300px; max-width: 100%; height: auto; border-radius: 8px; }
+.em-card-mini:hover { box-shadow: 0 4px 14px rgba(15, 42, 102, .12); }
+.idf-fee { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.idf-fee button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; }

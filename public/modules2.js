@@ -263,6 +263,7 @@
         <span class="grow"></span>
         ${tools("employees", em, `${em.employee_no} ${fullName(em)}`, { reload: () => V.employee(id), afterDelete: () => (location.hash = "employees") })}
       </div>
+      ${isAdmin() ? `<div id="emCardMini" class="em-card-mini-box"></div>` : ""}
       <div class="tabs" id="emTabs">${["Salary Account", `Payslips (${slips.length})`, `Salary Payments (${pays.rows.length})`, "Documents", ...(isAdmin() ? ["Access & Status", "ID Card"] : []), "Details"].map((t, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}">${esc(t)}</button>`).join("")}</div>
       <div class="tabpanes" id="emPanes">
         <div data-p="0"><div class="btnrow"><div class="seg" id="emAcctF"><button type="button" class="on" data-f="unpaid">Unpaid Salary</button><button type="button" data-f="all">All</button></div>
@@ -322,6 +323,7 @@
     $$("#emTabs button").forEach((t) => (t.onclick = () => { $$("#emTabs button").forEach((x) => x.classList.toggle("on", x === t)); $$("#emPanes > div").forEach((p) => (p.hidden = p.dataset.p !== t.dataset.t)); }));
     E.keepTab("#emTabs", "employee:" + id);
     if (isAdmin() && E.idCardTab) E.idCardTab(em, $("#emCard"), () => V.employee(id)); // 3.21: the ID card (Director only)
+    if (isAdmin() && E.cardMini) E.cardMini($("#emCardMini"), em); // 3.99.391: a small picture of the ID card
     E.bindGrid($("#emSlips"), slips, (r) => (location.hash = "payslip/" + r.id));
     E.bindGrid($("#emPays"), pays.rows, (r) => (location.hash = "payslip/" + r.payslip_id));
     E.bindFiles($("#main"));
@@ -555,7 +557,20 @@
       `,
       `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" data-save>${ic("check")} Issue Payslip</button>`, { wide: true });
     const d = m.el;
-    let type = "salary";
+    let type = "salary", cardFees = 0;
+    // 3.99.391: an ID card fee chosen as "deduct from salary" goes into Other Deductions of the next payslip
+    const fillCardFee = async (empId) => {
+      cardFees = 0; if (!empId || !isAdmin()) return;
+      const { data } = await sb.rpc("card_fees_to_deduct", { p_employee: empId }).then((r) => r, () => ({ data: null }));
+      if (!data?.length || !d.isConnected) return;
+      cardFees = data.length * 150;
+      const o = $("#psOther", d), n = $("#psDedNote", d);
+      if (o) { o.value = (num(o.value) + cardFees).toFixed(2); o.dispatchEvent(new Event("input", { bubbles: true })); }
+      if (n) n.value = [n.value.trim(), `ID CARD FEE ${data.map((x) => x.card_no).join(", ")}`].filter(Boolean).join(" · ");
+      toast(`₱ ${peso(cardFees)} ID card fee added to Other Deductions.`);
+    };
+    setTimeout(() => fillCardFee(em?.id), 0);
+    if ($("#psEmp", d)) $("#psEmp", d).addEventListener("change", (e) => fillCardFee(e.target.value));
     const emp = () => em || list.find((e) => e.id === $("#psEmp", d).value);
     const val = (id) => { const el = $("#" + id, d); return el && !el.closest(".fpair").hidden ? num(el.value) : 0; };
     const calc = () => {
@@ -594,6 +609,7 @@
       if (error) return missingSql(error, "Could not issue the payslip");
       m.close();
       toast(`Payslip ${data.payslip_no} issued: ₱ ${peso(data.net_pay)} added to ${fullName(e)}'s unpaid salary.`);
+      if (cardFees > 0 && val("psOther") >= 150) sb.rpc("card_fees_deducted", { p_payslip: data.id }).then(() => {}, () => {}); // 3.99.391
       onDone(data);
     };
   }

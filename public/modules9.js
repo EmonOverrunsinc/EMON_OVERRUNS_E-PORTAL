@@ -277,14 +277,14 @@
             ["Card No", "", `<b class="mono">${esc(card.card_no)}</b> ${pill}`],
             ["Issued", `${mdy(card.issued_at)}${card.issued_by_name ? ` · by ${card.issued_by_name}` : ""}`],
             ["Valid Until", mdy(card.valid_until)],
-            ...(card.fee_cv_id ? [["ID Card Fee", "", `<a href="#collection/${esc(card.fee_cv_id)}">₱ 150.00 · PAID</a>`]] : []),
+            ...(card.fee_cv_id ? [["ID Card Fee", "", `<a href="#collection/${esc(card.fee_cv_id)}">₱ 150.00 · PAID</a>`]] : card.fee_method === "salary" ? [["ID Card Fee", "", card.fee_deducted_at ? `₱ 150.00 · <span class="pill approved">DEDUCTED</span>` : `₱ 150.00 · <span class="pill pending">SALARY DEDUCTION · PENDING</span>`]] : []),
             ...(card.activated_at ? [["Activated", `${mdy(card.activated_at)}${card.activated_by_name ? ` · by ${card.activated_by_name}` : ""}`]] : []),
             ["Portal Account", "", em.profile_id ? `<span class="pill approved">LINKED</span>` : `<span class="pill pending">NOT LINKED</span>`],
             ["Printed", card.print_count ? `${card.print_count} time${card.print_count === 1 ? "" : "s"} · last ${mdy(card.last_printed_at)}` : "Not printed yet"]]) : ""}
           ${!card && em.status !== "terminated" ? `<ul class="idf-need">${need.map(([ok, l]) => `<li class="${ok ? "ok" : "no"}">${ic(ok ? "check" : "x")} ${l}</li>`).join("")}</ul>` : ""}
           <div class="btnrow">
             ${stepBtns}
-            ${card ? act("idcPrint", at === "generated" ? "Print File (ZIP)" : "Print / Download ID Card", "print") : ""}
+            ${card ? act("idcPrint", at === "generated" ? "Print File (ZIP)" : "Print / Download ID Card", "lock") : ""}
             ${em.status !== "terminated" ? `<button type="button" class="btn${card ? "" : " primary"}" id="idcNew"${!ready ? " disabled" : ""}>${ic("plus")} Generate New ID</button>` : ""}
             ${card ? `<button type="button" class="btn" id="idcExp">${ic("edit")} Edit Expiration Date</button><button type="button" class="btn danger" id="idcBlock">${ic("x")} Block Card</button>` : ""}
           </div>
@@ -299,8 +299,8 @@
       if (error) return fail(error, /function|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 170 first" : "Could not save this step");
       toast(okText); again();
     };
-    if ($("#idfPrint", el)) $("#idfPrint", el).onclick = () => step("card_send_printing", { p_card: card.id }, "Sent to printing. The ₱150 ID card fee is recorded as paid.",
-      `Send card <b>${esc(card.card_no)}</b> to printing?<br><br>A Collection Voucher of <b>₱ 150.00</b> (ID card fee) is made at once, <b>PAID</b>, and its date is locked.`);
+    if ($("#idfPrint", el)) $("#idfPrint", el).onclick = async () => { const fee = await feeChoice("Send to Printing"); if (!fee) return;
+      step("card_send_printing", { p_card: card.id, p_fee: fee }, fee === "cash" ? "Sent to printing. The ₱150 ID card fee is paid." : "Sent to printing. ₱150 will be deducted from the next salary."); };
     if ($("#idfArrived", el)) $("#idfArrived", el).onclick = () => step("card_arrived", { p_card: card.id }, "Card arrived at the office.");
     if ($("#idfReceived", el)) $("#idfReceived", el).onclick = () => step("card_received_office", { p_card: card.id }, `Received. ${esc(fullName(em))} is told to collect the card at the office.`,
       `The office received card <b>${esc(card.card_no)}</b>?<br><br>${esc(fullName(em))} gets a notification: <b>Please collect your Employee ID at the EMON OVERRUNS Office.</b>`);
@@ -313,11 +313,16 @@
       if (!att) return toast("The record could not be found after upload.", true);
       step("card_collected", { p_card: card.id, p_attachment: att.id }, "Signed record saved. The card can now be activated.");
     };
-    if ($("#idfActivate", el)) $("#idfActivate", el).onclick = () => step("activate_employee_card", { p_card: card.id }, `Card ${card.card_no} is ACTIVE.`,
-      at === "old" ? `Activate card <b>${esc(card.card_no)}</b> of <b>${esc(fullName(em))}</b>?<br><br>It was issued before the new steps; nothing on the printed card changes.` : `Activate card <b>${esc(card.card_no)}</b>? ${esc(fullName(em))} can use it at once.`);
+    if ($("#idfActivate", el)) $("#idfActivate", el).onclick = async () => {
+      const fee = card.fee_method ? null : await feeChoice(`Activate ${card.card_no}`); if (!card.fee_method && !fee) return;
+      step("activate_employee_card", { p_card: card.id, p_fee: fee }, `Card ${card.card_no} is ACTIVE.`, card.fee_method ? `Activate card <b>${esc(card.card_no)}</b>? ${esc(fullName(em))} can use it at once.` : null); };
     if ($("#idcPrint", el)) $("#idcPrint", el).onclick = async () => {
-      const { data: code, error } = await sb.rpc("employee_card_code", { p_card: card.id });
+      // 3.99.391: printing / downloading needs the Director's ID card (scanned) and PIN
+      const auth = await directorAuth(`Print / download ID card ${card.card_no}`); if (!auth) return;
+      const { data: res, error } = await sb.rpc("card_print_code", { p_card: card.id, p_code: auth.code, p_pin: auth.pin });
       if (error) return fail(error, "Could not print the ID card");
+      if (!res?.ok) return toast(res?.why || "Not authorized.", true);
+      const code = res.code;
       const seal = E.sealCode ? await E.sealCode("idcard", card.card_no) : ""; // 3.99.123: the card's unique seal no
       E.openPreview(`${fullName(em).toUpperCase()} ${card.card_no}`, [sheet({ ...d, seal, qr: E.qrDataUrl(code) })], { bare: true, trx: card.id }); // 3.99.275: the file is named NAME EOID
       again();
@@ -352,6 +357,7 @@
   // ---------- the employee's ID card in My Profile (3.28: signs in with the card and the account password, no PIN) ----------
   async function cardInfoBox(el, employee) {
     if (!el) return;
+    if (isAdmin()) setTimeout(() => pinBox(el), 0); // 3.99.391: the Director's authorization PIN
     el.innerHTML = `<fieldset class="opt"><legend>My ID Card</legend><div class="own-id-page" aria-live="polite">Loading card…</div></fieldset>`;
     const box = el.querySelector(".own-id-page");
     const { data: card, error } = await sb.rpc("my_id_card");
@@ -373,31 +379,58 @@
       box.innerHTML = `<div class="idc-pair screen">${front(details)}${back(details)}</div><small>Original PDF unavailable.</small>`;
       return;
     }
-    const url = URL.createObjectURL(file);
-    box.innerHTML = `<div data-card-page></div>`; // 3.99.376: only the card picture (no ZIP / PDF buttons)
-    const release = new MutationObserver(() => {
-      if (box.isConnected) return;
-      release.disconnect();
-      URL.revokeObjectURL(url);
-    });
-    release.observe(document.body, { childList: true, subtree: true });
+    box.innerHTML = `<div data-card-page>Loading card…</div>`; // 3.99.376: only the card picture (no ZIP / PDF buttons)
     const pageBox = box.querySelector("[data-card-page]");
-    let task;
+    const png = await cardPng(file, Math.max(1, pageBox.clientWidth * 2)).catch(() => "");
+    if (!box.isConnected) return;
+    if (!png) { pageBox.textContent = "Your card could not be shown."; return; }
+    const img = new Image(); img.className = "own-id-img"; img.alt = "ID card " + card.card_no; img.src = png;
+    pageBox.replaceChildren(img);
+    // 3.99.391: downloading the card needs the Director (scan the Director's ID card and type the PIN)
+    const btn = document.createElement("div"); btn.className = "btnrow";
+    btn.innerHTML = `<button type="button" class="btn" data-dl>${ic("lock")} Download ID Card</button>`;
+    box.appendChild(btn);
+    btn.querySelector("[data-dl]").onclick = async () => {
+      const ok = await directorAuth(`Download ID card ${card.card_no}`);
+      if (!ok) return;
+      const a = document.createElement("a"); a.href = png; a.download = `${card.card_no}.png`; document.body.appendChild(a); a.click(); a.remove();
+      toast("ID card downloaded.");
+    };
+  }
+
+  // 3.99.391: the Director's authorization PIN (to print / download ID cards), set or changed in My Profile
+  async function pinBox(el) {
+    if (!el?.isConnected || el.querySelector(".pin-box")) return;
+    const { data: set } = await sb.rpc("my_pin_set").then((r) => r, () => ({ data: null }));
+    if (!el.isConnected || set === null) return;
+    el.insertAdjacentHTML("beforeend", `<fieldset class="opt pin-box"><legend>Authorization PIN</legend><p class="muted" style="margin-top:0">Printing or downloading any ID card needs your ID card (scanned) and this PIN.</p>
+      <div class="btnrow"><span class="pill ${set ? "approved" : "pending"}">${set ? "PIN SET" : "NO PIN YET"}</span><button type="button" class="btn" data-pin>${ic("key")} ${set ? "Change PIN" : "Set PIN"}</button></div></fieldset>`);
+    el.querySelector("[data-pin]").onclick = () => {
+      const m = E.modal("Authorization PIN", `<label for="pn1">New PIN (4 numbers)</label><input id="pn1" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">
+        <label for="pn2">Type it again</label><input id="pn2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">`,
+        `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="pnOk">${ic("check")} Save PIN</button>`);
+      $("[data-x]", m.el).onclick = () => m.close();
+      $("#pnOk", m.el).onclick = async () => {
+        const a = $("#pn1", m.el).value.trim(), b = $("#pn2", m.el).value.trim();
+        if (!/^[0-9]{4}$/.test(a)) return toast("The PIN is 4 numbers.", true);
+        if (a !== b) return toast("The two PINs are not the same.", true);
+        const { error } = await sb.rpc("set_card_pin", { p_pin: a });
+        if (error) return fail(error, "Could not save the PIN");
+        m.close(); toast("PIN saved."); el.querySelector(".pin-box")?.remove(); pinBox(el);
+      };
+    };
+  }
+
+  // 3.99.391: the saved card PDF as a PNG of the two card sides (no white page, no crop marks, no TRX line)
+  async function cardPng(file, wantWidth = 900) {
+    const renderer = await import("./vendor/pdfjs-4.10.38/pdf.min.mjs");
+    renderer.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdfjs-4.10.38/pdf.worker.min.mjs", document.baseURI).href;
+    const task = renderer.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false });
     try {
-      const renderer = await import("./vendor/pdfjs-4.10.38/pdf.min.mjs");
-      renderer.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdfjs-4.10.38/pdf.worker.min.mjs", document.baseURI).href;
-      task = renderer.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false });
-      const doc = await task.promise;
-      if (!box.isConnected) return;
-      const page = await doc.getPage(1);
-      const base = page.getViewport({ scale: 1 });
-      const viewport = page.getViewport({ scale: Math.min(1800 / Math.max(base.width, base.height), Math.max(1, pageBox.clientWidth * 2 / base.width)) });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
-      canvas.setAttribute("role", "img");
-      canvas.setAttribute("aria-label", "ID card " + card.card_no);
+      const doc = await task.promise, page = await doc.getPage(1), base = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: Math.min(1800 / Math.max(base.width, base.height), Math.max(1, wantWidth / base.width)) });
+      const canvas = document.createElement("canvas"); canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
       await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
-      // 3.99.376: cut the page down to the two card sides (no white page, no crop marks, no TRX line) and show it as a PNG
       const g = canvas.getContext("2d"), W = canvas.width, H = canvas.height, px = g.getImageData(0, 0, W, H).data;
       const ink = (i) => px[i] < 242 || px[i + 1] < 242 || px[i + 2] < 242;
       const rows = new Array(H).fill(0), cols = new Array(W).fill(0);
@@ -408,13 +441,62 @@
       if (y0 < 0 || x0 < 0 || y1 <= y0 || x1 <= x0) { y0 = 0; x0 = 0; y1 = H - 1; x1 = W - 1; }
       const out = document.createElement("canvas"); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
       out.getContext("2d").drawImage(canvas, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
-      const img = new Image(); img.className = "own-id-img"; img.alt = "ID card " + card.card_no; img.src = out.toDataURL("image/png");
-      pageBox.replaceChildren(img);
-    } catch {
-      pageBox.textContent = "Your card could not be shown.";
-    } finally {
-      if (task) await task.destroy();
-    }
+      return out.toDataURL("image/png");
+    } finally { await task.destroy(); }
+  }
+
+  // 3.99.391: the employee profile: a small picture of the active ID card (from its saved PDF)
+  async function cardMini(el, em) {
+    if (!el || !isAdmin()) return;
+    const { data: card } = await sb.from("employee_cards").select("card_no, stage, activated_at").eq("employee_id", em.id).eq("status", "active").maybeSingle();
+    if (!card || !el.isConnected) return;
+    const { data: file } = await sb.storage.from("eoid-originals").download(card.card_no + ".pdf");
+    if (!file || !el.isConnected) return;
+    const png = await cardPng(file, 640).catch(() => "");
+    if (!png || !el.isConnected) return;
+    const live = card.stage === "active" || (!card.stage && card.activated_at);
+    el.innerHTML = `<button type="button" class="em-card-mini" title="ID card ${esc(card.card_no)}"><img src="${png}" alt="ID card ${esc(card.card_no)}"><span class="pill ${live ? "approved" : "pending"}">${esc(card.card_no)} · ${live ? "ACTIVE" : "NOT ACTIVE"}</span></button>`;
+    el.querySelector("button").onclick = () => { const t = [...document.querySelectorAll("#emTabs button")].find((b) => /ID Card/.test(b.textContent)); if (t) { t.click(); t.scrollIntoView({ behavior: "smooth", block: "start" }); } };
+  }
+
+  // 3.99.391: THE DIRECTOR'S AUTHORIZATION: scan the Director's own ID card, type the 4-number PIN. Gives { code, pin } or null.
+  function directorAuth(what) {
+    return new Promise((resolve) => {
+      let code = "", done = false;
+      const m = E.modal("Director Authorization", `<p class="muted" style="margin-top:0">${esc(what)} needs the Director: scan the Director's ID card and type the PIN.</p>
+        <div class="btnrow"><button type="button" class="btn" id="daScan">${ic("camera")} Scan Director's ID Card</button><span id="daCard" class="muted">No card scanned</span></div>
+        <label for="daPin">Director's PIN</label><input id="daPin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 numbers">
+        <div id="daMsg" class="muted" role="status"></div>`,
+        `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="daOk">${ic("check")} Authorize</button>`, { onClose: () => { if (!done) resolve(null); } });
+      const end = (v) => { done = true; m.close(); resolve(v); };
+      $("[data-x]", m.el).onclick = () => end(null);
+      $("#daScan", m.el).onclick = () => E.scanDialog((t) => { code = String(t || "").trim(); $("#daCard", m.el).textContent = /^EMONID\|EOID-/i.test(code) ? `Card ${code.split("|")[1]}` : "Not an ID card QR"; $("#daPin", m.el).focus(); },
+        { title: "Scan the Director's ID Card", hint: "Hold the back of the Director's ID card (the QR code) in front of the camera.", photo: false });
+      $("#daOk", m.el).onclick = async () => {
+        const pin = $("#daPin", m.el).value.trim();
+        if (!code) return ($("#daMsg", m.el).textContent = "Scan the Director's ID card first.");
+        if (!/^[0-9]{4}$/.test(pin)) return ($("#daMsg", m.el).textContent = "Type the 4-number PIN.");
+        const { data, error } = await sb.rpc("director_authorize", { p_code: code, p_pin: pin });
+        if (error) return fail(error, /function|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 171 first" : "Could not check the authorization");
+        if (!data?.ok) { $("#daMsg", m.el).textContent = data?.why || "Not authorized."; $("#daPin", m.el).value = ""; return; }
+        toast(`Authorized by ${data.name}.`); end({ code, pin });
+      };
+    });
+  }
+  // 3.99.391: how the PHP 150 ID card fee is paid: cash now, or deducted from the next salary
+  function feeChoice(title) {
+    return new Promise((resolve) => {
+      let done = false;
+      const m = E.modal(title, `<p style="margin-top:0">The ID card fee is <b>₱ 150.00</b>. How is it paid?</p>
+        <div class="seg idf-fee"><button type="button" class="on" data-fee="cash">${ic("wallet")} Paid in Cash</button><button type="button" data-fee="salary">${ic("receipt")} Deduct from Salary</button></div>
+        <p class="muted" id="idfFeeNote">A Collection Voucher of ₱ 150.00 is made, PAID, its date locked.</p>`,
+        `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="idfFeeOk">${ic("check")} Continue</button>`, { onClose: () => { if (!done) resolve(null); } });
+      let fee = "cash";
+      m.el.querySelectorAll("[data-fee]").forEach((b) => (b.onclick = () => { fee = b.dataset.fee; m.el.querySelectorAll("[data-fee]").forEach((x) => x.classList.toggle("on", x === b));
+        $("#idfFeeNote", m.el).textContent = fee === "cash" ? "A Collection Voucher of ₱ 150.00 is made, PAID, its date locked." : "₱ 150.00 is taken from the employee's next payslip (Other Deductions)."; }));
+      $("[data-x]", m.el).onclick = () => { done = true; m.close(); resolve(null); };
+      $("#idfFeeOk", m.el).onclick = () => { done = true; m.close(); resolve(fee); };
+    });
   }
 
   // ---------- a scanned card (anyone): who it belongs to and whether it is valid ----------
@@ -439,5 +521,5 @@
     if (open) $("[data-open]", m.el).onclick = () => { m.close(); location.hash = "employee/" + r.data.employee_id; };
   }
 
-  Object.assign(E, { saveApprovedCard, retryCardPdfs, idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet }); // idCardSheet: for the print checks
+  Object.assign(E, { saveApprovedCard, retryCardPdfs, idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet, cardMini, directorAuth }); // idCardSheet: for the print checks
 })();
