@@ -5965,3 +5965,11 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .rk-tabs { display: flex; gap: 6px; margin: 0 0 10px; padding: 4px; background: #eef2f7; border-radius: 12px; }
 .rk-tabs button { flex: 1; border: 0; background: none; padding: 8px 6px; border-radius: 9px; font-weight: 700; color: #42506b; cursor: pointer; }
 .rk-tabs button.on { background: #fff; color: #0f2a66; box-shadow: 0 1px 3px rgba(15, 35, 80, .12); }
+/* 3.99.375: the cash stamp, layout 2: a status band on top, two rows below (label left, amount right) */
+.page.dsr-page .dsr-close .eo-stamp.vst { padding: 0 !important; gap: 0 !important; min-width: 62mm; overflow: hidden; border-width: .5mm; border-radius: 1.6mm; justify-items: stretch !important; background: #fff !important; }
+.page.dsr-page .dsr-close .eo-stamp.vst > b { display: block; text-align: center; padding: 1.4mm 3mm; background: var(--ink); color: #fff; font-size: 9.5pt; letter-spacing: .22em; }
+.page.dsr-page .dsr-close .eo-stamp.vst .st-rows { display: grid; padding: 1.6mm 3.2mm 1.8mm; gap: .9mm; }
+.page.dsr-page .dsr-close .eo-stamp.vst em { display: flex !important; justify-content: space-between; gap: 6mm; font-size: 8pt !important; font-weight: 800; }
+.page.dsr-page .dsr-close .eo-stamp.vst em + em { border-top: .25mm dashed #cfd6e4 !important; padding-top: .9mm !important; }
+.page.dsr-page .dsr-close .eo-stamp.vst em i { font-style: normal; letter-spacing: .1em; }
+.page.dsr-page .dsr-close .eo-stamp.vst em u { text-decoration: none; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0; }

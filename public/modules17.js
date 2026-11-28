@@ -700,7 +700,7 @@
   const STAFF_SEL = "employee_id, employees(id, first_name, last_name, employee_no, position, profile_id)";
   const need114 = (er, word) => (new RegExp(word).test((er && er.message) || "") ? "Run the database update 114 first" : null);
   function staffHtml(st, outlet) {
-    return `${st.length ? st.map((x) => `<div class="ol-emp"><a class="assigned-work-person" href="#employee/${esc(x.employee_id)}">${storeLogo(outlet, "wp-logo")}<span><b>${esc(empName(x.employees))}${x.role ? ` <span class="st-role ${x.role === "authorizer" ? "auth" : ""}">${x.role === "authorizer" ? "AUTHORIZER" : "EMPLOYEE"}</span>` : ""}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></span></a>${isAdmin() ? `<span class="ol-emp-btns">${x.role ? `<button type="button" class="btn small" data-strole="${esc(x.employee_id)}" data-to="${x.role === "authorizer" ? "employee" : "authorizer"}">${x.role === "authorizer" ? "Make Employee" : "Make Authorizer"}</button>` : ""}<button type="button" class="btn small" data-stmove="${esc(x.employee_id)}">${ic("next")} Transfer</button><button type="button" class="btn small" data-stdel="${esc(x.employee_id)}" title="Remove">${ic("x")}</button></span>` : ""}</div>`).join("") : empty("No employee assigned.")}
+    return `${st.length ? st.map((x) => `<div class="ol-emp"><a class="assigned-work-person" href="#employee/${esc(x.employee_id)}">${outlet ? storeLogo(outlet, "wp-logo") : `<span class="wp-ic">${ic("building")}</span>`}<span><b>${esc(empName(x.employees))}${x.role ? ` <span class="st-role ${x.role === "authorizer" ? "auth" : ""}">${x.role === "authorizer" ? "AUTHORIZER" : "EMPLOYEE"}</span>` : ""}</b><small>${esc([x.employees?.employee_no, x.employees?.position].filter(Boolean).join(" · "))}</small></span></a>${isAdmin() ? `<span class="ol-emp-btns">${x.role ? `<button type="button" class="btn small" data-strole="${esc(x.employee_id)}" data-to="${x.role === "authorizer" ? "employee" : "authorizer"}">${x.role === "authorizer" ? "Make Employee" : "Make Authorizer"}</button>` : ""}<button type="button" class="btn small" data-stmove="${esc(x.employee_id)}">${ic("next")} Transfer</button><button type="button" class="btn small" data-stdel="${esc(x.employee_id)}" title="Remove">${ic("x")}</button></span>` : ""}</div>`).join("") : empty("No employee assigned.")}
       ${isAdmin() ? `<div class="btnrow"><button type="button" class="btn small" data-stadd>${ic("plus")} Assign Employee</button></div>` : ""}`;
   }
   function bindStaff(root, kind, place, st) {
@@ -956,7 +956,7 @@
     // 3.99.229: the CASH LEFT stamp: nothing left: VERIFIED; cash left: VERIFIED once the next sales record took it (its date,
     // record no, TRX ID and system time), PENDING until then; less than nothing: CASH SHORT
     const vst = (cls, lines) => `<div class="dsr-cash"><span class="eo-stamp vst ${cls}">${lines}</span></div>`;
-    const stampAmount = `<em class="st-out">CASH OUT ₱ ${P(paidOut)}</em><em class="st-left">CASH LEFT ₱ ${P(left)}</em>`; // 3.99.375: out green, left red
+    const stampAmount = `<span class="st-rows"><em class="st-out"><i>CASH OUT</i><u>₱ ${P(paidOut)}</u></em><em class="st-left"><i>CASH LEFT</i><u>₱ ${P(left)}</u></em></span>`; // 3.99.375: out green, left red; label left, amount right
     const cashStamp = !r.id ? "" : left < 0 ? vst("bad", `<b>CASH SHORT</b>${stampAmount}`)
       : Math.abs(left) < 0.005 || after ? vst("ok", `<b>✔ VERIFIED</b>${stampAmount}`)
       : vst("wait", `<b>PENDING</b>${stampAmount}`);
