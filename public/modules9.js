@@ -229,7 +229,8 @@
   async function collectionRecord(em, card, d) {
     const seal = E.sealCode ? await E.sealCode("idcard", card.card_no).catch(() => "") : "";
     const qr = E.qrDataUrl(`EMONIDC|${card.card_no}|${seal || card.id.replace(/-/g, "").slice(0, 16).toUpperCase()}`);
-    const nm = fullName(em).toUpperCase(), row = (k, v, mono) => `<tr><th>${k}</th><td${mono ? ' class="mono"' : ""}>${esc(v || "—")}</td></tr>`;
+    const nm = fullName(em).toUpperCase(), cell = (k, v, mono) => `<th>${k}</th><td${mono ? ' class="mono"' : ""}>${esc(v || "—")}</td>`,
+      pairRows = (cs) => { const r = []; for (let i = 0; i < cs.length; i += 2) r.push(`<tr>${cs[i]}${cs[i + 1] || "<th></th><td></td>"}</tr>`); return r.join(""); }; // 3.99.400: label | value | label | value, lined up
     // 3.99.393: the application, the fee receipt and the card's step
     const [cv, app] = await Promise.all([card.fee_cv_id ? sb.from("collection_vouchers").select("cv_no, cv_date, paid_at").eq("id", card.fee_cv_id).maybeSingle().then((r) => r.data, () => null) : null,
       em.job_application_id ? sb.from("job_applications").select("application_no, created_at").eq("id", em.job_application_id).maybeSingle().then((r) => r.data, () => null) : null]);
@@ -239,11 +240,7 @@
     const feeTxt = card.fee_method === "salary" ? `PHP 150.00 · SALARY DEDUCTION${card.fee_deducted_at ? " · DEDUCTED" : " · PENDING"}` : cv ? "PHP 150.00 · PAID" : "—";
     const page = `<div class="idcol">${E.printHead ? E.printHead("EMPLOYEE IDENTIFICATION CARD", `<div class="soa-no"><small>CARD NO</small><b class="mono">${esc(card.card_no)}</b><small>${esc(mdy(E.isoToday()).toUpperCase())}</small></div>`).replace('<i class="ph-gl"></i>', '<i class="ph-gl"></i><div class="ph-sub">COLLECTION · PHYSICAL CARD</div>') : `<h2>COLLECTION · EMPLOYEE IDENTIFICATION CARD</h2>`}
       <div class="idcol-top"><table class="idcol-t"><tbody>
-        ${row("APPLICATION NO", app?.application_no || d.appNo, 1)}${row("APPLICATION DATE", mdy(app?.created_at || em.created_at).toUpperCase())}
-        ${row("NAME", nm)}${row("EMPLOYEE NO", em.employee_no, 1)}${row("POSITION", String(em.position || "").toUpperCase())}${row("CARD NO", card.card_no, 1)}
-        ${row("ISSUED", mdy(card.issued_at).toUpperCase())}${row("VALID UNTIL", mdy(card.valid_until).toUpperCase())}
-        ${row("ID CARD FEE", feeTxt)}${row("COLLECTION RECEIPT NO", cv?.cv_no, 1)}${row("DATE PAID", cv ? mdy(cv.paid_at || cv.cv_date).toUpperCase() : card.fee_deducted_at ? mdy(card.fee_deducted_at).toUpperCase() : "")}
-        ${row("RECEIVED AT OFFICE", card.received_at ? mdy(card.received_at).toUpperCase() : "—")}${row("STATUS", stepName)}</tbody></table>
+        ${pairRows([cell("APPLICATION NO", app?.application_no || d.appNo, 1), cell("APPLICATION DATE", mdy(app?.created_at || em.created_at).toUpperCase()), cell("NAME", nm), cell("EMPLOYEE NO", em.employee_no, 1), cell("POSITION", String(em.position || "").toUpperCase()), cell("CARD NO", card.card_no, 1), cell("ISSUED", mdy(card.issued_at).toUpperCase()), cell("VALID UNTIL", mdy(card.valid_until).toUpperCase()), cell("ID CARD FEE", feeTxt), cell("COLLECTION RECEIPT NO", cv?.cv_no, 1), cell("DATE PAID", cv ? mdy(cv.paid_at || cv.cv_date).toUpperCase() : card.fee_deducted_at ? mdy(card.fee_deducted_at).toUpperCase() : ""), cell("RECEIVED AT OFFICE", card.received_at ? mdy(card.received_at).toUpperCase() : "—"), cell("STATUS", stepName)])}</tbody></table>
         <div class="idcol-qr">${qr ? `<img src="${qr}" alt="">` : ""}<small>CODED RECORD · SCAN TO VERIFY</small>
           ${tpin ? `<div class="idcol-pin"><small class="nw">ONE-TIME PIN</small><b class="mono">${esc(tpin)}</b><small>CHANGE IT AT YOUR FIRST SIGN-IN</small></div>` : ""}</div></div>
       <div class="idcol-cards">${front(d)}${back(d)}</div>

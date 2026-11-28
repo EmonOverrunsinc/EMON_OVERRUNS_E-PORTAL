@@ -6121,3 +6121,10 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .page > .pg-band.bottom::before, .page > .pg-band.bottom::after { width: 8mm; }
 /* 3.99.399: no diagonal strokes: only the straight gold lines and the thin blue between */
 .page > .pg-band::before, .page > .pg-band::after { content: none; display: none; }
+/* 3.99.400: the collection paper details as a real table: 4 columns lined up, grid lines, labels on a light blue ground */
+.page .idcol-t { width: 100%; border-collapse: collapse; table-layout: fixed; border: .25mm solid #b9c7e2; }
+.page .idcol-t tbody { display: table-row-group !important; }
+.page .idcol-t tr { display: table-row !important; border: 0 !important; }
+.page .idcol-t th, .page .idcol-t td { display: table-cell; border: .25mm solid #b9c7e2 !important; padding: 1.3mm 1.8mm !important; vertical-align: middle; }
+.page .idcol-t th { width: 25%; background: #eef3fb; color: #3d4f75; font-size: 6.6pt !important; font-weight: 800; letter-spacing: .04em; line-height: 1.25; }
+.page .idcol-t td { width: 25%; font-size: 7.8pt !important; font-weight: 800; color: #0f2a66; overflow-wrap: anywhere; }
