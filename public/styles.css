@@ -6144,3 +6144,5 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 /* 3.99.402: the Director's blue name stamp under Released By; the RELEASED stamp straight, like the shop stamps */
 .page .idcol-sign .idcol-boss { display: flex; justify-content: center; margin: .5mm 0 1mm; }
 .page .idcol-rstamp { transform: none; }
+/* 3.99.407: the customer QR Copy button big enough to tap on a phone */
+#main .cust-hero .ch-qrid .linkbtn { min-height: 32px !important; padding: 4px 10px !important; }

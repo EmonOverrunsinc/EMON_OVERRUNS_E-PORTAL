@@ -172,7 +172,7 @@
       }
       const id = E.uuid();
       const photo_path = await uploadPhoto("employee", id, $("#nePhoto").files[0]);
-      let { data, error } = await sb.from("employees").insert({ id, ...rec, photo_path, ...readAccess(), approval_status: "pending" /* 3.25: EMON HASAN approves it next; the ID card is made then */ }).select().single();
+      let { data, error } = await sb.from("employees").insert({ id, ...rec, photo_path, ...readAccess(), approval_status: "pending" /* 3.25: EMON HASAN approves it next; then the ID card is generated (3.99.390) */ }).select().single();
       if (error && /work_location|sss_/.test(error.message || "")) { delete rec.work_location; delete rec.sss_no; delete rec.sss_amount; ({ data, error } = await sb.from("employees").insert({ id, ...rec, photo_path, ...readAccess(), approval_status: "pending" }).select().single()); } // the server has not 092 yet
       if (error) { E.setBusy(e.target, false); return fail(error, /approval_status/.test(error.message || "") ? "Run the database update 035_employee_approval.sql first" : "Could not save the employee"); }
       let f = await E.uploadRecords("employee", id, "application", E.filesOf("neApp"));
@@ -335,13 +335,12 @@
     // 3.58: the salary account shows the unpaid salary first; All shows every payslip and payment
     $$("#emAcctF button").forEach((b) => (b.onclick = () => { $$("#emAcctF button").forEach((x) => x.classList.toggle("on", x === b)); $("#emAcctU").hidden = b.dataset.f !== "unpaid"; $("#emAcctA").hidden = b.dataset.f === "unpaid"; }));
     E.bindGrid($("#emAcctU"), slips.filter((p) => num(p.balance) > 0), (r) => (location.hash = "payslip/" + r.id));
-    // 3.25: the Director approves a new employee: the ID card is made and the login opens
+    // 3.25: the Director approves a new employee: the login opens (the ID card is generated after, 3.99.390)
     if ($("#emApprove")) $("#emApprove").onclick = async () => {
-      if (!(await E.confirmBox(`Approve <b>${esc(fullName(em))}</b> (${esc(em.employee_no)}) with the access <b>${esc(accessText(em.role, em.modules))}</b>?<br><br>The employee ID card is made now and the login opens.`, { ok: "Approve Employee" }))) return;
+      if (!(await E.confirmBox(`Approve <b>${esc(fullName(em))}</b> (${esc(em.employee_no)}) with the access <b>${esc(accessText(em.role, em.modules))}</b>?<br><br>The login opens. Then generate the ID card in the <b>ID Card</b> tab.`, { ok: "Approve Employee" }))) return;
       const { data, error } = await sb.rpc("approve_employee", { p_id: id });
       if (error) return fail(error, "Could not approve the employee");
-      toast(`${data.employee_no} approved. Saving the ID card PDF…`);
-      if (await E.saveApprovedCard(id)) toast("ID card PDF saved.");
+      toast(`${data.employee_no} approved. Next: ID Card tab → Generate New ID.`);
       V.employee(id);
     };
     // 3.23: the Director adds or changes the employee photo (it is also the photo on the ID card)
