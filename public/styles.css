@@ -6103,3 +6103,14 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 /* 3.99.395: the temporary PIN label on one line */
 .page .idcol-pin small { white-space: nowrap; }
 .page .idcol-pin { min-width: 34mm; }
+/* 3.99.398: the company band on every document page: the app blue, gold edge lines and gold diagonal strokes
+   at the ends (like the ID lanyard); a band at the top edge and a thinner one at the bottom edge, outside the content */
+.page > .pg-band { position: absolute; left: 0; right: 0; z-index: 3; pointer-events: none; overflow: hidden;
+  background: #134299; /* the app's own blue (top bar), no dark shading */
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page > .pg-band.top { top: 0; height: 6mm; border-bottom: .7mm solid #f2b705; }
+.page > .pg-band.bottom { bottom: 0; height: 2.6mm; border-top: .6mm solid #f2b705; }
+.page > .pg-band::before, .page > .pg-band::after { content: ""; position: absolute; top: -2mm; bottom: -2mm; width: 26mm;
+  background: linear-gradient(115deg, transparent 0 47%, #f2b705 47% 49.5%, transparent 49.5% 100%); }
+.page > .pg-band::before { left: 0; } .page > .pg-band::after { right: 0; transform: scaleX(-1); }
+.page > .pg-band.bottom::before, .page > .pg-band.bottom::after { width: 14mm; }
