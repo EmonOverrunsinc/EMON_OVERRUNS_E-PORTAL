@@ -6114,3 +6114,10 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
   background: linear-gradient(115deg, transparent 0 47%, #f2b705 47% 49.5%, transparent 49.5% 100%); }
 .page > .pg-band::before { left: 0; } .page > .pg-band::after { right: 0; transform: scaleX(-1); }
 .page > .pg-band.bottom::before, .page > .pg-band.bottom::after { width: 14mm; }
+/* 3.99.399: the band thin: gold lines on both edges, only a little blue inside */
+.page > .pg-band.top { height: 1.6mm; border-top: .6mm solid #f2b705; border-bottom: .6mm solid #f2b705; }
+.page > .pg-band.bottom { height: 1.2mm; border-top: .5mm solid #f2b705; border-bottom: .5mm solid #f2b705; }
+.page > .pg-band::before, .page > .pg-band::after { width: 10mm; top: -1mm; bottom: -1mm; }
+.page > .pg-band.bottom::before, .page > .pg-band.bottom::after { width: 8mm; }
+/* 3.99.399: no diagonal strokes: only the straight gold lines and the thin blue between */
+.page > .pg-band::before, .page > .pg-band::after { content: none; display: none; }
