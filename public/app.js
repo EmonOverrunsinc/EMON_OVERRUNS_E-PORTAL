@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.410"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.411"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.410"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.411"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -3004,11 +3004,32 @@
   }
 
   // Measure at the paper's physical width. Move intact boxes first, then split a long table between rows.
+  // 3.99.411: a paper only a little too long for one sheet (up to about 30% over) is shrunk evenly to fit ONE page: it still
+  // starts at the top, the space left stays at the bottom; longer papers (lists, statements) go on to more pages as before
+  function fitOnePage(pg, height) {
+    if (pg.classList.contains("bare") || pg.querySelector(":scope > .pg-fit")) return;
+    const over = pg.scrollHeight;
+    if (over <= height + 2 || over > height * 1.32) return;
+    const css = getComputedStyle(pg), avail = height - parseFloat(css.paddingTop) - Math.max(34, parseFloat(css.paddingBottom)) - 12;
+    const kids = [...pg.childNodes].filter((n) => !(n.nodeType === 1 && getComputedStyle(n).position === "absolute"));
+    const box = document.createElement("div"); box.className = "pg-fit";
+    kids.forEach((k) => box.appendChild(k)); pg.prepend(box);
+    let f = Math.min(1, avail / box.offsetHeight);
+    for (let t = 0; t < 6 && f > 0.7; t++) {
+      box.style.cssText = `width:${100 / f}%;transform:scale(${f});transform-origin:top left;margin-bottom:0`;
+      const h = box.offsetHeight; box.style.marginBottom = `${-(1 - f) * h}px`;
+      if (h * f <= avail + 1) break;
+      f = Math.min(f - 0.01, avail / h);
+    }
+    if (pg.scrollHeight > height + 2) { kids.forEach((k) => pg.insertBefore(k, box)); box.remove(); } // still too long: back as it was, split as before
+  }
   function paginatePaper(desk) {
     const zoom = desk.style.zoom;
     desk.style.zoom = 1;
     try {
       for (const first of $$(".page", desk)) {
+        { const sh = first.getBoundingClientRect(), land = first.matches(".a4l,.landscape");
+          fitOnePage(first, sh.width * (first.matches(".a5l") ? 148 / 210 : land ? 210 / 297 : 297 / 210)); }
         let pg = first;
         while (pg) {
           const sheet = pg.getBoundingClientRect(), landscape = pg.matches(".a4l,.landscape");
