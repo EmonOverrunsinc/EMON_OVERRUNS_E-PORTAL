@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.389"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.390"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.389"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.390"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1092,7 +1092,7 @@
       }
       if (data.state === "account_exists") return msg("warn", `<b>You already have a portal account with your email ${esc(data.email_hint || "")}.</b> Sign in with your email and password, and ask EMON HASAN to link it to your employee profile.`);
       const why = { no_account: "The first sign-in with the ID card needs the database update 039_card_first_password.sql. Ask EMON HASAN.", blocked: "Your login is blocked. Ask EMON HASAN.",
-        replaced: "This ID card was replaced by a newer card. Use your new ID card.", ended: "This ID card is no longer valid.",
+        replaced: "This ID card was replaced by a newer card. Use your new ID card.", ended: "This ID card is no longer valid.", inactive: "This ID card is not activated yet. Ask EMON HASAN.",
         expired: `This ID card expired on ${esc(mdy(data.valid_until))}. Ask EMON HASAN for a new card.`, invalid: "This ID card is not valid." }[data.state] || "This ID card cannot sign in.";
       msg("err", why);
       if (data.state === "invalid") r.hidden = true;

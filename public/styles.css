@@ -6041,3 +6041,31 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 /* 3.99.389: the monthly rank badge: a crown in the rank's colour */
 .pf-mmedal .ic { width: 15px; height: 15px; margin-left: 3px; }
 .pf-mmedal.md1 .ic { stroke: #5a3d00; fill: rgba(255,255,255,.45); } .pf-mmedal.md2 .ic { stroke: #37465f; } .pf-mmedal.md3 .ic { stroke: #5a2f0d; }
+/* 3.99.390: the ID card steps on the employee's ID Card tab, the collection record paper, the note in My Profile */
+.idf-steps { list-style: none; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin: 0 0 14px; padding: 0; counter-reset: s; }
+.idf-steps li { position: relative; display: grid; justify-items: center; gap: 3px; text-align: center; padding: 8px 4px; border-radius: 12px; background: #f3f6fb; color: #7a879f; min-width: 0; }
+.idf-steps li b { font-size: 10.5px; letter-spacing: .04em; line-height: 1.2; }
+.idf-steps li small { font-size: 10px; color: #5b6b8c; overflow-wrap: anywhere; }
+.idf-dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #dfe6f1; color: #5b6b8c; font-weight: 800; font-size: 12px; }
+.idf-dot .ic { width: 15px; height: 15px; }
+.idf-steps li.done { background: #e9f6ef; color: #17794a; } .idf-steps li.done .idf-dot { background: #17794a; color: #fff; }
+.idf-steps li.now { background: #fff6dc; color: #7a5600; box-shadow: inset 0 0 0 1.5px #e2b33c; } .idf-steps li.now .idf-dot { background: #e2b33c; color: #3d2a00; }
+.idf-steps li.done.now { background: #e9f6ef; color: #17794a; box-shadow: inset 0 0 0 1.5px #17794a; }
+@media (max-width: 760px) { .idf-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.idf-old, .idf-mine { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin: 0 0 12px; border-radius: 12px; background: #fff6dc; color: #6b4b00; border: 1px solid #f0d58a; }
+.idf-old b, .idf-mine b { display: block; font-size: 13px; } .idf-old small, .idf-mine small { display: block; font-size: 12px; color: #7a6a3a; }
+.idf-mine.go { background: #e9f6ef; color: #145c39; border-color: #9fd6b8; }
+.idf-need { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.idf-need li { display: flex; align-items: center; gap: 6px; } .idf-need li.ok { color: #17794a; } .idf-need li.no { color: #b42318; } .idf-need .ic { width: 15px; height: 15px; }
+.page .idcol-top { display: grid; grid-template-columns: 1fr 34mm; gap: 6mm; align-items: start; margin: 4mm 0; }
+.page .idcol-t { width: 100%; border-collapse: collapse; font-size: 9pt; }
+.page .idcol-t th { text-align: left; width: 40mm; padding: 1.4mm 2mm; color: #5b6b8c; font-weight: 700; font-size: 7.5pt; letter-spacing: .05em; border-bottom: .2mm solid #d9e1ef; }
+.page .idcol-t td { padding: 1.4mm 2mm; font-weight: 800; color: #0f2a66; border-bottom: .2mm solid #d9e1ef; }
+.page .idcol-qr { display: grid; justify-items: center; gap: 1.5mm; text-align: center; } .page .idcol-qr img { width: 32mm; height: 32mm; image-rendering: pixelated; }
+.page .idcol-qr small { font-size: 6.5pt; font-weight: 800; letter-spacing: .06em; color: #0f2a66; }
+.page .idcol-cards { display: flex; justify-content: center; gap: 8mm; margin: 4mm 0; }
+.page .idcol-terms h4 { margin: 3mm 0 1.5mm; font-size: 9pt; letter-spacing: .1em; color: #0f2a66; }
+.page .idcol-terms ol { margin: 0; padding-left: 5mm; font-size: 8pt; line-height: 1.5; color: #1d2b4a; }
+.page .idcol-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 14mm; margin-top: 16mm; text-align: center; }
+.page .idcol-sign .sl { border-bottom: .3mm solid #0f2a66; height: 14mm; margin-bottom: 1.5mm; }
+.page .idcol-sign b { display: block; font-size: 9pt; color: #0f2a66; } .page .idcol-sign small { font-size: 7.5pt; font-weight: 800; letter-spacing: .08em; color: #5b6b8c; }

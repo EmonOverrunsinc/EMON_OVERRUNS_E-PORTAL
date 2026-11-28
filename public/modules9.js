@@ -215,47 +215,118 @@
   }
 
   const STATE = { active: "ACTIVE", replaced: "REPLACED", revoked: "ENDED", blocked: "BLOCKED" };
+  // 3.99.390: THE ID CARD STEPS (SQL 170): generated → waiting for printing (PHP 150 fee paid) → arrived office → received office
+  // (the employee is told to collect it) → collected (signed record uploaded) → active (the Director). Older cards: activate directly.
+  const STEPS = [["generated", "GENERATED"], ["waiting_print", "WAITING FOR PRINTING"], ["arrived", "ARRIVED OFFICE"], ["received", "RECEIVED OFFICE"], ["collected", "COLLECTED"], ["active", "ACTIVE"]];
+  const stepOf = (c) => c ? (c.stage || (c.activated_at ? "active" : "old")) : "";
+  const stepper = (c) => {
+    const at = stepOf(c), k = STEPS.findIndex(([v]) => v === at), log = Array.isArray(c.steps) ? c.steps : [];
+    if (at === "old") return `<div class="idf-old">${ic("clock")}<div><b>ISSUED BEFORE THE NEW STEPS · NOT ACTIVATED</b><small>The printed card stays as it is. It works again once the Director activates it.</small></div></div>`;
+    return `<ol class="idf-steps">${STEPS.map(([v, l], n) => { const e = log.filter((x) => x.step === v).pop();
+      return `<li class="${n < k ? "done" : n === k ? (v === "active" ? "done now" : "now") : ""}"><span class="idf-dot">${n < k || v === at && v === "active" ? ic("check") : n + 1}</span><b>${l}</b>${e ? `<small>${esc(mdy(e.at))}${e.by ? ` · ${esc(String(e.by).toUpperCase())}` : ""}</small>` : ""}</li>`; }).join("")}</ol>`;
+  };
+  // the paper the employee signs when the card is handed over: all the card data, a coded QR, front and back
+  async function collectionRecord(em, card, d) {
+    const seal = E.sealCode ? await E.sealCode("idcard", card.card_no).catch(() => "") : "";
+    const qr = E.qrDataUrl(`EMONIDC|${card.card_no}|${seal || card.id.replace(/-/g, "").slice(0, 16).toUpperCase()}`);
+    const nm = fullName(em).toUpperCase(), row = (k, v, mono) => `<tr><th>${k}</th><td${mono ? ' class="mono"' : ""}>${esc(v || "—")}</td></tr>`;
+    const page = `<div class="idcol">${E.printHead ? E.printHead("COLLECTION · EMPLOYEE IDENTIFICATION CARD", `<div class="soa-no"><small>CARD NO</small><b class="mono">${esc(card.card_no)}</b><small>${esc(mdy(E.isoToday()).toUpperCase())}</small></div>`) : `<h2>COLLECTION · EMPLOYEE IDENTIFICATION CARD</h2>`}
+      <div class="idcol-top"><table class="idcol-t"><tbody>
+        ${row("NAME", nm)}${row("EMPLOYEE NO", em.employee_no, 1)}${row("POSITION", String(em.position || "").toUpperCase())}${row("CARD NO", card.card_no, 1)}
+        ${row("ISSUED", mdy(card.issued_at).toUpperCase())}${row("VALID UNTIL", mdy(card.valid_until).toUpperCase())}${row("ID CARD FEE", card.fee_cv_id ? "PHP 150.00 · PAID" : "—")}
+        ${row("RECEIVED AT OFFICE", card.received_at ? mdy(card.received_at).toUpperCase() : "—")}</tbody></table>
+        <div class="idcol-qr">${qr ? `<img src="${qr}" alt="">` : ""}<small>CODED RECORD · SCAN TO VERIFY</small></div></div>
+      <div class="idcol-cards">${front(d)}${back(d)}</div>
+      <div class="idcol-terms"><h4>IMPORTANT</h4><ol>
+        <li>THIS CARD IS THE PROPERTY OF EMON OVERRUNS. IT IS FOR THE NAMED EMPLOYEE ONLY AND MUST NOT BE LENT OR COPIED.</li>
+        <li>THE CARD WORKS ONLY AFTER THE DIRECTOR ACTIVATES IT.</li>
+        <li>A LOST OR STOLEN CARD MUST BE REPORTED AT ONCE SO IT CAN BE BLOCKED.</li>
+        <li>THE CARD IS RETURNED TO THE OFFICE WHEN THE EMPLOYMENT ENDS.</li></ol></div>
+      <div class="idcol-sign"><div><div class="sl"></div><b>${esc(nm)}</b><small>I WILL RECEIVE THE CARD</small></div><div><div class="sl"></div><b>RELEASED BY</b><small>EMON OVERRUNS OFFICE</small></div></div></div>`;
+    E.openPreview(`ID CARD COLLECTION ${nm} ${card.card_no}`, [page], { trx: card.id });
+  }
   async function idCardTab(em, el, reload) {
     if (!isAdmin() || !el) return;
-    if (em.approval_status === "pending") { el.innerHTML = `<div class="hint warn">The employee ID card is made when the employee is approved: press <b>Approve Employee</b> at the top of this page.</div>`; return; }
+    if (em.approval_status === "pending") { el.innerHTML = `<div class="hint warn">The ID card can be generated after the employee is approved: press <b>Approve Employee</b> at the top of this page.</div>`; return; }
     el.innerHTML = busy("Loading the ID card");
-    const cards = await sb.from("employee_cards").select("*").eq("employee_id", em.id).order("issued_at", { ascending: false });
+    const [cards, prof] = await Promise.all([sb.from("employee_cards").select("*").eq("employee_id", em.id).order("issued_at", { ascending: false }),
+      em.profile_id ? sb.from("profiles").select("signature_status").eq("id", em.profile_id).maybeSingle() : Promise.resolve({ data: null })]);
     if (cards.error) { el.innerHTML = `<div class="hint err">The ID cards could not be loaded. ${/employee_cards/.test(cards.error.message || "") ? "Run the database update <b>032_employee_id.sql</b> first." : esc(cards.error.message)}</div>`; return; }
-    const list = cards.data || [], card = list.find((c) => c.status === "active");
+    const list = cards.data || [], card = list.find((c) => c.status === "active"), at = stepOf(card);
     if (card) saveApprovedCard(em.id);
+    await E.needLib("bwip").catch(() => {});
     const d = card ? await cardData(em, card) : null;
     if (!el.isConnected) return;
     const expired = card && card.valid_until < E.isoToday();
-    el.innerHTML = `<div class="idc-panel">
-        ${card ? `<div class="idc-pair screen">${front(d)}${back(d)}</div>` : `<div class="empty">${em.status === "terminated" ? "No active ID card: the employee is terminated." : "No active ID card."}</div>`}
+    // what Generate New ID needs: a photo, an approved signature, the name and the position
+    const need = [[!!em.photo_path, "Photo"], [prof.data?.signature_status === "approved", "Approved signature"], [!!(em.first_name && em.last_name), "Name"], [!!em.position, "Position"]];
+    const ready = need.every(([ok]) => ok);
+    const pill = !card ? "" : expired ? `<span class="pill rejected">EXPIRED</span>` : at === "active" ? `<span class="pill approved">ACTIVE</span>` : `<span class="pill pending">NOT ACTIVE</span>`;
+    const act = (id, label, icon, cls = "") => `<button type="button" class="btn ${cls}" id="${id}">${ic(icon)} ${label}</button>`;
+    const stepBtns = !card ? "" : {
+      generated: act("idfPrint", "Send to Printing · ₱150 Fee", "send", "primary"),
+      waiting_print: act("idfArrived", "Arrived Office", "check", "primary"),
+      arrived: act("idfReceived", "Received Office", "check", "primary"),
+      received: `${act("idfRecord", "Collection Record", "print")}<label class="btn primary" for="idfUp">${ic("upload")} Upload Signed Record</label><input type="file" id="idfUp" accept="image/*,application/pdf" hidden>`,
+      collected: act("idfActivate", "Activate Card", "check", "primary"),
+      old: act("idfActivate", "Activate Card", "check", "primary") }[at] || "";
+    el.innerHTML = `${card ? stepper(card) : ""}<div class="idc-panel">
+        ${card ? `<div class="idc-pair screen">${front(d)}${back(d)}</div>` : `<div class="empty">${em.status === "terminated" ? "No active ID card: the employee is terminated." : "No ID card yet."}</div>`}
         <div class="idc-side">
           ${card ? E.kvTable([
-            ["Card No", "", `<b class="mono">${esc(card.card_no)}</b> ${expired ? `<span class="pill rejected">EXPIRED</span>` : `<span class="pill approved">ACTIVE</span>`}`],
+            ["Card No", "", `<b class="mono">${esc(card.card_no)}</b> ${pill}`],
             ["Issued", `${mdy(card.issued_at)}${card.issued_by_name ? ` · by ${card.issued_by_name}` : ""}`],
             ["Valid Until", mdy(card.valid_until)],
+            ...(card.fee_cv_id ? [["ID Card Fee", "", `<a href="#collection/${esc(card.fee_cv_id)}">₱ 150.00 · PAID</a>`]] : []),
+            ...(card.activated_at ? [["Activated", `${mdy(card.activated_at)}${card.activated_by_name ? ` · by ${card.activated_by_name}` : ""}`]] : []),
             ["Portal Account", "", em.profile_id ? `<span class="pill approved">LINKED</span>` : `<span class="pill pending">NOT LINKED</span>`],
             ["Printed", card.print_count ? `${card.print_count} time${card.print_count === 1 ? "" : "s"} · last ${mdy(card.last_printed_at)}` : "Not printed yet"]]) : ""}
+          ${!card && em.status !== "terminated" ? `<ul class="idf-need">${need.map(([ok, l]) => `<li class="${ok ? "ok" : "no"}">${ic(ok ? "check" : "x")} ${l}</li>`).join("")}</ul>` : ""}
           <div class="btnrow">
-            ${card ? `<button type="button" class="btn primary" id="idcPrint">${ic("print")} Print / Download ID Card</button>` : ""}
-            ${em.status !== "terminated" ? `<button type="button" class="btn" id="idcNew">${ic("plus")} ${card ? "Issue New Card" : "Issue ID Card"}</button>` : ""}
+            ${stepBtns}
+            ${card ? act("idcPrint", at === "generated" ? "Print File (ZIP)" : "Print / Download ID Card", "print") : ""}
+            ${em.status !== "terminated" ? `<button type="button" class="btn${card ? "" : " primary"}" id="idcNew"${!ready ? " disabled" : ""}>${ic("plus")} Generate New ID</button>` : ""}
             ${card ? `<button type="button" class="btn" id="idcExp">${ic("edit")} Edit Expiration Date</button><button type="button" class="btn danger" id="idcBlock">${ic("x")} Block Card</button>` : ""}
           </div>
         </div></div>
       ${list.length ? `<h4>Card History</h4>${E.grid({ cols: [{ label: "Card No", get: (r) => r.card_no }, { label: "Issued", get: (r) => mdy(r.issued_at) }, { label: "Issued By", get: (r) => r.issued_by_name || "" },
-        { label: "Valid Until", get: (r) => mdy(r.valid_until) }, { label: "Status", get: (r) => STATE[r.status] || r.status.toUpperCase() }, { label: "Ended", get: (r) => (r.ended_at ? mdy(r.ended_at) : "") }], rows: list })}` : ""}`;
+        { label: "Valid Until", get: (r) => mdy(r.valid_until) }, { label: "Step", get: (r) => (r.status !== "active" ? "" : (STEPS.find(([v]) => v === stepOf(r)) || [, "NOT ACTIVATED"])[1]) },
+        { label: "Status", get: (r) => STATE[r.status] || r.status.toUpperCase() }, { label: "Ended", get: (r) => (r.ended_at ? mdy(r.ended_at) : "") }], rows: list })}` : ""}`;
+    const again = () => idCardTab(em, el, reload);
+    const step = async (rpc, args, okText, ask) => {
+      if (ask && !(await E.confirmBox(ask, { title: "ID Card" }))) return;
+      const { error } = await sb.rpc(rpc, args);
+      if (error) return fail(error, /function|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 170 first" : "Could not save this step");
+      toast(okText); again();
+    };
+    if ($("#idfPrint", el)) $("#idfPrint", el).onclick = () => step("card_send_printing", { p_card: card.id }, "Sent to printing. The ₱150 ID card fee is recorded as paid.",
+      `Send card <b>${esc(card.card_no)}</b> to printing?<br><br>A Collection Voucher of <b>₱ 150.00</b> (ID card fee) is made at once, <b>PAID</b>, and its date is locked.`);
+    if ($("#idfArrived", el)) $("#idfArrived", el).onclick = () => step("card_arrived", { p_card: card.id }, "Card arrived at the office.");
+    if ($("#idfReceived", el)) $("#idfReceived", el).onclick = () => step("card_received_office", { p_card: card.id }, `Received. ${esc(fullName(em))} is told to collect the card at the office.`,
+      `The office received card <b>${esc(card.card_no)}</b>?<br><br>${esc(fullName(em))} gets a notification: <b>Please collect your Employee ID at the EMON OVERRUNS Office.</b>`);
+    if ($("#idfRecord", el)) $("#idfRecord", el).onclick = () => collectionRecord(em, card, d);
+    if ($("#idfUp", el)) $("#idfUp", el).onchange = async (e) => {
+      const files = Array.from(e.target.files || []); if (!files.length) return;
+      const failed = await E.uploadRecords("employee", em.id, "id_collection", files.slice(0, 1));
+      if (failed) return toast("The record could not be uploaded.", true);
+      const { data: att } = await sb.from("attachments").select("id").eq("owner_type", "employee").eq("owner_id", em.id).eq("kind", "id_collection").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!att) return toast("The record could not be found after upload.", true);
+      step("card_collected", { p_card: card.id, p_attachment: att.id }, "Signed record saved. The card can now be activated.");
+    };
+    if ($("#idfActivate", el)) $("#idfActivate", el).onclick = () => step("activate_employee_card", { p_card: card.id }, `Card ${card.card_no} is ACTIVE.`,
+      at === "old" ? `Activate card <b>${esc(card.card_no)}</b> of <b>${esc(fullName(em))}</b>?<br><br>It was issued before the new steps; nothing on the printed card changes.` : `Activate card <b>${esc(card.card_no)}</b>? ${esc(fullName(em))} can use it at once.`);
     if ($("#idcPrint", el)) $("#idcPrint", el).onclick = async () => {
       const { data: code, error } = await sb.rpc("employee_card_code", { p_card: card.id });
       if (error) return fail(error, "Could not print the ID card");
       const seal = E.sealCode ? await E.sealCode("idcard", card.card_no) : ""; // 3.99.123: the card's unique seal no
       E.openPreview(`${fullName(em).toUpperCase()} ${card.card_no}`, [sheet({ ...d, seal, qr: E.qrDataUrl(code) })], { bare: true, trx: card.id }); // 3.99.275: the file is named NAME EOID
-      idCardTab(em, el, reload);
+      again();
     };
-    // 3.99.123: block a lost or stolen card (it stops at once; then Issue ID Card), change the expiration date
     if ($("#idcBlock", el)) $("#idcBlock", el).onclick = async () => {
-      if (!(await E.confirmBox(`Block ID card <b>${esc(card.card_no)}</b> of <b>${esc(fullName(em))}</b>?<br><br>It stops signing in at once and shows <b>BLOCKED</b> when scanned. Then press <b>Issue ID Card</b> for a new card.`, { title: "Block Card", ok: "Block Card", danger: true }))) return;
+      if (!(await E.confirmBox(`Block ID card <b>${esc(card.card_no)}</b> of <b>${esc(fullName(em))}</b>?<br><br>It stops signing in at once and shows <b>BLOCKED</b> when scanned. Then press <b>Generate New ID</b> for a new card.`, { title: "Block Card", ok: "Block Card", danger: true }))) return;
       const { error } = await sb.rpc("block_employee_card", { p_card: card.id });
       if (error) return fail(error, /function|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 111 first" : "Could not block the card");
-      toast(`Card ${card.card_no} blocked.`); idCardTab(em, el, reload);
+      toast(`Card ${card.card_no} blocked.`); again();
     };
     if ($("#idcExp", el)) $("#idcExp", el).onclick = () => {
       const m = E.modal("Edit Expiration Date", `<label for="idcExpD">Valid Until</label><input id="idcExpD" type="date" min="${E.isoToday()}" value="${esc(card.valid_until)}">`,
@@ -266,14 +337,15 @@
         if (!v) return toast("Choose the date.", true);
         const { error } = await sb.rpc("set_card_expiry", { p_card: card.id, p_date: v });
         if (error) return fail(error, /function|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 111 first" : "Could not change the date");
-        m.close(); toast(`Card ${card.card_no} is valid until ${mdy(v)}. Print the card again.`); idCardTab(em, el, reload);
+        m.close(); toast(`Card ${card.card_no} is valid until ${mdy(v)}. Print the card again.`); again();
       };
     };
     if ($("#idcNew", el)) $("#idcNew", el).onclick = async () => {
-      if (!(await E.confirmBox(card ? `Issue a new ID card for <b>${esc(fullName(em))}</b>?<br><br>Card <b>${esc(card.card_no)}</b> stops working at once (it cannot sign in any more). Print and give the new card.` : `Issue an ID card for <b>${esc(fullName(em))}</b>?`, { ok: card ? "Issue New Card" : "Issue ID Card" }))) return;
+      if (!ready) return toast(`Needed first: ${need.filter(([ok]) => !ok).map(([, l]) => l).join(", ")}.`, true);
+      if (!(await E.confirmBox(card ? `Generate a new ID card for <b>${esc(fullName(em))}</b>?<br><br>Card <b>${esc(card.card_no)}</b> stops working at once. The new card goes through the steps: printing (₱150 fee), office, collection, activation.` : `Generate the ID card for <b>${esc(fullName(em))}</b>?`, { ok: "Generate New ID" }))) return;
       const { data, error } = await sb.rpc("issue_employee_card", { p_employee: em.id });
-      if (error) return fail(error, "Could not issue the ID card");
-      toast(`ID card ${data.card_no} issued.`); idCardTab(em, el, reload);
+      if (error) return fail(error, "Could not generate the ID card");
+      toast(`ID card ${data.card_no} generated. Next: Send to Printing.`); again();
     };
   }
 
@@ -288,6 +360,9 @@
       box.textContent = error ? "Your card could not be loaded." : "No active ID card.";
       return;
     }
+    // 3.99.390: the card's step: collect it at the office, or wait for the activation
+    const st = card.stage || "active";
+    if (st !== "active") el.querySelector("fieldset").insertAdjacentHTML("afterbegin", `<div class="idf-mine ${st === "received" ? "go" : ""}">${ic(st === "received" ? "building" : "clock")}<div><b>${st === "received" ? "Please collect your Employee ID at the EMON OVERRUNS Office." : st === "collected" ? "Your Employee ID is waiting for the Director's activation." : st === "old" ? "Your Employee ID is not activated yet. Ask the Director." : "Your new Employee ID is being prepared."}</b><small>${esc(card.card_no)} · it works once it is ACTIVE</small></div></div>`);
     const name = card.card_no + ".pdf";
     const { data: file } = await sb.storage.from("eoid-originals").download(name);
     if (!box.isConnected) return;
