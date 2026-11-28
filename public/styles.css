@@ -6077,3 +6077,5 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .em-card-mini:hover { box-shadow: 0 4px 14px rgba(15, 42, 102, .12); }
 .idf-fee { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .idf-fee button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
+/* 3.99.392: the ID card collection paper: EMPLOYEE IDENTIFICATION CARD, then COLLECTION · PHYSICAL CARD under it */
+.page .ph-mid .ph-sub { margin-top: 1.6mm; font: 800 8pt/1.2 Arial, Helvetica, sans-serif; letter-spacing: .16em; color: #8a6a10; text-align: center; }

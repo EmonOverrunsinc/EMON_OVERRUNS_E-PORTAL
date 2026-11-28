@@ -230,7 +230,7 @@
     const seal = E.sealCode ? await E.sealCode("idcard", card.card_no).catch(() => "") : "";
     const qr = E.qrDataUrl(`EMONIDC|${card.card_no}|${seal || card.id.replace(/-/g, "").slice(0, 16).toUpperCase()}`);
     const nm = fullName(em).toUpperCase(), row = (k, v, mono) => `<tr><th>${k}</th><td${mono ? ' class="mono"' : ""}>${esc(v || "—")}</td></tr>`;
-    const page = `<div class="idcol">${E.printHead ? E.printHead("COLLECTION · EMPLOYEE IDENTIFICATION CARD", `<div class="soa-no"><small>CARD NO</small><b class="mono">${esc(card.card_no)}</b><small>${esc(mdy(E.isoToday()).toUpperCase())}</small></div>`) : `<h2>COLLECTION · EMPLOYEE IDENTIFICATION CARD</h2>`}
+    const page = `<div class="idcol">${E.printHead ? E.printHead("EMPLOYEE IDENTIFICATION CARD", `<div class="soa-no"><small>CARD NO</small><b class="mono">${esc(card.card_no)}</b><small>${esc(mdy(E.isoToday()).toUpperCase())}</small></div>`).replace('<i class="ph-gl"></i>', '<i class="ph-gl"></i><div class="ph-sub">COLLECTION · PHYSICAL CARD</div>') : `<h2>COLLECTION · EMPLOYEE IDENTIFICATION CARD</h2>`}
       <div class="idcol-top"><table class="idcol-t"><tbody>
         ${row("NAME", nm)}${row("EMPLOYEE NO", em.employee_no, 1)}${row("POSITION", String(em.position || "").toUpperCase())}${row("CARD NO", card.card_no, 1)}
         ${row("ISSUED", mdy(card.issued_at).toUpperCase())}${row("VALID UNTIL", mdy(card.valid_until).toUpperCase())}${row("ID CARD FEE", card.fee_cv_id ? "PHP 150.00 · PAID" : "—")}
