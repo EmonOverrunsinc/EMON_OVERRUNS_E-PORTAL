@@ -5976,3 +5976,4 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 /* 3.99.376: the ID card on My Profile: only the card picture, fitted */
 .own-id-page .own-id-img { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto; border-radius: 6px; }
 .own-id-page [data-card-page] { min-height: 0; }
+th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: normal; }

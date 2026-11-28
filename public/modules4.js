@@ -45,7 +45,7 @@
   // E-Bill: the list of e-bills
   // ======================================================================
   const LIST_COLS = [
-    { label: "E-Bill No", get: (r) => r.bill_no }, { label: "Bill Date", get: (r) => mdy(r.bill_date) }, { label: "Company", get: (r) => r.company_name || "" },
+    { label: "E\u2011Bill No", get: (r) => r.bill_no }, { label: "Bill Date", get: (r) => mdy(r.bill_date) }, { label: "Company", get: (r) => r.company_name || "" },
     { label: "Batch No", get: (r) => r.batch_no || "" }, { label: "Serials", html: (r) => (r._ser ? `<span class="nw mono">${esc(r._ser)}</span>` : "") }, { label: "Ship Date", get: (r) => mdy(r.shipment_date) },
     { label: "Boxes", num: true, get: (r) => r.total_boxes ?? "" },
     { label: "Total Cost (BDT)", key: "cost", num: true, html: (r) => `<b class="bdt">${peso(totalCost(r))}</b>` },
