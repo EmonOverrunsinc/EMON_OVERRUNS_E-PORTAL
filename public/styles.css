@@ -6160,3 +6160,26 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .page .ovp-note { font-size: 7.4pt; color: #3d4f75; text-align: center; letter-spacing: .04em; }
 /* 3.99.409: no band at the top and the bottom of the documents */
 .page > .pg-band { display: none !important; }
+/* 3.99.410: PHONE RULES (checked page by page at 390 px): buttons at least 36-40 px tall to tap, no text under 11 px.
+   Phones only; the PC screens and the printed papers are not changed. */
+@media (max-width: 760px) {
+  #tbScan { min-height: 40px; }
+  #main .btn { min-height: 40px; }
+  #main .btn.small { min-height: 36px; }
+  .eva-chip { min-height: 36px; }
+  #main .stand.new, #main button.stand { min-height: 32px; }
+  #main .cust-hero .ch-qrid .linkbtn { min-height: 40px !important; }
+  #main small, #main .pill, .pf-copy, .pf-copy .nw { font-size: max(11px, 1em) ; }
+  #main small { font-size: 11px; }
+  #main .pill { font-size: 11px; }
+  .pf-copy, .pf-copy .nw { font-size: 11px; }
+  #main .pcell .pl, #main div.pl { font-size: 10.5px; }
+}
+@media (max-width: 760px) {
+  #main .btn { min-height: 40px !important; } #main .btn.small { min-height: 36px !important; }
+  #main .stand.new, #main button.stand { min-height: 32px !important; }
+  #main small, #main .pill { font-size: 11px !important; }
+  footer .pf-copy, footer .pf-copy .nw, .pf-copy, .pf-copy .nw { font-size: 11px !important; }
+  #main .pcell .pl, #main div.pl { font-size: 10.5px !important; }
+}
+@media (max-width: 760px) { #main .co-months button { min-height: 38px; } }
