@@ -5973,3 +5973,6 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .page.dsr-page .dsr-close .eo-stamp.vst em + em { border-top: .25mm dashed #cfd6e4 !important; padding-top: .9mm !important; }
 .page.dsr-page .dsr-close .eo-stamp.vst em i { font-style: normal; letter-spacing: .1em; }
 .page.dsr-page .dsr-close .eo-stamp.vst em u { text-decoration: none; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0; }
+/* 3.99.376: the ID card on My Profile: only the card picture, fitted */
+.own-id-page .own-id-img { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto; border-radius: 6px; }
+.own-id-page [data-card-page] { min-height: 0; }

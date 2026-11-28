@@ -299,7 +299,7 @@
       return;
     }
     const url = URL.createObjectURL(file);
-    box.innerHTML = `<div data-card-page></div><div class="btnrow"><a class="btn primary" href="${url}" download="${esc(name)}">Download original ZIP</a><a class="btn" href="${url}" target="_blank" rel="noopener">Open original PDF</a></div>`;
+    box.innerHTML = `<div data-card-page></div>`; // 3.99.376: only the card picture (no ZIP / PDF buttons)
     const release = new MutationObserver(() => {
       if (box.isConnected) return;
       release.disconnect();
@@ -322,9 +322,21 @@
       canvas.setAttribute("role", "img");
       canvas.setAttribute("aria-label", "ID card " + card.card_no);
       await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
-      pageBox.replaceChildren(canvas);
+      // 3.99.376: cut the page down to the two card sides (no white page, no crop marks, no TRX line) and show it as a PNG
+      const g = canvas.getContext("2d"), W = canvas.width, H = canvas.height, px = g.getImageData(0, 0, W, H).data;
+      const ink = (i) => px[i] < 242 || px[i + 1] < 242 || px[i + 2] < 242;
+      const rows = new Array(H).fill(0), cols = new Array(W).fill(0);
+      for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 2) if (ink((y * W + x) * 4)) { rows[y] += 2; cols[x] += 1; }
+      const rMin = W * 0.18, cMin = H * 0.06;
+      let y0 = rows.findIndex((n) => n > rMin), y1 = H - 1 - [...rows].reverse().findIndex((n) => n > rMin);
+      let x0 = cols.findIndex((n) => n > cMin), x1 = W - 1 - [...cols].reverse().findIndex((n) => n > cMin);
+      if (y0 < 0 || x0 < 0 || y1 <= y0 || x1 <= x0) { y0 = 0; x0 = 0; y1 = H - 1; x1 = W - 1; }
+      const out = document.createElement("canvas"); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+      out.getContext("2d").drawImage(canvas, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+      const img = new Image(); img.className = "own-id-img"; img.alt = "ID card " + card.card_no; img.src = out.toDataURL("image/png");
+      pageBox.replaceChildren(img);
     } catch {
-      pageBox.textContent = "Open the original PDF to see your card.";
+      pageBox.textContent = "Your card could not be shown.";
     } finally {
       if (task) await task.destroy();
     }
