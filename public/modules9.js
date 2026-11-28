@@ -235,12 +235,16 @@
     const [cv, app] = await Promise.all([card.fee_cv_id ? sb.from("collection_vouchers").select("cv_no, cv_date, paid_at").eq("id", card.fee_cv_id).maybeSingle().then((r) => r.data, () => null) : null,
       em.job_application_id ? sb.from("job_applications").select("application_no, created_at").eq("id", em.job_application_id).maybeSingle().then((r) => r.data, () => null) : null]);
     const stepName = (STEPS.find(([v]) => v === stepOf(card)) || [, "NOT ACTIVATED"])[1];
+    // 3.99.402: the Director's own blue name stamp (name, EOID, date) under Released By, as on the shop papers
+    await E.loadSignatures?.().catch(() => {}); const did = E.directorId?.("EMON HASAN"); await E.loadSigners?.([did].filter(Boolean)).catch(() => {});
+    const bs = E.stampOf?.(did, "EMON HASAN", "", true) || {};
+    const boss = E.stampHtml?.({ ...bs, name: "EMON HASAN", eoid: bs.eoid || "EO-20260601", boss: true, date: mdy(card.collected_at || E.isoToday()).toUpperCase() }) || `<b>EMON HASAN</b>`;
     // 3.99.394: a one-time TEMPORARY PIN for the employee, printed on this paper (SQL 173)
     const tpin = await Promise.resolve(sb.rpc("card_temp_pin", { p_card: card.id })).then((r) => (r.error ? "" : r.data || ""), () => "");
     const feeTxt = card.fee_method === "salary" ? `PHP 150.00 · SALARY DEDUCTION${card.fee_deducted_at ? " · DEDUCTED" : " · PENDING"}` : cv ? "PHP 150.00 · PAID" : "—";
     const page = `<div class="idcol">${E.printHead ? E.printHead("EMPLOYEE IDENTIFICATION CARD", `<div class="soa-no"><small>CARD NO</small><b class="mono">${esc(card.card_no)}</b><small>${esc(mdy(E.isoToday()).toUpperCase())}</small></div>`).replace('<i class="ph-gl"></i>', '<i class="ph-gl"></i><div class="ph-sub">COLLECTION · PHYSICAL CARD</div>') : `<h2>COLLECTION · EMPLOYEE IDENTIFICATION CARD</h2>`}
       <div class="idcol-top"><table class="idcol-t"><tbody>
-        ${pairRows([cell("APPLICATION NO", app?.application_no || d.appNo, 1), cell("APPLICATION DATE", mdy(app?.created_at || em.created_at).toUpperCase()), cell("NAME", nm), cell("EMPLOYEE NO", em.employee_no, 1), cell("POSITION", String(em.position || "").toUpperCase()), cell("CARD NO", card.card_no, 1), cell("ISSUED", mdy(card.issued_at).toUpperCase()), cell("VALID UNTIL", mdy(card.valid_until).toUpperCase()), cell("ID CARD FEE", feeTxt), cell("COLLECTION RECEIPT NO", cv?.cv_no, 1), cell("DATE PAID", cv ? mdy(cv.paid_at || cv.cv_date).toUpperCase() : card.fee_deducted_at ? mdy(card.fee_deducted_at).toUpperCase() : ""), cell("RECEIVED AT OFFICE", card.received_at ? mdy(card.received_at).toUpperCase() : "—"), cell("STATUS", stepName), ...(tpin ? [`<th class="pin-k">ONE-TIME PIN</th><td class="pin-v"><b class="mono">${esc(tpin)}</b><small>CHANGE IT AT YOUR FIRST SIGN-IN</small></td>`] : [])])}</tbody></table>
+        ${pairRows([cell("APPLICATION NO", app?.application_no || d.appNo, 1), cell("APPLICATION DATE", mdy(app?.created_at || em.created_at).toUpperCase()), cell("NAME", nm), cell("EMPLOYEE NO", em.employee_no, 1), cell("POSITION", String(em.position || "").toUpperCase()), cell("CARD NO", card.card_no, 1), cell("ISSUED", mdy(card.issued_at).toUpperCase()), cell("VALID UNTIL", mdy(card.valid_until).toUpperCase()), cell("ID CARD FEE", feeTxt), cell("COLLECTION RECEIPT NO", cv?.cv_no, 1), cell("DATE PAID", cv ? mdy(cv.paid_at || cv.cv_date).toUpperCase() : card.fee_deducted_at ? mdy(card.fee_deducted_at).toUpperCase() : ""), cell("RECEIVED AT OFFICE", card.received_at ? mdy(card.received_at).toUpperCase() : "—"), cell("STATUS", stepName), ...(tpin ? [`<th class="pin-k">ONE-TIME PIN</th><td class="pin-v"><b class="mono">${esc(tpin)}</b></td>`] : [])])}</tbody></table>
         <div class="idcol-qr">${qr ? `<img src="${qr}" alt="">` : ""}<small>CODED RECORD · SCAN TO VERIFY</small></div></div>
       <div class="idcol-cards">${front(d)}${back(d)}</div>
       <div class="idcol-terms"><h4>IMPORTANT</h4><ol>
@@ -254,7 +258,7 @@
         <li>MISUSE, COPYING OR LENDING OF THE CARD MAY LEAD TO DISCIPLINARY ACTION.</li></ol></div>
       <div class="idcol-stampbox"><div class="idcol-rstamp"><b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>RELEASED</b><small>${esc(E.shopDate ? E.shopDate(card.collected_at || E.isoToday()) : mdy(card.collected_at || E.isoToday()).toUpperCase())}</small><i>EMON OVERRUNS OFFICE</i></div></div>
       <div class="idcol-sign"><div><div class="sl">${d.holderSig ? `<img src="${d.holderSig}" alt="">` : ""}</div><b>${esc(nm)}</b><small>I WILL RECEIVE THE CARD</small></div>
-        <div><div class="sl">${d.dirSig ? `<img src="${d.dirSig}" alt="">` : ""}</div><b>${esc(d.dirName || "EMON HASAN")}</b><small>RELEASED BY · EMON OVERRUNS OFFICE</small></div></div></div>`;
+        <div><div class="sl">${d.dirSig ? `<img src="${d.dirSig}" alt="">` : ""}</div><div class="idcol-boss">${boss}</div><small>RELEASED BY</small></div></div></div>`;
     E.openPreview(`ID CARD COLLECTION ${nm} ${card.card_no}`, [page], { trx: card.id });
   }
   async function idCardTab(em, el, reload) {

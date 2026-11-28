@@ -6141,3 +6141,6 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .page .idcol-t td.pin-v { color: #c0262d !important; background: #fff7f7; }
 .page .idcol-t td.pin-v b { display: block; font-size: 13pt; letter-spacing: .3em; line-height: 1.1; color: #c0262d; }
 .page .idcol-t td.pin-v small { display: block; font-size: 5.6pt; font-weight: 800; letter-spacing: .04em; color: #c0262d; }
+/* 3.99.402: the Director's blue name stamp under Released By; the RELEASED stamp straight, like the shop stamps */
+.page .idcol-sign .idcol-boss { display: flex; justify-content: center; margin: .5mm 0 1mm; }
+.page .idcol-rstamp { transform: none; }
