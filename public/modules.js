@@ -237,7 +237,7 @@
   const EOIDS = new Map(), eoidOf = (id) => (id && EOIDS.get(id)) || "";
   const stampOf = (id, name = "", pos = "", boss = false) => { const s = (id && STAMPS.get(id)) || {}; return { name: s.name || name, pos: s.pos || pos, eoid: s.eoid || eoidOf(id), boss: s.boss || boss }; };
   // 3.99.242: on papers the stamp is the name, the position (from the employee profile) and the EOID (no crown, no mark)
-  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${s.boss ? " st-boss" : ""}${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}${s.pos ? `<em>${esc(String(s.pos).toUpperCase().replace(/^OPERATIONS OFFICER$/, "OPERATIONAL OFFICER"))}</em>` : ""}${s.date ? `<small class="st-date">${esc(s.date)}</small>` : ""}</span>` : "");
+  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${s.boss ? " st-boss" : ""}${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}${s.date ? `<small class="st-date">${esc(s.date)}</small>` : ""}</span>` : "");
   // on a paper: the blue words of who signs, under the line (never the signature picture; they sign by hand after printing)
   const sigMark = (sign) => (sign ? stampHtml(sign.stamp || (sign.name ? { name: sign.name } : null)) : "");
   // 3.99.219: the id of a Director by name (from the Directors' signatures list), e.g. to print EMON HASAN's EOID
@@ -850,7 +850,7 @@
       rows.forEach((r, i) => (r._no = i + 1));
       $("#cuRes").innerHTML = E.grid({ cols: [
         { label: ws.length ? "No." : "Rank", num: true, get: (r) => r._no, html: (r) => { const x = !ws.length && rk.get(r.id); return x ? E.rankNo(x.rank, x.rank <= 10 ? "customer-rank-live" : "", x.tier || null) : String(r._no); } },
-        { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r), html: (r) => `<span class="${num(r.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(E.shortName(r))}</span>` }, // VIP is shown by the name colour/motion only; CLOSED appears once in Status
+        { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r), html: (r) => `<span class="${num(r.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(E.shortName(r))}</span>${num(r.credit_limit) >= 1000000 ? `<span class="grid-vip">${E.vipBox(r.credit_limit)}</span>` : ""}` }, // VIP is shown by the name colour/motion only; CLOSED appears once in Status
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
         { label: "Balance Due", key: "due", num: true, get: (r) => peso(r.due) }],
@@ -1136,7 +1136,7 @@
         <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<span class="weekly-rank-watermark" id="pfWeekly" data-cid="${esc(c.id)}" hidden><small>WEEKLY RANKING</small><b>#1</b></span>` : ""}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span></div>` : ""}</div>
         <div class="ch-main">
-          <div class="ch-name"><h2 class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</h2>${pill(c.status)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
+          <div class="ch-name"><h2 class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
           <div class="ch-sub">${c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}

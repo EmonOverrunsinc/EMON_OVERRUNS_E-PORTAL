@@ -916,7 +916,7 @@
   const nameBoxes = (prep, no, bossId, trx = "", prepId = "", stamp = "", resp = null, when = "") => {
     const code = (t) => { try { return t && E.pdf417DataUrl ? E.pdf417DataUrl(String(t)) : ""; } catch (_) { return ""; } };
     const bar = code(no), tbar = code(trx && String(trx).toUpperCase());
-    const st = resp ? { name: `${resp.first_name || ""} ${resp.last_name || ""}`.trim(), pos: resp.position || "", eoid: resp.employee_no || "" } : prepId ? E.stampOf?.(prepId, prep) : null;
+    const st = resp ? { name: `${resp.first_name || ""} ${resp.last_name || ""}`.trim(), pos: "", eoid: resp.employee_no || "" } : prepId ? E.stampOf?.(prepId, prep) : null;
     const pic = E.sigPicOf?.(resp ? resp.profile_id : prepId) || "";
     const issued = E.stampHtml?.({ ...(st && st.name ? st : { name: prep }), date: when }) || `<b>${esc(String(prep || "").toUpperCase())}</b>`;
     const boss = E.stampHtml?.({ ...bossStamp(bossId), date: when }) || `<b>${esc(BOSS)}</b>`; // 3.99.268: the date inside the stamps
@@ -970,7 +970,7 @@
     const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>BRANCH ${esc(bidText(o))}</small><small>${esc(mdy(date))}</small>${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? `<small class="soa-corr">CORRECTED ${esc(mdy(new Date(r.updated_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })))}</small>` : ""}</div>`)}
       <div class="soa-info"><div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div><div><small>Date</small><b>${esc(mdy(date))}</b></div>
         <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div><div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div>
-        <div class="dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}${resp.position ? `<i>${esc(String(resp.position).toUpperCase().replace(/^OPERATIONS OFFICER$/, "OPERATIONAL OFFICER"))}</i>` : ""}` : "—"}</b></div>
+        <div class="dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}` : "—"}</b></div>
         <div class="dsr-resp w2"><small>Report Submitted By</small><b>${esc(BOSS)}${(() => { const e = bossStamp(bossId).eoid; return e ? `<i>${esc(e)}</i>` : ""; })()}</b></div>
         ${r.note ? `<div class="w3"><small>Note</small><b>${esc(r.note)}</b></div>` : ""}</div>
       <div class="soa-tiles t5">${[["Net Sales", tot, "in"], ["GCash", gc, "pay"], ["Cash", num(r.cash), "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash After Cost", cashAfterCost, "pay"], ["Cash Out", paidOut, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
@@ -1032,7 +1032,7 @@
         <div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div>
         <div><small>Monthly Rental</small><b>₱ ${P(o.monthly_rent)}</b></div>
         ${d.cust ? `<div class="w2"><small>Stock Account</small><b>${esc(E.fullName(d.cust))} · ${esc(d.cust.account_no || "")}</b></div>` : ""}
-        <div class="w2 dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}${resp.position ? `<i>${esc(String(resp.position).toUpperCase().replace(/^OPERATIONS OFFICER$/, "OPERATIONAL OFFICER"))}</i>` : ""}` : "—"}</b></div>
+        <div class="w2 dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}` : "—"}</b></div>
         <div class="w2 dsr-resp"><small>Report Submitted By</small><b>${esc(BOSS)}${(() => { const e = bossStamp(bossId).eoid; return e ? `<i>${esc(e)}</i>` : ""; })()}</b></div></div>`; // 3.99.305
     const tile = (k, v, cls = "") => `<div class="soa-tile ${cls}"><small>${k}</small><b>₱ ${P(v)}</b></div>`;
     const tiles = `<div class="soa-tiles">${tile("Net Sales", d.net, "in")}${tile("Expenses", d.op ?? d.out, "out")}${tile("Cash Out", d.cash || 0, "co")}${tile(m === monthNow() ? "Cash Left to Date" : "Closing Cash Left", d.drawer, "pay")}${tile(m === monthNow() ? "Net Balance to Date" : "Closing Net Balance", d.pool, `bal${d.pool < 0 ? " neg" : ""}`)}</div>
