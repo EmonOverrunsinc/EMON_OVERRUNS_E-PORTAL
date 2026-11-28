@@ -6146,3 +6146,15 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .page .idcol-rstamp { transform: none; }
 /* 3.99.407: the customer QR Copy button big enough to tap on a phone */
 #main .cust-hero .ch-qrid .linkbtn { min-height: 32px !important; padding: 4px 10px !important; }
+/* 3.99.408: the Office Vouchers paper: the collection voucher and the cash voucher on one page */
+.page .ovp-box { border: .3mm solid #b9c7e2; border-radius: 2mm; margin: 4mm 0; overflow: hidden; }
+.page .ovp-h { display: flex; justify-content: space-between; align-items: center; padding: 2mm 3mm; background: #134299; color: #fff; border-bottom: .6mm solid #f2b705; }
+.page .ovp-h b { font-size: 9.5pt; letter-spacing: .1em; } .page .ovp-h span { font-size: 10pt; font-weight: 800; }
+.page .ovp-t { width: 100%; border-collapse: collapse; font-size: 8.4pt; }
+.page .ovp-t th { width: 38mm; text-align: left; padding: 1.4mm 3mm; background: #eef3fb; color: #3d4f75; font-size: 7pt; letter-spacing: .05em; border-bottom: .2mm solid #d9e1ef; }
+.page .ovp-t td { padding: 1.4mm 3mm; font-weight: 800; color: #0f2a66; border-bottom: .2mm solid #d9e1ef; text-transform: uppercase; }
+.page .ovp-amt { display: grid; justify-items: end; padding: 2mm 3mm; } .page .ovp-amt small { font-size: 7pt; color: #5b6b8c; letter-spacing: .08em; }
+.page .ovp-amt b { font-size: 14pt; color: #0f2a66; } .page .ovp-amt i { font-style: normal; font-size: 7pt; color: #3d4f75; }
+.page .ovp-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; padding: 6mm 3mm 3mm; text-align: center; }
+.page .ovp-sign .sl { border-bottom: .3mm solid #0f2a66; height: 8mm; margin-bottom: 1mm; } .page .ovp-sign small { font-size: 7pt; font-weight: 800; letter-spacing: .06em; color: #3d4f75; }
+.page .ovp-note { font-size: 7.4pt; color: #3d4f75; text-align: center; letter-spacing: .04em; }

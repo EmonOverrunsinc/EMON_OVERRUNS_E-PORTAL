@@ -52,6 +52,7 @@
     ["projects", "Projects", "folder", "Projects and payments", "projects"], ["insurance", "Coverage", "shield", "Order coverage certificates", "eooffice"],
     ["mbilling", "Billing", "building", "Manila companies, payments and vouchers", "mbilling"],
     ["outlets", "Retail Outlets", "building", "Shop dashboards, sales and monthly statements", "outlets"],
+    ["officevouchers", "Office Vouchers", "receipt", "Money received and paid out at once", "eooffice"],
     ["register", "Document Register", "doc", "Document numbers, dates and transaction IDs", "__dir"]]; // 3.99.279: the Director only
   const mnlCount = {
     custorders: () => sb.from("customer_orders").select("id", { count: "exact", head: true }).in("status", ["pending", "approved"]).then((r) => (r.error ? "" : r.count ? `${r.count} open order${r.count === 1 ? "" : "s"}` : "No open orders")),
@@ -72,6 +73,67 @@
     ["pay_vouchers", "PAYMENT VOUCHER", "voucher_no", "pay_date", "voucher", "amount"],
     ["purchase_orders", "PURCHASE ORDER", "po_no", "po_date", "po", "total_amount"],
     ["payslips", "PAYSLIP", "payslip_no", "pay_date", "", "net_pay"]];
+  // 3.99.408: OFFICE VOUCHERS (SQL 175): one step makes a Collection Voucher (money received) and a Cash Voucher (the same
+  // money paid out right away), linked; one paper shows both
+  const OV_METHODS = [["cash", "Cash"], ["gcash", "GCash"], ["bank", "Bank"], ["check", "Check"], ["other", "Other"]];
+  const pairPaper = (c, v) => {
+    const amt = Number(c.amount || 0), money = `₱ ${E.peso(amt)}`, inWords = E.words ? String(E.words(amt) || "").toUpperCase() : "";
+    const row = (k, val) => `<tr><th>${k}</th><td>${esc(val || "—")}</td></tr>`;
+    const box = (title, code, rows, signA, signB) => `<div class="ovp-box"><div class="ovp-h"><b>${title}</b><span class="mono">${esc(code)}</span></div>
+      <table class="ovp-t"><tbody>${rows}</tbody></table>
+      <div class="ovp-amt"><small>AMOUNT</small><b>${money}</b>${inWords ? `<i>${esc(inWords)}</i>` : ""}</div>
+      <div class="ovp-sign"><div><div class="sl"></div><small>${signA}</small></div><div><div class="sl"></div><small>${signB}</small></div></div></div>`;
+    return `<div class="ovp">${E.printHead("OFFICE VOUCHERS", `<div class="soa-no"><small>DATE</small><b>${esc(E.mdy(c.csh_date || v?.cv_date).toUpperCase())}</b><small>COLLECTION + CASH</small></div>`)}
+      ${box("COLLECTION VOUCHER · MONEY RECEIVED", v?.cv_no || "", row("RECEIVED FROM", v?.received_from) + row("METHOD", String(v?.method || "").toUpperCase()) + row("REFERENCE NO", v?.reference_no) + row("PURPOSE", v?.note) + row("RECEIVED BY", v?.received_by), "PAID BY (PAYER)", "RECEIVED BY · EMON OVERRUNS")}
+      ${box("CASH VOUCHER · MONEY PAID OUT", c.csh_no, row("PAID TO", c.paid_to) + row("METHOD", String(c.method || "").toUpperCase()) + row("REFERENCE NO", c.reference_no) + row("PURPOSE", c.purpose) + row("PREPARED BY", c.created_by_name), "RECEIVED BY (PAYEE)", "PAID BY · EMON OVERRUNS")}
+      <p class="ovp-note">THE TWO VOUCHERS ARE LINKED: THE MONEY RECEIVED ABOVE WAS PAID OUT BELOW ON THE SAME DAY.</p></div>`;
+  };
+  V.officevouchers = async () => {
+    const can = E.isAdmin() || E.canWrite("eooffice");
+    E.shell("officevouchers", "Office Vouchers", `${eoTabs("eooffice")}<div class="btnrow">${can ? `<button type="button" class="btn primary" id="ovNew">${ic("plus")} New Collection + Cash Voucher</button>` : ""}</div><div id="ovList">${busy("Loading vouchers")}</div>`);
+    const here = E.stillHere();
+    const { data, error } = await sb.from("cash_vouchers").select("*").order("created_at", { ascending: false }).limit(300);
+    if (!here()) return;
+    if (error) { $("#ovList").innerHTML = `<div class="empty">${/cash_vouchers|schema cache|42P01/.test(error.message || "") ? "Run the database update <b>175</b> first." : esc(error.message)}</div>`; }
+    else {
+      const rows = data || [], ids = rows.map((r) => r.collection_id).filter(Boolean);
+      const cvs = ids.length ? (await sb.from("collection_vouchers").select("*").in("id", ids)).data || [] : [];
+      const cvOf = new Map(cvs.map((v) => [v.id, v]));
+      $("#ovList").innerHTML = rows.length ? E.grid({ cols: [
+        { label: "Date", get: (r) => E.mdy(r.csh_date) },
+        { label: "Collection Voucher", get: (r) => cvOf.get(r.collection_id)?.cv_no || "" },
+        { label: "Received From", get: (r) => cvOf.get(r.collection_id)?.received_from || "" },
+        { label: "Cash Voucher", get: (r) => r.csh_no },
+        { label: "Paid To", get: (r) => r.paid_to },
+        { label: "Amount", get: (r) => E.peso(r.amount), num: true },
+        { label: "", html: (r) => `<button type="button" class="btn small" data-ovp="${esc(r.id)}">${ic("print")} Paper</button>` }], rows }) : `<div class="empty">No office vouchers yet.</div>`;
+      $$("[data-ovp]").forEach((b) => (b.onclick = () => { const c = rows.find((r) => r.id === b.dataset.ovp); E.openPreview(`OFFICE VOUCHERS ${c.csh_no}`, [pairPaper(c, cvOf.get(c.collection_id))], { trx: c.id }); }));
+    }
+    if ($("#ovNew")) $("#ovNew").onclick = () => {
+      const m = E.modal("New Collection + Cash Voucher", `<p class="muted" style="margin-top:0">One step makes both: a <b>Collection Voucher</b> (money received, PAID) and a <b>Cash Voucher</b> (the same money paid out).</p>
+        <div class="fields wide">
+          <label for="ovDate">Date</label><input id="ovDate" type="date" value="${E.isoToday()}" max="${E.isoToday()}">
+          <label for="ovAmt">Amount</label><input id="ovAmt" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
+          <label for="ovFrom">Received From</label><input id="ovFrom" type="text" maxlength="120" placeholder="Who gave the money">
+          <label for="ovTo">Paid To</label><input id="ovTo" type="text" maxlength="120" placeholder="Who the money is paid to">
+          <label for="ovMethod">Method</label><select id="ovMethod">${OV_METHODS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select>
+          <label for="ovRef">Reference No</label><input id="ovRef" type="text" maxlength="80" placeholder="Optional">
+          <label for="ovPurpose">Purpose</label><input id="ovPurpose" type="text" maxlength="200" placeholder="e.g. ELECTRIC BILL">
+        </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="ovSave">${ic("check")} Save Both Vouchers</button>`);
+      $("[data-x]", m.el).onclick = () => m.close();
+      $("#ovSave", m.el).onclick = async () => {
+        const v = (id) => $("#" + id, m.el).value.trim();
+        if (!(Number(v("ovAmt")) > 0)) return toast("Type the amount.", true);
+        if (!v("ovFrom")) return toast("Type who the money is received from.", true);
+        if (!v("ovTo")) return toast("Type who the money is paid to.", true);
+        const btn = $("#ovSave", m.el); btn.disabled = true;
+        const { data: r, error: err } = await sb.rpc("create_office_pair", { p_data: { date: v("ovDate"), amount: v("ovAmt"), received_from: v("ovFrom"), paid_to: v("ovTo"), method: v("ovMethod"), reference_no: v("ovRef"), purpose: v("ovPurpose") } });
+        btn.disabled = false;
+        if (err) return E.fail(err, /create_office_pair|schema cache|PGRST202/.test(err.message || "") ? "Run the database update 175 first" : "Could not save the vouchers");
+        m.close(); toast(`Saved: ${r.cln || r.cv_no} and ${r.csh_no}.`); V.officevouchers();
+      };
+    };
+  };
   V.register = async () => {
     if (!E.isAdmin()) { E.shell("register", "Document Register", `<div class="empty">Only the Director opens the Document Register.</div>`); return; }
     E.shell("register", "Document Register", `<div class="reg-bar"><input type="search" id="rgQ" placeholder="Search by number, name or transaction ID" aria-label="Search">
