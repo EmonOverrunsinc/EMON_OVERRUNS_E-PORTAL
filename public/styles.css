@@ -5994,3 +5994,14 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .page.dsr-page .dsr-close .eo-stamp.vst em.st-out u { color: #16803c; }
 .page.dsr-page .dsr-close .eo-stamp.vst em.st-left u { color: #c0262d; }
 .page.dsr-page .dsr-close .eo-stamp.vst em + em { border-top: .25mm dashed var(--ink) !important; }
+/* 3.99.379: the rubber stamp on the collection voucher too: ink on paper, a double frame; PAID in blue ink with a check,
+   UNPAID / EXPIRED in red ink */
+.cvr-stamp.ink-stamp { --ink: #1d4fb0; background: transparent !important; color: var(--ink) !important; border: .6mm solid var(--ink) !important; border-radius: 2mm;
+  box-shadow: inset 0 0 0 .45mm #fff, inset 0 0 0 .75mm var(--ink) !important; padding: 1.6mm 3.6mm !important; transform: none !important; opacity: .92;
+  display: grid; justify-items: center; gap: .6mm; text-align: center; }
+.cvr-stamp.ink-stamp.unpaid, .cvr-stamp.ink-stamp.expired { --ink: #c0262d; }
+.cvr-stamp.ink-stamp b { display: flex; align-items: center; gap: 1.2mm; color: var(--ink) !important; font: 900 11pt/1 Arial, Helvetica, sans-serif; letter-spacing: .22em; }
+.cvr-stamp.ink-stamp b .st-ck { width: 4.4mm; height: 4.4mm; }
+.cvr-stamp.ink-stamp small { color: var(--ink) !important; font: 800 6.5pt/1.2 Arial, sans-serif; letter-spacing: .08em; border-top: .3mm solid var(--ink); padding-top: .6mm; }
+/* the acknowledged total: highlighted a little */
+.page.dsr-page .dsr-ack strong.ack-total { background: #fff3c4; color: #0f2a66 !important; padding: .2mm 1.2mm; border-radius: .8mm; box-shadow: inset 0 -0.5mm 0 #e2b33c; }

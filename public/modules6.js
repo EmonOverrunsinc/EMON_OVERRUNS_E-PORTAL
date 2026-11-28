@@ -834,7 +834,7 @@
     return `<div class="cvr">
       <div class="cvr-head"><div class="cvr-co">${E.logoHtml("cvr-logo")}<div><b>${esc(C.company.name)}</b><small class="tag">${esc(C.company.tagline || "")}</small>
         <small>${esc(C.company.address.join(", "))} · ${esc(C.company.email)}${E.siteText()}</small></div></div>
-        <div class="cvr-stamp ${st[0]}"><b>${st[1]}</b><small>${esc(st[2])}</small></div></div>
+        <div class="cvr-stamp ink-stamp ${st[0]}"><b>${st[0] === "paid" ? `<svg class="st-ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ""}${st[1]}</b><small>${esc(st[2])}</small></div></div>
       <div class="cvr-title">COLLECTION VOUCHER</div><div class="cvr-sub">${purpose === "COVERAGE" ? "COVERAGE PAYMENT" : "COLLECTION RECEIPT"}</div>
       <div class="cvr-dash"></div>
       <div class="cvr-main"><div class="cvr-f two">${fields.map(f).join("")}</div>

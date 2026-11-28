@@ -920,7 +920,7 @@
   // The lower verification block reads vertically: sales record number, PDF417, then TRX ID.
   const dsrSign = (bossId, when, stamp = "", reportCode = "", trx = "", received = {}) => {
     const boss = E.stampHtml?.(bossStamp(bossId)) || `<b>${esc(BOSS)}</b>`;
-    const ack = received.total ? `<div class="dsr-ack"><b>ACKNOWLEDGMENT OF RECEIPT</b><p>I acknowledge and confirm that I received <strong>Cash ₱ ${esc(received.cash)}</strong> and <strong>GCash ₱ ${esc(received.gcash)}</strong>, for a total amount of <strong>₱ ${esc(received.total)}</strong>, for this sales report dated <strong>${esc(when)}</strong>.</p></div>` : "";
+    const ack = received.total ? `<div class="dsr-ack"><b>ACKNOWLEDGMENT OF RECEIPT</b><p>I acknowledge and confirm that I received <strong>Cash ₱ ${esc(received.cash)}</strong> and <strong>GCash ₱ ${esc(received.gcash)}</strong>, for a total amount of <strong class="ack-total">₱ ${esc(received.total)}</strong>, for this sales report dated <strong>${esc(when)}</strong>.</p></div>` : "";
     // 3.99.374: one clean close: the acknowledgment; the cash plate | the signing line and the Director's stamp; then
     // a full-width strip: sales record no · PDF417 · TRX ID (nothing overlaps the bars)
     return `<div class="dsr-close">${ack}<div class="dc-row"><div class="dc-stamp">${stamp}</div><div class="dc-sign"><small>RECEIVED AND ACKNOWLEDGED BY</small><div class="dc-line"></div>${boss}</div></div>${reportCode && trx ? `<div class="dc-verify"><div class="dc-l"><small>SALES RECORD NO</small><b>${esc(String(reportCode.serial || ""))}</b></div><img src="${esc(reportCode.image || reportCode)}" alt="Sales record barcode"><div class="dc-r"><small>TRX ID</small><b>${esc(String(trx).toUpperCase())}</b></div></div>` : ""}</div>`;
