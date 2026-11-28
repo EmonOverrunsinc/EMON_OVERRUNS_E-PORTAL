@@ -1133,16 +1133,15 @@
     $("#main").innerHTML = `
       ${statusBanner(c, orders, ev.data || [])}
       <section class="cust-hero st-${esc(c.status)}">${c.status === "closed" ? closedInfo(c, orders, ev.data || []) : ""}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span><span class="ch-medals" id="pfMedals"></span></div>` : ""}
-        <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<span class="weekly-rank-watermark" id="pfWeekly" data-cid="${esc(c.id)}" hidden><small>WEEKLY RANKING</small><b>#1</b></span>` : ""}</div>
-          ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span></div>` : ""}</div>
+        <div class="ch-pic ch-pic-qr"><div class="ch-photo ch-qrbox"><canvas id="pfQr" aria-label="Customer QR code"></canvas></div>
+          <div class="ch-qrid"><small>Public Identification</small><b class="mono key" id="pfKey">${esc(c.public_ident || "—")}</b><button type="button" class="linkbtn" id="pfCopy">${ic("copy")} Copy</button></div>${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span></div>` : ""}</div>
         <div class="ch-main">
-          <div class="ch-name"><h2 class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
+          <div class="ch-name"><h2 class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span><span class="pf-mmedal" id="pfMonthMedal" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
           <div class="ch-sub">${c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
           </div>
         </div>
-        <div class="ch-qr"><canvas id="pfQr" aria-label="Customer QR code"></canvas><small>Public Identification</small><b class="mono key" id="pfKey">${esc(c.public_ident || "—")}</b><button type="button" class="linkbtn" id="pfCopy">${ic("copy")} Copy</button></div>
       </section>
       <div class="due-card ${num(b.balance_due) > 0 ? "warn" : num(b.balance_due) < 0 ? "credit" : "ok"}"><div><div class="k">Balance Due</div><div class="v">₱ ${peso(b.balance_due)}</div></div>
         <small>${num(b.balance_due) > 0 ? "Amount the customer still owes" : num(b.balance_due) < 0 ? `Overpaid · ₱ ${peso(-num(b.balance_due))} is ready for the customer's next invoice (it is used by itself)` : "Nothing due · fully paid"} · see Details for the full summary</small></div>
@@ -1274,11 +1273,14 @@
       if (!r || !el || el.dataset.cid !== c.id) return;
       el.innerHTML = E.rankTag(r.rank, r.tier || null, r.rank <= 10); el.title = `Rank ${r.rank} · lifetime net sales up to Monday ${mdy(r.as_of)}`; el.hidden = false;
     });
-    if ($("#pfWeekly")) E.customerWeeklyWinner().then((rk) => {
-      const el = $("#pfWeekly"), winner = [...rk.values()][0];
-      if (!el || el.dataset.cid !== c.id || winner?.customer_id !== c.id) return;
-      el.title = `Latest completed week #1 · net purchases from ${mdy(winner.week_start)}`; el.hidden = false;
-    });
+    // 3.99.387: the medal of last month (#1 gold, #2 silver, #3 bronze) stays beside the name for the whole next month (SQL 169)
+    if ($("#pfMonthMedal")) Promise.resolve(sb.rpc("customer_month_medals")).then(({ data }) => {
+      const el = $("#pfMonthMedal"), m = (data || []).find((x) => x.customer_id === c.id);
+      if (!el || !m || el.dataset.cid !== c.id) return;
+      const mon = new Date(`${String(m.month).slice(0, 10)}T00:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase();
+      el.className = `pf-mmedal md${m.rank}`; el.innerHTML = `${E.medalHtml(m.rank)}<b>#${m.rank} OF ${esc(mon)}</b>`;
+      el.title = `${["", "Gold", "Silver", "Bronze"][m.rank]} medal · #${m.rank} customer of ${mon}`; el.hidden = false;
+    }, () => {});
     if ($("#pfAchTab") || $("#pfMedals")) E.achievements("customer", c.id).then((a) => {
       const m = $("#pfMedals"); if (m && a) m.innerHTML = E.medalMini(a); // only medal types actually won, beside the account standing
       const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) { p.innerHTML = E.achHtml(a, "customer"); E.bindAch(p, c.id, () => V.customer(c.id)); } });
@@ -1302,7 +1304,7 @@
   // 3.99.367: original customer ranking: every active customer with positive lifetime net sales, fixed each Monday.
   // 3.99.375: the ranking in three kinds: ALL TIME (lifetime, fixed at Monday), THIS WEEK and THIS MONTH (SQL 166)
   async function topCustomers() {
-    const m = E.modal("Customer Ranking", `<div class="rk-tabs" role="tablist"><button type="button" class="on" data-rk="all">All Time</button><button type="button" data-rk="week">This Week</button><button type="button" data-rk="month">This Month</button></div><div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
+    const m = E.modal("Customer Ranking", `<div class="rk-tabs" role="tablist"><button type="button" class="on" data-rk="all">All Time</button><button type="button" data-rk="month">This Month</button></div><div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
     m.el.querySelector("[data-x]").onclick = m.close;
     const names = new Map();
     const show = async (kind) => {

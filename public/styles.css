@@ -6024,3 +6024,15 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 @media (prefers-reduced-motion: reduce) { .dl-ring, .dl-bar i { animation: none; } }
 /* 3.99.382: document wording in capitals (tables and the detail boxes) */
 .page .soa-t td, .page .soa-t th, .page .soa-info b, .page .soa-tile small { text-transform: uppercase; }
+/* 3.99.387: the customer profile: the QR in the photo spot (no photo); last month's medal beside the name */
+#main .cust-hero .ch-qrbox { display: grid; place-items: center; background: #fff; padding: 6px; }
+#main .cust-hero .ch-qrbox canvas { width: 100% !important; height: auto !important; aspect-ratio: 1; image-rendering: pixelated; display: block; }
+#main .cust-hero .ch-qrid { display: grid; justify-items: center; gap: 2px; text-align: center; margin-top: 6px; max-width: 100%; }
+#main .cust-hero .ch-qrid small { font-size: 10px; color: #5b6b8c; text-transform: uppercase; letter-spacing: .06em; }
+#main .cust-hero .ch-qrid .key { font-size: 10.5px; line-height: 1.35; overflow-wrap: anywhere; color: #0f2a66; }
+#main .cust-hero .ch-qrid .linkbtn { min-height: 0; padding: 2px 4px; font-size: 12px; }
+.pf-mmedal { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 5px; border-radius: 999px; font-size: 12px; font-weight: 900; letter-spacing: .04em; vertical-align: middle; white-space: nowrap; }
+.pf-mmedal .medal, .pf-mmedal svg { width: 18px; height: 18px; }
+.pf-mmedal.md1 { background: linear-gradient(135deg, #fff4b8, #f5c542); color: #5a3d00; border: 1px solid #e2b33c; }
+.pf-mmedal.md2 { background: linear-gradient(135deg, #f4f6f9, #c9d1dc); color: #37465f; border: 1px solid #aab4c3; }
+.pf-mmedal.md3 { background: linear-gradient(135deg, #f8e2cf, #d39a6a); color: #5a2f0d; border: 1px solid #c0834f; }
