@@ -920,7 +920,7 @@
     const pic = E.sigPicOf?.(resp ? resp.profile_id : prepId) || "";
     const issued = E.stampHtml?.({ ...(st && st.name ? st : { name: prep }), date: when }) || `<b>${esc(String(prep || "").toUpperCase())}</b>`;
     const boss = E.stampHtml?.({ ...bossStamp(bossId), date: when }) || `<b>${esc(BOSS)}</b>`; // 3.99.268: the date inside the stamps
-    return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>${resp || prepId ? "STORE RESPONSIBLE BY" : "ISSUED BY"}</small><div class="so-sign">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div>${issued}${tbar ? `<div class="so-appr-space"></div>` : ""}</div></div>
+    return `<div class="sign-off"><div class="so-left">${bar ? `<div class="so-bar"><span>${esc(no)}</span><img src="${bar}" alt=""></div>` : ""}<div class="so-issued"><small>${resp || prepId ? "STORE MANAGER" : "ISSUED BY"}</small><div class="so-sign">${pic ? `<img src="${esc(pic)}" alt="Signature">` : ""}</div>${issued}${tbar ? `<div class="so-appr-space"></div>` : ""}</div></div>
       <div class="so-ok">${stamp}<div class="so-sign"></div>${boss}${tbar ? `<div class="so-tbar so-appr"><span>TRX ID <b>${esc(String(trx).toUpperCase())}</b></span><img src="${tbar}" alt=""></div>` : ""}</div></div>`; };
   // Report sign-off: keep the report PDF417 in the header and repeat it below the Director's stamp.
   // The lower verification block reads vertically: sales record number, PDF417, then TRX ID.
@@ -949,7 +949,11 @@
     // 3.99.229: the sales records before and after this day (the cash left came from / went to)
     const near = (op, asc) => sb.from("outlet_sales").select("id, sale_date, created_at").eq("outlet_id", o.id)[op]("sale_date", date).order("sale_date", { ascending: asc }).limit(1)
       .then(({ data }) => (data || []).filter((x) => (asc ? x.sale_date > date : x.sale_date < date)).sort((a, b) => (asc ? 1 : -1) * String(a.sale_date).localeCompare(String(b.sale_date)))[0] || null, () => null);
-    const resp = ((staff || []).map((x) => x.employees).filter(Boolean))[0] || null; // the employee assigned to the store
+    // 3.99.385: the store manager of THAT day (who worked at this shop on that date, from the transfer history; SQL 167),
+    // the one who recorded the day first; before 167 is run: the shop's staff of today
+    const dayStaff = await Promise.resolve(sb.rpc("outlet_day_staff", { p_outlet: o.id, p_day: date })).then((x) => (x.error ? null : x.data || []), () => null);
+    const onDuty = dayStaff || (staff || []).map((x) => x.employees).filter(Boolean);
+    const resp = onDuty[0] || null;
     const [bossId, dh, before, after] = await Promise.all([loadBoss([r.created_by, resp?.profile_id]), sb.from("outlet_day_hours").select("*").eq("outlet_id", o.id).eq("day", date).maybeSingle().then((r) => r.data, () => null), near("lt", false), near("gt", true)]);
     const xp = day.filter((x) => x.kind === "daily"), co = day.filter((x) => x.kind === "cashout");
     const fmt = (n) => Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -970,7 +974,7 @@
     const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>BRANCH ${esc(bidText(o))}</small><small>${esc(mdy(date))}</small>${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? `<small class="soa-corr">CORRECTED ${esc(mdy(new Date(r.updated_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })))}</small>` : ""}</div>`)}
       <div class="soa-info"><div><small>Outlet</small><b>${esc(o.code)}${o.name !== o.code ? ` · ${esc(o.name)}` : ""}</b></div><div><small>Date</small><b>${esc(mdy(date))}</b></div>
         <div class="w2"><small>Address</small><b>${esc(o.address || "—")}</b></div><div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div>
-        <div class="dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}` : "—"}</b></div>
+        <div class="dsr-resp"><small>Store Manager</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}` : "—"}</b></div>
         <div class="dsr-resp w2"><small>Report Submitted By</small><b>${esc(BOSS)}${(() => { const e = bossStamp(bossId).eoid; return e ? `<i>${esc(e)}</i>` : ""; })()}</b></div>
         ${r.note ? `<div class="w3"><small>Note</small><b>${esc(r.note)}</b></div>` : ""}</div>
       <div class="soa-tiles t5">${[["Net Sales", tot, "in"], ["GCash", gc, "pay"], ["Cash", num(r.cash), "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash After Cost", cashAfterCost, "pay"], ["Cash Out", paidOut, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
@@ -991,7 +995,7 @@
           ...co.map((x) => ({ at: x.created_at, what: `Cash out to ${x.payee || "—"} · ₱ ${P(x.amount)}`, by: x.created_by_name, id: x.id })),
           ...(dh ? [{ at: dh.updated_at, what: `Hours of the day · ${dh.opens || "—"} – ${dh.closes || "—"}${dh.note ? ` · ${dh.note}` : ""}`, by: dh.set_by_name, id: "" }] : [])
         ].sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
-        const duty = (staff || []).map((x) => x.employees).filter(Boolean);
+        const duty = onDuty;
         return `${acts.length ? `<div class="soa-sec dsr-acts"><h4>Activities</h4><table class="soa-t"><thead><tr><th>Time</th><th>Activity</th><th>By</th><th>TRX ID</th></tr></thead><tbody>
           ${acts.map((a) => `<tr><td>${esc(tm(a.at))}</td><td>${esc(String(a.what || "").replace(/₱\s?/g, "PHP ").toUpperCase())}</td><td>${esc(String(a.by || "—").toUpperCase())}</td><td class="mono dsr-trx">${esc(String(a.id || "—").toUpperCase())}</td></tr>`).join("")}</tbody></table></div>` : ""}
           ${duty.length > 1 ? `<div class="soa-sec dsr-duty"><h4>Employees on Duty</h4>${duty.length ? `<div class="dsr-names">${duty.map((e) => `<span><b>${esc(`${e.first_name || ""} ${e.last_name || ""}`.trim().toUpperCase())}</b>${e.employee_no ? ` · ${esc(e.employee_no)}` : ""}${e.position ? ` · ${esc(String(e.position).toUpperCase())}` : ""}</span>`).join("")}</div>` : `<div class="soa-none">No employee assigned.</div>`}</div>` : ""}`;
@@ -1032,7 +1036,7 @@
         <div><small>Opening Hours</small><b>${esc(hoursOf(o) || "—")}</b></div>
         <div><small>Monthly Rental</small><b>₱ ${P(o.monthly_rent)}</b></div>
         ${d.cust ? `<div class="w2"><small>Stock Account</small><b>${esc(E.fullName(d.cust))} · ${esc(d.cust.account_no || "")}</b></div>` : ""}
-        <div class="w2 dsr-resp"><small>Store Responsible</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}` : "—"}</b></div>
+        <div class="w2 dsr-resp"><small>Store Manager</small><b>${resp ? `${esc(`${resp.first_name || ""} ${resp.last_name || ""}`.trim().toUpperCase())}${resp.employee_no ? `<i>${esc(resp.employee_no)}</i>` : ""}` : "—"}</b></div>
         <div class="w2 dsr-resp"><small>Report Submitted By</small><b>${esc(BOSS)}${(() => { const e = bossStamp(bossId).eoid; return e ? `<i>${esc(e)}</i>` : ""; })()}</b></div></div>`; // 3.99.305
     const tile = (k, v, cls = "") => `<div class="soa-tile ${cls}"><small>${k}</small><b>₱ ${P(v)}</b></div>`;
     const tiles = `<div class="soa-tiles">${tile("Net Sales", d.net, "in")}${tile("Expenses", d.op ?? d.out, "out")}${tile("Cash Out", d.cash || 0, "co")}${tile(m === monthNow() ? "Cash Left to Date" : "Closing Cash Left", d.drawer, "pay")}${tile(m === monthNow() ? "Net Balance to Date" : "Closing Net Balance", d.pool, `bal${d.pool < 0 ? " neg" : ""}`)}</div>
