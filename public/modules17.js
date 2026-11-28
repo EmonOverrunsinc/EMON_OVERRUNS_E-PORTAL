@@ -13,6 +13,12 @@
 
   const PAY = [["cash", "Cash"], ["gcash", "GCash"]];
   const nonCash = (r) => Math.max(0, num(r?.total) - num(r?.cash)); // 3.99.257: GCash etc.: already out of the shop (cash out) // 3.99.117: only Cash and GCash (the server keeps the other columns at 0)
+  // 3.99.380: the "paid to / note" of an expense, clean: no repeat of its type, no system restore notes; capitals
+  const payNote = (r) => {
+    const k = String(KIND[r.kind] || r.kind || "").toUpperCase(), skip = (t) => { const u = String(t || "").trim().toUpperCase(); return !u || u === k || u === "EXPENSES" || /PAPER (SALES )?REPORT|RESTORED FROM/.test(u); };
+    const out = [r.payee, r.note].filter((t) => !skip(t)).map((t) => String(t).trim().toUpperCase());
+    return out.join(" · ") || "—";
+  };
   const KIND = { daily: "Daily Operation Cost", rent: "Monthly Rental", supplier: "Supplier Payment", bills: "Bills / Utilities", salary: "Salary", other: "Other Expense", deposit: "Bank Deposit", cashout: "Cash Out" };
   const USE = ["rent", "supplier", "bills", "salary", "other", "deposit"]; // 3.99.221: paid from the cash taken out (Net Balance)
   const missing = (e) => /outlet|does not exist|schema cache|PGRST20[25]|42P01/.test(`${e?.message || ""} ${e?.code || ""}`);
@@ -355,7 +361,7 @@
       : empty("No sales recorded this month.");
     const xps = exps.filter((r) => r.kind !== "cashout"), cos = exps.filter((r) => r.kind === "cashout");
     const expTab = xps.length ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>TYPE</th><th>PAID TO / NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
-        ${xps.map((r) => `<tr><td><b>${esc(mdy(r.exp_date))}</b></td><td><span class="os-kind k-${esc(r.kind)}">${esc(KIND[r.kind] || r.kind)}</span></td><td>${esc([r.payee, r.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${peso(r.amount)}</b></td><td>${tools("outlet_expenses", r)}</td></tr>`).join("")}</tbody>
+        ${xps.map((r) => `<tr><td><b>${esc(mdy(r.exp_date))}</b></td><td><span class="os-kind k-${esc(r.kind)}">${esc(KIND[r.kind] || r.kind)}</span></td><td>${esc(payNote(r))}</td><td class="num"><b>${peso(r.amount)}</b></td><td>${tools("outlet_expenses", r)}</td></tr>`).join("")}</tbody>
         <tfoot><tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${peso(out)}</td><td></td></tr></tfoot></table></div>`
       : empty("No expense this month.");
     const cashTab = cash > 0 ? `<div class="grid-scroll"><table class="os-t"><thead><tr><th>DATE</th><th>CASH OUT TO</th><th>NOTE</th><th class="num">AMOUNT</th><th></th></tr></thead><tbody>
@@ -1042,10 +1048,10 @@
       days.map((x) => `<tr><td>${esc(sdate(x.dt))}</td>${PAY.map(([k]) => `<td class="num">${Z(x.r?.[k])}</td>`).join("")}<td class="num"><b>${Z(x.t)}</b></td><td class="num">${Z(x.ex)}</td><td class="num">${Z(x.co)}</td><td class="num"><b>${P(x.left)}</b></td></tr>`),
       `<tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${P(sum(d.sales, k))}</td>`).join("")}<td class="num">${P(d.net)}</td><td class="num">${P(sum(days, "ex"))}</td><td class="num">${P(sum(days, "co"))}</td><td class="num">${P(d.drawer)}</td></tr>`);
     table("Expenses &amp; Bills", [["Date"], ["Type"], ["Paid To / Note"], ["Amount (₱)", 1]],
-      xps.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(KIND[r.kind] || r.kind)}</td><td>${esc([r.payee, r.note].filter(Boolean).join(" · ") || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
+      xps.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(String(KIND[r.kind] || r.kind || "").toUpperCase())}</td><td>${esc(payNote(r))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${P(d.out)}</td></tr>`);
     table("Cash Out", [["Date"], ["Cash Out To"], ["Note"], ["Amount (₱)", 1]],
-      [...d.sales.filter((r) => nonCash(r) > 0).map((r) => ({ exp_date: r.sale_date, payee: "GCash", amount: nonCash(r) })), ...cos].sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1)).map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(r.payee || "—")}</td><td>${esc(r.note || "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
+      [...d.sales.filter((r) => nonCash(r) > 0).map((r) => ({ exp_date: r.sale_date, payee: "GCash", amount: nonCash(r) })), ...cos].sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1)).map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(String(r.payee || "—").toUpperCase())}</td><td>${esc(r.note && !/PAPER (SALES )?REPORT|RESTORED FROM/i.test(r.note) ? String(r.note).toUpperCase() : "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL CASH OUT</td><td class="num">${P(d.cash || 0)}</td></tr>`);
     table("Stock Payments", [["Receipt No"], ["Date"], ["Amount (₱)", 1]],
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
