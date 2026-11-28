@@ -452,6 +452,8 @@
       if (insHtml) { if ($("#vfResult")) { $(".verify-hero").hidden = true; $("#vfResult").innerHTML = insHtml; } return; }
       const shown = $("#vfCode").value;
       if (decodeURIComponent(location.hash.slice(1)) !== "verify/" + shown) history.replaceState(null, "", "#verify/" + encodeURIComponent(shown));
+      // 3.99.403: a new document code (INV / ACK / COV / CLN / RPT-2026-0001) is checked by its record's number
+      if (/^(INV|ACK|COV|CLN|RPT)-\d{4}-\d{4,}$/i.test(t)) { const { data: old } = await Promise.resolve(sb.rpc("doc_code_old", { p_code: t })).then((r) => r, () => ({ data: null })); if (old) t = old; }
       const [{ data, error }] = await Promise.all([(/^(DSR-[A-Z0-9]+|SHOP-?\d+)-\d{8}$/i.test(t) ? sb.rpc("verify_dsr", { p_code: t }) : sb.rpc("verify_record", { p_code: t })), new Promise((r) => setTimeout(r, 450))]);
       const out = $("#vfResult"); if (!out) return;
       if (error) { out.innerHTML = `<div class="vf-bad"><div class="vf-seal">!</div><div class="vf-title">CANNOT CHECK RIGHT NOW</div><div class="vf-sub">${esc(error.message)}</div></div>`; return; }

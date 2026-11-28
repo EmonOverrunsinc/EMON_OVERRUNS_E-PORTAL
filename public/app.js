@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.402"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.403"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.402"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.403"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -2928,6 +2928,19 @@
     const re = new RegExp(forms.join("|"), "gi");
     return pages.map((p) => String(p).replace(re, esc(c.public_ident)));
   };
+  // 3.99.403: DOCUMENT CODES (SQL 174): on a paper the old number of an invoice, payment, coverage, collection or credit memo
+  // is shown as its new code (INV / ACK / COV / CLN / RPT-2026-0001). The barcodes and QR codes keep the old number.
+  const OLD_NO = /\b(?:INV-\d{6}-\d{3,6}|PAY-\d{6}-\d{3,6}|A-\d{4}-\d{4}-\d{3,6}|INS-\d{6}-\d{3,6}|CV-\d{6}-\d{3,6}|EOC-\d{9,12})\b/g;
+  async function documentCodes(root) {
+    if (!root) return;
+    const nodes = [], found = new Set(), walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) { const n = walker.currentNode, m = n.nodeValue.match(OLD_NO); if (m && !n.parentElement?.closest("script, style")) { nodes.push(n); m.forEach((x) => found.add(x)); } }
+    if (!found.size) return;
+    const { data, error } = await Promise.resolve(sb.rpc("doc_codes_for", { p_numbers: [...found].slice(0, 300) })).then((r) => r, () => ({ error: true }));
+    if (error || !data?.length) return;
+    const map = new Map(data.map((r) => [r.old_no, r.code]));
+    nodes.forEach((n) => { n.nodeValue = n.nodeValue.replace(OLD_NO, (x) => map.get(x) || x); });
+  }
   async function documentCards(root, issuedOn) {
     if (!root) return;
     const pattern = /\bEO-\d{7,}\b/g;
@@ -3078,6 +3091,7 @@
     });
     const ready = Promise.all([
       documentCards($("#pvDesk", pv), opts.issuedOn),
+      documentCodes($("#pvDesk", pv)),
       trx ? null : sb.rpc("issue_document_trx").then(({ data, error }) => {
         if (error || !data) { toast("Document TRX unavailable. Check your connection and database update 157.", true); return; }
         footers.forEach(f => { f.textContent = "TRX ID " + String(data).toUpperCase(); });
