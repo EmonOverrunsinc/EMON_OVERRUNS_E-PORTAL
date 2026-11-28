@@ -6093,3 +6093,10 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .page .idcol-cards { zoom: .82; margin: 3mm 0 2mm; }
 .page .idcol-terms ol { font-size: 7.4pt; line-height: 1.4; }
 .page .idcol-sign { margin-top: 8mm; }
+/* 3.99.394: the temporary PIN on the release paper; the PIN success window */
+.page .idcol-pin { display: grid; justify-items: center; gap: .6mm; margin-top: 3mm; padding: 2mm 3mm; border: .4mm dashed #c0262d; border-radius: 2mm; }
+.page .idcol-pin small { font-size: 6pt !important; color: #c0262d !important; } .page .idcol-pin b { font-size: 16pt; letter-spacing: .3em; color: #c0262d; }
+.pin-ok { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.pin-ok > .ic { width: 44px; height: 44px; padding: 8px; border-radius: 50%; background: #e7f6ee; color: #17794a; stroke: #17794a; }
+.pin-ok b { font-size: 16px; color: #17794a; } .pin-ok small { color: #5b6b8c; }
+.pin-ok-t { border-collapse: collapse; font-size: 13px; } .pin-ok-t th { text-align: left; padding: 4px 12px 4px 0; color: #5b6b8c; font-size: 11px; letter-spacing: .06em; } .pin-ok-t td { padding: 4px 0; font-weight: 800; color: #0f2a66; overflow-wrap: anywhere; }

@@ -234,6 +234,8 @@
     const [cv, app] = await Promise.all([card.fee_cv_id ? sb.from("collection_vouchers").select("cv_no, cv_date, paid_at").eq("id", card.fee_cv_id).maybeSingle().then((r) => r.data, () => null) : null,
       em.job_application_id ? sb.from("job_applications").select("application_no, created_at").eq("id", em.job_application_id).maybeSingle().then((r) => r.data, () => null) : null]);
     const stepName = (STEPS.find(([v]) => v === stepOf(card)) || [, "NOT ACTIVATED"])[1];
+    // 3.99.394: a one-time TEMPORARY PIN for the employee, printed on this paper (SQL 173)
+    const tpin = await Promise.resolve(sb.rpc("card_temp_pin", { p_card: card.id })).then((r) => (r.error ? "" : r.data || ""), () => "");
     const feeTxt = card.fee_method === "salary" ? `PHP 150.00 · SALARY DEDUCTION${card.fee_deducted_at ? " · DEDUCTED" : " · PENDING"}` : cv ? "PHP 150.00 · PAID" : "—";
     const page = `<div class="idcol">${E.printHead ? E.printHead("EMPLOYEE IDENTIFICATION CARD", `<div class="soa-no"><small>CARD NO</small><b class="mono">${esc(card.card_no)}</b><small>${esc(mdy(E.isoToday()).toUpperCase())}</small></div>`).replace('<i class="ph-gl"></i>', '<i class="ph-gl"></i><div class="ph-sub">COLLECTION · PHYSICAL CARD</div>') : `<h2>COLLECTION · EMPLOYEE IDENTIFICATION CARD</h2>`}
       <div class="idcol-top"><table class="idcol-t"><tbody>
@@ -242,7 +244,8 @@
         ${row("ISSUED", mdy(card.issued_at).toUpperCase())}${row("VALID UNTIL", mdy(card.valid_until).toUpperCase())}
         ${row("ID CARD FEE", feeTxt)}${row("COLLECTION RECEIPT NO", cv?.cv_no, 1)}${row("DATE PAID", cv ? mdy(cv.paid_at || cv.cv_date).toUpperCase() : card.fee_deducted_at ? mdy(card.fee_deducted_at).toUpperCase() : "")}
         ${row("RECEIVED AT OFFICE", card.received_at ? mdy(card.received_at).toUpperCase() : "—")}${row("STATUS", stepName)}</tbody></table>
-        <div class="idcol-qr">${qr ? `<img src="${qr}" alt="">` : ""}<small>CODED RECORD · SCAN TO VERIFY</small></div></div>
+        <div class="idcol-qr">${qr ? `<img src="${qr}" alt="">` : ""}<small>CODED RECORD · SCAN TO VERIFY</small>
+          ${tpin ? `<div class="idcol-pin"><small>TEMPORARY PIN · ONE TIME</small><b class="mono">${esc(tpin)}</b><small>CHANGE IT AT YOUR FIRST SIGN-IN</small></div>` : ""}</div></div>
       <div class="idcol-cards">${front(d)}${back(d)}</div>
       <div class="idcol-terms"><h4>IMPORTANT</h4><ol>
         <li>THIS CARD IS THE PROPERTY OF EMON OVERRUNS. IT IS FOR THE NAMED EMPLOYEE ONLY AND MUST NOT BE LENT OR COPIED.</li>
@@ -448,6 +451,35 @@
     };
   }
 
+  // 3.99.394: after sign-in, a temporary PIN must be changed: a window opens by itself (SQL 173)
+  let pinAsked = false;
+  async function tempPinCheck() {
+    if (pinAsked) return; pinAsked = true;
+    const { data: st } = await Promise.resolve(sb.rpc("my_pin_state")).then((r) => r, () => ({ data: null }));
+    if (!st?.must_change) return;
+    const m = E.modal("Set Your New PIN", `<p style="margin-top:0">Your ID card <b class="mono">${esc(st.card_no || "")}</b> has a <b>temporary PIN</b> (on your collection paper). Type it, then choose your own 4-number PIN.</p>
+      <label for="tpOld">Temporary PIN</label><input id="tpOld" type="password" inputmode="numeric" maxlength="4" autocomplete="one-time-code">
+      <label for="tpNew">New PIN</label><input id="tpNew" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">
+      <label for="tpNew2">New PIN again</label><input id="tpNew2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">
+      <div id="tpMsg" class="muted" role="status"></div>`,
+      `<button type="button" class="btn" data-x>Later</button><button type="button" class="btn primary" id="tpOk">${ic("check")} Save New PIN</button>`);
+    $("[data-x]", m.el).onclick = () => m.close();
+    $("#tpOk", m.el).onclick = async () => {
+      const o = $("#tpOld", m.el).value.trim(), a = $("#tpNew", m.el).value.trim(), b = $("#tpNew2", m.el).value.trim(), say = (t) => ($("#tpMsg", m.el).textContent = t);
+      if (!/^[0-9]{4}$/.test(o)) return say("Type the 4-number temporary PIN.");
+      if (!/^[0-9]{4}$/.test(a)) return say("The new PIN is 4 numbers.");
+      if (a !== b) return say("The two new PINs are not the same.");
+      const { data, error } = await sb.rpc("change_temp_pin", { p_temp: o, p_new: a });
+      if (error) return say(error.message || "Could not save the PIN.");
+      if (!data?.ok) return say(data?.why || "Could not save the PIN.");
+      m.close();
+      const done = E.modal("PIN Setup Successful", `<div class="pin-ok">${ic("check")}<b>PIN setup has been successful.</b>
+        <table class="pin-ok-t"><tr><th>EOID</th><td class="mono">${esc(data.employee_no || "—")}</td></tr><tr><th>CARD NO</th><td class="mono">${esc(data.card_no || "—")}</td></tr><tr><th>TRX ID</th><td class="mono">${esc(String(data.trx || "").toUpperCase())}</td></tr></table>
+        <small>For more information, please email <a href="mailto:emonoverruns@gmail.com">emonoverruns@gmail.com</a></small></div>`, `<button type="button" class="btn primary" data-x>OK</button>`);
+      $("[data-x]", done.el).onclick = () => done.close();
+    };
+  }
+
   // 3.99.391: the saved card PDF as a PNG of the two card sides (no white page, no crop marks, no TRX line)
   async function cardPng(file, wantWidth = 900) {
     const renderer = await import("./vendor/pdfjs-4.10.38/pdf.min.mjs");
@@ -548,5 +580,5 @@
     if (open) $("[data-open]", m.el).onclick = () => { m.close(); location.hash = "employee/" + r.data.employee_id; };
   }
 
-  Object.assign(E, { saveApprovedCard, retryCardPdfs, idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet, cardMini, directorAuth }); // idCardSheet: for the print checks
+  Object.assign(E, { saveApprovedCard, retryCardPdfs, idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet, cardMini, directorAuth, tempPinCheck }); // idCardSheet: for the print checks
 })();
