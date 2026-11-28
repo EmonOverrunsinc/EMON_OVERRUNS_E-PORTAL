@@ -236,17 +236,15 @@
     const empApproved = em.approval_status === "approved" && !!em.approved_by_name;
     $(".band h1").textContent = `Employee › ${fullName(em)}`;
     $("#main").innerHTML = `
-      ${em.status === "terminated" ? `<div class="banner closed">TERMINATED on ${mdy(em.termination_date)} — ${esc(em.termination_reason || "")}. The login is disabled.</div>` : ""}
-      ${em.status === "suspended" ? `<div class="banner warn">⚠ SUSPENDED — the login is blocked until the employee is reactivated by an approved order.</div>` : ""}
-      ${em.approval_status === "pending" ? `<div class="banner warn">⚠ WAITING FOR APPROVAL — check the details and the portal access (Access &amp; Status). ${isAdmin() ? "Then press <b>Approve Employee</b>: the employee ID card is made and the login opens." : "EMON HASAN approves it."}</div>` : ""}
-      ${em.status === "waiting" && em.approval_status !== "pending" ? `<div class="banner warn">No login yet · Create Account with <b>${esc(em.email)}</b></div>` : ""}
+      ${em.status === "terminated" ? `<div class="banner closed">TERMINATED · ${mdy(em.termination_date)}${em.termination_reason ? ` · ${esc(em.termination_reason)}` : ""} · Login disabled</div>` : ""}
+      ${em.status === "suspended" ? `<div class="banner warn">SUSPENDED · Login blocked until the employee is reactivated</div>` : ""}
+      ${em.approval_status === "pending" ? `<div class="banner warn">WAITING FOR APPROVAL · Check the Details and Access &amp; Status. ${isAdmin() ? "Then press <b>Approve Employee</b> · the login opens and the ID card can be generated." : "EMON HASAN approves it."}</div>` : ""}
+      ${em.status === "waiting" && em.approval_status !== "pending" ? `<div class="banner warn">NO LOGIN YET · Create Account with <b>${esc(em.email)}</b></div>` : ""}
       <section class="cust-hero st-${esc(em.status)}">${photoBox(photo, (em.first_name[0] || "") + (em.last_name[0] || ""))}
         <div class="ch-main"><div class="ch-name"><h2>${esc(fullName(em))}</h2>${verifiedBadge(verified)}${em.status === "waiting" ? `<span class="pill pending">WAITING SIGN-UP</span>` : pill(em.status)}</div>
           <div class="ch-sub">${E.titleHtml(em.role, em.position)} · ${esc(em.email)}${em.phone ? " · " + esc(em.phone) : ""}</div>
           <div class="ch-place" id="emPlace"></div>
           <div class="ch-ids">${E.idBox("Employee No", em.employee_no)}${E.idBox("Date Hired", mdy(em.date_hired))}${E.idBox("Monthly Salary", peso(em.monthly_salary))}${E.idBox("Access Level", E.roleName(em.role).toUpperCase())}</div></div></section>
-      <section class="wp-card" id="emWork"><div class="wp-head"><h3>${ic("building")} Currently Working At</h3>${isAdmin() && em.status !== "terminated" ? `<button type="button" class="btn small primary" id="emTransfer">${ic("pin")} Transfer / Assign New Location</button>` : ""}</div>
-        <div class="wp-now" id="emWorkNow">${busy()}</div><div class="wp-hist" id="emWorkHist"></div></section>
       ${salaryTiles(em, st)}
       ${bal.missing && isAdmin() ? `<div class="banner warn">Run the database update <b>063_payroll_pay_salary.sql</b> to issue payslips and pay salary.</div>` : ""}
       <div class="actionbar">
@@ -288,7 +286,10 @@
             <div class="fields wide"><label for="emLinkSel">Login Account</label><select id="emLinkSel"><option value="">Loading…</option></select></div>
             <div class="btnrow"><button type="button" class="btn" id="emLink">${ic("key")} Link Login Account</button></div>`}</fieldset></div>` : ""}
         ${isAdmin() ? `<div data-p="5" hidden id="emCard"></div>` : ""}
-        <div data-p="${isAdmin() ? 6 : 4}" hidden><h4 class="doc-h">Portal Access — what ${esc(fullName(em))} can open</h4>${accessList(em.role, em.modules)}${E.kvTable([["Employee No", em.employee_no], ["Name", fullName(em)], ["Position", em.position], ["Email (login)", em.email], ["Phone", em.phone], ["Present Address", em.address], ["Permanent Address", em.permanent_address], ["Assigned Location", em.work_location], ["SSS No", em.sss_no], ["SSS Contribution / Month", num(em.sss_amount) ? "₱ " + peso(em.sss_amount) : ""], ["Approved By", em.approved_by_name ? `${em.approved_by_name} · ${E.dateTime(em.approved_at)}` : em.approval_status === "pending" ? "WAITING FOR APPROVAL" : ""], ["Date Hired", mdy(em.date_hired)], ["Monthly Salary", "₱ " + peso(em.monthly_salary)], ["Duty Hours", em.duty_hours],
+        <div data-p="${isAdmin() ? 6 : 4}" hidden>
+      <section class="wp-card" id="emWork"><div class="wp-head"><h3>${ic("building")} Currently Working At</h3>${isAdmin() && em.status !== "terminated" ? `<button type="button" class="btn small primary" id="emTransfer">${ic("pin")} Transfer / Assign Location</button>` : ""}</div>
+        <div class="wp-now" id="emWorkNow">${busy()}</div><div class="wp-hist" id="emWorkHist"></div></section>
+          <h4 class="doc-h">Portal Access · What ${esc(fullName(em))} Can Open</h4>${accessList(em.role, em.modules)}${E.kvTable([["Employee No", em.employee_no], ["Name", fullName(em)], ["Position", em.position], ["Email (login)", em.email], ["Phone", em.phone], ["Present Address", em.address], ["Permanent Address", em.permanent_address], ["Assigned Location", em.work_location], ["SSS No", em.sss_no], ["SSS Contribution / Month", num(em.sss_amount) ? "₱ " + peso(em.sss_amount) : ""], ["Approved By", em.approved_by_name ? `${em.approved_by_name} · ${E.dateTime(em.approved_at)}` : em.approval_status === "pending" ? "WAITING FOR APPROVAL" : ""], ["Date Hired", mdy(em.date_hired)], ["Monthly Salary", "₱ " + peso(em.monthly_salary)], ["Duty Hours", em.duty_hours],
           ["Father's Name", em.father_name], ["Mother's Name", em.mother_name], ["Wife's / Husband's Name", em.spouse_name], ["Date of Birth", mdy(em.date_of_birth)], ["Birth Place", em.birth_place],
           ["BRC / NID / Passport No", em.id_number], ["Gender", (em.gender || "").toUpperCase()], ["Religion", em.religion], ["Blood Group", em.blood_group],
           ["Work Experience", (em.experience || []).map((r) => [r.company, r.position, [r.from, r.to].filter(Boolean).join("–")].filter(Boolean).join(" · ")).join(" | ")], ["Access", accessText(em.role, em.modules)], ["Status", em.status.toUpperCase()], ["Terminated", em.termination_date ? `${mdy(em.termination_date)} — ${em.termination_reason || ""}` : ""],
