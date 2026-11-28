@@ -6038,3 +6038,6 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .pf-mmedal.md3 { background: linear-gradient(135deg, #f8e2cf, #d39a6a); color: #5a2f0d; border: 1px solid #c0834f; }
 /* 3.99.388: the VIP badge under the customer QR */
 #main .cust-hero .ch-qrid .vip-box { margin: 2px 0 3px; }
+/* 3.99.389: the monthly rank badge: a crown in the rank's colour */
+.pf-mmedal .ic { width: 15px; height: 15px; margin-left: 3px; }
+.pf-mmedal.md1 .ic { stroke: #5a3d00; fill: rgba(255,255,255,.45); } .pf-mmedal.md2 .ic { stroke: #37465f; } .pf-mmedal.md3 .ic { stroke: #5a2f0d; }

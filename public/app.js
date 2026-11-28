@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.388"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.389"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.388"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.389"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -99,8 +99,6 @@
   // line (numbered) and, for a customer, the PRIZE POOL of the year (gold 10,000 · silver 6,000 · bronze 3,000 each)
   const PRIZE = [0, 10000, 6000, 3000], MKEY = ["", "gold", "silver", "bronze"];
   const amt = (v) => Number(v || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  // 3.99.388: the 1st of the month after a monthly medal (its achievement date)
-  const nextMonth1 = (p) => { const [y, m] = String(p).slice(0, 7).split("-").map(Number); return `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-01`; };
   const achHtml = (a, kind) => {
     if (!a) return `<div class="empty">No achievement yet. It needs the database updates <b>126</b> and <b>130</b>.</div>`;
     const shop = kind === "outlet", when = (p) => (shop ? mdy(p) : `WEEK OF ${mdy(p)}`), list = a.medals || [];
@@ -116,7 +114,7 @@
     return `<div class="ach-head">
         <div class="ach-stars"><b>MEDALS ACHIEVED</b><small>${num(a.gold) + num(a.silver) + num(a.bronze)} in all</small></div>
         ${shop ? `<div class="ach-count">${[1, 2, 3].map((k) => `<div class="ach-c md${k}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b><small>${MEDAL_NAME[k]}</small></div>`).join("")}</div>` : ""}</div>
-      ${list.length ? `<div class="ach-list">${list.map((x, n) => `<div class="ach-row md${x.rank}${x.claimed ? " claimed" : ""}"><span class="ach-no">${n + 1}</span>${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} MEDAL · ${shop ? (x.monthly ? `#${x.rank} OF THE MONTH` : `#${x.rank} OF THE DAY`) : x.monthly ? `#${x.rank} OF ${esc(monthText(String(x.period).slice(0, 7)).toUpperCase())}` : esc(weekOf(x.period))}</b><small>${!shop && x.monthly ? `ACHIEVEMENT DATE ${esc(mdy(nextMonth1(x.period)).toUpperCase())}` : x.monthly ? `${esc(monthText(String(x.period).slice(0, 7)))}${x.given ? ` · given ${esc(mdy(x.given))}` : ""}` : `Date of activity: ${esc(mdy(x.period))}`}</small></div><span class="ach-end">${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}${x.claimed ? `<span class="ach-claim" title="${esc(x.ref || "")}">CLAIMED ✔</span>` : ""}</span></div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
+      ${list.length ? `<div class="ach-list">${list.map((x, n) => `<div class="ach-row md${x.rank}${x.claimed ? " claimed" : ""}"><span class="ach-no">${n + 1}</span>${medalHtml(x.rank)}<div><b>${MEDAL_NAME[x.rank]} MEDAL · ${shop ? (x.monthly ? `#${x.rank} OF THE MONTH` : `#${x.rank} OF THE DAY`) : esc(weekOf(x.period))}</b><small>${x.monthly ? `${esc(monthText(String(x.period).slice(0, 7)))}${x.given ? ` · given ${esc(mdy(x.given))}` : ""}` : `Date of activity: ${esc(mdy(x.period))}`}</small></div><span class="ach-end">${x.amount != null ? `<em>₱ ${peso(x.amount)}</em>` : ""}${x.claimed ? `<span class="ach-claim" title="${esc(x.ref || "")}">CLAIMED ✔</span>` : ""}</span></div>`).join("")}</div>` : `<div class="empty">No medal yet.</div>`}
       ${pool}
 `;
   };
@@ -133,9 +131,9 @@
     toast(`₱ ${amt(data?.amount)} taken off the balance (${data?.order_no || ""}).`); reload?.();
   }));
   // 3.99.208: the medal rules, shown once in the customer's Info tab (not under the medals)
-  const medalRules = () => `<table class="mr-tab"><thead><tr><th>Medal</th><th>Monthly rank</th></tr></thead><tbody>
-    ${[[1, "GOLD", "#1 of the month"], [2, "SILVER", "#2 of the month"], [3, "BRONZE", "#3 of the month"]].map(([k, n, m]) => `<tr><td><span class="mr-dot ${MKEY[k]}"></span>${n}</td><td>${m}</td></tr>`).join("")}</tbody></table>
-    <p class="mr-small">The 3 customers with the highest net purchases of the month · saved on the 1st of the next month · the medal shows on the profile for that month</p>`;
+  const medalRules = () => `<table class="mr-tab"><thead><tr><th>Medal</th><th>Weekly minimum</th><th>Prize</th></tr></thead><tbody>
+    ${[[1, "GOLD", "100,000", "10,000"], [2, "SILVER", "60,000", "6,000"], [3, "BRONZE", "25,000", "3,000"]].map(([k, n, m, p]) => `<tr><td><span class="mr-dot ${MKEY[k]}"></span>#${k} ${n}</td><td>₱ ${m}</td><td>₱ ${p}</td></tr>`).join("")}</tbody></table>
+    <p class="mr-small">Week = Monday to Sunday · saved on Monday · a redeemed prize is taken off the balance due</p>`;
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
   // 3.99.386: VIP = a customer with a credit limit of ₱1,000,000 or more: the gold animated badge near the name (back again)
   const vipBox = (limit) => (num(limit) >= 1000000 ? `<span class="vip-box" title="VIP · credit limit ₱ ${peso(limit)}">${ic("crown")}<b>VIP</b></span>` : "");

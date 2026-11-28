@@ -1273,13 +1273,13 @@
       if (!r || !el || el.dataset.cid !== c.id) return;
       el.innerHTML = E.rankTag(r.rank, r.tier || null, r.rank <= 10); el.title = `Rank ${r.rank} · lifetime net sales up to Monday ${mdy(r.as_of)}`; el.hidden = false;
     });
-    // 3.99.387: the medal of last month (#1 gold, #2 silver, #3 bronze) stays beside the name for the whole next month (SQL 169)
-    if ($("#pfMonthMedal")) Promise.resolve(sb.rpc("customer_month_medals")).then(({ data }) => {
+    // 3.99.389: the RANK of last month (#1 gold, #2 silver, #3 bronze) stays beside the name for the whole next month (SQL 169)
+    if ($("#pfMonthMedal")) Promise.resolve(sb.rpc("customer_month_ranks")).then(({ data }) => {
       const el = $("#pfMonthMedal"), m = (data || []).find((x) => x.customer_id === c.id);
       if (!el || !m || el.dataset.cid !== c.id) return;
       const mon = new Date(`${String(m.month).slice(0, 10)}T00:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase();
-      el.className = `pf-mmedal md${m.rank}`; el.innerHTML = `${E.medalHtml(m.rank)}<b>#${m.rank} OF ${esc(mon)}</b>`;
-      el.title = `${["", "Gold", "Silver", "Bronze"][m.rank]} medal · #${m.rank} customer of ${mon}`; el.hidden = false;
+      el.className = `pf-mmedal md${m.rank}`; el.innerHTML = `${ic("crown")}<b>#${m.rank} OF ${esc(mon)}</b>`;
+      el.title = `Rank #${m.rank} customer of ${mon} (${["", "gold", "silver", "bronze"][m.rank]})`; el.hidden = false;
     }, () => {});
     if ($("#pfAchTab") || $("#pfMedals")) E.achievements("customer", c.id).then((a) => {
       const m = $("#pfMedals"); if (m && a) m.innerHTML = E.medalMini(a); // only medal types actually won, beside the account standing

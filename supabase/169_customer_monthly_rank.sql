@@ -1,7 +1,7 @@
--- 3.99.387: CUSTOMER MEDALS EVERY MONTH. The 3 customers with the highest net purchases of a month get a medal:
--- #1 GOLD, #2 SILVER, #3 BRONZE, e.g. "#1 OF JANUARY 2026", achieved on FEBRUARY 01 2026 (the 1st of the next month).
--- No more weekly customer medals (the weekly medals won before stay, with their prizes). The months before this update get
--- their medals now. Last month's medal shows beside the customer's name for the whole month. Needs 126, 130, 131 and 136. Safe to run again.
+-- 3.99.389: CUSTOMER MONTHLY RANK. The 3 customers with the highest net purchases of a month are ranked #1 GOLD,
+-- #2 SILVER, #3 BRONZE, e.g. "#1 OF JANUARY 2026" (saved on FEBRUARY 01 2026). The rank shows beside the customer's name
+-- for the whole next month. It is a rank, not a medal: the weekly MEDAL REWARD system and its prizes stay as they are.
+-- The months before this update get their ranks now. Needs 126, 130, 131 and 136. Safe to run again.
 
 alter table public.sales_medals drop constraint if exists sales_medals_kind_check;
 alter table public.sales_medals add constraint sales_medals_kind_check check (kind in ('outlet', 'outlet_month', 'customer', 'customer_month'));
@@ -51,8 +51,27 @@ begin
     perform set_config('eo.system_note', '', true);
   end if;
 
-  -- 3.99.387: customers, each closed MONTH: the 3 best net purchases of the month get a medal (#1 gold, #2 silver, #3 bronze),
-  -- saved on the 1st of the next month. No more weekly customer medals (the ones won before stay).
+  -- customers: unchanged (the 3 best of each closed week, with the minimum purchases of each medal)
+  insert into public.sales_medals (kind, owner_id, period, rank, amount)
+  select 'customer', t.cid, t.wk, t.medal, t.v from (
+    select x.cid, x.wk, x.v,
+      case when k = 1 and x.v >= 100000 then 1 when k <= 2 and x.v >= 60000 then 2 when k <= 3 and x.v >= 25000 then 3 end as medal
+    from (
+      select y.cid, y.wk, sum(y.v) as v, (row_number() over (partition by y.wk order by sum(y.v) desc, min(c.account_no)))::int as k
+      from (
+        select i.customer_id as cid, date_trunc('week', i.invoice_date)::date as wk, i.total_amount as v
+        from public.customer_invoices i where i.invoice_date < this_mon
+        union all
+        select m.customer_id, date_trunc('week', m.memo_date)::date, -m.request_amount
+        from public.credit_memos m where m.status in ('approved', 'paid') and m.off_balance and m.memo_date < this_mon) y
+      join public.customers c on c.id = y.cid and c.status = 'active'
+      group by y.cid, y.wk) x
+    where x.v > 0 and not exists (select 1 from public.sales_medals m where m.kind = 'customer' and m.period = x.wk)) t
+  where t.medal is not null
+  on conflict do nothing;
+
+  -- 3.99.389: the MONTHLY RANK of customers (not a medal, no prize): each closed month, the 3 best net purchases of the
+  -- month are #1 gold, #2 silver, #3 bronze; saved on the 1st of the next month and never changed.
   with ins as (
     insert into public.sales_medals (kind, owner_id, period, rank, amount)
     select 'customer_month', t.cid, t.mon, t.k, t.v from (
@@ -72,67 +91,22 @@ begin
     on conflict do nothing
     returning owner_id, period, rank)
   select coalesce(jsonb_agg(jsonb_build_object('o', owner_id, 'p', period, 'r', rank)), '[]'::jsonb) into won from ins;
-  -- EMON HASAN is told about the medals of the month just closed (not the older months saved now for the first time)
+  -- EMON HASAN is told the ranks of the month just closed (not the older months saved now for the first time)
   if won is not null and jsonb_array_length(won) > 0 then
     perform set_config('eo.system_note', 'on', true);
     for w in select e.value from jsonb_array_elements(won) e where (e.value->>'p')::date = (this_month - interval '1 month')::date loop
-      mw := case (w->>'r')::int when 1 then 'GOLD MEDAL #1' when 2 then 'SILVER MEDAL #2' else 'BRONZE MEDAL #3' end;
-      perform public.notify_admins(mw || ' · ' || coalesce((select upper(trim(concat_ws(' ', c.first_name, c.last_name))) from public.customers c where c.id = (w->>'o')::uuid), 'Customer'),
-        '#' || (w->>'r') || ' OF ' || upper(to_char((w->>'p')::date, 'FMMonth YYYY')) || ' · customer monthly medal', 'customer/' || (w->>'o'));
+      perform public.notify_admins('#' || (w->>'r') || ' RANK OF ' || upper(to_char((w->>'p')::date, 'FMMonth YYYY')) || ' · '
+          || coalesce((select upper(trim(concat_ws(' ', c.first_name, c.last_name))) from public.customers c where c.id = (w->>'o')::uuid), 'Customer'),
+        'Customer monthly rank', 'customer/' || (w->>'o'));
     end loop;
     perform set_config('eo.system_note', '', true);
   end if;
 end $$;
 revoke execute on function public.award_medals() from public, anon, authenticated;
 
--- a customer's achievements: the monthly medals (and the weekly ones won before). The prize counts stay on the weekly medals.
-create or replace function public.sales_achievements(p_kind text, p_owner uuid) returns jsonb
-language plpgsql volatile security definer set search_path = '' as $$
-declare r jsonb; st record; money boolean := public.sees_money(); y int := extract(year from now() at time zone 'Asia/Manila')::int;
-  kinds text[] := case when p_kind = 'outlet' then array['outlet', 'outlet_month'] else array['customer', 'customer_month'] end;
-begin
-  if p_kind not in ('outlet', 'customer') then raise exception 'Kind is outlet or customer.'; end if;
-  if not public.medals_allowed(p_kind) then return null; end if;
-  select * into st from public.sales_stars(p_kind) s where s.owner_id = p_owner;
-  select jsonb_build_object(
-    'stars', coalesce(st.stars, 0), 'points', coalesce(st.points, 0), 'year', y,
-    'gold', count(*) filter (where m.rank = 1), 'silver', count(*) filter (where m.rank = 2), 'bronze', count(*) filter (where m.rank = 3),
-    'gold_y', count(*) filter (where m.rank = 1 and extract(year from m.period) = y and m.kind <> 'customer_month'),
-    'silver_y', count(*) filter (where m.rank = 2 and extract(year from m.period) = y and m.kind <> 'customer_month'),
-    'bronze_y', count(*) filter (where m.rank = 3 and extract(year from m.period) = y and m.kind <> 'customer_month'),
-    'gold_u', count(*) filter (where m.rank = 1 and m.claimed_at is null and m.kind <> 'customer_month'),
-    'silver_u', count(*) filter (where m.rank = 2 and m.claimed_at is null and m.kind <> 'customer_month'),
-    'bronze_u', count(*) filter (where m.rank = 3 and m.claimed_at is null and m.kind <> 'customer_month'),
-    'medals', coalesce((select jsonb_agg(jsonb_build_object('period', x.period, 'rank', x.rank, 'amount', case when money then x.amount end,
-                          'claimed', x.claimed_at is not null, 'ref', x.claimed_ref, 'monthly', x.kind in ('outlet_month', 'customer_month'), 'given', x.saved_at)
-                          order by x.period desc, x.kind desc, x.rank)
-                        from (select * from public.sales_medals z where z.kind = any (kinds) and z.owner_id = p_owner
-                              order by z.period desc limit 200) x), '[]'::jsonb))
-  into r from public.sales_medals m where m.kind = any (kinds) and m.owner_id = p_owner;
-  return r;
-end $$;
-revoke execute on function public.sales_achievements(text, uuid) from public, anon;
-grant execute on function public.sales_achievements(text, uuid) to authenticated;
-
--- the #1 on the customer's photo: the #1 of the last closed month (the name stays for the portal; week_start = the month)
-create or replace function public.customer_weekly_winner()
-returns table (customer_id uuid, net numeric, week_start date)
-language plpgsql volatile security definer set search_path = '' as $$
-declare last_month date := (date_trunc('month', now() at time zone 'Asia/Manila') - interval '1 month')::date;
-begin
-  if not (public.is_admin() or (public.is_active() and public.has_module('customers'))) then return; end if;
-  perform public.award_medals();
-  return query
-    select m.owner_id, case when public.sees_money() then m.amount end, m.period
-      from public.sales_medals m join public.customers c on c.id = m.owner_id and c.status = 'active'
-     where m.kind = 'customer_month' and m.period = last_month and m.rank = 1
-     limit 1;
-end $$;
-revoke execute on function public.customer_weekly_winner() from public, anon;
-grant execute on function public.customer_weekly_winner() to authenticated;
-
--- the medals of last month (#1 gold, #2 silver, #3 bronze): shown beside the customer's name for the whole next month
-create or replace function public.customer_month_medals()
+-- last month's ranks (#1 gold, #2 silver, #3 bronze): shown beside the customer's name for the whole month
+drop function if exists public.customer_month_medals();
+create or replace function public.customer_month_ranks()
 returns table (customer_id uuid, rank int, net numeric, month date)
 language plpgsql volatile security definer set search_path = '' as $$
 declare last_month date := (date_trunc('month', now() at time zone 'Asia/Manila') - interval '1 month')::date;
@@ -144,10 +118,10 @@ begin
       from public.sales_medals m join public.customers c on c.id = m.owner_id and c.status = 'active'
      where m.kind = 'customer_month' and m.period = last_month order by m.rank;
 end $$;
-revoke execute on function public.customer_month_medals() from public, anon;
-grant execute on function public.customer_month_medals() to authenticated;
+revoke execute on function public.customer_month_ranks() from public, anon;
+grant execute on function public.customer_month_ranks() to authenticated;
 
 select public.award_medals();
 notify pgrst, 'reload schema';
 
-select '169 OK - customer monthly medals: ' || (select count(*) from public.sales_medals where kind = 'customer_month') || ' saved' as result;
+select '169 OK - customer monthly rank: ' || (select count(*) from public.sales_medals where kind = 'customer_month') || ' saved' as result;
