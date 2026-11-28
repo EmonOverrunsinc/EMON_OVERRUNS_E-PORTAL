@@ -214,7 +214,7 @@
     }
   }
 
-  const STATE = { active: "ACTIVE", replaced: "REPLACED", revoked: "ENDED", blocked: "BLOCKED" };
+  const STATE = { active: "ACTIVE", replaced: "REPLACED", revoked: "ENDED", blocked: "BLOCKED", blacklisted: "BLACKLISTED", cancelled: "CANCELLED" };
   // 3.99.390: THE ID CARD STEPS (SQL 170): generated → waiting for printing (PHP 150 fee paid) → arrived office → received office
   // (the employee is told to collect it) → collected (signed record uploaded) → active (the Director). Older cards: activate directly.
   const STEPS = [["generated", "GENERATED"], ["waiting_print", "WAITING FOR PRINTING"], ["arrived", "ARRIVED OFFICE"], ["received", "RECEIVED OFFICE"], ["collected", "COLLECTED"], ["active", "ACTIVE"]];
@@ -230,19 +230,31 @@
     const seal = E.sealCode ? await E.sealCode("idcard", card.card_no).catch(() => "") : "";
     const qr = E.qrDataUrl(`EMONIDC|${card.card_no}|${seal || card.id.replace(/-/g, "").slice(0, 16).toUpperCase()}`);
     const nm = fullName(em).toUpperCase(), row = (k, v, mono) => `<tr><th>${k}</th><td${mono ? ' class="mono"' : ""}>${esc(v || "—")}</td></tr>`;
+    // 3.99.393: the application, the fee receipt and the card's step
+    const [cv, app] = await Promise.all([card.fee_cv_id ? sb.from("collection_vouchers").select("cv_no, cv_date, paid_at").eq("id", card.fee_cv_id).maybeSingle().then((r) => r.data, () => null) : null,
+      em.job_application_id ? sb.from("job_applications").select("application_no, created_at").eq("id", em.job_application_id).maybeSingle().then((r) => r.data, () => null) : null]);
+    const stepName = (STEPS.find(([v]) => v === stepOf(card)) || [, "NOT ACTIVATED"])[1];
+    const feeTxt = card.fee_method === "salary" ? `PHP 150.00 · SALARY DEDUCTION${card.fee_deducted_at ? " · DEDUCTED" : " · PENDING"}` : cv ? "PHP 150.00 · PAID" : "—";
     const page = `<div class="idcol">${E.printHead ? E.printHead("EMPLOYEE IDENTIFICATION CARD", `<div class="soa-no"><small>CARD NO</small><b class="mono">${esc(card.card_no)}</b><small>${esc(mdy(E.isoToday()).toUpperCase())}</small></div>`).replace('<i class="ph-gl"></i>', '<i class="ph-gl"></i><div class="ph-sub">COLLECTION · PHYSICAL CARD</div>') : `<h2>COLLECTION · EMPLOYEE IDENTIFICATION CARD</h2>`}
       <div class="idcol-top"><table class="idcol-t"><tbody>
+        ${row("APPLICATION NO", app?.application_no || d.appNo, 1)}${row("APPLICATION DATE", mdy(app?.created_at || em.created_at).toUpperCase())}
         ${row("NAME", nm)}${row("EMPLOYEE NO", em.employee_no, 1)}${row("POSITION", String(em.position || "").toUpperCase())}${row("CARD NO", card.card_no, 1)}
-        ${row("ISSUED", mdy(card.issued_at).toUpperCase())}${row("VALID UNTIL", mdy(card.valid_until).toUpperCase())}${row("ID CARD FEE", card.fee_cv_id ? "PHP 150.00 · PAID" : "—")}
-        ${row("RECEIVED AT OFFICE", card.received_at ? mdy(card.received_at).toUpperCase() : "—")}</tbody></table>
+        ${row("ISSUED", mdy(card.issued_at).toUpperCase())}${row("VALID UNTIL", mdy(card.valid_until).toUpperCase())}
+        ${row("ID CARD FEE", feeTxt)}${row("COLLECTION RECEIPT NO", cv?.cv_no, 1)}${row("DATE PAID", cv ? mdy(cv.paid_at || cv.cv_date).toUpperCase() : card.fee_deducted_at ? mdy(card.fee_deducted_at).toUpperCase() : "")}
+        ${row("RECEIVED AT OFFICE", card.received_at ? mdy(card.received_at).toUpperCase() : "—")}${row("STATUS", stepName)}</tbody></table>
         <div class="idcol-qr">${qr ? `<img src="${qr}" alt="">` : ""}<small>CODED RECORD · SCAN TO VERIFY</small></div></div>
       <div class="idcol-cards">${front(d)}${back(d)}</div>
       <div class="idcol-terms"><h4>IMPORTANT</h4><ol>
         <li>THIS CARD IS THE PROPERTY OF EMON OVERRUNS. IT IS FOR THE NAMED EMPLOYEE ONLY AND MUST NOT BE LENT OR COPIED.</li>
         <li>THE CARD WORKS ONLY AFTER THE DIRECTOR ACTIVATES IT.</li>
         <li>A LOST OR STOLEN CARD MUST BE REPORTED AT ONCE SO IT CAN BE BLOCKED.</li>
-        <li>THE CARD IS RETURNED TO THE OFFICE WHEN THE EMPLOYMENT ENDS.</li></ol></div>
-      <div class="idcol-sign"><div><div class="sl"></div><b>${esc(nm)}</b><small>I WILL RECEIVE THE CARD</small></div><div><div class="sl"></div><b>RELEASED BY</b><small>EMON OVERRUNS OFFICE</small></div></div></div>`;
+        <li>THE CARD IS RETURNED TO THE OFFICE WHEN THE EMPLOYMENT ENDS.</li>
+        <li>EMON OVERRUNS MAY FREEZE, BLACKLIST OR CANCEL THIS CARD AND THE HOLDER'S ACCESS AT ANY TIME, WITH OR WITHOUT NOTICE, IF THESE TERMS OR ANY COMPANY RULE ARE NOT FOLLOWED.</li>
+        <li>FROZEN MEANS EVERYTHING IS ON HOLD: THE CARD DOES NOT WORK AND THE HOLDER CANNOT SIGN IN TO THE E-PORTAL UNTIL THE EMON OVERRUNS OFFICE UNFREEZES IT.</li>
+        <li>WHEN A NEW CARD IS ISSUED AFTER A FREEZE OR A BLACKLIST, THE OLD CARD IS BLACKLISTED AT ONCE AND CAN NEVER BE USED AGAIN.</li>
+        <li>MISUSE, COPYING OR LENDING OF THE CARD MAY LEAD TO DISCIPLINARY ACTION.</li></ol></div>
+      <div class="idcol-sign"><div><div class="sl">${d.holderSig ? `<img src="${d.holderSig}" alt="">` : ""}</div><b>${esc(nm)}</b><small>I WILL RECEIVE THE CARD</small></div>
+        <div><div class="sl">${d.dirSig ? `<img src="${d.dirSig}" alt="">` : ""}</div><b>${esc(d.dirName || "EMON HASAN")}</b><small>RELEASED BY · EMON OVERRUNS OFFICE</small></div></div></div>`;
     E.openPreview(`ID CARD COLLECTION ${nm} ${card.card_no}`, [page], { trx: card.id });
   }
   async function idCardTab(em, el, reload) {
@@ -270,7 +282,7 @@
       received: `${act("idfRecord", "Collection Record", "print")}<label class="btn primary" for="idfUp">${ic("upload")} Upload Signed Record</label><input type="file" id="idfUp" accept="image/*,application/pdf" hidden>`,
       collected: act("idfActivate", "Activate Card", "check", "primary"),
       old: act("idfActivate", "Activate Card", "check", "primary") }[at] || "";
-    el.innerHTML = `${card ? stepper(card) : ""}<div class="idc-panel">
+    el.innerHTML = `${em.frozen_at ? `<div class="idf-frozen">${ic("lock")}<div><b>ACCESS FROZEN</b><small>Since ${esc(mdy(em.frozen_at))}${em.frozen_by_name ? ` · by ${esc(em.frozen_by_name)}` : ""}${em.frozen_note ? ` · ${esc(em.frozen_note)}` : ""}. The card does not work and the employee cannot sign in.</small></div></div>` : ""}${card ? stepper(card) : ""}<div class="idc-panel">
         ${card ? `<div class="idc-pair screen">${front(d)}${back(d)}</div>` : `<div class="empty">${em.status === "terminated" ? "No active ID card: the employee is terminated." : "No ID card yet."}</div>`}
         <div class="idc-side">
           ${card ? E.kvTable([
@@ -286,7 +298,9 @@
             ${stepBtns}
             ${card ? act("idcPrint", at === "generated" ? "Print File (ZIP)" : "Print / Download ID Card", "lock") : ""}
             ${em.status !== "terminated" ? `<button type="button" class="btn${card ? "" : " primary"}" id="idcNew"${!ready ? " disabled" : ""}>${ic("plus")} Generate New ID</button>` : ""}
-            ${card ? `<button type="button" class="btn" id="idcExp">${ic("edit")} Edit Expiration Date</button><button type="button" class="btn danger" id="idcBlock">${ic("x")} Block Card</button>` : ""}
+            ${card ? `<button type="button" class="btn" id="idcExp">${ic("edit")} Edit Expiration Date</button><button type="button" class="btn danger" id="idcBlock">${ic("x")} Block Card</button>
+              <button type="button" class="btn danger" id="idcBlack">${ic("x")} Blacklist Card</button><button type="button" class="btn danger" id="idcCancel">${ic("x")} Cancel Card</button>` : ""}
+            ${em.status !== "terminated" && em.profile_id !== E.S.profile.id ? (em.frozen_at ? `<button type="button" class="btn ok" id="idcUnfreeze">${ic("check")} Unfreeze Access</button>` : `<button type="button" class="btn danger" id="idcFreeze">${ic("lock")} Freeze Access</button>`) : ""}
           </div>
         </div></div>
       ${list.length ? `<h4>Card History</h4>${E.grid({ cols: [{ label: "Card No", get: (r) => r.card_no }, { label: "Issued", get: (r) => mdy(r.issued_at) }, { label: "Issued By", get: (r) => r.issued_by_name || "" },
@@ -333,6 +347,19 @@
       if (error) return fail(error, /function|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 111 first" : "Could not block the card");
       toast(`Card ${card.card_no} blocked.`); again();
     };
+    // 3.99.393: freeze (all on hold, no sign-in), unfreeze, blacklist, cancel (SQL 172)
+    const why = (title, text, okLabel) => new Promise((resolve) => {
+      let done = false;
+      const m = E.modal(title, `<p style="margin-top:0">${text}</p><label for="idcWhy">Reason (optional)</label><input id="idcWhy" type="text" maxlength="200">`,
+        `<button type="button" class="btn" data-x>Back</button><button type="button" class="btn danger" id="idcWhyOk">${okLabel}</button>`, { onClose: () => { if (!done) resolve(null); } });
+      $("[data-x]", m.el).onclick = () => { done = true; m.close(); resolve(null); };
+      $("#idcWhyOk", m.el).onclick = () => { done = true; const v = $("#idcWhy", m.el).value.trim(); m.close(); resolve(v || ""); };
+    });
+    const run = async (rpc, args, okText) => { const { error } = await sb.rpc(rpc, args); if (error) return fail(error, /function|schema cache|PGRST202/.test(error.message || "") ? "Run the database update 172 first" : "Could not save"); toast(okText); reload ? reload() : again(); };
+    if ($("#idcFreeze", el)) $("#idcFreeze", el).onclick = async () => { const n = await why("Freeze Access", `Freeze <b>${esc(fullName(em))}</b>?<br><br>Everything is put on hold: the ID card stops and the employee is signed out and cannot sign in, until you press Unfreeze.`, "Freeze"); if (n === null) return; run("freeze_employee", { p_employee: em.id, p_note: n }, `${fullName(em)} is frozen.`); };
+    if ($("#idcUnfreeze", el)) $("#idcUnfreeze", el).onclick = async () => { if (!(await E.confirmBox(`Unfreeze <b>${esc(fullName(em))}</b>? The employee can sign in again.`, { title: "Unfreeze Access", ok: "Unfreeze" }))) return; run("unfreeze_employee", { p_employee: em.id }, `${fullName(em)} is unfrozen.`); };
+    if ($("#idcBlack", el)) $("#idcBlack", el).onclick = async () => { const n = await why("Blacklist Card", `Blacklist card <b>${esc(card.card_no)}</b>? It can never be used again.`, "Blacklist"); if (n === null) return; run("end_employee_card", { p_card: card.id, p_how: "blacklisted", p_note: n }, `Card ${card.card_no} blacklisted.`); };
+    if ($("#idcCancel", el)) $("#idcCancel", el).onclick = async () => { const n = await why("Cancel Card", `Cancel card <b>${esc(card.card_no)}</b>? It stops at once.`, "Cancel Card"); if (n === null) return; run("end_employee_card", { p_card: card.id, p_how: "cancelled", p_note: n }, `Card ${card.card_no} cancelled.`); };
     if ($("#idcExp", el)) $("#idcExp", el).onclick = () => {
       const m = E.modal("Edit Expiration Date", `<label for="idcExpD">Valid Until</label><input id="idcExpD" type="date" min="${E.isoToday()}" value="${esc(card.valid_until)}">`,
         `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="idcExpS">${ic("check")} Save</button>`);

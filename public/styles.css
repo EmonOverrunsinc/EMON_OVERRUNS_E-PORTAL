@@ -6079,3 +6079,17 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .idf-fee button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
 /* 3.99.392: the ID card collection paper: EMPLOYEE IDENTIFICATION CARD, then COLLECTION · PHYSICAL CARD under it */
 .page .ph-mid .ph-sub { margin-top: 1.6mm; font: 800 8pt/1.2 Arial, Helvetica, sans-serif; letter-spacing: .16em; color: #8a6a10; text-align: center; }
+/* 3.99.393: frozen access banner; signatures on the collection paper */
+.idf-frozen { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin: 0 0 12px; border-radius: 12px; background: #fdecec; color: #8a1c1c; border: 1px solid #f2b8b8; }
+.idf-frozen b { display: block; font-size: 13px; letter-spacing: .06em; } .idf-frozen small { display: block; font-size: 12px; }
+.page .idcol-sign .sl { position: relative; display: flex; align-items: flex-end; justify-content: center; }
+.page .idcol-sign .sl img { max-height: 13mm; max-width: 60mm; object-fit: contain; margin-bottom: -1mm; }
+.page .idcol-t th { width: 46mm; }
+/* 3.99.393: the collection paper on one page: the details in two columns, the card sides a little smaller */
+.page .idcol-t tbody { display: grid; grid-template-columns: 1fr 1fr; column-gap: 4mm; }
+.page .idcol-t tr { display: flex; align-items: baseline; border-bottom: .2mm solid #d9e1ef; }
+.page .idcol-t th, .page .idcol-t td { border-bottom: 0; padding: 1.2mm 1.5mm; }
+.page .idcol-t th { width: 30mm; flex: none; font-size: 6.8pt; } .page .idcol-t td { font-size: 8pt; overflow-wrap: anywhere; }
+.page .idcol-cards { zoom: .82; margin: 3mm 0 2mm; }
+.page .idcol-terms ol { font-size: 7.4pt; line-height: 1.4; }
+.page .idcol-sign { margin-top: 8mm; }
