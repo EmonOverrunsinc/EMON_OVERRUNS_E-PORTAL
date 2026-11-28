@@ -262,9 +262,10 @@
         ${tools("employees", em, `${em.employee_no} ${fullName(em)}`, { reload: () => V.employee(id), afterDelete: () => (location.hash = "employees") })}
       </div>
       ${isAdmin() ? `<div id="emCardMini" class="em-card-mini-box"></div>` : ""}
-      <div class="tabs" id="emTabs">${["Salary Account", `Payslips (${slips.length})`, `Salary Payments (${pays.rows.length})`, "Documents", ...(isAdmin() ? ["Access & Status", "ID Card"] : []), "Details"].map((t, i) => `<button type="button" class="${i ? "" : "on"}" data-t="${i}">${esc(t)}</button>`).join("")}</div>
+      <div class="tabs" id="emTabs">${(() => { const L = ["Salary Account", `Payslips (${slips.length})`, `Salary Payments (${pays.rows.length})`, "Documents", ...(isAdmin() ? ["Access & Status", "ID Card"] : []), "Details"], d = L.length - 1; // 3.99.397: Details first, open by default
+          return [d, ...L.keys()].filter((v, k, x) => x.indexOf(v) === k).map((i) => `<button type="button" class="${i === d ? "on" : ""}" data-t="${i}">${esc(L[i])}</button>`).join(""); })()}</div>
       <div class="tabpanes" id="emPanes">
-        <div data-p="0"><div class="btnrow"><div class="seg" id="emAcctF"><button type="button" class="on" data-f="unpaid">Unpaid Salary</button><button type="button" data-f="all">All</button></div>
+        <div data-p="0" hidden><div class="btnrow"><div class="seg" id="emAcctF"><button type="button" class="on" data-f="unpaid">Unpaid Salary</button><button type="button" data-f="all">All</button></div>
           <button type="button" class="btn" id="emStmt">${ic("print")} Print Salary Statement</button></div>
           <div id="emAcctU">${unpaidGrid(slips)}</div><div id="emAcctA" hidden>${accountGrid(acct)}</div></div>
         <div data-p="1" hidden><div id="emSlips">${slipGrid(slips, "No payslips issued yet. Press Issue Payslip.")}</div></div>
@@ -286,7 +287,7 @@
             <div class="fields wide"><label for="emLinkSel">Login Account</label><select id="emLinkSel"><option value="">Loading…</option></select></div>
             <div class="btnrow"><button type="button" class="btn" id="emLink">${ic("key")} Link Login Account</button></div>`}</fieldset></div>` : ""}
         ${isAdmin() ? `<div data-p="5" hidden id="emCard"></div>` : ""}
-        <div data-p="${isAdmin() ? 6 : 4}" hidden>
+        <div data-p="${isAdmin() ? 6 : 4}">
       <section class="wp-card" id="emWork"><div class="wp-head"><h3>${ic("building")} Currently Working At</h3>${isAdmin() && em.status !== "terminated" ? `<button type="button" class="btn small primary" id="emTransfer">${ic("pin")} Transfer / Assign Location</button>` : ""}</div>
         <div class="wp-now" id="emWorkNow">${busy()}</div><div class="wp-hist" id="emWorkHist"></div></section>
           <h4 class="doc-h">Portal Access · What ${esc(fullName(em))} Can Open</h4>${accessList(em.role, em.modules)}${E.kvTable([["Employee No", em.employee_no], ["Name", fullName(em)], ["Position", em.position], ["Email (login)", em.email], ["Phone", em.phone], ["Present Address", em.address], ["Permanent Address", em.permanent_address], ["Assigned Location", em.work_location], ["SSS No", em.sss_no], ["SSS Contribution / Month", num(em.sss_amount) ? "₱ " + peso(em.sss_amount) : ""], ["Approved By", em.approved_by_name ? `${em.approved_by_name} · ${E.dateTime(em.approved_at)}` : em.approval_status === "pending" ? "WAITING FOR APPROVAL" : ""], ["Date Hired", mdy(em.date_hired)], ["Monthly Salary", "₱ " + peso(em.monthly_salary)], ["Duty Hours", em.duty_hours],
