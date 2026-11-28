@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.341"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.373"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.341"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.373"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -70,16 +70,17 @@
   const fullName = (r) => [r?.first_name, middleOf(r), r?.last_name].filter(Boolean).join(" ").trim();
   // 3.99.161: a long name made short for the lists (one line): FIRST M. LAST - the middle name as its initial; still long,
   // the words of the surname before its last one as initials too (DELA CRUZ SANTOS: D. C. SANTOS). Profiles and prints keep the full name.
-  // 3.99.178: SALES RANK · TOP 10 (SQL 125). The badge: 1 gold that shines by itself, 2 gold, 3 dark gold, 4 platinum,
-  // 5 silver, 6 to 10 blue. The ranks are kept for 2 minutes, so a page and its list make one call.
+  // 3.99.367: the main customer rank is the original lifetime net rank, fixed at each Monday. A separate current-week RPC supplies only
+  // the #1 profile watermark. The ranks are kept for 2 minutes, so a page and its list make one call.
   const MEDAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="rk-rib" d="M6.6 1.8h4l2.1 5.6-2.6 2.4zM17.4 1.8h-4l-2.1 5.6 2.6 2.4z"/><circle class="rk-coin" cx="12" cy="15.2" r="6.8"/><path class="rk-star" d="m12 11 1.27 2.58 2.85.41-2.06 2.01.49 2.83L12 17.5l-2.55 1.34.49-2.83L7.88 14l2.85-.41z"/></svg>';
   // 3.99.185: the rank as a ROUND number (1 to 10 in their colours): lists, cards, the rank window and the status chip
   // 3.99.194: the rank under a profile picture / store logo: #1, #2 … (1 to 10 in their colours)
-  // 3.99.200: tier given (a customer): the colour of the TIER (gold / silver / bronze; none: plain); no tier given (a shop): its place
-  const rkCls = (k, tier) => (tier !== undefined ? (tier ? `tier-${tier}` : "rkx") : k <= 10 ? `rk${Math.min(k, 6)}` : "rkx");
-  const tierTip = (tier) => (tier ? ` · ${tier.toUpperCase()} TIER` : "");
-  const rankTag = (k, tier) => { k = Number(k); return k >= 1 ? `<span class="rk-no rk-tag ${rkCls(k, tier)}" title="Rank ${k}${tierTip(tier)}">#${k}</span>` : ""; };
-  const rankNo = (k, cls = "", tier) => { k = Number(k); return k >= 1 ? `<span class="rk-no ${rkCls(k, tier)}${cls ? " " + cls : ""}" title="Rank ${k}${tierTip(tier)}">${k}</span>` : ""; };
+  // Customer ranks 1–5 are gold, 6–10 silver and 11–15 bronze. With no customer marker, a shop keeps its place colour.
+  const customerRankBand = (k) => k <= 5 ? "gold" : k <= 10 ? "silver" : k <= 15 ? "bronze" : "";
+  const rkCls = (k, customerMarker) => (customerMarker !== undefined ? (customerRankBand(k) ? `tier-${customerRankBand(k)}` : "rkx") : k <= 10 ? `rk${Math.min(k, 6)}` : "rkx");
+  const rankTip = (k, customerMarker) => (customerMarker !== undefined && customerRankBand(k) ? ` · ${customerRankBand(k).toUpperCase()} RANK` : "");
+  const rankTag = (k, customerMarker, animate = customerMarker === undefined && Number(k) <= 3) => { k = Number(k); return k >= 1 ? `<span class="rk-no rk-tag ${rkCls(k, customerMarker)}${animate ? " rk-live" : ""}" title="Rank ${k}${rankTip(k, customerMarker)}">#${k}</span>` : ""; };
+  const rankNo = (k, cls = "", customerMarker) => { k = Number(k); return k >= 1 ? `<span class="rk-no ${rkCls(k, customerMarker)}${cls ? " " + cls : ""}" title="Rank ${k}${rankTip(k, customerMarker)}">${k}</span>` : ""; };
   const rankMemo = new Map();
   const rankList = (key, call) => {
     const hit = rankMemo.get(key);
@@ -118,7 +119,8 @@
 `;
   };
   // 3.99.323: the small medal row under a customer's photo: gold, silver and bronze with their counts
-  const medalMini = (a) => !a ? "" : `<div class="md-mini">${[1, 2, 3].map((k) => `<span class="mm md${k}" title="${MEDAL_NAME[k]}">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b></span>`).join("")}</div>`;
+  const medalMini = (a) => { const won = a ? [1, 2, 3].filter((k) => num(a[MKEY[k]]) > 0) : [];
+    return won.length ? `<div class="md-mini" aria-label="Medals won">${won.map((k) => `<span class="mm md${k}" title="${MEDAL_NAME[k]} · ${num(a[MKEY[k]])} won">${medalHtml(k)}<b>${num(a[MKEY[k]])}</b></span>`).join("")}</div>` : ""; };
   // 3.99.204: WEEK 2 OF NOVEMBER (the week a medal is for); the Redeem button of a customer's Achieved tab
   const weekOf = (p) => { const d = new Date(`${String(p).slice(0, 10)}T00:00:00`); return `WEEK ${Math.ceil(d.getDate() / 7)} OF ${MON[d.getMonth()]}`; };
   const bindAch = (el, customerId, reload) => el?.querySelectorAll("[data-redeem]").forEach((b) => (b.onclick = async () => {
@@ -133,9 +135,8 @@
     ${[[1, "GOLD", "100,000", "10,000"], [2, "SILVER", "60,000", "6,000"], [3, "BRONZE", "25,000", "3,000"]].map(([k, n, m, p]) => `<tr><td><span class="mr-dot ${MKEY[k]}"></span>#${k} ${n}</td><td>₱ ${m}</td><td>₱ ${p}</td></tr>`).join("")}</tbody></table>
     <p class="mr-small">Week = Monday to Sunday · saved on Monday · a redeemed prize is taken off the balance due</p>`;
   const achievements = (kind, id) => Promise.resolve().then(() => sb.rpc("sales_achievements", { p_kind: kind, p_owner: id })).then((r) => (r.error ? null : r.data)).catch(() => null);
-  // 3.99.185: VIP = a customer with a credit limit of ₱1,000,000 or more: a special box (animated) near the name
-  const vipBox = (limit) => (num(limit) >= 1000000 ? `<span class="vip-box" title="VIP · credit limit ₱ ${peso(limit)}">${ic("crown")}<b>VIP</b></span>` : "");
-  const customerRanks = () => rankList("c", () => sb.rpc("customer_ranks"));
+  const customerRanks = () => rankList("c-all", () => sb.rpc("customer_ranks"));
+  const customerWeeklyWinner = () => rankList("c-weekly-winner", () => sb.rpc("customer_weekly_winner"));
   const shortName = (r, max = 22) => {
     const full = fullName(r);
     if (full.length <= max) return full;
@@ -274,14 +275,14 @@
   // in-charge, coordinator, cashier), else plain
   const titleTier = (pos) => { const p = String(pos || "").toLowerCase();
     return /director|manager|officer|head|accountant|chief|admin/.test(p) ? "staff-silver" : /supervisor|lead|in[- ]?charge|coordinator|cashier|team/.test(p) ? "staff-bronze" : "staff-plain"; };
-  const titleHtml = (role, position) => { // 3.99.255: the title as a badge like VIP: gold (the Director), silver, bronze, plain
+  const titleHtml = (role, position, assigned = false) => { // 3.99.255: the title as a badge like VIP: gold (the Director), silver, bronze, plain
     const t = esc(String(position || (role === "admin" ? "Operational Director" : roleName(role)) || "").toUpperCase());
     const k = role === "admin" ? "gold" : ({ "staff-silver": "silver", "staff-bronze": "bronze" })[titleTier(position)] || "plain";
-    return `<span class="tbadge tb-${k}">${k === "gold" ? ic("crown") : ""}<b>${t}</b></span>`; };
+    return `<span class="tbadge tb-${k}${assigned ? " assigned-profile-badge" : ""}">${k === "gold" ? ic("crown") : ""}<b>${t}</b></span>`; };
   // 3.99.234: where someone works: the shop (its logo, code and name), a company, or the EO OFFICE; and since when
   const placeBadge = (pl, cls = "") => {
     if (!pl || !pl.kind) return "";
-    const logo = pl.kind === "outlet" && pl.outlet && window.EO.storeLogo ? window.EO.storeLogo(pl.outlet, "wp-logo") : `<span class="wp-ic">${ic("building")}</span>`;
+    const logo = pl.kind === "outlet" && pl.outlet && window.EO.storeLogo ? window.EO.storeLogo(pl.outlet, "wp-logo") : `<span class="wp-ic">${ic(pl.kind === "office" ? "warehouse" : "building")}</span>`;
     const since = pl.since ? `<small>SINCE ${esc(mdy(String(pl.since).slice(0, 10)))}</small>` : "";
     return `<span class="wp-badge wp-${esc(pl.kind)} ${cls}">${logo}<span><b>${esc(String(pl.code || "").toUpperCase())}</b>${pl.name && pl.name !== pl.code ? `<em>${esc(String(pl.name).toUpperCase())}</em>` : ""}${since}</span></span>`;
   };
@@ -294,10 +295,39 @@
     const rows = (entries || []).filter((e) => e && e.at).sort((a, b) => String(a.at).localeCompare(String(b.at)))
       .map((e) => `${iso(e.at)}   ${[e.what + (e.eoid ? ` ${String(e.eoid).replace(/-/g, "")}` : ""), e.by, e.note].filter((x) => x != null && String(x).trim() !== "").join(" · ")}`);
     const text = [`${C.company.name} E-PORTAL · LOG · ${title}`, `Downloaded ${iso(new Date())} by ${S.profile?.full_name || ""}`, "", ...rows, "", `${rows.length} line(s)`].join("\n");
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
-    a.download = `LOG-${String(title).replace(/[^A-Za-z0-9-]+/g, "-").replace(/^-|-$/g, "")}.txt`; document.body.appendChild(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    const name = `LOG-${String(title).replace(/[^A-Za-z0-9-]+/g, "-").replace(/^-|-$/g, "")}.txt`;
+    downloadZip(name, new Blob([text], { type: "text/plain" })).catch((error) => toast(`Could not download the log: ${error.message || error}`, true));
   }
+  async function downloadZip(name, original) {
+    const Zip = await need("zip"), archive = new Zip();
+    archive.file(name, original);
+    const blob = await archive.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+    const url = URL.createObjectURL(blob), save = document.createElement("a");
+    save.href = url;
+    save.download = name.replace(/\.[^.]+$/, "") + ".zip";
+    save.dataset.zipReady = "1";
+    document.body.appendChild(save);
+    save.click();
+    save.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  document.addEventListener("click", async (event) => {
+    const link = event.target.closest?.("a[download]");
+    if (!link || link.dataset.zipReady === "1" || !/\.(pdf|txt|csv|docx?|xlsx?)$/i.test(link.getAttribute("download") || "")) return;
+    event.preventDefault();
+    const originalName = link.getAttribute("download") || "Document";
+    const url = link.href;
+    try {
+      link.setAttribute("aria-busy", "true");
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Download unavailable");
+      await downloadZip(originalName, await response.blob());
+    } catch (error) {
+      toast(`Could not download the ZIP: ${error.message || error}`, true);
+    } finally {
+      link.removeAttribute("aria-busy");
+    }
+  });
   // 3.99.227: the Director's name with a gold crown on top
   const bossName = (name, role) => role === "admin" ? `<span class="boss-name"><span class="boss-crown" aria-hidden="true">${ic("crown")}</span>${esc(name)}</span>` : esc(name);
   // Seen in the last 3 minutes = active now.
@@ -317,6 +347,7 @@
   // Line icons (stroke drawn with the text colour).
   const ICONS = {
     menu: '<path d="M4 6h16M4 12h16M4 18h16"/>', // 3.98: the Actions button
+    warehouse: '<path d="M3 10 12 4l9 6v10H3zM3 10h18M7 20v-8h10v8M9 15h6M9 18h6"/>',
     search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>',
     scan: '<path d="M3 8V4h4M17 4h4v4M21 16v4h-4M7 20H3v-4"/><path d="M7 12h10"/>',
     qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zM18 14h2M14 18h2M18 18h2v2"/>',
@@ -463,7 +494,7 @@
   // the page, so the first page comes sooner); a print or a barcode wanted before then waits for it. The code reader
   // (ZXing) loads the first time something is scanned or read from a photo without the phone's own barcode reader.
   const LIBS = { bwip: ["vendor/bwip-js-min.js", "bwipjs"], zxing: ["vendor/zxing.min.js", "ZXing"], jsqr: ["vendor/jsqr.js", "jsQR"], // 3.78.3: jsQR reads QR codes well on iPhone
-    h2c: ["vendor/html2canvas.min.js", "html2canvas"], jspdf: ["vendor/jspdf.umd.min.js", "jspdf"] }; // 3.99.20: Download PDF
+    h2c: ["vendor/html2canvas.min.js", "html2canvas"], jspdf: ["vendor/jspdf.umd.min.js", "jspdf"], zip: ["vendor/jszip.min.js", "JSZip"] }; // 3.99.20: Download PDF
   const libs = {};
   function need(name) {
     const [src, global] = LIBS[name];
@@ -691,6 +722,8 @@
   // ---------- company header (every page) ----------
   // Built-in company logo (an uploaded logo under Company Logo replaces the built-in one).
   const DEFAULT_LOGO = "brand/logo.jpg";
+  const UI_LOGO = "brand/logo-ui.webp";
+  const smallLogos = new Set(["login-logo", "hero-logo", "drawer-logo", "lg-logo"]);
   S.logoUrl = DEFAULT_LOGO;
   const publicUrl = (bucket, path) => path ? sb.storage.from(bucket).getPublicUrl(path).data.publicUrl : "";
   async function loadBranding() {
@@ -699,10 +732,10 @@
       S.logoUrl = data?.logo_path ? publicUrl("branding", data.logo_path) : DEFAULT_LOGO;
     } catch (_) { S.logoUrl = DEFAULT_LOGO; }
     // a page drawn before the logo was known shows it now
-    if (S.logoUrl !== DEFAULT_LOGO) $$(`img[src="${DEFAULT_LOGO}"]`).forEach((im) => { if (!im.closest(".boot")) im.src = S.logoUrl; });
+    if (S.logoUrl !== DEFAULT_LOGO) $$(`img[src="${DEFAULT_LOGO}"], img[src="${UI_LOGO}"]`).forEach((im) => { if (!im.closest(".boot")) im.src = S.logoUrl; });
   }
   const logoHtml = (cls = "co-logo") => S.logoUrl
-    ? `<img class="${cls}" src="${esc(S.logoUrl)}" alt="${esc(C.company.name)} logo">`
+    ? `<img class="${cls}" src="${esc(S.logoUrl === DEFAULT_LOGO && smallLogos.has(cls) ? UI_LOGO : S.logoUrl)}" alt="${esc(C.company.name)} logo">`
     : `<span class="${cls} co-logo-fallback" aria-hidden="true">EO</span>`;
 
   // 3.99.93: the SECURITY SEAL of a printed record (our own design): dark navy and gold, a rosette of fine lines, an
@@ -772,6 +805,7 @@
   // Sign out of this device only; the same account stays signed in on the user's other phones and computers.
   const signOut = () => sb.auth.signOut({ scope: "local" });
   async function loadProfile() {
+    S.employee = null; S.empId = "";
     if (!S.session) { S.profile = null; S.hideMoney = false; staffMark(null); return; }
     const { data, error } = await sb.from("profiles").select("*").eq("id", S.session.user.id).maybeSingle();
     if (error) fail(error, "Could not load your profile");
@@ -780,7 +814,7 @@
     // name (the Director is shown as Director). 3.0: both asked at the same time.
     const [md, pos] = await Promise.all([
       data && data.role === "admin" && data.status === "active" ? sb.rpc("is_main_director").then((r) => r.data, () => false) : false,
-      data ? sb.from("employees").select("id, position").eq("profile_id", data.id).limit(1).maybeSingle().then((r) => { S.empId = r.data?.id || ""; return r.data?.position || ""; }, () => "") : "", // 3.99.234: the Director too
+      data ? sb.from("employees").select("id, position, employee_no, status").eq("profile_id", data.id).limit(1).maybeSingle().then((r) => { S.employee = r.data; S.empId = r.data?.id || ""; return r.data?.position || ""; }, () => "") : "", // 3.99.234: the Director too
       data && ["admin", "staff"].includes(data.role) ? loadMiddleNames() : null // 3.99.71: the customers' middle names (FIRST MIDDLE LAST everywhere)
     ]);
     S.mainDirector = md === true; S.position = pos;
@@ -1489,8 +1523,8 @@
       document.body.insertAdjacentHTML("beforeend", `<div class="quick-add"><a class="qa-plus" href="${h}" aria-label="${esc(l)}" title="${esc(l)}">${ic("plus")}</a></div>`);
     } else document.body.insertAdjacentHTML("beforeend", `<div class="quick-add"><div class="qa-menu" id="qaMenu" hidden>${items.map(([, h, l, i]) => `<a href="${h}">${ic(i)}<span>${esc(l)}</span></a>`).join("")}</div>
       <button type="button" class="qa-plus" id="qaPlus" aria-label="Add new" aria-haspopup="true" aria-expanded="false">${ic("plus")}</button></div>`);
-    const qa = $("body > .quick-add"), menu = $("#qaMenu"), plus = $("#qaPlus");
-    if (!menu) return place(qa);
+    const menu = $("#qaMenu"), plus = $("#qaPlus");
+    if (!menu) return;
     const away = (e) => { if (!e.target.closest?.(".quick-add")) show(false); };
     const key = (e) => { if (e.key === "Escape") show(false); };
     const show = (on) => {
@@ -1500,18 +1534,11 @@
     };
     plus.onclick = () => show(menu.hidden);
     $$("a", menu).forEach((a) => a.addEventListener("click", () => show(false)));
-    place(qa);
   }
-  const place = (qa) => requestAnimationFrame(() => { // on the left of the Back button
-    const bb = $("body > .band-back");
-    if (qa) qa.style.right = bb?.offsetWidth ? `${Math.round(window.innerWidth - bb.getBoundingClientRect().left + 8)}px` : "";
-  });
   function bindBack(home) {
-    // 3.52: the button is moved out of the page (the page slides in, which would carry it along) to float at the bottom left
-    $$("body > .band-back").forEach((x) => x.remove());
     quickAdd();
-    const b = $("#bandBack");
-    if (b) { document.body.append(b); b.onclick = () => goBack(home); }
+    const button = $("#bandBack");
+    if (button) button.onclick = () => goBack(home);
   }
   // 2.4: a signed-in person asks the Director to delete their account. The request arrives in Contact Messages; the
   // Director then deletes the account on Login Accounts. Gives the reference number, or null.
@@ -1536,7 +1563,7 @@
     { k: "outlets", icon: "building", label: "Outlets" } // 3.99.116: the shops
   ];
   // 3.2: EO-Office holds QC Test, Collection Voucher, Job Applications, Job Positions, Credit Memo and Project: it opens for anyone who may open one of them
-  const EO_MODULES = ["eooffice", "creditmemos", "projects", "employees", "mbilling"]; // 3.99.163: + Manila Billing
+  const EO_MODULES = ["eooffice", "creditmemos", "projects", "employees", "mbilling", "outlets"]; // 3.99.163: + Manila Billing
   // Which menu item (module) each page belongs to; pages a user has no access to are blocked.
   const MODULE_OF = {
     customers: "customers", newcustomer: "customers", customer: "customers", statements: "customers", order: "customers",
@@ -1661,7 +1688,7 @@
     const currency = ["inventory", "newstockbill", "stockbill", "ebill"].includes(key) ? "BDT" : "PHP (₱)";
     // 3.36: no "?" on any page; the dashboard has no title (its greeting stands in its place)
     const over = (MENU.find((m) => m.k === cur) || {}).label || `${C.company.name} E-Portal`; // 3.99.191 · 3.99.209: same section as the menu (a payment shows PAYMENTS)
-    const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1 data-over="${esc(String(over).toUpperCase())}">${esc(title)}</h1></div>`;
+    const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1${over.toLowerCase() === title.toLowerCase() ? "" : ` data-over="${esc(over.toUpperCase())}"`}>${esc(title)}</h1></div>`;
     const mainHtml = `<main id="main">${body}</main>${pageFoot()}`; // 3.99.213: no Hint boxes
     // 2.7.2: moving between pages keeps the top bar and the side menu in place (no flash); only the page itself is
     // swapped, with a soft fade. The whole frame is drawn again only when the menu or the person changes.
@@ -1693,9 +1720,9 @@
         <button type="button" class="iconbtn burger" id="tbMenu" aria-label="Menu" aria-controls="drawer" aria-expanded="false"><span></span><span></span><span></span></button>
         <form class="tb-search" id="tbSearch" role="search">
           <span class="tb-sic">${ic("search")}</span>
-          <input type="search" id="tbQ" placeholder="Search name, account, invoice, receipt…" aria-label="Search records" autocomplete="off">
+          <input type="search" id="tbQ" placeholder="Search" aria-label="Search records" autocomplete="off">
           <span class="spin sm" id="tbSpin" hidden></span>
-          <button type="button" class="scanbtn" id="tbScan" title="Scan a QR code or barcode">${ic("scan")}<span>Scan</span></button>
+          <button type="button" class="scanbtn" id="tbScan" aria-label="Scan a QR code or barcode" title="Scan a QR code or barcode">${ic("scan")}<span>Scan</span></button>
         </form>
         <div class="tb-right">
           ${canAI() ? `<button type="button" class="iconbtn tb-eva" id="tbEva" aria-label="Ask EVA AI" title="Ask EVA AI">${ic("ai")}<span class="badge" id="tbEvaBadge" hidden>0</span></button>` : ""}
@@ -1707,7 +1734,7 @@
         </div>
         <div class="pop" id="mailPop" hidden><div class="pop-head">Notifications</div><div id="mailList">${busy()}</div></div>
         <div class="pop" id="userPop" hidden>
-          <div class="pop-head">${esc(S.profile.full_name || "")}<small>${esc(S.session.user.email)} · ${titleHtml(S.profile.role, S.position)}</small></div>
+          <div class="pop-head${S.employee?.status === "active" ? " assigned-person" : ""}"><span class="assigned-profile-name">${esc(S.profile.full_name || "")}</span><small>${esc(S.session.user.email)} · ${titleHtml(S.profile.role, S.position, S.employee?.status === "active")}</small></div>
           <a href="#profile">${ic("user")} My Profile</a>
           <button type="button" id="chPw">${ic("key")} Change Password</button>
           ${window.EOApp?.menu ? `<button type="button" id="upAppMenu">${ic("box")} App Menu (scanner, about)</button>` : ""}
@@ -1809,44 +1836,81 @@
     box.prepend(el); setTimeout(() => el.classList.add("in"), 20); setTimeout(() => el.remove(), 12000);
     try { if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") { const sn = new Notification(n.title || "EMON OVERRUNS E-PORTAL", { body: n.body || "", icon: "brand/icon-192.png", tag: "eo-" + n.id }); sn.onclick = () => { window.focus(); go(); sn.close(); }; } } catch (_) {}
   }
-  // 3.99.331: an "Allow notifications" bar in the message areas (a phone asks only when a button is pressed)
-  const alertBar = () => {
-    if (!("Notification" in window)) return "";
-    const p = Notification.permission;
-    if (p === "granted") return "";
-    return p === "denied"
-      ? `<div class="al-bar off">${ic("bell")}<span>Notifications are blocked. Turn them on in the phone / browser settings for this site.</span></div>`
-      : `<div class="al-bar">${ic("bell")}<span>Get a message alert on this phone / computer</span><button type="button" class="btn small primary" data-allow-alerts>Allow</button></div>`;
-  };
-  // 3.99.335: this device gets alerts even when the portal is closed (web push, SQL 154). The Director's device makes the
-  // keys the first time.
+  let pushUser = null;
+  let registrationTask = null;
+  let registrationUser = null;
+  const supportsPush = () => "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+  function alertBar() {
+    let message, action;
+    if (!supportsPush()) {
+      const apple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      message = apple ? "For background alerts, add the portal to your Home Screen, then open it there." : "For background alerts, open the portal in a browser that supports push notifications.";
+    } else if (Notification.permission === "denied") {
+      message = "To receive alerts, allow notifications for this portal in your device or browser settings.";
+    } else if (Notification.permission === "granted" && pushUser === meId()) {
+      return "";
+    } else {
+      message = "Get alerts for new messages and notifications when the portal is closed.";
+      action = Notification.permission === "granted" ? "Connect device" : "Enable alerts";
+    }
+    return `<div class="al-bar${action ? "" : " off"}">${ic("bell")}<span>${message}</span>${action ? `<button type="button" class="btn small primary" data-allow-alerts>${action}</button>` : ""}</div>`;
+  }
+  function refreshAlertBars() {
+    document.querySelectorAll(".al-bar").forEach((bar) => { bar.outerHTML = alertBar(); });
+  }
   const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const fromB64u = (t) => Uint8Array.from(atob(String(t).replace(/-/g, "+").replace(/_/g, "/") + "===".slice((String(t).length + 3) % 4)), (c) => c.charCodeAt(0));
-  async function pushSubscribe() {
-    try {
-      if (!S.session || !("serviceWorker" in navigator) || !("PushManager" in window) || Notification.permission !== "granted") return;
-      let { data: pub, error } = await sb.rpc("push_public_key"); if (error) return; // SQL 154 not run yet
-      if (!pub && isAdmin()) {
-        const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
-        const jwk = await crypto.subtle.exportKey("jwk", kp.privateKey), raw = await crypto.subtle.exportKey("raw", kp.publicKey);
-        const r = await sb.rpc("push_setup", { p_public: b64u(raw), p_private: jwk }); if (r.error) return; pub = r.data;
-      }
-      if (!pub) return;
-      const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
-      if (sub) { const k = sub.options?.applicationServerKey; if (k && b64u(k) !== pub) { await sub.unsubscribe(); sub = null; } }
-      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64u(pub) });
-      await sb.rpc("push_subscribe", { p_endpoint: sub.endpoint });
-    } catch (_) { /* this browser cannot get alerts */ }
+  async function registerPush(user) {
+    let { data: pub, error } = await sb.rpc("push_public_key");
+    if (error) throw error;
+    if (!pub && isAdmin()) {
+      const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+      const jwk = await crypto.subtle.exportKey("jwk", kp.privateKey), raw = await crypto.subtle.exportKey("raw", kp.publicKey);
+      const setup = await sb.rpc("push_setup", { p_public: b64u(raw), p_private: jwk });
+      if (setup.error) throw setup.error;
+      pub = setup.data;
+    }
+    if (!pub) throw new Error("A director needs to enable portal alerts first.");
+    await navigator.serviceWorker.register("sw.js");
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (sub?.options.applicationServerKey && b64u(sub.options.applicationServerKey) !== pub) {
+      await sub.unsubscribe();
+      sub = null;
+    }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64u(pub) });
+    if (meId() !== user) return;
+    const saved = await sb.rpc("push_subscribe", { p_endpoint: sub.endpoint });
+    if (saved.error) throw saved.error;
+    if (meId() === user) pushUser = user;
   }
-  setTimeout(pushSubscribe, 6000);
+  function pushSubscribe() {
+    const user = meId();
+    if (!user || !supportsPush() || Notification.permission !== "granted") return Promise.resolve();
+    if (registrationTask && user === registrationUser) return registrationTask;
+    registrationUser = user;
+    registrationTask = registerPush(user).finally(() => {
+      if (registrationUser === user) registrationTask = null;
+      refreshAlertBars();
+    });
+    return registrationTask;
+  }
   document.addEventListener("click", async (e) => {
-    const b = e.target.closest?.("[data-allow-alerts]"); if (!b) return;
-    try { const r = await Notification.requestPermission(); toast(r === "granted" ? "Notifications are on." : "Notifications were not allowed.", r !== "granted"); if (r === "granted") pushSubscribe(); } catch (_) {}
-    document.querySelectorAll(".al-bar").forEach((x) => { const h = alertBar(); if (h) x.outerHTML = h; else x.remove(); });
+    const b = e.target.closest?.("[data-allow-alerts]");
+    if (!b || b.disabled) return;
+    b.disabled = true;
+    try {
+      const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+      if (permission === "granted") {
+        await pushSubscribe();
+        if (pushUser && pushUser === meId()) toast("Background alerts are on for this device.");
+      } else {
+        toast("Permission is needed for background alerts.", true);
+      }
+    } catch {
+      toast("Couldn’t connect this device to background alerts. Try again or contact your portal administrator.", true);
+    } finally { refreshAlertBars(); }
   });
-  // the phone / computer asks once to allow alerts (on the first tap after sign-in)
-  document.addEventListener("pointerdown", () => { try { if (S.session && "Notification" in window && Notification.permission === "default" && !localStorage.getItem("eoAskAlerts")) { localStorage.setItem("eoAskAlerts", "1"); Notification.requestPermission().then((r) => { if (r === "granted") pushSubscribe(); }).catch(() => {}); } } catch (_) {} }, { passive: true });
   const refreshBadge = () => refreshBadges(true);
   const notificationInbox = (history, days = null) =>
     sb.rpc("notification_inbox", days == null ? { p_history: history } : { p_history: history, p_days: days }, { get: true });
@@ -1947,6 +2011,7 @@
     if (timers.length) return;
     const beat = () => { if (S.session && document.visibilityState === "visible") sb.rpc("touch_presence").then(() => {}, () => {}); };
     beat();
+    pushSubscribe().catch(() => {});
     timers = [
       setInterval(beat, 60000),
       setInterval(() => { if (S.session && document.visibilityState === "visible") {
@@ -2688,79 +2753,127 @@
 
   // ---------- report preview window ----------
   // size: "" (A4 portrait), "landscape" (A4 landscape) or "a5l" (A5 landscape slip).
-  // 3.99.20: Download PDF: each page of the preview becomes a page of a PDF file, as it prints (A4; A5 or A4 across), but
+  // Download: each page of the preview becomes a page of an original-resolution PDF inside a ZIP (A4; A5 or A4 across), but
   // without the web address, date and page number that an iPad (Safari) prints at the bottom of every web page. A page
-  // longer than one sheet goes on to the next sheet (cut at a white line between rows). On a phone or tablet the file
-  // opens in Share (Print, Save to Files, WhatsApp ...); a computer downloads it.
+  // longer than one sheet goes on to the next sheet (cut at a white line between rows). The ZIP downloads directly.
+  // Keep the straight security lines as PDF text so magnifying an issued card preserves each letter.
+  function drawCardMicrotext(pdf, page, mmPerPixel, left, top, sheetHeight) {
+    const bounds = page.getBoundingClientRect();
+    function line(value, x, y, width, size, angle, color) {
+      const baseline = (y - bounds.top) * mmPerPixel + top;
+      if (baseline < 0 || baseline >= sheetHeight || !value || !width) return;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(size * mmPerPixel * 72 / 25.4);
+      pdf.setTextColor(color);
+      pdf.text(value, left + (x - bounds.left) * mmPerPixel, baseline, {
+        angle, horizontalScale: width * mmPerPixel / pdf.getTextWidth(value)
+      });
+    }
+    for (const frame of page.querySelectorAll(".idc-pframe")) {
+      const outer = frame.getBoundingClientRect();
+      const photo = frame.closest(".idc-face").querySelector(".idc-photo").getBoundingClientRect();
+      const x = left + (outer.left - bounds.left) * mmPerPixel, y = top + (outer.top - bounds.top) * mmPerPixel;
+      const width = outer.width * mmPerPixel, height = outer.height * mmPerPixel;
+      const insetX = (photo.left - outer.left) * mmPerPixel, insetY = (photo.top - outer.top) * mmPerPixel;
+      pdf.setFillColor("#ffffff");
+      pdf.rect(x, y, width, insetY, "F");
+      pdf.rect(x, y + height - insetY, width, insetY, "F");
+      pdf.rect(x, y + insetY, insetX, height - 2 * insetY, "F");
+      pdf.rect(x + width - insetX, y + insetY, insetX, height - 2 * insetY, "F");
+      pdf.setDrawColor("#c9a227");
+      pdf.setLineWidth(.18);
+      pdf.roundedRect(x + .12, y + .12, width - .24, height - .24, 1.4, 1.4, "S");
+    }
+    for (const text of page.querySelectorAll(".idc-pframe textPath")) {
+      const path = page.querySelector(text.getAttribute("href"));
+      const matrix = path.getScreenCTM();
+      const start = path.getPointAtLength(0).matrixTransform(matrix);
+      const end = path.getPointAtLength(path.getTotalLength()).matrixTransform(matrix);
+      const dx = end.x - start.x, dy = end.y - start.y;
+      line(text.textContent, start.x, start.y, Math.hypot(dx, dy),
+        Number(text.parentElement.getAttribute("font-size")) * Math.hypot(matrix.a, matrix.b),
+        -Math.atan2(dy, dx) * 180 / Math.PI, text.parentElement.getAttribute("fill"));
+    }
+    for (const text of page.querySelectorAll(".idc-foot .idc-micro")) {
+      const rect = text.getBoundingClientRect();
+      const fontSize = parseFloat(getComputedStyle(text).fontSize);
+      const repeats = Math.max(1, Math.floor(rect.width / (fontSize * 8)));
+      line("EMON OVERRUNS · ".repeat(repeats).trim(), rect.left, rect.top + rect.height / 2 + fontSize * .35,
+        rect.width, fontSize, 0, "#aacbff");
+    }
+  }
+  async function renderPdf(desk) {
+    const [h2c, lib] = await Promise.all([need("h2c"), need("jspdf")]);
+    await Promise.all([document.fonts?.ready, ...$$("img", desk).map((im) => im.decode().catch(() => {}))]);
+    let pdf = null;
+    for (const pg of $$(".page", desk)) {
+      const [w, h] = pg.matches(".a4l,.landscape") ? [297, 210] : pg.classList.contains("a5l") ? [210, 148] : [210, 297];
+      // Cap the pixel count for mobile canvas limits while preserving fine print.
+      const scale = Math.min(4, Math.sqrt(15000000 / (pg.offsetWidth * pg.offsetHeight)));
+      const card = pg.querySelector(".idc-pair.print");
+      const canvas = await h2c(pg, { scale, useCORS: true, backgroundColor: "#ffffff", logging: false,
+        onclone: card ? (_, clone) => {
+          for (const text of clone.querySelectorAll(".idc-pframe, .idc-foot .idc-micro")) text.style.visibility = "hidden";
+        } : undefined });
+      const cw = canvas.width, perSheet = Math.round((cw * h) / w);
+      // where each sheet ends: a white line a little above the sheet's end (not through a row of writing)
+      const g = canvas.getContext("2d"), cuts = [0];
+      while (canvas.height - cuts[cuts.length - 1] > perSheet * 1.02) {
+        let cut = cuts[cuts.length - 1] + perSheet;
+        for (let y = cut, stop = cut - Math.round(perSheet * 0.12); y > stop; y -= 2) {
+          const row = g.getImageData(0, y, cw, 1).data;
+          let white = true;
+          for (let i = 0; i < row.length; i += 16) if (row[i] < 245 || row[i + 1] < 245 || row[i + 2] < 245) { white = false; break; }
+          if (white) { cut = y; break; }
+        }
+        cuts.push(cut);
+      }
+      cuts.push(canvas.height);
+      for (let i = 0; i + 1 < cuts.length; i++) {
+        const ph = cuts[i + 1] - cuts[i];
+        const part = cuts.length === 2 ? canvas : document.createElement("canvas");
+        if (part !== canvas) {
+          part.width = cw; part.height = ph;
+          part.getContext("2d").drawImage(canvas, 0, cuts[i], cw, ph, 0, 0, cw, ph);
+        }
+        const k = Math.min(w / cw, h / ph);
+        // 3.99.169: every sheet is A4 (an A5 receipt sits on the top half of an A4 portrait sheet)
+        const [sw, sh] = w > h && w === 297 ? [297, 210] : [210, 297];
+        if (!pdf) pdf = new lib.jsPDF({ orientation: sw > sh ? "landscape" : "portrait", unit: "mm", format: [sw, sh], compress: true });
+        else pdf.addPage([sw, sh], sw > sh ? "landscape" : "portrait");
+        const png = await new Promise((resolve, reject) => part.toBlob(blob => blob ? resolve(blob) : reject(new Error("Page image unavailable")), "image/png"));
+        pdf.addImage(new Uint8Array(await png.arrayBuffer()), "PNG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
+        if (card) drawCardMicrotext(pdf, pg, k * cw / pg.getBoundingClientRect().width, (w - cw * k) / 2, -cuts[i] * k, ph * k);
+        part.width = part.height = 0;
+      }
+      canvas.width = canvas.height = 0;
+    }
+    if (!pdf) throw new Error("there is no page");
+    return pdf.output("blob");
+  }
   async function savePdf(pv, desk, title, btn) {
     if (btn.disabled) return;
-    const label = btn.innerHTML, zoom = desk.style.zoom, undo = [];
-    btn.disabled = true; btn.innerHTML = `<span class="spin sm"></span> Making PDF…`;
+    const label = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = `<span class="spin sm"></span> Preparing ZIP…`;
+    const capture = desk.cloneNode(true);
+    capture.removeAttribute("id");
+    capture.classList.add("pdf-capture");
+    capture.setAttribute("aria-hidden", "true");
+    capture.style.cssText = "position:fixed;left:-10000px;top:0;width:297mm;max-width:none;overflow:visible;zoom:1;pointer-events:none";
+    pv.appendChild(capture);
     try {
-      const [h2c, lib] = await Promise.all([need("h2c"), need("jspdf")]);
-      await Promise.all([document.fonts?.ready, ...$$("img", desk).map((im) => im.decode().catch(() => {}))]);
-      desk.style.zoom = 1; // the pages at their real size (Fit / Zoom only changes the screen)
-      let pdf = null;
-      for (const pg of $$(".page", desk)) {
-        const [w, h] = pg.classList.contains("a4l") ? [297, 210] : pg.classList.contains("a5l") ? [210, 148] : [210, 297];
-        const sheetPx = (pg.offsetWidth * h) / w;
-        // a page made smaller to fit on one sheet (onePage): the picture maker does not know "zoom", so it is a scale here
-        const fit = $(".pg-fit", pg), z = fit ? parseFloat(fit.style.zoom) || 1 : 1;
-        if (fit && z !== 1) {
-          undo.push([fit, fit.getAttribute("style") || ""]);
-          fit.style.zoom = ""; fit.style.transformOrigin = "0 0"; fit.style.transform = `scale(${z})`; fit.style.width = `${100 / z}%`;
-        }
-        const canvas = await h2c(pg, { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, ...(fit ? { height: Math.min(pg.scrollHeight, Math.floor(sheetPx)) } : {}) });
-        const cw = canvas.width, perSheet = Math.round((cw * h) / w);
-        // where each sheet ends: a white line a little above the sheet's end (not through a row of writing)
-        const g = canvas.getContext("2d"), cuts = [0];
-        while (canvas.height - cuts[cuts.length - 1] > perSheet * 1.02) {
-          let cut = cuts[cuts.length - 1] + perSheet;
-          for (let y = cut, stop = cut - Math.round(perSheet * 0.12); y > stop; y -= 2) {
-            const row = g.getImageData(0, y, cw, 1).data;
-            let white = true;
-            for (let i = 0; i < row.length; i += 16) if (row[i] < 245 || row[i + 1] < 245 || row[i + 2] < 245) { white = false; break; }
-            if (white) { cut = y; break; }
-          }
-          cuts.push(cut);
-        }
-        cuts.push(canvas.height);
-        for (let i = 0; i + 1 < cuts.length; i++) {
-          const part = document.createElement("canvas"), ph = cuts[i + 1] - cuts[i];
-          part.width = cw; part.height = ph;
-          const pc = part.getContext("2d"); pc.fillStyle = "#fff"; pc.fillRect(0, 0, cw, ph); pc.drawImage(canvas, 0, cuts[i], cw, ph, 0, 0, cw, ph);
-          const k = Math.min(w / cw, h / ph);
-          // 3.99.169: every sheet is A4 (an A5 receipt sits on the top half of an A4 portrait sheet)
-          const [sw, sh] = w > h && w === 297 ? [297, 210] : [210, 297];
-          if (!pdf) pdf = new lib.jsPDF({ orientation: sw > sh ? "landscape" : "portrait", unit: "mm", format: [sw, sh], compress: true });
-          else pdf.addPage([sw, sh], sw > sh ? "landscape" : "portrait");
-          pdf.addImage(part.toDataURL("image/jpeg", 0.92), "JPEG", (w - cw * k) / 2, 0, cw * k, ph * k, undefined, "FAST");
-        }
-      }
-      if (!pdf) throw new Error("there is no page");
+      const originals = $$("canvas", desk), copies = $$("canvas", capture);
+      copies.forEach((canvas, i) => { canvas.width = originals[i].width; canvas.height = originals[i].height; canvas.getContext("2d").drawImage(originals[i], 0, 0); });
+      const blob = await renderPdf(capture);
       const name = (String(title).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "Document") + ".pdf";
-      pdfReady(new File([pdf.output("blob")], name, { type: "application/pdf" }));
+      await downloadZip(name, blob);
     } catch (e) {
       console.error(e);
       toast(`Could not make the PDF: ${e.message || e}. Use Print instead.`, true);
     } finally {
-      undo.forEach(([el, st]) => el.setAttribute("style", st));
-      desk.style.zoom = zoom; pvFit?.();
+      capture.remove();
       btn.disabled = false; btn.innerHTML = label;
     }
-  }
-  // the PDF is ready: Share (a phone or tablet: Print, Save to Files, WhatsApp ...) or Download
-  function pdfReady(file) {
-    const url = URL.createObjectURL(file);
-    const share = !!navigator.canShare?.({ files: [file] });
-    const m = modal("PDF Ready", `<p style="margin-top:0"><b>${esc(file.name)}</b> · ${Math.max(1, Math.round(file.size / 1024))} KB</p>
-      `,
-      `${share ? `<button type="button" class="btn primary" id="pdShare">${ic("upload")} Share / Print</button>` : ""}
-       <a class="btn${share ? "" : " primary"}" id="pdSave" href="${url}" download="${esc(file.name)}">${ic("download")} Download</a>
-       <button type="button" class="btn" id="pdClose">Close</button>`,
-      { cls: "pdf-ready", onClose: () => setTimeout(() => URL.revokeObjectURL(url), 60000) });
-    $("#pdClose", m.el).onclick = () => m.close();
-    if ($("#pdShare", m.el)) $("#pdShare", m.el).onclick = () => navigator.share({ files: [file], title: file.name }).catch((e) => { if (e?.name !== "AbortError") toast("Could not open Share. Press Download.", true); });
   }
   // 3.99.192: the security band of every printed page: fine waves and two lines of EMON OVERRUNS with the document's own number
   // (from the title: Invoice INV-202611-0001 → INV-202611-0001), small to big; nothing else
@@ -2797,15 +2910,124 @@
     const re = new RegExp(forms.join("|"), "gi");
     return pages.map((p) => String(p).replace(re, esc(c.public_ident)));
   };
+  async function documentCards(root, issuedOn) {
+    if (!root) return;
+    const pattern = /\bEO-\d{7,}\b/g;
+    const nodes = [], numbers = new Set();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode, value = node.nodeValue;
+      if (node.parentElement?.closest(".idc-front")) continue;
+      const found = value.match(pattern);
+      if (found) {
+        found.forEach(n => numbers.add(n));
+        nodes.push({ node, value });
+        node.nodeValue = value.replace(pattern, "");
+      }
+      if (/^(employee (id|no|number)( no)?|id no)\.?$/i.test(value.trim())) node.nodeValue = "EOID";
+    }
+    if (!numbers.size) return;
+    const { data, error } = await sb.rpc("document_people", { p_numbers: [...numbers], p_profiles: [] });
+    if (error) { toast("EOID details unavailable. Check your connection and database update 157.", true); return; }
+    const byNumber = new Map((data || []).map(row => [row.employee_no, row]));
+    const localDay = stamp => new Date(stamp).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+    for (const { node, value } of nodes) {
+      node.nodeValue = value.replace(pattern, n => byNumber.get(n)?.card_no || "");
+      const stamp = node.parentElement?.closest(".eo-stamp");
+      if (!stamp) continue;
+      const person = byNumber.get(value.trim());
+      const printedDate = stamp.querySelector(".st-date")?.textContent;
+      const parsed = printedDate && Date.parse(printedDate);
+      const day = issuedOn || (Number.isFinite(parsed) ? new Date(parsed).toISOString().slice(0, 10) : "");
+      const holdsPost = person?.posts?.some(([start, end]) => day
+        ? localDay(start) <= day && (!end || localDay(end) > day)
+        : !end);
+      if (person?.is_director || holdsPost) stamp.classList.add("st-boss");
+    }
+  }
+
+  // Measure at the paper's physical width. Move intact boxes first, then split a long table between rows.
+  function paginatePaper(desk) {
+    const zoom = desk.style.zoom;
+    desk.style.zoom = 1;
+    try {
+      for (const first of $$(".page", desk)) {
+        let pg = first;
+        while (pg) {
+          const sheet = pg.getBoundingClientRect(), landscape = pg.matches(".a4l,.landscape");
+          const height = sheet.width * (pg.matches(".a5l") ? 148 / 210 : landscape ? 210 / 297 : 297 / 210);
+          if (pg.scrollHeight <= height + 2) break;
+          const css = getComputedStyle(pg);
+          const top = sheet.top + parseFloat(css.paddingTop);
+          const bottom = sheet.top + height - Math.max(34, parseFloat(css.paddingBottom)) - 20;
+          const furniture = [...pg.children].filter(el => getComputedStyle(el).position === "absolute");
+          const blocks = [...pg.querySelectorAll("div, table, tr, .pbox, .box, .soa-sec, .soa-info, .soa-tiles, .dsr-sign, .sign-off, .psig, figure, fieldset, section, p, img, h2, h3, h4, .ph2, .doc-seal, .inv-sealsig")];
+          const cut = blocks.find(el => {
+            if (el.closest("thead,tfoot") || furniture.some(f => f.contains(el))) return false;
+            const r = el.getBoundingClientRect();
+            return r.height > 0 && r.top > top + 2 && r.bottom > bottom && (r.top >= bottom || r.height <= bottom - top);
+          });
+          if (!cut) break;
+          let start = cut;
+          // A heading and the first row belong on the same sheet.
+          if (cut.matches("tr") && !cut.previousElementSibling) start = cut.closest("table") || cut;
+          if (start.matches("table") && start.parentElement.matches(".soa-sec")) {
+            if (start === cut || cut === start.tBodies[0]?.rows[0]) start = start.parentElement;
+          }
+          if (start.previousElementSibling?.matches("h2,h3,h4")) start = start.previousElementSibling;
+          if (start.getBoundingClientRect().top <= top + 2) break;
+          const before = document.createRange();
+          before.selectNodeContents(pg);
+          before.setEndBefore(start);
+          if (!before.toString().trim() && !before.cloneContents().querySelector("img,svg,canvas")) break;
+          const table = start.matches("tr") ? start.closest("table") : null;
+          const head = table?.tHead?.cloneNode(true);
+          const columns = table?.querySelector(":scope > colgroup")?.cloneNode(true);
+          const sectionTitle = table?.closest(".soa-sec")?.querySelector(":scope > h4")?.cloneNode(true);
+          const next = pg.cloneNode(false);
+          furniture.forEach(el => el.remove());
+          const range = document.createRange();
+          range.setStartBefore(start);
+          range.setEnd(pg, pg.childNodes.length);
+          next.appendChild(range.extractContents());
+          if (head) {
+            const continued = next.querySelector("table");
+            if (continued && !continued.tHead) {
+              continued.prepend(head);
+              if (columns) continued.prepend(columns);
+              if (sectionTitle) continued.before(sectionTitle);
+            }
+          }
+          furniture.forEach(el => {
+            pg.appendChild(el);
+            if (el.matches(".pg-trx,.pg-num,.pg-sec,.pg-web")) next.appendChild(el.cloneNode(true));
+          });
+          pg.after(next);
+          pg = next;
+        }
+      }
+      const sheets = $$(".page", desk);
+      sheets.forEach((pg, i) => {
+        if (sheets.length < 2) return;
+        let label = pg.querySelector(":scope > .pg-num");
+        if (!label) { label = document.createElement("div"); label.className = "pg-num"; pg.appendChild(label); }
+        label.textContent = `PAGE ${i + 1} OF ${sheets.length}`;
+      });
+      return sheets.length;
+    } finally {
+      desk.style.zoom = zoom;
+    }
+  }
+
   function openPreview(title, pages, opts = {}) {
-    const trx = opts.noTrx ? "" : opts.trx || trxNow(); // 3.99.220: the TRX ID on every page of a transaction's paper
+    const trx = Object.hasOwn(opts, "trx") ? opts.trx : trxNow(); // 3.99.220: the TRX ID on every page of a transaction's paper
     pages = pages.map((p) => String(p).replace(/>(\s|&nbsp;)*[—–-](\s|&nbsp;)*</g, "><")); // 3.99.228: nothing written: nothing printed
     // the barcodes are drawn first: a print made while the barcode maker was still loading opens when it is there
     if (!window.bwipjs) { need("bwip").then(() => openPreview(title, pages, opts), (e) => toast(e.message, true)); return; }
     if (opts.customerId && !docCust.has(opts.customerId)) { loadDocCust(opts.customerId).then(() => openPreview(title, pages, opts)); return; }
     const dc = opts.customerId ? docCust.get(opts.customerId) : null;
     pages = hideNames(pages.map(fillCodes), dc);
-    const { landscape = false, size = "", bare = false, onePage = false } = opts; // bare: only the page itself (no date, no website footer, no page number)
+    const { landscape = false, size = "", bare = false } = opts; // bare: only the page itself (no date, no website footer, no page number)
     closePreview();
     const cls = size ? " " + size : landscape ? " landscape" : "";
     const band = secBand(opts.secId || docId(title), dc?.public_ident || "");
@@ -2819,13 +3041,34 @@
       <div class="pv-title">Preview — ${esc(title)}</div>
       <div class="pv-tools">
         <button type="button" class="btn primary" id="pvPrint">${ic("print")} Print</button>
-        <button type="button" class="btn" id="pvPdf">${ic("download")} Download PDF</button>
+        <button type="button" class="btn" id="pvPdf">${ic("download")} Download ZIP</button>
         <label for="pvZoom">Zoom</label>
         <select id="pvZoom" style="width:auto"><option value="fit">Fit</option><option>50</option><option>75</option><option selected>100</option><option>125</option><option>150</option></select>
         <button type="button" class="btn" id="pvClose">Close</button>
       </div>
-      <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${onePage ? `<div class="pg-fit">${p}</div>` : p}${trx ? `<div class="pg-trx">TRX ID ${esc(trx.toUpperCase())}</div>` : ""}${pages.length > 1 ? `<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div>` : ""}<div class="pg-sec" aria-hidden="true" style="background-image:${band} !important"></div></div>`)).join("")}</div>
-      <div class="statusbar"><span id="pvCur">Current Page No: 1</span><span>Total Page No: ${pages.length}</span><span id="pvZf">Zoom Factor: 100%</span></div>`;
+      <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${p}${trx ? `<div class="pg-trx">TRX ID ${esc(trx.toUpperCase())}</div>` : ""}${pages.length > 1 ? `<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div>` : ""}<div class="pg-sec" aria-hidden="true" style="background-image:${band} !important"></div></div>`)).join("")}</div>
+      <div class="statusbar"><span id="pvCur">Current Page No: 1</span><span id="pvTotal">Total pages: ${pages.length}</span><span id="pvZf">Zoom Factor: 100%</span></div>`;
+    const footers = $$(".page", pv).map(page => {
+      const footer = page.querySelector(":scope > .pg-trx") || document.createElement("div");
+      footer.className = "pg-trx"; page.appendChild(footer);
+      footer.textContent = trx ? "TRX ID " + trx.toUpperCase() : "";
+      return footer;
+    });
+    const ready = Promise.all([
+      documentCards($("#pvDesk", pv), opts.issuedOn),
+      trx ? null : sb.rpc("issue_document_trx").then(({ data, error }) => {
+        if (error || !data) { toast("Document TRX unavailable. Check your connection and database update 157.", true); return; }
+        footers.forEach(f => { f.textContent = "TRX ID " + String(data).toUpperCase(); });
+      })
+    ]);
+    const printButtons = [$("#pvPrint",pv), $("#pvPdf",pv)];
+    printButtons.forEach(b => { b.disabled = true; });
+    Promise.all([ready, document.fonts?.ready, ...$$("img", pv).map(im => im.decode().catch(() => {}))]).then(() => {
+      if (!pv.isConnected) return;
+      const count = paginatePaper($("#pvDesk", pv));
+      $("#pvTotal", pv).textContent = "Total pages: " + count;
+      requestAnimationFrame(underStamp);
+    }).catch(() => toast("Document details could not be loaded.",true)).finally(() => printButtons.forEach(b => { b.disabled = false; }));
     document.body.appendChild(pv);
     bwPictures($("#pvDesk", pv)); // 3.99.15
     // 3.99.239: the paper's barcode (PDF417) goes from the head to the bottom right of the page, with its number; the TRX ID
@@ -2855,7 +3098,7 @@
     // 3.99.104: the Windows app (1.8.7) opens the print as a PDF in the Windows PDF viewer: a full preview, and the printer,
     // copies, pages and size can be changed there
     $("#pvPrint", pv).onclick = async () => {
-      if (!window.EOApp?.printPdf) return window.print();
+      if (!window.EOApp?.printPdf) { window.print(); return; }
       toast("Opening the print preview…");
       const r = await window.EOApp.printPdf(title).catch((e) => ({ error: String(e) }));
       if (r?.error) window.print();
@@ -2875,28 +3118,6 @@
     zoomTo(zs.value);
     pvFit = () => { if (zs.value === "fit") zoomTo("fit"); };
     window.addEventListener("resize", pvFit);
-    // 3.29.1: onePage: a page whose content is longer than one A4 sheet is made smaller, so it prints on one sheet.
-    // Sizes are measured on the screen (all at the same preview zoom), once the fonts and pictures are in.
-    if (onePage) Promise.all([document.fonts?.ready, ...$$("img", desk).map((im) => im.decode().catch(() => {}))]).then(() => $$(".page", desk).forEach((pg) => {
-      const fit = $(".pg-fit", pg), foot = $(".pg-web", pg), r = (el) => el.getBoundingClientRect();
-      fit.style.zoom = "";
-      const mm = r(pg).width / 210; // screen pixels per millimetre
-      const room = 293 * mm - (r(fit).top - r(pg).top) - (foot ? r(foot).height : 0) - 9 * mm; // 9 mm: the bottom margin
-      if (r(fit).height > room) fit.style.zoom = Math.max(0.6, room / r(fit).height).toFixed(3);
-    }));
-    // 3.99.175: a one-page document (an invoice, an order, a receipt …) a little longer than an A4 sheet is made smaller to
-    // fit ONE sheet (down to 72%): its writing goes into a box that is scaled; the date box, the page no and the security layer stay.
-    if (!onePage && !bare && pages.length === 1) Promise.all([document.fonts?.ready, ...$$("img", desk).map((im) => im.decode().catch(() => {}))]).then(() => $$(".page", desk).forEach((pg) => {
-      const mm = pg.getBoundingClientRect().width / 210, room = 296 * mm, h = pg.scrollHeight * (pg.getBoundingClientRect().width / pg.offsetWidth);
-      if (h <= room + 1 || h > room / 0.72) return; // fits, or far too long (a document of several pages)
-      const keep = new Set(["pg-date", "pg-num", "pg-sec", "pg-web", "rp-stamp", "rp-foot", "vp-sys"]);
-      const box = document.createElement("div"); box.className = "pg-fit";
-      [...pg.childNodes].filter((n) => !(n.nodeType === 1 && [...n.classList].some((c) => keep.has(c)))).forEach((n) => box.appendChild(n));
-      pg.insertBefore(box, pg.firstChild);
-      const st = getComputedStyle(pg), pad = (parseFloat(st.paddingTop) + parseFloat(st.paddingBottom)) * (pg.getBoundingClientRect().width / pg.offsetWidth);
-      const need = box.getBoundingClientRect().height, can = room - pad;
-      if (need > can) box.style.zoom = Math.max(0.72, can / need).toFixed(3);
-    }));
     desk.onscroll = () => {
       const pg = $$(".page", desk); let cur = 1;
       pg.forEach((p, i) => { if (p.offsetTop - desk.scrollTop < desk.clientHeight / 2) cur = i + 1; });
@@ -3178,14 +3399,20 @@
     };
     requestAnimationFrame(go);
   }
+  const modulesReady = new Promise((resolve) => {
+    if (document.readyState === "complete") resolve();
+    else document.addEventListener("DOMContentLoaded", resolve, { once: true });
+  });
   async function route() {
-    navs++;
+    await modulesReady;
+    const navigation = ++navs;
     const h = location.hash || "#dashboard";
     const back = trail.length > 1 && trail[trail.length - 2] === h;
     if (h !== shownHash) memoPage();
     if (back) trail.pop(); else if (trail[trail.length - 1] !== h) { trail.push(h); if (trail.length > 60) trail.shift(); }
     navDir = back ? "back" : "fwd";
     await routePage();
+    if (navigation !== navs || (location.hash || "#dashboard") !== h) return;
     const again = shownHash === h;
     shownHash = h;
     if (back && !again) restorePage(h);
@@ -3198,7 +3425,8 @@
     const [rawKey, id, extra] = (location.hash.slice(1) || "dashboard").split("/");
     if (ALIAS[rawKey]) { location.replace("#" + ALIAS[rawKey]); return; }
     const key = rawKey || "dashboard";
-    const arg = id ? decodeURIComponent(id) : id;
+    let arg = id;
+    try { if (id) arg = decodeURIComponent(id); } catch { /* A pasted link may contain a literal percent sign. */ }
     const V = window.EO_VIEWS || {};
     if (!S.session) {
       stopTimers();
@@ -3233,12 +3461,22 @@
       return V.applicant ? V.applicant(key, arg) : renderPending();
     }
     startTimers();
+    if (key === "chat") {
+      const dashboard = V.dashboard ? V.dashboard() : shell("dashboard", "Dashboard", "");
+      Promise.resolve(dashboard).then(() => window.EO.openChat?.());
+      return dashboard;
+    }
     if (key === "careers") { location.replace("#" + (isAdmin() ? "positions" : "dashboard")); return; }
     if (!canOpen(key)) { location.replace("#dashboard"); return; } // 3.31: no red message (for example a page left open by the person before)
     const view = V[key] || BUILTIN[key];
     if (view) return view(arg, extra);
     return V.dashboard ? V.dashboard() : shell("dashboard", "Dashboard", "");
   }
+  navigator.serviceWorker?.addEventListener("message", (event) => {
+    if (event.data?.type !== "open-messages") return;
+    if (S.session && S.profile?.status === "active" && $("#tbChat")) window.EO.openChat();
+    else location.hash = "chat";
+  });
   window.addEventListener("hashchange", route);
 
   // Supabase calls must not run inside the auth callback itself, so routing is deferred a tick.
@@ -3262,8 +3500,8 @@
     if (S.resetting) return; // the reset-code form finishes and routes itself
     if (event === "PASSWORD_RECOVERY") { booted = true; S.profile = null; setTimeout(() => renderSetPassword(true), 0); return; }
     // 3.0: the first page does not wait more than a moment for the company logo (it is set as soon as it comes)
-    if (!booted) { booted = true; S.profile = null; setTimeout(() => Promise.race([loadBranding(), new Promise((r) => setTimeout(r, 350))]).then(route), 0); return; }
-    if (changedUser) { S.profile = null; S.deviceOk = null; $$(".dev-ov").forEach((x) => x.remove()); badgeState.at = 0; pageMemo.clear(); trail.length = 0; stopTimers(); setTimeout(route, 0); }
+    if (!booted) { booted = true; S.profile = null; setTimeout(() => { loadBranding(); route(); }, 0); return; }
+    if (changedUser) { pushUser = null; S.profile = null; S.deviceOk = null; $$(".dev-ov").forEach((x) => x.remove()); badgeState.at = 0; pageMemo.clear(); trail.length = 0; stopTimers(); setTimeout(route, 0); }
   });
 
   // 3.66: every date box shows the portal's date (JUNE 30 2026; a month box: JUNE 2026), not the phone's own format
@@ -3328,9 +3566,9 @@
     renderLogin, // 3.74.1: the order paper's page opens the sign in and comes back to the same page
     APP, VERSION, sb, S, C, esc, peso, pad, num, fullName, qtyText, bdt, verifyUrl, isoToday, isoDay, mdy, monthOf, monthText, stamp, dateTime, fixDates, timeAgo, online, $, $$,
     isAdmin, isStaff, canAI, meId, kvTable, pill, ebillStep, ebillPill, toast, fail, words, busy, ic, modal, confirmBox, setBusy,
-    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, outletWeekRanks, titleHtml, bossName, customerRanks, medalHtml, achHtml, medalMini, bindAch, achievements, medalRules, vipBox, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText, 
+    shell, miniShell, grid, bindGrid, hasModule, regionalItems, shortName, rankNo, rankTag, outletRanks, outletWeekRanks, titleHtml, bossName, customerRanks, customerWeeklyWinner, medalHtml, achHtml, medalMini, bindAch, achievements, medalRules, setTrx, canOpen, canWrite, setRecords, openPreview, closePreview, listingPages, siteName, siteText,
     needLib: need, pkOk: PK_OK, pkWhy, pkMem, drawPdf417, pdf417DataUrl, drawQr, qrDataUrl, decodeImageFile, slimFile, scanDialog, openScanned, isCustKey, keepTab, stillHere, loadGuard, allRows,
-    roleName, personTitle, placeBadge, downloadLog, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
+    renderPdf, documentCards, roleName, personTitle, placeBadge, downloadLog, publicUrl, logoHtml, secSeal, sealCode, sealCached, sealFmt, loadBranding, loadProfile, refreshBadge, refreshBadges, initials, avatarUrl, route, authFrame, brandBlock,
     requestDeletion, TERMS, termsDue, changePassword: () => renderSetPassword(false)
   });
 })();

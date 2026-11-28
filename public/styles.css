@@ -4941,15 +4941,15 @@ input.locked { background: #f1f4f9; color: #42506b; font-weight: 700; letter-spa
 .ol-card .ol-card-top .store-logo { box-shadow: 0 0 0 2px rgba(255, 255, 255, .55); border-radius: 50%; }
 .ol-card .ol-card-top .ol-card-s .pill.paid { background: #e8f7ec; }
 .ol-card-s .pill.ol-rent b { white-space: nowrap; }
-/* 3.99.220: VIP and the ranks #1 #2 #3 shine all the time (also with Reduce Motion on) */
-.rk-no.rk-tag.tier-gold, .rk-no.rk-tag.tier-silver, .rk-no.rk-tag.tier-bronze, .rk-no.rk-tag.rk1, .rk-no.rk-tag.rk2, .rk-no.rk-tag.rk3 { position: relative; overflow: hidden; isolation: isolate; animation: rkGlow 2.4s ease-in-out infinite; }
-.rk-no.rk-tag.tier-gold::after, .rk-no.rk-tag.tier-silver::after, .rk-no.rk-tag.tier-bronze::after, .rk-no.rk-tag.rk1::after, .rk-no.rk-tag.rk2::after, .rk-no.rk-tag.rk3::after {
+/* 3.99.366: only explicitly selected rank badges animate (customer Top 10; shop Top 3). */
+.rk-no.rk-live, .rk-no.customer-rank-live { position: relative; overflow: hidden; isolation: isolate; animation: rkGlow 2.4s ease-in-out infinite; }
+.rk-no.rk-live::after, .rk-no.customer-rank-live::after {
   content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .8) 48%, transparent 66%); transform: translateX(-120%); animation: rkShine 2.4s ease-in-out infinite; }
 @keyframes rkGlow { 0%, 100% { box-shadow: 0 0 0 1px rgba(255, 255, 255, .3), 0 2px 6px rgba(15, 42, 102, .22); } 50% { box-shadow: 0 0 0 3px rgba(245, 197, 66, .35), 0 3px 10px rgba(15, 42, 102, .28); } }
 @media (prefers-reduced-motion: reduce) {
   .vip-box { animation: vipGold 2.4s ease-in-out infinite !important; } .vip-box .ic { animation: vipCrown 2.4s ease-in-out infinite !important; } .vip-box::after { animation: rkShine 2.4s ease-in-out infinite !important; }
-  .rk-no.rk-tag.tier-gold, .rk-no.rk-tag.tier-silver, .rk-no.rk-tag.tier-bronze, .rk-no.rk-tag.rk1, .rk-no.rk-tag.rk2, .rk-no.rk-tag.rk3 { animation: rkGlow 2.4s ease-in-out infinite !important; }
-  .rk-no.rk-tag.tier-gold::after, .rk-no.rk-tag.tier-silver::after, .rk-no.rk-tag.tier-bronze::after, .rk-no.rk-tag.rk1::after, .rk-no.rk-tag.rk2::after, .rk-no.rk-tag.rk3::after { animation: rkShine 2.4s ease-in-out infinite !important; }
+  .rk-no.rk-live, .rk-no.customer-rank-live { animation: rkGlow 2.4s ease-in-out infinite !important; }
+  .rk-no.rk-live::after, .rk-no.customer-rank-live::after { animation: rkShine 2.4s ease-in-out infinite !important; }
 }
 /* 3.99.221: rent tags (light), money boxes, the simple daily list */
 .ol-card-s .pill.ol-rent.paid { background: #e9f7ee; color: #15803d; border: 1px solid #bfe5cb; }
@@ -5540,6 +5540,14 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 #main .cust-hero:has(.auth-st) > .ch-band-tag { right: 84px; }
 #main .cust-hero > .ch-band-tag:not(:has(*:not(:empty))) { display: none; }
 #main .cust-hero > .ch-band-tag * { font-size: 10px !important; line-height: 1.2 !important; } #main .cust-hero > .ch-band-tag > span > * { padding: 3px 9px !important; min-height: 0 !important; height: auto !important; } #main .cust-hero > .ch-band-tag svg { width: 11px !important; height: 11px !important; }
+#main .cust-hero > .ch-band-tag { display: flex; align-items: center; justify-content: flex-end; gap: 7px; max-width: calc(100% - 130px); }
+#main .cust-hero > .ch-band-tag .ch-medals { display: inline-flex; margin: 0; }
+#main .cust-hero > .ch-band-tag .ch-medals:empty { display: none; }
+#main .cust-hero > .ch-band-tag .md-mini { padding: 0; gap: 5px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#main .cust-hero > .ch-band-tag .md-mini .mm { gap: 3px; }
+#main .cust-hero > .ch-band-tag .md-mini .mm > :first-child { width: 19px !important; height: 19px !important; min-width: 19px; }
+#main .cust-hero > .ch-band-tag .md-mini .mm b { color: #fff; font-size: 11px !important; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+#main .cust-hero .ch-sub:empty { display: none; }
 #main .cust-hero .ch-pic { align-self: start; align-content: start; } #main .cust-hero .ch-pic-tools { margin-bottom: 0 !important; } #main .cust-hero .ch-tags { margin-top: 2px !important; } /* 3.99.318: NOT VERIFIED right under Add Photo */
 #main .cust-hero .ch-pic-tools { height: auto !important; min-height: 0 !important; } #main .cust-hero .ch-pic-tools .linkbtn { min-height: 0 !important; height: auto !important; padding: 3px 4px !important; line-height: 1.2; }
 /* 3.99.321: CLOSED ACCOUNT in the red band, on the right */
@@ -5620,3 +5628,300 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .ol-form .ol-left > b { font-size: 20px; white-space: nowrap; }
 .ol-form #osOutN.locked { background: #eef2f7; color: #0f2a66; font-weight: 800; }
 .ol-form #osOutN { border: 1px solid #d6dfef !important; border-radius: 12px !important; height: 46px; padding: 0 14px; box-shadow: none !important; }
+
+/* Portal navigation, office directories and conversations */
+@media screen {
+  .band .band-back {
+    position: static;
+    box-shadow: none;
+    background: #e8eef8;
+    color: #173c78;
+    z-index: auto;
+  }
+  body > .quick-add { right: calc(16px + env(safe-area-inset-right, 0px)); }
+  #main .reg-nav {
+    background: #fff;
+    border: 1px solid #dde4ee;
+    padding: 6px;
+    gap: 4px;
+  }
+  #main .reg-nav a { min-height: 40px; padding: 8px 12px; color: #35445c; }
+  #main .reg-nav a.on { background: #eaf1fc; color: #123e86; box-shadow: none; }
+  .reg-cards .reg-card, #dTiles .tile {
+    border: 1px solid #dce3ed;
+    background: #fff;
+    background-image: none !important;
+    box-shadow: 0 2px 6px rgba(24, 47, 87, .05);
+  }
+  .reg-cards .reg-card { min-width: 0; gap: 12px; }
+  .reg-card em:empty { display: none; }
+  .off-staff .off-emp { max-width: 100%; overflow-wrap: anywhere; }
+  #main .home-hero { flex-wrap: nowrap; align-items: flex-start; }
+  .home-hero > div { min-width: 0; }
+  .home-hero .welcome { display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; }
+  #dTiles .tile { min-width: 0; container-type: inline-size; }
+  #dTiles .tile .v { font-size: clamp(16px, 13cqi, 26px); overflow-wrap: anywhere; }
+  .stampset + .sigset, #mpCard + .stampset { margin-top: 14px; }
+  #mpSigBox .sig-show img { max-width: 100%; object-fit: contain; }
+  .chat-panel { width: min(880px, 100%); }
+  .cp-body { grid-template-columns: minmax(240px, 35%) minmax(0, 1fr); }
+  .cp-list, .cp-conv, .cv-compose input { min-width: 0; }
+  .cp-contacts, .cv-msgs { overscroll-behavior: contain; }
+  .cp-contacts { padding: 4px 8px 12px; }
+  .cp-contacts .cp-contact { border: 0; border-radius: 12px; min-height: 60px; padding: 8px; }
+  .cp-who { gap: 3px; }
+  .cp-who small, .cv-head small { font-size: 12px; }
+  .cp-time { flex: none; max-width: 75px; text-align: right; line-height: 1.3; }
+  .cv-msgs { scroll-behavior: auto; }
+  .cv-msg .cv-file { overflow-wrap: anywhere; }
+  .cv-msg .cv-img img { max-width: 100%; width: auto; }
+  .cp-head button, .cv-send, .cv-attach { min-width: 44px; min-height: 44px; }
+  body:has(.chat-panel.open) { overflow: hidden; }
+  body:has(.chat-panel.open) > .quick-add { display: none; }
+  .content.page-in, .content.page-in.nav-back { animation: portal-enter .15s ease-out; }
+  @keyframes portal-enter { from { opacity: .85; } to { opacity: 1; } }
+  :is(.cp-contact, .reg-card, .reg-nav a, .qa):focus-visible { outline: 3px solid #3768b5; outline-offset: -3px; }
+}
+@media screen and (max-width: 700px) {
+  .chat-panel .cp-body { grid-template-columns: minmax(0, 1fr); }
+  #main .reg-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #main .reg-nav a:first-child { grid-column: 1 / -1; }
+  #main .reg-nav a { padding: 7px 10px; }
+  .reg-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+}
+@media screen and (max-width: 540px) {
+  #app > .statusbar { position: static; grid-template-columns: auto minmax(0, 1fr); }
+  #app > .statusbar span { white-space: normal; overflow-wrap: anywhere; }
+  #app > .statusbar span:nth-child(3) { display: none; }
+  .content > .page-foot { padding-bottom: 24px; }
+  #topbar { gap: 4px; padding-inline: max(6px, env(safe-area-inset-left)) max(6px, env(safe-area-inset-right)); }
+  #topbar .tb-right { gap: 2px; }
+  #topbar .iconbtn, #topbar .avatar-btn { min-width: 40px; width: 40px; height: 44px; padding-inline: 3px; }
+  #topbar .avatar-btn { height: 40px; }
+  #tbSearch { gap: 0; padding-inline: 8px 2px; }
+  #tbScan { min-width: 38px; padding-inline: 6px; }
+  #main .home-hero { gap: 10px; }
+  #main .home-hero .hero-logo { width: 38px; height: 38px; }
+  #main .quick { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #main .quick .qa { flex-direction: row; align-items: center; text-align: left; padding: 10px; }
+  #main .quick .qa-ic { flex: none; }
+  .cp-who b { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel, .cp-contact, .cv-msg, .content.page-in, .content.page-in.nav-back {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+.os-details-action { margin-top: 12px; }
+.os-details-action .btn { min-height: 44px; }
+.sales-entry-form small { display: block; color: #536079; margin-top: 5px; }
+.sales-entry-form .hint { margin: 0; padding: 10px 12px; border-radius: 8px; }
+.sales-entry-form input[type=file] { max-width: 100%; }
+.sales-entry-form input[type=file]::file-selector-button {
+  padding: 8px 10px;
+  margin-right: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: #edf2fb;
+  color: #173c78;
+  font: inherit;
+}
+@media screen and (max-width: 640px) {
+  .sales-entry-form, .shop-details-form { grid-template-columns: minmax(0, 1fr); }
+  .os-days { display: block; font-size: 14px; }
+  .os-days thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .os-days tbody, .os-days tfoot { display: grid; gap: 8px; }
+  .os-days tfoot { margin-top: 12px; }
+  .os-days :is(tbody,tfoot) tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 6px 12px;
+    padding: 9px 12px;
+    border: 1px solid #dae3ef;
+    border-radius: 12px;
+    background: #fff;
+    position: relative;
+  }
+  .os-days :is(tbody,tfoot) tr > td:not(.os-prev) {
+    height: auto;
+    width: auto;
+    min-width: 0;
+    white-space: normal;
+    overflow: visible;
+    border: 0;
+    padding: 0 !important;
+    text-align: left;
+  }
+  .os-days :is(tbody,tfoot) td:first-child { grid-column: 1 / -1; min-height: 36px; padding-right: 45px !important; align-content: center; }
+  .os-days td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; color: #536079; font-weight: 600; }
+  .os-days td[data-label] { overflow-wrap: anywhere; }
+  .os-days tbody .os-actc { position: absolute; right: 6px; top: 5px; }
+  .os-days .os-act > summary { width: 44px; height: 44px; }
+  .os-days .os-act[open] > .ol-tools { top: 46px; }
+  .os-days tfoot td:last-child { display: none; }
+}
+.sales-entry-form .os-all-cash { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+#oxSuggest { margin: 0 0 6px; white-space: normal; text-align: left; }
+
+.off-staff:has(.off-slot) { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:16px; }
+.off-slot { min-width:0; padding:12px; border:1px solid #d9e1ef; border-radius:12px; }
+.off-slot .off-h { flex-wrap:wrap; }
+.dsr-sign { align-items:start; margin-top:3mm; }
+.dsr-sign .ds-left { align-content:start; }
+.dsr-sign .ds-left .dsr-cash { width:fit-content; max-width:100%; }
+.dsr-resp b i { display:block; font-style:normal; }
+.eo-stamp.st-boss { --ink:#b74c55; max-width:100%; text-align:center; }
+.page.bare > .pg-trx { z-index:2; }
+
+.page :is(.pbox,.soa-info,.soa-tiles,.dsr-sign,.sign-off,.psig,figure,fieldset,tr) { break-inside:avoid; page-break-inside:avoid; }
+.page :is(h2,h3,h4,thead) { break-after:avoid; }
+.page thead { display:table-header-group; }
+.soa-doc .soa-sec { margin:3mm 0; }
+.soa-doc .soa-t td, .soa-doc .soa-t th { padding-block:1mm; }
+@media screen and (max-width:640px) {
+  .preview .pv-title { font-size:15px; padding:8px 12px; }
+  .preview .pv-tools { gap:6px; padding:6px 8px; }
+  .preview .pv-tools .btn, .preview .pv-tools select { min-height:40px; padding:5px 9px; font-size:13px; }
+}
+@media screen {
+  .pv-desk > .page:not(.a4l):not(.landscape):not(.a5l) { min-height:296mm; }
+}
+.modal.pdf-ready { z-index:6400; }
+
+.tbadge:not(.assigned-profile-badge),
+.tbadge:not(.assigned-profile-badge)::after,
+.tbadge:not(.assigned-profile-badge) .ic { animation:none !important; }
+@media screen and (prefers-reduced-motion:no-preference) {
+  .assigned-profile-badge::after { animation:rkShine 4s ease-in-out infinite; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .assigned-profile-badge, .assigned-profile-badge::after, .assigned-profile-badge .ic { animation:none !important; }
+}
+
+.own-id-page { min-width: 0; }
+.own-id-page canvas { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto 12px; }
+.own-id-page .btnrow, .pdf-ready .wfoot { flex-wrap: wrap; }
+
+/* Daily sales report: keep the receipt stamp in the original lower-left sign-off area. */
+.page.dsr-page { padding-bottom: 10mm; }
+.page.dsr-page .dsr-cash { width: fit-content; max-width: 100%; margin: 0; }
+.page.dsr-page .dsr-cash .vst { min-width: 44mm; padding: 2mm 4mm; }
+.page.dsr-page .dsr-cash .vst em { display: block; font-style: normal; }
+.page.dsr-page .dsr-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-top: 2mm; }
+.page.dsr-page .dsr-sign .ds-left { min-width: 0; justify-items: start; }
+.page.dsr-page .dsr-sign .ds-right { width: auto; min-width: 0; gap: .6mm; }
+.page.dsr-page .dsr-sign .ds-line { height: 7mm; }
+.page.dsr-page .ph-left .ds-head-bar { justify-items: start; margin-top: 1mm; }
+.page.dsr-page .ph-left .ds-head-bar img { width: 36mm; height: 5mm; }
+
+/* DSR keeps its top PDF417 and repeats it below the EMON HASAN stamp.
+   The lower block is: sales record number, barcode, then the single TRX ID. */
+.page.dsr-page .dsr-sign .ds-verify {
+  width: 100%; margin-top: 1.2mm; display: grid; justify-items: center;
+  gap: .55mm; white-space: nowrap;
+}
+.page.dsr-page .dsr-sign .ds-verify img { width: 42mm; height: 5mm; object-fit: fill; image-rendering: pixelated; }
+.page.dsr-page .dsr-sign .ds-verify span {
+  min-width: 0; font: 700 5.2px/1 ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: 0; color: #42506b; white-space: nowrap;
+}
+.page.dsr-page .dsr-sign .ds-verify .ds-serial {
+  color: #0f2a66; font-size: 5.6px; letter-spacing: .04em;
+}
+.page.dsr-page .dsr-ack {
+  justify-self: stretch; text-align: left; padding: 1.5mm 2mm; border-left: .7mm solid #d4a017;
+  background: #f8f9fc; color: #33415e;
+}
+.page.dsr-page .dsr-ack > b { display: block; margin-bottom: .7mm; font-size: 6.5px; letter-spacing: .1em; color: #0f2a66; }
+.page.dsr-page .dsr-ack p { margin: 0; font-size: 6.5px; line-height: 1.35; }
+.page.dsr-page .dsr-ack strong { color: #17233d; font-weight: 800; white-space: nowrap; }
+
+/* 3.99.372: keep a normal daily report together on one clean A4 sheet.
+   The shared document rules are deliberately roomier for long statements; the
+   daily report has several short sections, so compact only those local gaps. */
+.page.dsr-page .soa-doc { min-height: auto; }
+.page.dsr-page .soa-info { margin: 1.5mm 0; }
+.page.dsr-page .soa-info > div { padding: 1.1mm 2mm; }
+.page.dsr-page .soa-tiles { margin: 1.5mm 0 1mm; gap: 1.2mm; }
+.page.dsr-page .soa-tile { padding: 1.2mm 2mm; }
+.page.dsr-page .soa-tile b { margin-top: .4mm; }
+.page.dsr-page .soa-sec { margin: 1mm 0; }
+.page.dsr-page .soa-sec h4 { margin-bottom: .5mm; padding-block: .7mm; }
+.page.dsr-page .soa-t td,
+.page.dsr-page .soa-t th { padding-block: .45mm; }
+.page.dsr-page .dsr-acts .soa-t td { line-height: 1.2; }
+.page.dsr-page .dsr-sign { margin-top: 1.5mm; }
+.page.dsr-page .dsr-sign .ds-line { height: 5mm; }
+.page.dsr-page .dsr-ack { padding: 1mm 1.5mm; }
+.page.dsr-page .dsr-ack > b { margin-bottom: .4mm; }
+
+/* Active workplace assignments: show the person's name and workplace mark with a restrained motion. */
+.assigned-work-person { display: flex !important; align-items: center; gap: 9px; min-width: 0; }
+.assigned-work-person > span:last-child { display: grid; gap: 2px; min-width: 0; }
+.assigned-work-person b, .assigned-work-person small { display: block; overflow-wrap: anywhere; }
+.assigned-work-person .wp-ic, .assigned-work-person .wp-logo { width: 34px; height: 34px; flex: 0 0 34px; }
+.assigned-work-person .wp-logo { font-size: 0; }
+.wp-badge.wp-office .wp-ic, .off-emp .wp-ic { background: #fff6dc; color: #8e6b13; }
+@media (max-width: 640px) {
+  .ol-emp { flex-wrap: wrap; }
+  .ol-emp > .assigned-work-person { flex: 1 1 100%; }
+  .ol-emp > .ol-emp-btns { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
+}
+.assigned-person h2, .assigned-person .assigned-profile-name, .assigned-work-person b { animation: assignedNameGlow 4s ease-in-out infinite; }
+@keyframes assignedNameGlow { 0%,100% { opacity: 1; } 50% { opacity: .72; } }
+.loading.sk { opacity: 0; animation: loadingAppear .16s ease .18s forwards; }
+@keyframes loadingAppear { to { opacity: 1; } }
+@media print, (prefers-reduced-motion: reduce) {
+  .assigned-person h2, .assigned-person .assigned-profile-name, .assigned-work-person b { animation: none !important; }
+  .loading.sk { opacity: 1; animation: none !important; }
+}
+
+/* 3.99.366: restrained portal-wide interaction polish. Keep navigation quick and motion light. */
+.pill.active { animation: none !important; }
+.pill.active::after { content: none !important; display: none !important; animation: none !important; }
+:where(button, a, input, select, textarea, summary, [role="button"]):focus-visible {
+  outline: 3px solid rgba(29, 79, 176, .28);
+  outline-offset: 2px;
+}
+:where(.btn, .iconbtn, .scanbtn, .qa, .todo-chip, .doccard, .ol-card, .reg-card, .tabs button, .subnav a) {
+  -webkit-tap-highlight-color: transparent;
+}
+@media screen and (prefers-reduced-motion: no-preference) {
+  :where(.btn, .iconbtn, .scanbtn, .qa, .todo-chip, .doccard, .ol-card, .reg-card, .tabs button, .subnav a) {
+    transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, background-color .22s ease, border-color .22s ease, color .18s ease, opacity .18s ease;
+  }
+  :where(.grid tbody tr, .kv-table tr, .rank-row, .ach-row, .off-slot, .ol-emp) {
+    transition: background-color .2s ease, border-color .2s ease, box-shadow .22s ease;
+  }
+  .tabpanes > div:not([hidden]) { animation: smoothPanelIn .22s cubic-bezier(.2,.8,.2,1) both; }
+  .pop:not([hidden]), .am-list:not([hidden]) { animation: smoothMenuIn .18s cubic-bezier(.2,.8,.2,1) both; transform-origin: top right; }
+}
+@media (hover: hover) and (pointer: fine) {
+  :where(.doccard, .ol-card, .reg-card, .rank-row):hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15,58,140,.12); }
+  .grid tbody tr.click:hover { background: #f5f8fd; }
+}
+@keyframes smoothPanelIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes smoothMenuIn { from { opacity: 0; transform: translateY(-5px) scale(.985); } to { opacity: 1; transform: none; } }
+
+/* 3.99.370: the latest completed week's #1 sits visibly at the top-centre of the profile photo. */
+.weekly-rank-watermark {
+  position: absolute; z-index: 3; left: 50%; top: 4px; width: calc(100% - 8px); box-sizing: border-box;
+  transform: translateX(-50%); pointer-events: none; display: flex; align-items: center; justify-content: center; gap: 3px;
+  color: #543900; border: 1px solid rgba(255, 227, 122, .9); background: rgba(248, 198, 48, .92);
+  border-radius: 999px; padding: 3px 4px; font-weight: 900; line-height: 1; text-transform: uppercase;
+  box-shadow: 0 2px 5px rgba(34, 28, 10, .24);
+}
+.weekly-rank-watermark small { font-size: 5.5px; font-weight: 900; letter-spacing: .04em; white-space: nowrap; color: inherit; }
+.weekly-rank-watermark b { font-size: 9px; color: #342300; white-space: nowrap; }
+.ch-photo { position: relative; }
+.vip-customer-name { color: #8a6200 !important; animation: vipNameSoft 4.8s ease-in-out infinite; }
+@keyframes vipNameSoft { 0%, 100% { text-shadow: none; opacity: 1; } 50% { text-shadow: 0 0 8px rgba(216,158,28,.28); opacity: .9; } }
+@media (max-width: 760px) {
+  .weekly-rank-watermark { top: 3px; width: calc(100% - 6px); gap: 2px; padding: 2.5px 3px; }
+  .weekly-rank-watermark small { font-size: 4.7px; letter-spacing: 0; }
+  .weekly-rank-watermark b { font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .vip-customer-name { animation: none !important; } }

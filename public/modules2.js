@@ -242,7 +242,7 @@
       ${em.status === "waiting" && em.approval_status !== "pending" ? `<div class="banner warn">No login yet · Create Account with <b>${esc(em.email)}</b></div>` : ""}
       <section class="cust-hero st-${esc(em.status)}">${photoBox(photo, (em.first_name[0] || "") + (em.last_name[0] || ""))}
         <div class="ch-main"><div class="ch-name"><h2>${esc(fullName(em))}</h2>${verifiedBadge(verified)}${em.status === "waiting" ? `<span class="pill pending">WAITING SIGN-UP</span>` : pill(em.status)}</div>
-          <div class="ch-sub">${esc(em.position || "—")} · ${esc(em.email)}${em.phone ? " · " + esc(em.phone) : ""}</div>
+          <div class="ch-sub">${E.titleHtml(em.role, em.position)} · ${esc(em.email)}${em.phone ? " · " + esc(em.phone) : ""}</div>
           <div class="ch-place" id="emPlace"></div>
           <div class="ch-ids">${E.idBox("Employee No", em.employee_no)}${E.idBox("Date Hired", mdy(em.date_hired))}${E.idBox("Monthly Salary (₱)", peso(em.monthly_salary))}${E.idBox("Access Level", E.roleName(em.role).toUpperCase())}</div></div></section>
       <section class="wp-card" id="emWork"><div class="wp-head"><h3>${ic("building")} Currently Working At</h3>${isAdmin() && em.status !== "terminated" ? `<button type="button" class="btn small primary" id="emTransfer">${ic("pin")} Transfer / Assign New Location</button>` : ""}</div>
@@ -300,8 +300,11 @@
       ...slips.map((r) => ({ at: r.created_at || r.pay_date, what: `PAYSLIP${r.payslip_no ? " " + r.payslip_no : ""} · PHP ${peso(r.net_pay ?? r.amount ?? 0)}`, by: r.created_by_name })),
       ...(pays.rows || []).map((r) => ({ at: r.created_at || r.pay_date, what: `SALARY PAID · PHP ${peso(r.amount)}`, by: r.created_by_name })),
       ...(em.termination_date ? [{ at: em.termination_date, what: "TERMINATED", note: em.termination_reason }] : [])]); // 3.99.269
+    const profileHero = $("#emPlace").closest(".cust-hero");
     sb.rpc("employee_place", { p_employee: em.id }).then(({ data: pl }) => {
+      if (!profileHero.isConnected) return;
       const b = $("#emPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl);
+      E.profileBadgeMotion(profileHero, em, pl);
       const n = $("#emWorkNow"); if (!n) return;
       n.innerHTML = pl ? `${E.placeBadge(pl, "lg")}<div class="wp-meta"><span>Position <b>${esc(String(em.position || "—").toUpperCase())}</b></span>${pl.address ? `<span>Address <b>${esc(String(pl.address).toUpperCase())}</b></span>` : ""}${pl.kind === "outlet" && pl.id ? `<a class="btn small" href="#outlet/${esc(pl.id)}">${ic("building")} Open Store</a>` : ""}</div>` : `<div class="muted">Not set yet.</div>`;
     }, () => { const n = $("#emWorkNow"); if (n) n.innerHTML = `<div class="muted">Not set yet.</div>`; });
@@ -335,7 +338,9 @@
       if (!(await E.confirmBox(`Approve <b>${esc(fullName(em))}</b> (${esc(em.employee_no)}) with the access <b>${esc(accessText(em.role, em.modules))}</b>?<br><br>The employee ID card is made now and the login opens.`, { ok: "Approve Employee" }))) return;
       const { data, error } = await sb.rpc("approve_employee", { p_id: id });
       if (error) return fail(error, "Could not approve the employee");
-      toast(`${data.employee_no} approved. The ID card is ready on the ID Card tab.`); V.employee(id);
+      toast(`${data.employee_no} approved. Saving the ID card PDF…`);
+      if (await E.saveApprovedCard(id)) toast("ID card PDF saved.");
+      V.employee(id);
     };
     // 3.23: the Director adds or changes the employee photo (it is also the photo on the ID card)
     if ($("#emPhoto")) $("#emPhoto").onchange = async (e) => {
@@ -987,7 +992,8 @@
       btn.disabled = true; // 3.35: one employee is made, never two
       const { data, error } = await sb.rpc("review_job_application", { p_id: id, p_action: "approve", p_role: acc.role, p_modules: acc.modules, p_note: $("#jaNote").value.trim() || null });
       if (error) { btn.disabled = false; return fail(error, "Could not approve"); }
-      toast(`Approved ${data.approval_no}. ${a.full_name} is now an employee and can use the portal.`);
+      toast(`Approved ${data.approval_no}. Saving the ID card PDF…`);
+      if (await E.saveApprovedCard(data.employee_id)) toast("ID card PDF saved.");
       V.jobapp(id);
     };
     if ($("#jaReject")) $("#jaReject").onclick = async () => {
@@ -1328,6 +1334,7 @@
         <div class="ch-main"><div class="ch-name"><h2>${esc(c.name)}</h2>${pill(c.status || "active")}</div>
           <div class="ch-sub">${esc([c.address || c.country, c.contact].filter(Boolean).join(" · ") || "—")}</div>
           <div class="ch-ids">${E.idBox("Currency", CUR[cur])}${E.idBox("Accounts", String(accounts.length))}${E.idBox("Vouchers", String(vouchers.length))}${E.idBox("Last Paid", mdy(c.last_paid))}${E.idBox("Added By", c.created_by_name)}</div>
+          ${isAdmin() ? `<button type="button" class="btn primary" id="pcAddEmployee">${ic("plus")} Add Employee</button>` : ""}
           ${w ? `<div class="btnrow"><label class="btn small" for="pcPhoto">${ic("camera")} ${photo ? "Change Photo" : "Add Photo"}</label><input type="file" id="pcPhoto" accept="image/*" hidden></div>` : ""}</div></section>
       <div class="tiles">${tiles.map(([k, l, v]) => `<div class="tile ${k}"><div class="k">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
       <div class="actionbar">${w && !suspended ? `<a class="btn primary" href="#newvoucher/${c.id}">${ic("plus")} New Payment</a>` : ""}<button type="button" class="btn" id="pcRecord">${ic("download")} Download Payment Record</button><button type="button" class="btn" id="pcLog">${ic("download")} Download Log</button>
@@ -1356,6 +1363,7 @@
           foot: { a: peso(ebills.reduce((t, r) => t + num(r.total_cost), 0)), s: peso(ebills.reduce((t, r) => t + num(r.release_bdt) + num(r.shipping_cost), 0)), t: `<b class="bdt">${peso(ebills.reduce((t, r) => t + num(r.bill_total), 0))}</b>`, n: peso(ebills.reduce((t, r) => t + num(r.net_sales), 0)) } })}</div></div>` : ""}
         ${staffOn ? `<div data-p="4" hidden><div class="pc-staff" id="pcStaff">${E.staffHtml(staff)}</div></div>` : ""}
       </div>`;
+    if ($("#pcAddEmployee")) $("#pcAddEmployee").onclick = () => E.assignStaff("company", { id: c.id, label: c.name }, staff.map(x => x.employee_id));
     if ($("#pcStaff")) E.bindStaff($("#pcStaff"), "company", { id: c.id, label: c.name }, staff);
     if ($("#pcEbills")) E.bindGrid($("#pcEbills"), ebills, (r) => (location.hash = "stockbill/" + r.id));
     $$("#pcTabs button").forEach((t) => (t.onclick = () => { $$("#pcTabs button").forEach((x) => x.classList.toggle("on", x === t)); $$("#pcPanes > div").forEach((p) => (p.hidden = p.dataset.p !== t.dataset.t)); }));

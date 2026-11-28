@@ -391,6 +391,13 @@
       if (trx) {
         $("#vfResult").innerHTML = `<div class="vf-wait">${busy("Checking the TRX ID")}</div>`;
         const { data: no, error: te } = await sb.rpc("verify_trx", { p_id: trx.toLowerCase() }).then((r) => r, (e) => ({ error: e }));
+        if (!te && !no) {
+          const { data: issued } = await sb.rpc("document_trx_date", { p_id: trx.toLowerCase() });
+          if (issued && $("#vfResult")) {
+            $("#vfResult").innerHTML = `<div class="vf-title">Document print recorded</div><div class="vf-sub">${esc(E.dateTime(issued))} · TRX ID ${esc(trx.toUpperCase())}</div>`;
+            return;
+          }
+        }
         if (te || !no) {
           const out = $("#vfResult"); if (!out) return;
           out.innerHTML = `<div class="vf-bad"><div class="vf-seal">${te ? "!" : "✖"}</div><div class="vf-title">${te ? "CANNOT CHECK RIGHT NOW" : "NO RECORD FOUND"}</div><div class="vf-sub">${te ? "Please try again in a moment." : `TRX ID ${esc(trx.toUpperCase())} is not a record in the ${esc(E.APP)}.`}</div></div>`;
@@ -642,8 +649,10 @@
   // ======================================================================
   const CH = { other: null, contacts: [], msgs: [], timer: null, tick: 0, busy: false };
   const markingRead = new Set();
+  let contactsLoad = 0;
   function openChat(withId) {
-    clearTimeout(CH.closing); // 3.31: opened again while it was still closing: it stays open
+    clearTimeout(CH.closing);
+    $(".chat-panel:not(.open)")?.remove();
     let p = $(".chat-panel");
     if (!p) {
       p = document.createElement("div");
@@ -652,7 +661,7 @@
       p.setAttribute("aria-label", "Messages");
       p.innerHTML = `<div class="cp-head"><button type="button" class="cp-back" aria-label="Back to people">${ic("back")}</button><div class="cp-title">${ic("chat")} Messages</div><button type="button" class="cp-x" aria-label="Close messages">${ic("x")}</button></div>
         <div class="cp-body"><aside class="cp-list">${E.alertBar?.() || ""}<input type="search" class="cp-q" placeholder="Search people" aria-label="Search people"><div class="cp-contacts">${busy()}</div></aside>
-          <section class="cp-conv"><div class="cp-empty">${ic("chat")}<p>Choose a person to start chatting.</p></div></section></div>`;
+          <section class="cp-conv"><div class="cp-empty">${ic("chat")}<p>Select a conversation.</p></div></section></div>`;
       document.body.appendChild(p);
       $(".cp-x", p).onclick = closeChat;
       $(".cp-back", p).onclick = () => { p.classList.remove("in-conv"); CH.other = null; };
@@ -666,39 +675,55 @@
     clearInterval(CH.timer);
     CH.timer = setInterval(pollChat, 4000);
   }
-  V.chat = async (id) => { location.replace("#dashboard"); if (id) setTimeout(() => openChat(id), 300); }; // 3.99.290: #chat/<person> opens that chat
+  V.chat = async (id) => { location.replace("#dashboard"); setTimeout(() => openChat(id), 0); }; // 3.99.290: #chat/<person> opens that chat
   function chatKey(e) { if (e.key === "Escape" && !$(".modal") && $(".chat-panel.open")) closeChat(); }
   function closeChat() {
     const p = $(".chat-panel"); if (!p) return;
     clearInterval(CH.timer); CH.timer = null; CH.other = null;
+    CH.contacts = []; CH.msgs = []; CH.sysUnread = 0; contactsLoad++;
     p.classList.remove("open");
     document.removeEventListener("keydown", chatKey);
     CH.closing = setTimeout(() => p.remove(), 320);
     if (E.S.session) E.refreshBadge();
   }
   async function loadContacts() {
+    const load = ++contactsLoad;
     const { data, error } = await sb.rpc("chat_contacts");
-    const box = $(".cp-contacts"); if (!box) return;
-    if (error) { box.innerHTML = `<div class="empty small">Messages are not set up yet (run the 1.1 database update).</div>`; return; }
+    const box = $(".chat-panel.open .cp-contacts"); if (!box || load !== contactsLoad) return;
+    if (error) {
+      if (!CH.contacts.length) {
+        box.innerHTML = '<div class="empty small">Couldn’t load contacts. <button type="button" class="linkbtn">Try again</button></div>';
+        box.querySelector("button").onclick = loadContacts;
+        box.renderedContacts = null;
+      }
+      return;
+    }
     CH.contacts = data || [];
     renderContacts();
     if (CH.other !== "__portal") await loadPortalChat();
   }
   function renderContacts() {
     const box = $(".cp-contacts"); if (!box) return;
-    const q = ($(".cp-q")?.value || "").toLowerCase();
+    const q = ($(".cp-q")?.value || "").trim().toLowerCase();
     const list = CH.contacts.filter((c) => !q || `${c.full_name} ${c.job_position}`.toLowerCase().includes(q));
-    box.innerHTML = list.length ? list.map((c) => `<button type="button" class="cp-contact ${c.id === CH.other ? "on" : ""}" data-c="${c.id}">
+    const people = list.map((c) => `<button type="button" class="cp-contact ${c.id === CH.other ? "on" : ""}" data-c="${c.id}">
         <span class="cp-av">${avatarOf(c)}<i class="dot ${E.online(c.last_seen_at) ? "on" : ""}"></i></span>
-        <span class="cp-who"><b>${esc(c.full_name || "")}${c.verified ? `<span class="vbadge sm" title="Verified">${ic("check")}</span>` : ""}</b><small>${esc(c.job_position || "")} · ${E.online(c.last_seen_at) ? `<span class="on-txt">Active now</span>` : "Not active"}</small></span>
-        ${c.unread ? `<span class="badge">${c.unread}</span>` : c.last_at ? `<small class="cp-time">${esc(E.timeAgo(c.last_at))}</small>` : ""}</button>`).join("")
-      : `<div class="empty small">${CH.contacts.length ? "No one matches." : "No one else is active in the portal yet."}</div>`;
-    if (!q || "emon overruns e-portal notifications".includes(q)) box.insertAdjacentHTML("afterbegin", `<button type="button" class="cp-contact cp-sys ${CH.other === "__portal" ? "on" : ""}" data-c="__portal">
-        <span class="cp-av"><img src="brand/seal-stamp.png" alt=""></span><span class="cp-who"><b>EMON OVERRUNS E-PORTAL<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Notifications</small></span>
-        ${CH.sysUnread ? `<span class="badge">${CH.sysUnread}</span>` : ""}</button>`);
-    if (E.canAI?.() && E.eva && (!q || "eva ai assistant".includes(q))) { const n = E.eva.unread?.() || 0; box.querySelector(".cp-sys")?.insertAdjacentHTML("afterend", `<button type="button" class="cp-contact cp-sys cp-eva ${CH.other === "__eva" ? "on" : ""}" data-c="__eva">
-        <span class="cp-av eva-av">${ic("ai")}</span><span class="cp-who"><b>EVA AI<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Assistant · tells you what is waiting</small></span>
-        ${n ? `<span class="badge">${n}</span>` : ""}</button>`); }
+        <span class="cp-who"><b>${esc(c.full_name || "")}${c.verified ? `<span class="vbadge sm" title="Verified">${ic("check")}</span>` : ""}</b><small>${esc(c.job_position || "")} · ${E.online(c.last_seen_at) ? `<span class="on-txt">Active now</span>` : "Offline"}</small></span>
+        ${c.unread ? `<span class="badge">${c.unread}</span>` : c.last_at ? `<small class="cp-time">${esc(E.timeAgo(c.last_at))}</small>` : ""}</button>`).join("");
+    const portal = !q || "emon overruns e-portal notifications".includes(q) ? `<button type="button" class="cp-contact cp-sys ${CH.other === "__portal" ? "on" : ""}" data-c="__portal">
+        <span class="cp-av"><img src="brand/seal-avatar.webp" alt=""></span><span class="cp-who"><b>EMON OVERRUNS E-PORTAL<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Notifications</small></span>
+        ${CH.sysUnread ? `<span class="badge">${CH.sysUnread}</span>` : ""}</button>` : "";
+    let assistant = "";
+    if (E.canAI?.() && E.eva && (!q || "eva ai assistant".includes(q))) {
+      const unread = E.eva.unread?.() || 0;
+      assistant = `<button type="button" class="cp-contact cp-sys cp-eva ${CH.other === "__eva" ? "on" : ""}" data-c="__eva">
+        <span class="cp-av eva-av">${ic("ai")}</span><span class="cp-who"><b>EVA AI<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Assistant for pending tasks</small></span>
+        ${unread ? `<span class="badge">${unread}</span>` : ""}</button>`;
+    }
+    const html = portal + assistant + people || '<div class="empty small">No matching contacts.</div>';
+    if (html === box.renderedContacts) return;
+    box.renderedContacts = html;
+    box.innerHTML = html;
     $$(".cp-contact", box).forEach((b) => (b.onclick = () => openConversation(b.dataset.c)));
   }
   // 3.99.293: EVA in the Messenger: the same chat (her memory) as the EVA panel
@@ -717,9 +742,9 @@
     CH.other = "__portal"; CH.msgs = []; CH.sysLast = "";
     p.classList.add("in-conv");
     renderContacts();
-    $(".cp-conv", p).innerHTML = `<div class="cv-head"><span class="cp-av"><img src="brand/seal-stamp.png" alt=""></span>
-        <div><b>EMON OVERRUNS E-PORTAL<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Notifications · the portal sends these</small></div></div>
-      <div class="cv-msgs" id="cvMsgs">${busy()}</div><div class="cv-compose cv-sys-foot">${ic("lock")} You cannot reply to E-PORTAL.</div>`;
+    $(".cp-conv", p).innerHTML = `<div class="cv-head"><span class="cp-av"><img src="brand/seal-avatar.webp" alt=""></span>
+        <div><b>EMON OVERRUNS E-PORTAL<span class="vbadge sm" title="Verified">${ic("check")}</span></b><small>Portal notifications</small></div></div>
+      <div class="cv-msgs" id="cvMsgs">${busy()}</div><div class="cv-compose cv-sys-foot">${ic("lock")} Only the portal can post in this conversation.</div>`;
     await loadPortalChat();
   }
 
@@ -787,13 +812,15 @@
         <input type="text" id="cvText" placeholder="Write a message…" autocomplete="off" aria-label="Message">
         <button type="submit" class="cv-send" aria-label="Send">${ic("send")}</button></form>`;
     $("#cvForm").onsubmit = (e) => { e.preventDefault(); sendMessage(); };
-    $("#cvFile").onchange = async (e) => { const fs = Array.from(e.target.files || []).slice(0, 10); e.target.value = ""; for (const f of fs) await sendMessage(f); }; // 3.99.325: up to 10 at once
+    $("#cvFile").onchange = async (e) => { const fs = Array.from(e.target.files || []).slice(0, 10); e.target.value = ""; for (const f of fs) { if (CH.other !== otherId || !e.target.isConnected) break; await sendMessage(f); } }; // 3.99.325: up to 10 at once
     await loadMessages(true);
-    $("#cvText")?.focus();
+    if (CH.other === otherId && matchMedia("(pointer: fine)").matches) $("#cvText")?.focus();
   }
   async function loadMessages(full) {
     const other = CH.other, me = meId();
     if (!other) return;
+    const thread = $("#cvMsgs");
+    if (!thread) return;
     const last = CH.msgs[CH.msgs.length - 1];
     const incremental = !full && Boolean(last);
     let q = sb.from("messages").select("*").or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`).order("created_at", { ascending: incremental });
@@ -802,9 +829,14 @@
     if (incremental) q = q.gt("created_at", new Date(new Date(last.created_at).getTime() - 120000).toISOString());
     else q = q.gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString()).limit(300);
     const { data, error } = await q;
-    if (error || other !== CH.other) return;
+    if (other !== CH.other || !thread.isConnected) return;
+    if (error) {
+      const box = $("#cvMsgs");
+      if (box && !CH.msgs.length) box.innerHTML = '<div class="cp-empty small">Messages could not be loaded. Reconnecting…</div>';
+      return;
+    }
     const fresh = (data || []).filter((m) => !CH.msgs.some((x) => x.id === m.id));
-    if (full || fresh.length) {
+    if (full || fresh.length || (!last && !$("#cvMsgs .cp-empty p"))) {
       CH.msgs = (full ? data || [] : CH.msgs.concat(fresh)).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       await renderMessages();
     }
@@ -830,10 +862,12 @@
   // not load every photo again; the chat stays where it was read unless the newest message was in view
   const chatUrls = new Map(); // path → { url, at }
   async function renderMessages() {
+    const box = $("#cvMsgs");
+    if (!box) return;
     const old = Date.now() - 50 * 60e3;
     const want = [...new Set(CH.msgs.map((m) => m.file_path).filter((p) => p && !(chatUrls.get(p)?.at > old)))];
     if (want.length) (await signedMap(want)).forEach((url, p) => chatUrls.set(p, { url, at: Date.now() }));
-    const box = $("#cvMsgs"); if (!box) return;
+    if (!box.isConnected) return;
     const atEnd = !box.querySelector(".cv-msg") || box.scrollHeight - box.scrollTop - box.clientHeight < 120;
     const me = meId();
     let lastDay = "";
@@ -846,7 +880,7 @@
       const file = m.file_path ? (isImg && u ? `<button type="button" class="cv-img" data-img="${esc(u)}"><img src="${esc(u)}" alt="${esc(m.file_name || "Photo")}" loading="lazy"></button>`
         : `<a class="cv-file" href="${esc(u || "#")}" target="_blank" rel="noopener" download="${esc(m.file_name || "file")}">${ic("doc")} ${esc(m.file_name || "Document")}</a>`) : "";
       return `${sep}<div class="cv-msg ${m.sender_id === me ? "me" : "them"}" data-mid="${esc(m.id)}">${file}${m.body ? `<div class="cv-text">${esc(m.body)}</div>` : ""}
-        <small>${msgFoot(m, me)}${m.sender_id === me ? `<button type="button" class="cv-del" data-del="${esc(m.id)}" title="Delete" aria-label="Delete this message">${ic("trash")}</button>` : ""}</small></div>`;
+        <small><span class="cv-status">${msgFoot(m, me)}</span>${m.sender_id === me ? `<button type="button" class="cv-del" data-del="${esc(m.id)}" title="Delete" aria-label="Delete this message">${ic("trash")}</button>` : ""}</small></div>`;
     }).join("") : `<div class="cp-empty small"><p>No messages yet. Say hello!</p></div>`;
     $$("[data-img]", box).forEach((b) => (b.onclick = () => lightbox(b.dataset.img)));
     $$("[data-del]", box).forEach((b) => (b.onclick = async (e) => { // 3.99.325: delete my own message (SQL 151)
@@ -866,21 +900,28 @@
     if (!file && !body) return;
     CH.busy = true;
     const btn = $(".cv-send"); if (btn) btn.disabled = true;
-    let rec = { recipient_id: other, body: body || null };
-    if (file) {
-      if (file.size > 25 * 1024 * 1024) { CH.busy = false; if (btn) btn.disabled = false; return toast("This file is too big. Files up to 25 MB can be sent.", true); }
-      const f = await shrinkImage(file);
-      const path = `chat/${E.uuid()}/${f.name.replace(/[^\w.\-]+/g, "_")}`;
-      const up = await sb.storage.from("records").upload(path, f, { contentType: f.type || "application/octet-stream" });
-      if (up.error) { CH.busy = false; if (btn) btn.disabled = false; return fail(up.error, "Could not send the file"); }
-      rec = { ...rec, file_path: path, file_name: file.name, file_mime: f.type || "application/octet-stream" };
+    try {
+      let rec = { recipient_id: other, body: body || null };
+      if (file) {
+        if (file.size > 25 * 1024 * 1024) { return toast("This file is too big. Files up to 25 MB can be sent.", true); }
+        const f = await shrinkImage(file);
+        const path = `chat/${E.uuid()}/${f.name.replace(/[^\w.\-]+/g, "_")}`;
+        const up = await sb.storage.from("records").upload(path, f, { contentType: f.type || "application/octet-stream" });
+        if (up.error) { return fail(up.error, "Could not send the file"); }
+        rec = { ...rec, file_path: path, file_name: file.name, file_mime: f.type || "application/octet-stream" };
+      }
+      const { error } = await sb.from("messages").insert(rec);
+      if (error) return fail(error, "Could not send the message");
+      if (!file && input.value.trim() === body) input.value = "";
+      if (CH.other !== other || !input.isConnected) return;
+      await loadMessages(false);
+      const box = $("#cvMsgs"); if (box) box.scrollTop = box.scrollHeight; // a message just sent is always in view
+    } catch (error) {
+      fail(error, "Could not send the message");
+    } finally {
+      CH.busy = false;
+      if (btn) btn.disabled = false;
     }
-    const { error } = await sb.from("messages").insert(rec);
-    CH.busy = false; if (btn) btn.disabled = false;
-    if (error) return fail(error, "Could not send the message");
-    if (!file && input) input.value = "";
-    await loadMessages(false);
-    const box = $("#cvMsgs"); if (box) box.scrollTop = box.scrollHeight; // a message just sent is always in view
   }
   // 3.31: "Seen" shows by itself when the other person reads a message (not only after opening the chat again)
   async function refreshSeen() {
@@ -892,7 +933,7 @@
     data.forEach((r) => {
       const m = CH.msgs.find((x) => x.id === r.id); if (!m) return;
       m.read_at = r.read_at;
-      const s = $(`#cvMsgs .cv-msg[data-mid="${r.id}"] small`); if (s) s.innerHTML = msgFoot(m, me);
+      const s = $(`#cvMsgs .cv-msg[data-mid="${r.id}"] .cv-status`); if (s) s.innerHTML = msgFoot(m, me);
     });
   }
   async function pollChat() {

@@ -1,6 +1,6 @@
 /* EMON OVERRUNS E-PORTAL — 3.21 Employee ID Card.
    The card is CR80 size (54 × 85.6 mm), front and back. Copy-resistant printing: fine-line guilloche waves, a security
-   rosette behind the photo, microtext lines, a ghost photo, the company seal over the photo corner and a dot background
+   rosette behind the photo, microtext lines, a ghost photo and a dot background
    that may show COPY on a photocopy. The front carries a PDF417 barcode of the employee no (it opens Verify a Record).
    The back carries the emergency contact, a QR with the private card code (the employee signs in by scanning it and
    typing the password of the portal account, 3.28) and the signature of the Director who issued the card over the company name, address and email.
@@ -83,12 +83,12 @@
     // each side its own line of whole words (never cut at a corner)
     const w = 26.8, h = 30.8, p = 0.55, unit = words.join(" · "), uw = unit.length * 0.37 + 1.1;
     const side = (id, d, len) => { const n = Math.max(1, Math.floor((len + 1.1) / uw)); const t = Array(n).fill(unit).join(" · ");
-      return `<path id="${id}" d="${d}"/><text font-family="Arial, sans-serif" font-size=".62" font-weight="700" fill="#1f4fa3"><textPath href="#${id}" textLength="${n2(len)}" lengthAdjust="spacing">${esc(t)}</textPath></text>`; };
+      return `<path id="${id}" d="${d}"/><text font-family="Arial, sans-serif" font-size=".8" font-weight="700" fill="#15396f"><textPath href="#${id}" textLength="${n2(len)}" lengthAdjust="spacing">${esc(t)}</textPath></text>`; };
     const lx = w - 2 * p - 2.4, ly = h - 2 * p - 2.4;
     return `<svg class="idc-pframe" viewBox="0 0 ${w} ${h}" aria-hidden="true">
-      <rect x=".12" y=".12" width="${w - .24}" height="${h - .24}" rx="1.4" fill="none" stroke="#c9a227" stroke-width=".18"/>
-      ${side(`pft${k}`, `M${p + 1.2} ${p + .2}H${w - p - 1.2}`, lx)}${side(`pfb${k}`, `M${w - p - 1.2} ${h - p - .2}H${p + 1.2}`, lx)}
-      ${side(`pfr${k}`, `M${w - p - .2} ${p + 1.2}V${h - p - 1.2}`, ly)}${side(`pfl${k}`, `M${p + .2} ${h - p - 1.2}V${p + 1.2}`, ly)}</svg>`;
+      <rect x=".12" y=".12" width="${w - .24}" height="${h - .24}" rx="1.4" fill="#fff" stroke="#c9a227" stroke-width=".18"/>
+      ${side(`pft${k}`, `M${p + 1.2} ${p + .65}H${w - p - 1.2}`, lx)}${side(`pfb${k}`, `M${p + 1.2} ${h - p - .05}H${w - p - 1.2}`, lx)}
+      ${side(`pfr${k}`, `M${w - p - .65} ${p + 1.2}V${h - p - 1.2}`, ly)}${side(`pfl${k}`, `M${p + .65} ${h - p - 1.2}V${p + 1.2}`, ly)}</svg>`;
   }
 
   // ---------- the card ----------
@@ -101,11 +101,11 @@
       <div class="idc-top">${band(k)}${E.logoHtml("idc-logo")}<div class="idc-co"><b>${esc(C.company.name)}</b><small>EMPLOYEE IDENTIFICATION CARD</small></div></div>
       <div class="idc-gold"></div>
       ${photoFrame(k, [C.company.name, d.em.employee_no])}
-      <div class="idc-photo">${d.photo ? `<img class="idc-pic" src="${esc(d.photo)}" alt="">` : `<span>PHOTO</span>`}<span class="idc-holo" aria-hidden="true"><img class="idc-holo-st" src="brand/seal-stamp.png" alt=""></span></div>
+      <div class="idc-photo">${d.photo ? `<img class="idc-pic" src="${esc(d.photo)}" alt="">` : `<span>PHOTO</span>`}</div>
       ${d.photo ? `<div class="idc-ghost"><img src="${esc(d.photo)}" alt=""><span>${esc(`${d.em.employee_no} `.repeat(14))}</span></div>` : ""}
       <div class="idc-name" style="font-size:${nameSize(name)}mm">${esc(name)}</div>
       <div class="idc-pos"><span>${esc((d.em.position || "EMPLOYEE").toUpperCase())}</span></div>
-      <div class="idc-rows"><div><small>ID NO</small><b>${esc(d.em.employee_no)}</b></div>
+      <div class="idc-rows"><div><small>EMPLOYEE ID NO</small><b>${esc(d.em.employee_no)}</b></div>
         <div><small>VALID UNTIL</small><b>${esc(mdy(d.card.valid_until))}</b></div></div>
       <div class="idc-bar"><img src="${esc(E.pdf417DataUrl("EMONEMP|" + d.em.employee_no))}" alt="PDF417 barcode ${esc(d.em.employee_no)}"></div>
       <div class="idc-hsig">${d.holderSig ? `<img src="${esc(d.holderSig)}" alt="">` : ""}<i></i><small>HOLDER'S SIGNATURE</small></div>
@@ -151,6 +151,69 @@
   }
 
   // ---------- the Director's ID Card tab on the employee profile ----------
+  async function storeIssuedCard(employeeId) {
+    const { data: employee, error: empError } = await sb.from("employees").select("*").eq("id", employeeId).single();
+    if (empError) throw empError;
+    const { data: card, error: cardError } = await sb.from("employee_cards").select("*").eq("employee_id", employeeId).eq("status", "active").single();
+    if (cardError) throw cardError;
+    const bucket = sb.storage.from("eoid-originals"), path = card.card_no + ".pdf";
+    const { data: files, error: listError } = await bucket.list("", { search: path });
+    if (listError) throw listError;
+    if (files.some(file => file.name === path)) return;
+    await E.needLib("bwip");
+    const data = await cardData(employee, card);
+    if (employee.photo_path && !data.photo) throw new Error("Employee photo unavailable");
+    const { data: code, error } = await sb.rpc("employee_card_code", { p_card: card.id });
+    if (error || !code) throw error || new Error("Card code unavailable");
+    const qr = E.qrDataUrl(code);
+    if (!qr) throw new Error("Card QR unavailable");
+    const seal = await E.sealCode("idcard", card.card_no);
+    const desk = document.createElement("div");
+    desk.className = "pv-desk";
+    desk.style.cssText = "position:fixed;top:0;left:-320mm;width:210mm;pointer-events:none";
+    desk.setAttribute("aria-hidden", "true");
+    desk.innerHTML = `<div class="page bare">${sheet({ ...data, seal, qr })}<div class="pg-trx">TRX ID ${esc(card.id.toUpperCase())}</div></div>`;
+    document.body.appendChild(desk);
+    try {
+      await E.documentCards(desk, card.issued_at);
+      await Promise.all(Array.from(desk.querySelectorAll("img[src]"), image => image.decode()));
+      const file = await E.renderPdf(desk);
+      const { error: uploadError } = await bucket.upload(path, file, { contentType: "application/pdf", upsert: false });
+      if (uploadError && String(uploadError.statusCode) !== "409" && uploadError.error !== "Duplicate") throw uploadError;
+    } finally {
+      desk.remove();
+    }
+  }
+
+  const pendingSaves = new Map();
+  const queuePrefix = () => "eoPendingCardPdf:" + E.S.profile.id + ":";
+  function saveApprovedCard(employeeId) {
+    const key = queuePrefix() + employeeId;
+    if (pendingSaves.has(key)) return pendingSaves.get(key);
+    try { localStorage.setItem(key, "1"); } catch {}
+    const job = storeIssuedCard(employeeId).then(() => {
+      try { localStorage.removeItem(key); } catch {}
+      return true;
+    }).catch(err => {
+      const missingBucket = /bucket not found/i.test(err.message || "");
+      toast(missingBucket ? "ID card PDF storage is not set up. Run supabase/eoid_original_pdfs.sql, then reopen the dashboard." : "ID card PDF pending: " + (err.message || "Storage unavailable") + ". Reopen the dashboard to retry.", true);
+      return false;
+    }).finally(() => pendingSaves.delete(key));
+    pendingSaves.set(key, job);
+    return job;
+  }
+
+  async function retryCardPdfs() {
+    if (!isAdmin()) return;
+    const prefix = queuePrefix();
+    let keys;
+    try { keys = Object.keys(localStorage).filter(key => key.startsWith(prefix)); } catch { return; }
+    for (const key of keys) {
+      if (!isAdmin() || prefix !== queuePrefix()) return;
+      await saveApprovedCard(key.slice(prefix.length));
+    }
+  }
+
   const STATE = { active: "ACTIVE", replaced: "REPLACED", revoked: "ENDED", blocked: "BLOCKED" };
   async function idCardTab(em, el, reload) {
     if (!isAdmin() || !el) return;
@@ -159,10 +222,10 @@
     const cards = await sb.from("employee_cards").select("*").eq("employee_id", em.id).order("issued_at", { ascending: false });
     if (cards.error) { el.innerHTML = `<div class="hint err">The ID cards could not be loaded. ${/employee_cards/.test(cards.error.message || "") ? "Run the database update <b>032_employee_id.sql</b> first." : esc(cards.error.message)}</div>`; return; }
     const list = cards.data || [], card = list.find((c) => c.status === "active");
+    if (card) saveApprovedCard(em.id);
     const d = card ? await cardData(em, card) : null;
     if (!el.isConnected) return;
     const expired = card && card.valid_until < E.isoToday();
-    const missing = !em.emergency_name || !em.emergency_phone;
     el.innerHTML = `<div class="idc-panel">
         ${card ? `<div class="idc-pair screen">${front(d)}${back(d)}</div>` : `<div class="empty">${em.status === "terminated" ? "No active ID card: the employee is terminated." : "No active ID card."}</div>`}
         <div class="idc-side">
@@ -170,15 +233,13 @@
             ["Card No", "", `<b class="mono">${esc(card.card_no)}</b> ${expired ? `<span class="pill rejected">EXPIRED</span>` : `<span class="pill approved">ACTIVE</span>`}`],
             ["Issued", `${mdy(card.issued_at)}${card.issued_by_name ? ` · by ${card.issued_by_name}` : ""}`],
             ["Valid Until", mdy(card.valid_until)],
-            ["Portal Account", "", em.profile_id ? `<span class="pill approved">LINKED</span>` : `<span class="pill pending">NOT LINKED</span> — the card works after ${esc(em.email)} creates an account (Create Account), or after you link the login account in Access &amp; Status`],
+            ["Portal Account", "", em.profile_id ? `<span class="pill approved">LINKED</span>` : `<span class="pill pending">NOT LINKED</span>`],
             ["Printed", card.print_count ? `${card.print_count} time${card.print_count === 1 ? "" : "s"} · last ${mdy(card.last_printed_at)}` : "Not printed yet"]]) : ""}
-          ${missing && card ? `<div class="hint warn">The emergency contact is missing. Add it with <b>Correction</b> on this employee (Details), or the card prints empty lines to fill in by hand.</div>` : ""}
           <div class="btnrow">
             ${card ? `<button type="button" class="btn primary" id="idcPrint">${ic("print")} Print / Download ID Card</button>` : ""}
             ${em.status !== "terminated" ? `<button type="button" class="btn" id="idcNew">${ic("plus")} ${card ? "Issue New Card" : "Issue ID Card"}</button>` : ""}
             ${card ? `<button type="button" class="btn" id="idcExp">${ic("edit")} Edit Expiration Date</button><button type="button" class="btn danger" id="idcBlock">${ic("x")} Block Card</button>` : ""}
           </div>
-          <p class="muted small">Only EMON HASAN sees and prints the ID card. A new card stops the old one at once (lost or damaged card). The first time, the employee scans the card and makes a password there (no email needed); after that the employee scans the card and types that password. Give the card only to its employee: its first scan makes the password.</p>
         </div></div>
       ${list.length ? `<h4>Card History</h4>${E.grid({ cols: [{ label: "Card No", get: (r) => r.card_no }, { label: "Issued", get: (r) => mdy(r.issued_at) }, { label: "Issued By", get: (r) => r.issued_by_name || "" },
         { label: "Valid Until", get: (r) => mdy(r.valid_until) }, { label: "Status", get: (r) => STATE[r.status] || r.status.toUpperCase() }, { label: "Ended", get: (r) => (r.ended_at ? mdy(r.ended_at) : "") }], rows: list })}` : ""}`;
@@ -186,7 +247,7 @@
       const { data: code, error } = await sb.rpc("employee_card_code", { p_card: card.id });
       if (error) return fail(error, "Could not print the ID card");
       const seal = E.sealCode ? await E.sealCode("idcard", card.card_no) : ""; // 3.99.123: the card's unique seal no
-      E.openPreview(`${fullName(em).toUpperCase()} ${em.employee_no || card.card_no}`, [sheet({ ...d, seal, qr: E.qrDataUrl(code) })], { bare: true }); // 3.99.275: the file is named NAME EOID
+      E.openPreview(`${fullName(em).toUpperCase()} ${card.card_no}`, [sheet({ ...d, seal, qr: E.qrDataUrl(code) })], { bare: true, trx: card.id }); // 3.99.275: the file is named NAME EOID
       idCardTab(em, el, reload);
     };
     // 3.99.123: block a lost or stolen card (it stops at once; then Issue ID Card), change the expiration date
@@ -217,13 +278,56 @@
   }
 
   // ---------- the employee's ID card in My Profile (3.28: signs in with the card and the account password, no PIN) ----------
-  async function cardInfoBox(el) {
+  async function cardInfoBox(el, employee) {
     if (!el) return;
-    const { data, error } = await sb.rpc("my_id_card");
-    if (error || !data || !el.isConnected) { el.remove(); return; }
-    el.innerHTML = `<fieldset class="opt"><legend>My ID Card</legend>
-        <p>Your ID card <b class="mono">${esc(data.card_no)}</b> (valid until ${esc(mdy(data.valid_until))}) signs you in: on the sign-in page press <b>Sign In with ID Card</b>, scan the card and type your password.</p>
-        <small class="muted">Anyone with your card and your password can open the portal as you. Lost your card? Tell EMON HASAN at once.</small></fieldset>`;
+    el.innerHTML = `<fieldset class="opt"><legend>My ID Card</legend><div class="own-id-page" aria-live="polite">Loading card…</div></fieldset>`;
+    const box = el.querySelector(".own-id-page");
+    const { data: card, error } = await sb.rpc("my_id_card");
+    if (!box.isConnected) return;
+    if (error || !card?.card_no) {
+      box.textContent = error ? "Your card could not be loaded." : "No active ID card.";
+      return;
+    }
+    const name = card.card_no + ".pdf";
+    const { data: file } = await sb.storage.from("eoid-originals").download(name);
+    if (!box.isConnected) return;
+    if (!file) {
+      await E.needLib("bwip");
+      const details = await cardData(employee, card);
+      if (!box.isConnected) return;
+      box.innerHTML = `<div class="idc-pair screen">${front(details)}${back(details)}</div><small>Original PDF unavailable.</small>`;
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    box.innerHTML = `<div data-card-page></div><div class="btnrow"><a class="btn primary" href="${url}" download="${esc(name)}">Download original ZIP</a><a class="btn" href="${url}" target="_blank" rel="noopener">Open original PDF</a></div>`;
+    const release = new MutationObserver(() => {
+      if (box.isConnected) return;
+      release.disconnect();
+      URL.revokeObjectURL(url);
+    });
+    release.observe(document.body, { childList: true, subtree: true });
+    const pageBox = box.querySelector("[data-card-page]");
+    let task;
+    try {
+      const renderer = await import("./vendor/pdfjs-4.10.38/pdf.min.mjs");
+      renderer.GlobalWorkerOptions.workerSrc = new URL("./vendor/pdfjs-4.10.38/pdf.worker.min.mjs", document.baseURI).href;
+      task = renderer.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false });
+      const doc = await task.promise;
+      if (!box.isConnected) return;
+      const page = await doc.getPage(1);
+      const base = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: Math.min(1800 / Math.max(base.width, base.height), Math.max(1, pageBox.clientWidth * 2 / base.width)) });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+      canvas.setAttribute("role", "img");
+      canvas.setAttribute("aria-label", "ID card " + card.card_no);
+      await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+      pageBox.replaceChildren(canvas);
+    } catch {
+      pageBox.textContent = "Open the original PDF to see your card.";
+    } finally {
+      if (task) await task.destroy();
+    }
   }
 
   // ---------- a scanned card (anyone): who it belongs to and whether it is valid ----------
@@ -248,5 +352,5 @@
     if (open) $("[data-open]", m.el).onclick = () => { m.close(); location.hash = "employee/" + r.data.employee_id; };
   }
 
-  Object.assign(E, { idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet }); // idCardSheet: for the print checks
+  Object.assign(E, { saveApprovedCard, retryCardPdfs, idCardTab, cardInfoBox, cardCheck, showCardCheck, idCardSheet: sheet }); // idCardSheet: for the print checks
 })();

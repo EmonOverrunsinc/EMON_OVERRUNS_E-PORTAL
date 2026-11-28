@@ -237,7 +237,7 @@
   const EOIDS = new Map(), eoidOf = (id) => (id && EOIDS.get(id)) || "";
   const stampOf = (id, name = "", pos = "", boss = false) => { const s = (id && STAMPS.get(id)) || {}; return { name: s.name || name, pos: s.pos || pos, eoid: s.eoid || eoidOf(id), boss: s.boss || boss }; };
   // 3.99.242: on papers the stamp is the name, the position (from the employee profile) and the EOID (no crown, no mark)
-  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${s.boss ? " st-boss" : ""}${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.pos ? `<em>${esc(String(s.pos).toUpperCase())}</em>` : ""}${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}${s.date ? `<small class="st-date">${esc(s.date)}</small>` : ""}</span>` : "");
+  const stampHtml = (s, cls = "") => (s && s.name ? `<span class="eo-stamp${s.boss ? " st-boss" : ""}${cls ? " " + cls : ""}"><b>${esc(String(s.name).toUpperCase())}</b>${s.eoid ? `<i>${esc(s.eoid)}</i>` : ""}${s.pos ? `<em>${esc(String(s.pos).toUpperCase().replace(/^OPERATIONS OFFICER$/, "OPERATIONAL OFFICER"))}</em>` : ""}${s.date ? `<small class="st-date">${esc(s.date)}</small>` : ""}</span>` : "");
   // on a paper: the blue words of who signs, under the line (never the signature picture; they sign by hand after printing)
   const sigMark = (sign) => (sign ? stampHtml(sign.stamp || (sign.name ? { name: sign.name } : null)) : "");
   // 3.99.219: the id of a Director by name (from the Directors' signatures list), e.g. to print EMON HASAN's EOID
@@ -375,7 +375,7 @@
     let timer = null;
     const choose = (c) => {
       list.hidden = true; q.value = fullName(c); // 2.9: the chosen name stays in the box
-      chosen.innerHTML = `<div class="chosen"><b>${esc(fullName(c))}</b> <span class="mono">${esc(c.account_no)}</span> ${pill(c.status)}
+      chosen.innerHTML = `<div class="chosen"><b class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</b> <span class="mono">${esc(c.account_no)}</span> ${pill(c.status)}
         ${c.business_name ? `<small>${esc(c.business_name)}</small>` : ""}</div>`;
       onPick(c);
     };
@@ -396,7 +396,7 @@
       const rank = (c) => (starts(c.first_name, words2[0]) ? 0 : starts(c.last_name, words2[0]) ? 1 : 2);
       const rows = (data || []).filter((c) => words2.every((x) => starts(`${fullName(c)} ${c.business_name || ""}`, x) || String(c.account_no || "").toLowerCase().includes(x) || String(c.phone || "").includes(x)))
         .sort((a, b) => rank(a) - rank(b) || fullName(a).localeCompare(fullName(b))).slice(0, 20);
-      list.innerHTML = rows.length ? rows.map((c, i) => `<button type="button" data-i="${i}"><b>${esc(fullName(c))}</b> <span class="mono">${esc(c.account_no)}</span> ${pill(c.status)}</button>`).join("")
+      list.innerHTML = rows.length ? rows.map((c, i) => `<button type="button" data-i="${i}"><b class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</b> <span class="mono">${esc(c.account_no)}</span> ${pill(c.status)}</button>`).join("")
         : `<div class="empty">No ${statuses ? statuses.join(" / ") + " " : ""}customer matches.</div>`;
       $$("button", list).forEach((b) => (b.onclick = () => choose(rows[Number(b.dataset.i)])));
     };
@@ -584,6 +584,7 @@
     el.hidden = false;
   }
   V.dashboard = async () => {
+    E.retryCardPdfs?.();
     const H = E.hasModule, here = E.stillHere();
     const quick = [
       [E.canWrite("customers"), "#newcustomer", "New Customer Account", "user", "blue"],
@@ -601,7 +602,7 @@
     const first = String(myName() || "").trim().replace(/\s+/g, " "); // 3.99.251: the full name on the dashboard
     // the key numbers: [name, icon, the list it opens, the line under the number]
     const tiles = [["Active Customers", "users", "customers", "Open accounts"], ["Pending Applications", "order", "customers", "Awaiting approval"],
-      ["Unpaid This Month", "wallet", "invoices", `Billed in ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`], ["Collections This Month", "check", "payments", `Received in ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`]];
+      ["Unpaid This Month", "wallet", "invoices", `Billed in ${now.toLocaleDateString("en-US", { month: "long" })}`], ["Collections This Month", "check", "payments", `Received in ${now.toLocaleDateString("en-US", { month: "long" })}`]];
     const tile = ([k, icon, page, sub]) => {
       const tag = E.canOpen(page) ? "a" : "div";
       return `<${tag} class="tile"${tag === "a" ? ` href="#${page}"` : ""}><div class="tile-top"><span class="k">${k}</span><span class="tile-ic">${ic(icon)}</span></div>
@@ -612,7 +613,7 @@
       <section class="hero home-hero">${E.logoHtml("hero-logo")}<div>
         <p class="hero-date">${esc(today)}</p>
         <h2>${esc(greet)}${first ? `, ${esc(first.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()))}` : ""}</h2>
-        <p class="welcome"><span class="hero-tag">${esc(C.company.name)} E-PORTAL</span> · <b>${E.titleHtml(S.profile.role, S.position)}</b></p><div id="dPlace" class="ch-place"></div></div></section>
+        <p class="welcome"><span class="hero-tag">${esc(C.company.name)} E-PORTAL</span> <b>${E.titleHtml(S.profile.role, S.position)}</b></p><div id="dPlace" class="ch-place"></div></div></section>
       ${H("outlets") ? `<section class="nwd-notice" id="dClosed" hidden></section>` : ""}
       ${isAdmin() ? `<section class="todo" id="dTodo" hidden></section>` : ""}
       <section class="box my-dlv" id="dDlv" hidden></section>
@@ -628,7 +629,14 @@
       </div>`);
     myDeliveries();
 
-    if (S.empId) sb.rpc("my_place").then(({ data: pl }) => { const b = $("#dPlace"); if (b && pl) b.innerHTML = E.placeBadge(pl, "sm"); }, () => {}); // 3.99.234
+    if (S.empId) {
+      const placeBox = $("#dPlace"), employee = S.employee;
+      sb.rpc("my_place").then(({ data: place }) => {
+        if (!placeBox?.isConnected) return;
+        if (place) placeBox.innerHTML = E.placeBadge(place, "sm");
+        return E.profileBadgeMotion(placeBox.parentElement, employee, place);
+      }).catch(() => {});
+    }
     E.outletsBox?.($("#dOutlets")); // 3.99.116: the shops' sales on the Dashboard
     // 3.99.196: a shop with an approved non-working day today: everyone of that shop sees it here
     if ($("#dClosed")) sb.from("outlet_closures").select("outlet_id, outlets(code, name)").eq("day", isoToday()).eq("status", "approved").then(({ data, error }) => {
@@ -660,9 +668,10 @@
       sb.from("customers").select("id", { count: "exact", head: true }).in("status", ["pending", "verified"])
     ]);
     if (!here()) return;
-    if (cust.error) {
-      $("#main").insertAdjacentHTML("afterbegin", `<div class="hint err">The customer database is not set up yet. Ask EMON HASAN to run the setup script <b>002_customers_invoices_payments.sql</b>.</div>`);
-      return;
+    const sources = [activeN, waitN, bal, month];
+    if ([...sources, cust, inv, pay].some((result) => result.error)) {
+      $("#main").insertAdjacentHTML("afterbegin", '<div class="hint err" role="status">Some dashboard data could not be loaded. <button type="button" class="linkbtn" id="retryDashboard">Try again</button></div>');
+      $("#retryDashboard").onclick = () => E.route();
     }
     const cs = cust.data || [];
     const unpaidRows = bal.data || [], due = unpaidRows.reduce((s, b) => s + Math.max(0, num(b.balance)), 0);
@@ -670,9 +679,17 @@
     const monthPaid = (month.data || []).reduce((s, p) => s + num(p.amount), 0);
     const waiting = cs.filter((c) => ["pending", "verified"].includes(c.status)), waitCount = waitN.count ?? waiting.length;
     const vals = [["ok", activeN.count || 0], [waitCount ? "warn" : "", waitCount], [due > 0 ? "warn" : "ok", "₱ " + peso(due)], ["ok", "₱ " + peso(monthPaid)]];
-    $$("#dTiles .tile").forEach((t, i) => { t.className = "tile " + vals[i][0]; $(".v", t).textContent = vals[i][1]; });
+    $$("#dTiles .tile").forEach((tile, i) => {
+      if (sources[i].error) {
+        $(".v", tile).textContent = "—";
+        $(".s", tile).textContent = "Unavailable";
+      } else {
+        tile.className = "tile " + vals[i][0];
+        $(".v", tile).textContent = vals[i][1];
+      }
+    });
     const ut = $$("#dTiles .tile")[2]; // 3.95: how many of this month's invoices are unpaid
-    if (ut && $(".s", ut)) $(".s", ut).textContent = `${unpaidRows.length} unpaid invoice${unpaidRows.length === 1 ? "" : "s"} of ${now.toLocaleDateString("en-US", { month: "long" }).toUpperCase()}`;
+    if (!bal.error && ut && $(".s", ut)) $(".s", ut).textContent = `${unpaidRows.length} unpaid invoice${unpaidRows.length === 1 ? "" : "s"} from ${now.toLocaleDateString("en-US", { month: "long" })}`;
     if ($("#dApps") && waiting.length) { // shown only when an application waits
       $("#dAppsBox").hidden = false;
       $("#dApps").innerHTML = E.grid({ cols: [
@@ -689,7 +706,7 @@
         { label: "Invoice / Customer", html: (r) => `<b>${esc(r.invoice_no)}</b><br><small>${esc(fullName(r))}</small>` },
         { label: "Balance (₱)", num: true, get: (r) => peso(r.balance) },
         { label: "Status", html: payPill }],
-        rows, onRow: true, empty: "No invoices yet." });
+        rows, onRow: true, empty: inv.error ? "Invoices could not be loaded." : "No invoices yet." });
       E.bindGrid($("#dInv"), rows, (r) => (location.hash = "invoice/" + r.id));
     }
     if ($("#dPay")) {
@@ -698,10 +715,10 @@
         // 3.99.82: the receipt with the customer under it (like Latest Invoices), so the 3 columns fit the box
         { label: "Receipt / Customer", html: (r) => `<b>${esc(r.receipt_no)}</b><br><small>${esc(fullName(r.customers || {}))}</small>` },
         { label: "Amount (₱)", num: true, get: (r) => peso(r.amount) }, { label: "Date", get: (r) => mdy(r.paid_date) }],
-        rows: rp, onRow: true, empty: "No payments yet." });
+        rows: rp, onRow: true, empty: pay.error ? "Payments could not be loaded." : "No payments yet." });
       E.bindGrid($("#dPay"), rp, (r) => (location.hash = "payment/" + r.id));
     }
-    E.setRecords(`Customers: ${activeN.count || 0}`);
+    E.setRecords(`Customers: ${activeN.error ? "—" : activeN.count || 0}`);
   };
   // 3.0: Purchase Orders on the dashboard: the ones waiting for review, then this month's approved lots with their
   // quantity and average price.
@@ -828,12 +845,12 @@
       rows.sort((a, b) => acctNo(a) - acctNo(b));
       // 2.9: names that start with what was typed come first (first name, then last name)
       if (ws.length) { const st0 = (v) => String(v || "").toLowerCase().startsWith(ws[0]); const rk = (c) => (st0(c.first_name) ? 0 : st0(c.last_name) ? 1 : 2); rows.sort((a, b) => rk(a) - rk(b)); }
-      // 3.99.184: no search: numbered by RANK (1 = the highest total net sales, 127); the others after, by account no
+      // 3.99.367: no search: every eligible customer keeps the original lifetime net rank; only the Top 10 badges animate.
       else { const rnk = (c) => rk.get(c.id)?.rank ?? 1e9; rows.sort((a, b) => rnk(a) - rnk(b)); }
       rows.forEach((r, i) => (r._no = i + 1));
       $("#cuRes").innerHTML = E.grid({ cols: [
-        { label: ws.length ? "No." : "Rank", num: true, get: (r) => r._no, html: (r) => { const x = !ws.length && rk.get(r.id); return x ? E.rankNo(x.rank, "", x.tier || null) : String(r._no); } },
-        { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r) }, // 3.99.159: CLOSED once (in Status)
+        { label: ws.length ? "No." : "Rank", num: true, get: (r) => r._no, html: (r) => { const x = !ws.length && rk.get(r.id); return x ? E.rankNo(x.rank, x.rank <= 10 ? "customer-rank-live" : "", x.tier || null) : String(r._no); } },
+        { label: "Account No", get: (r) => r.account_no }, { label: "Name", get: (r) => E.shortName(r), html: (r) => `<span class="${num(r.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(E.shortName(r))}</span>` }, // VIP is shown by the name colour/motion only; CLOSED appears once in Status
         { label: "Phone", phone: false, get: (r) => r.phone || "" }, // 3.83: a phone shows Account No, Name, Status and Balance Due
         { label: "Status", html: (r) => pill(r.status) },
         { label: "Balance Due", key: "due", num: true, get: (r) => peso(r.due) }],
@@ -1116,12 +1133,12 @@
     $(".band h1").textContent = `Customer › ${fullName(c)}`;
     $("#main").innerHTML = `
       ${statusBanner(c, orders, ev.data || [])}
-      <section class="cust-hero st-${esc(c.status)}">${c.status === "closed" ? closedInfo(c, orders, ev.data || []) : ""}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span></div>` : ""}
-        <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}</div>
+      <section class="cust-hero st-${esc(c.status)}">${c.status === "closed" ? closedInfo(c, orders, ev.data || []) : ""}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<div class="ch-band-tag"><span id="pfStanding"></span><span class="ch-medals" id="pfMedals"></span></div>` : ""}
+        <div class="ch-pic"><div class="ch-photo">${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo of ${esc(fullName(c))}">` : `<span>${esc(((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || ""))}</span>`}${isApprovedAccount(c) && isStaff() && c.status !== "closed" ? `<span class="weekly-rank-watermark" id="pfWeekly" data-cid="${esc(c.id)}" hidden><small>WEEKLY RANKING</small><b>#1</b></span>` : ""}</div>
           ${E.canWrite("customers") ? `<div class="ch-pic-tools"><label class="linkbtn" for="pfPhotoFile">${c.photo_path ? "Change" : "Add Photo"}</label><input type="file" id="pfPhotoFile" accept="image/*" hidden>${c.photo_path ? `<button type="button" class="linkbtn del" id="pfPhotoDel">Remove</button>` : ""}</div>` : ""}${isApprovedAccount(c) && isStaff() ? `<div class="ch-tags"><span id="pfVerified"></span></div>` : ""}</div>
         <div class="ch-main">
-          <div class="ch-name"><h2>${esc(fullName(c))}</h2>${pill(c.status)}${E.vipBox(c.credit_limit)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
-          <div class="ch-sub">${[isStaff() ? `<span class="ch-medals" id="pfMedals"></span>` : "", c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""].filter(Boolean).join(`<span class="ch-dot"> · </span>`) || "—"}</div>
+          <div class="ch-name"><h2 class="${num(c.credit_limit) >= 1000000 ? "vip-customer-name" : ""}">${esc(fullName(c))}</h2>${pill(c.status)}${isStaff() ? `<span class="pf-rank" id="pfRank" data-cid="${esc(c.id)}" hidden></span>` : ""}${c.hide_identity ? `<span class="hid-chip" title="Printed and downloaded papers show ${esc(c.public_ident || "")} instead of the name">${ic("lock")} IDENTITY HIDDEN</span>` : ""}</div>
+          <div class="ch-sub">${c.email ? `<span class="ch-mail">${esc(c.email)}</span>` : ""}</div>
           <div class="ch-ids">
             ${idBox("Account No", c.account_no)}${idBox("Application No", c.application_no)}${idBox("Opened", mdy(c.application_date))}${c.credit_limit != null ? idBox("Credit Limit", "₱ " + peso(c.credit_limit)) : ""}
           </div>
@@ -1253,13 +1270,18 @@
     if ($("#pfRequest")) $("#pfRequest").onclick = () => E.customerRequest(c, gctx);
     E.bindRequests(c, orders, gctx);
     E.standingBadge($("#pfStanding"), c, gctx);
-    if ($("#pfRank")) E.customerRanks().then((rk) => { // 3.99.194: the rank under the profile picture: #1, #2 … (no rank: nothing)
+    if ($("#pfRank")) E.customerRanks().then((rk) => { // original lifetime net rank, fixed at Monday; only the Top 10 badge animates
       const el = $("#pfRank"), r = rk.get(c.id);
       if (!r || !el || el.dataset.cid !== c.id) return;
-      el.innerHTML = E.rankTag(r.rank, r.tier || null); el.title = `Rank ${r.rank} · total net sales up to Monday ${mdy(r.as_of)} · the rank changes every Monday`; el.hidden = false;
+      el.innerHTML = E.rankTag(r.rank, r.tier || null, r.rank <= 10); el.title = `Rank ${r.rank} · lifetime net sales up to Monday ${mdy(r.as_of)}`; el.hidden = false;
+    });
+    if ($("#pfWeekly")) E.customerWeeklyWinner().then((rk) => {
+      const el = $("#pfWeekly"), winner = [...rk.values()][0];
+      if (!el || el.dataset.cid !== c.id || winner?.customer_id !== c.id) return;
+      el.title = `Latest completed week #1 · net purchases from ${mdy(winner.week_start)}`; el.hidden = false;
     });
     if ($("#pfAchTab") || $("#pfMedals")) E.achievements("customer", c.id).then((a) => {
-      const m = $("#pfMedals"); if (m && a) m.innerHTML = E.medalMini(a); // 3.99.307: gold / silver / bronze, small, under the photo
+      const m = $("#pfMedals"); if (m && a) m.innerHTML = E.medalMini(a); // only medal types actually won, beside the account standing
       const p = $("#pfAchTab"); if (p && p.dataset.cid === c.id) { p.innerHTML = E.achHtml(a, "customer"); E.bindAch(p, c.id, () => V.customer(c.id)); } });
     E.custVerified?.($("#pfVerified"), c.id); // 3.69: the customer agreed to the legal terms
     // 3.12: the Director deletes a history line
@@ -1278,18 +1300,18 @@
   };
 
   // 2.7: the account amounts are listed here; the profile shows only the Balance Due
-  // 3.99.178: TOP 10 CUSTOMERS by total net sales (all invoices − approved credits), counted up to this week's Monday
+  // 3.99.367: original customer ranking: every active customer with positive lifetime net sales, fixed each Monday.
   async function topCustomers() {
-    const m = E.modal("Customer Rank", `<div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
+    const m = E.modal("Customer Ranking", `<div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
     m.el.querySelector("[data-x]").onclick = m.close;
     const rk = await E.customerRanks(), list = [...rk.values()].sort((a, b) => a.rank - b.rank);
     const { data } = list.length ? await sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").in("id", list.map((r) => r.customer_id)) : { data: [] };
     const box = m.el.querySelector("#rkBoard"), cm = new Map((data || []).map((c) => [c.id, c]));
     if (!box) return;
-    box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} Total net sales up to Monday ${esc(mdy(list[0].as_of))} · the rank changes every Monday.</p>
+    box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} Lifetime net purchases up to Monday ${esc(mdy(list[0].as_of))} · every active customer is ranked. The latest completed week's #1 receives a separate profile watermark.</p>
       <div class="rank-board">${list.map((r) => { const c = cm.get(r.customer_id) || {};
-        return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankNo(r.rank, "lg", r.tier || null)}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
-      : `<div class="empty">No rank yet. It needs the database updates <b>125</b> and <b>127</b>, and invoices before this Monday.</div>`;
+        return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankNo(r.rank, `lg${r.rank <= 10 ? " customer-rank-live" : ""}`, r.tier || null)}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
+      : `<div class="empty">No active customer has positive net purchases yet.</div>`;
     box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => m.close()));
   }
 
@@ -2633,6 +2655,21 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
   // ======================================================================
   // My Profile (photo, username, employee record, payslip history) and Company Logo
   // ======================================================================
+  E.profileBadgeMotion = async (root, employee, place) => {
+    const badge = root?.querySelector(".tbadge");
+    if (!badge || !employee || employee.status !== "active") return;
+    if (place === undefined) {
+      const result = await sb.rpc("employee_place", { p_employee: employee.id });
+      place = result.data;
+    }
+    let animate = !!place?.kind;
+    if (!animate && employee.employee_no) {
+      const result = await sb.rpc("document_people", { p_numbers: [employee.employee_no], p_profiles: [] });
+      animate = (result.data || []).some(person => person.posts?.some(([, end]) => end === null));
+    }
+    root.classList.toggle("assigned-person", animate);
+    root.querySelectorAll(".tbadge").forEach((item) => item.classList.toggle("assigned-profile-badge", animate));
+  };
   V.profile = async () => {
     const av = E.publicUrl("avatars", S.profile.avatar_path);
     E.shell("profile", "My Profile", busy());
@@ -2670,11 +2707,11 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         <fieldset class="opt dev-card" id="mpDev" hidden></fieldset>
       </div>
       ${emp ? `<div id="mpCard"></div>` : ""}
-      <fieldset class="opt stampset"><legend>My Stamp</legend><div class="stamp-show">${stampHtml({ name: S.profile.full_name || "", pos: E.personTitle?.(S.profile.role, emp?.position) || "", eoid: emp?.employee_no || "" })}</div><p class="muted">On papers · made by the system</p></fieldset>
+      <fieldset class="opt stampset"><legend>My Stamp</legend><div class="stamp-show">${stampHtml({ name: S.profile.full_name || "", pos: E.personTitle?.(S.profile.role, emp?.position) || "", eoid: emp?.employee_no || "", boss: isAdmin() })}</div><p class="muted">The portal adds this stamp to your documents.</p></fieldset>
       <fieldset class="opt sigset" id="mpSigBox"><legend>My Signature</legend>
         ${myPic ? `<div class="sig-show"><img src="${esc(myPic)}" alt="My signature"></div><div class="sig-st">${sigPill(sp.signature_status)}${sp.signature_status === "approved" && sp.signature_approved_by_name ? ` <small>by ${esc(sp.signature_approved_by_name)} on ${mdy(sp.signature_approved_at)}</small>` : ""}</div>` : `<p><b>No signature yet.</b></p>`}
         ${sp.signature_status === "rejected" && sp.signature_note ? `<div class="hint err">Not approved: ${esc(sp.signature_note)}. Upload a clearer signature.</div>` : ""}
-        <p class="muted">White paper · dark ink · clear photo</p>
+        <p class="muted">Sign on white paper in dark ink, then upload a clear photo.</p>
         <div class="btnrow"><label class="btn primary" for="mpSig">${ic("upload")} ${myPic ? "Change Signature" : "Upload Signature"}</label><input type="file" id="mpSig" accept="image/*" hidden data-save-now="preview">
           ${sp.signature_path ? `<button type="button" class="btn" id="mpSigForm">${ic("print")} Signature Verification Form</button><button type="button" class="btn danger" id="mpSigRm">${ic("trash")} Remove</button>`
             : `<button type="button" class="btn" id="mpSigBlank">${ic("print")} Blank Signature Verification Form</button>`}</div>
@@ -2688,9 +2725,11 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       ${emp ? `<h3>My Salary</h3>${E.salaryTiles(emp, E.salaryTotals(slips, myPays.rows))}
         <h3>My Payslips</h3><div id="mpSlips">${E.slipGrid(slips, "No payslips yet.")}</div>
         <h3>My Salary Payments</h3><div id="mpPays">${E.payGrid(myPays.rows, slips, "No salary paid yet.")}</div>` : ""}`;
+    E.profileBadgeMotion($(".me-card"), emp);
+    E.documentCards?.($(".stamp-show"));
     S.hideMoney = hid;
     if (emp) { E.bindGrid($("#mpSlips"), slips, (r) => (location.hash = "payslip/" + r.id)); E.bindGrid($("#mpPays"), myPays.rows, (r) => (location.hash = "payslip/" + r.payslip_id)); }
-    if (emp && E.cardInfoBox) E.cardInfoBox($("#mpCard")); // the ID card (3.28: no PIN)
+    if (emp && E.cardInfoBox) E.cardInfoBox($("#mpCard"), emp); // the ID card (3.28: no PIN)
     $("#mpPw").onclick = () => E.changePassword();
     E.myDevices?.($("#mpDev")); // 3.80: the devices this login signs in on
     // 2.4: the request goes to the Director's Contact Messages, who then deletes the account on Login Accounts
