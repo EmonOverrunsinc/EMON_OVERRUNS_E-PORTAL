@@ -300,6 +300,7 @@
           ${!card && em.status !== "terminated" ? `<ul class="idf-need">${need.map(([ok, l]) => `<li class="${ok ? "ok" : "no"}">${ic(ok ? "check" : "x")} ${l}</li>`).join("")}</ul>` : ""}
           <div class="btnrow">
             ${stepBtns}
+            ${card?.fee_cv_id ? `<a class="btn" href="#collection/${esc(card.fee_cv_id)}">${ic("receipt")} Fee Voucher ₱150</a>` : ""}
             ${card ? act("idcPrint", at === "generated" ? "Print File (ZIP)" : "Print / Download ID Card", "lock") : ""}
             ${em.status !== "terminated" ? `<button type="button" class="btn${card ? "" : " primary"}" id="idcNew"${!ready ? " disabled" : ""}>${ic("plus")} Generate New ID</button>` : ""}
             ${card ? `<button type="button" class="btn" id="idcExp">${ic("edit")} Edit Expiration Date</button><button type="button" class="btn danger" id="idcBlock">${ic("x")} Block Card</button>
