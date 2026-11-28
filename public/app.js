@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.403"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.404"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.403"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.404"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -1782,10 +1782,12 @@
     $("#chPw").onclick = () => renderSetPassword(false);
     if ($("#upAppMenu")) $("#upAppMenu").onclick = () => { $$(".pop").forEach((p) => (p.hidden = true)); window.EOApp.menu().catch(() => {}); };
     bindUpdate();
-    $("#tbSearch").onsubmit = (e) => {
+    $("#tbSearch").onsubmit = async (e) => {
       e.preventDefault();
-      const q = $("#tbQ").value.trim();
+      let q = $("#tbQ").value.trim();
       if (!q) return;
+      // 3.99.404: a new document code (INV / ACK / COV / CLN / RPT-2026-0001) is searched by its record's number
+      if (/^(INV|ACK|COV|CLN|RPT)-\d{4}-\d{4,}$/i.test(q)) { const { data: old } = await Promise.resolve(sb.rpc("doc_code_old", { p_code: q })).then((r) => r, () => ({ data: null })); if (old) q = old; }
       $("#tbSpin").hidden = false;
       const h = "find/" + encodeURIComponent(q);
       if (location.hash.slice(1) === h) route(); else location.hash = h;
@@ -2941,6 +2943,30 @@
     const map = new Map(data.map((r) => [r.old_no, r.code]));
     nodes.forEach((n) => { n.nodeValue = n.nodeValue.replace(OLD_NO, (x) => map.get(x) || x); });
   }
+  // 3.99.404: the screens and lists show the new codes too: every number shown in the portal is swapped as it appears
+  const codeKnown = new Map(), codeAsk = new Set(); let codeT = 0, codeBusy = false;
+  const swapCodes = (root) => {
+    if (!root || !S.session) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (w.nextNode()) {
+      const n = w.currentNode, v = n.nodeValue;
+      if (!v || v.length > 4000 || !OLD_NO.test(v)) { OLD_NO.lastIndex = 0; continue; }
+      OLD_NO.lastIndex = 0;
+      if (n.parentElement?.closest("script, style, textarea, [contenteditable]")) continue;
+      let hit = false;
+      const nv = v.replace(OLD_NO, (x) => { const c = codeKnown.get(x); if (c) { hit = true; return c; } if (c === undefined) codeAsk.add(x); return x; });
+      if (hit) n.nodeValue = nv;
+    }
+    if (codeAsk.size && !codeBusy) {
+      const ask = [...codeAsk].slice(0, 300); codeBusy = true;
+      ask.forEach((x) => codeAsk.delete(x));
+      Promise.resolve(sb.rpc("doc_codes_for", { p_numbers: ask })).then(({ data, error }) => {
+        ask.forEach((x) => codeKnown.set(x, null)); // asked: not in the register (yet)
+        if (!error) (data || []).forEach((r) => codeKnown.set(r.old_no, r.code));
+      }, () => ask.forEach((x) => codeKnown.set(x, null))).finally(() => { codeBusy = false; swapCodes(document.body); });
+    }
+  };
+  new MutationObserver(() => { clearTimeout(codeT); codeT = setTimeout(() => swapCodes(document.body), 120); }).observe(document.body, { childList: true, subtree: true });
   async function documentCards(root, issuedOn) {
     if (!root) return;
     const pattern = /\bEO-\d{7,}\b/g;
