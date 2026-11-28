@@ -923,7 +923,7 @@
     const ack = received.total ? `<div class="dsr-ack"><b>ACKNOWLEDGMENT OF RECEIPT</b><p>I acknowledge and confirm that I received <strong>Cash ₱ ${esc(received.cash)}</strong> and <strong>GCash ₱ ${esc(received.gcash)}</strong>, for a total amount of <strong>₱ ${esc(received.total)}</strong>, for this sales report dated <strong>${esc(when)}</strong>.</p></div>` : "";
     // 3.99.374: one clean close: the acknowledgment; the cash plate | the signing line and the Director's stamp; then
     // a full-width strip: sales record no · PDF417 · TRX ID (nothing overlaps the bars)
-    return `<div class="dsr-close">${ack}<div class="dc-row"><div class="dc-stamp">${stamp}</div><div class="dc-sign"><small>RECEIVED AND ACKNOWLEDGED BY</small><div class="dc-line"></div>${boss}</div></div>${reportCode && trx ? `<div class="dc-verify"><div class="dc-l"></div><img src="${esc(reportCode.image || reportCode)}" alt="Sales record barcode"><div class="dc-r"><small>TRX ID</small><b>${esc(String(trx).toUpperCase())}</b></div></div>` : ""}</div>`;
+    return `<div class="dsr-close">${ack}<div class="dc-row"><div class="dc-stamp">${stamp}</div><div class="dc-sign"><small>RECEIVED AND ACKNOWLEDGED BY</small><div class="dc-line"></div>${boss}</div></div>${reportCode && trx ? `<div class="dc-verify"><div class="dc-l"><small>SALES RECORD NO</small><b>${esc(String(reportCode.serial || ""))}</b></div><img src="${esc(reportCode.image || reportCode)}" alt="Sales record barcode"><div class="dc-r"><small>TRX ID</small><b>${esc(String(trx).toUpperCase())}</b></div></div>` : ""}</div>`;
   };
   // 3.99.311: the shop papers: the store logo in place of the company logo; EMON OVERRUNS, then the shop and its branch
   // code, then the shop's address
@@ -958,7 +958,7 @@
     const vst = (cls, lines) => `<div class="dsr-cash"><span class="eo-stamp vst ${cls}">${lines}</span></div>`;
     const stampAmount = `<span class="st-rows"><em class="st-out"><i>CASH OUT</i><u>₱ ${P(paidOut)}</u></em><em class="st-left"><i>CASH LEFT</i><u>₱ ${P(left)}</u></em></span>`; // 3.99.375: out green, left red; label left, amount right
     const cashStamp = !r.id ? "" : left < 0 ? vst("bad", `<b>CASH SHORT</b>${stampAmount}`)
-      : Math.abs(left) < 0.005 || after ? vst("ok", `<b>✔ VERIFIED</b>${stampAmount}`)
+      : Math.abs(left) < 0.005 || after ? vst("ok", `<b><svg class="st-ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>VERIFIED</b>${stampAmount}`)
       : vst("wait", `<b>PENDING</b>${stampAmount}`);
     const list = (title, rows, cols) => `<div class="soa-sec"><h4>${title}</h4>${rows.length ? `<table class="soa-t"><thead><tr>${cols.map(([l, n]) => `<th${n ? ' class="num"' : ""}>${l}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>` : `<div class="soa-none">None this day.</div>`}</div>`;
     const page = `<div class="soa-doc">${E.printHead("DAILY SALES REPORT", `<div class="soa-no"><small>Sales Record No</small><b class="mono">${esc(no)}</b><small>BRANCH ${esc(bidText(o))}</small><small>${esc(mdy(date))}</small>${r.id && r.updated_at && String(r.updated_at).slice(0, 16) !== String(r.created_at).slice(0, 16) ? `<small class="soa-corr">CORRECTED ${esc(mdy(new Date(r.updated_at).toLocaleDateString("en-CA", { timeZone: "Asia/Manila" })))}</small>` : ""}</div>`)}

@@ -5977,3 +5977,20 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .own-id-page .own-id-img { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto; border-radius: 6px; }
 .own-id-page [data-card-page] { min-height: 0; }
 th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: normal; }
+/* 3.99.378: the cash stamp as a RUBBER STAMP: ink on paper (no filled band), a double ink frame; VERIFIED in blue ink,
+   PENDING in blue-grey, CASH SHORT in red; inside, CASH OUT in green ink and CASH LEFT in red ink */
+.page.dsr-page .dsr-close .eo-stamp.vst { --ink: #1d4fb0; background: transparent !important; border: .6mm solid var(--ink) !important; border-radius: 2.2mm;
+  box-shadow: inset 0 0 0 .5mm #fff, inset 0 0 0 .8mm var(--ink) !important; padding: 2mm 4mm 2.2mm !important; gap: 1.2mm !important; min-width: 60mm;
+  color: var(--ink); opacity: .92; filter: saturate(1.15); }
+.page.dsr-page .dsr-close .eo-stamp.vst.ok { --ink: #1d4fb0; }
+.page.dsr-page .dsr-close .eo-stamp.vst.wait { --ink: #4a5f8f; }
+.page.dsr-page .dsr-close .eo-stamp.vst.bad { --ink: #c0262d; }
+.page.dsr-page .dsr-close .eo-stamp.vst > b { display: flex; align-items: center; justify-content: center; gap: 1.6mm; background: none !important; color: var(--ink) !important;
+  padding: 0 0 1.2mm !important; border-bottom: .35mm solid var(--ink); font: 900 12pt/1 Arial, Helvetica, sans-serif; letter-spacing: .26em; }
+.page.dsr-page .dsr-close .eo-stamp.vst > b .st-ck { width: 5mm; height: 5mm; flex: none; }
+.page.dsr-page .dsr-close .eo-stamp.vst .st-rows { padding: 0 !important; gap: .9mm !important; }
+.page.dsr-page .dsr-close .eo-stamp.vst em { font: 800 8pt/1.2 Arial, Helvetica, sans-serif !important; }
+.page.dsr-page .dsr-close .eo-stamp.vst em i { color: var(--ink); }
+.page.dsr-page .dsr-close .eo-stamp.vst em.st-out u { color: #16803c; }
+.page.dsr-page .dsr-close .eo-stamp.vst em.st-left u { color: #c0262d; }
+.page.dsr-page .dsr-close .eo-stamp.vst em + em { border-top: .25mm dashed var(--ink) !important; }
