@@ -138,11 +138,11 @@
       <div class="ga-h">Trusted Customer Check ${a.trusted ? `<span class="pill approved">TRUSTED CUSTOMER</span>` : `<span class="pill pending">NOT YET</span>`}</div>
       <ul class="ga-trust">${a.trust.map((t) => `<li class="${t.ok ? "ok" : "no"}"><b>${t.ok ? "✔" : "✖"}</b> ${esc(t.label)} <small>${esc(t.why)}</small></li>`).join("")}</ul>
       ${a.notes.length ? `<ul class="ga-notes">${a.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
-      ${a.overdueNow.length ? `<div class="ga-h">Overdue Invoices</div><table class="ga-t"><thead><tr><th>Invoice No</th><th>Due Date</th><th class="num">Days Overdue</th><th class="num">Balance (₱)</th></tr></thead><tbody>
+      ${a.overdueNow.length ? `<div class="ga-h">Overdue Invoices</div><table class="ga-t"><thead><tr><th>Invoice No</th><th>Due Date</th><th class="num">Days Overdue</th><th class="num">Balance</th></tr></thead><tbody>
         ${a.overdueNow.map((x) => `<tr><td>${esc(x.i.invoice_no)}</td><td>${esc(mdy(x.i.due_date))}</td><td class="num">${x.days}</td><td class="num">${peso(x.i.balance)}</td></tr>`).join("")}</tbody></table>` : ""}
       ${a.rows.length ? `<div class="ga-h">Invoice Payment Record</div><table class="ga-t"><thead><tr><th>Invoice No</th><th>Date</th><th>Due</th><th>Paid On</th><th class="num">Days to Pay</th><th class="num">Days Late</th></tr></thead><tbody>
         ${a.rows.slice(-12).reverse().map((r) => `<tr><td>${esc(r.i.invoice_no)}</td><td>${esc(mdy(r.i.invoice_date))}</td><td>${esc(mdy(r.i.due_date) || "—")}</td><td>${r.paidOn ? esc(mdy(r.paidOn)) : "<b>NOT PAID</b>"}</td><td class="num">${r.days ?? "—"}</td><td class="num">${r.late || ""}</td></tr>`).join("")}</tbody></table>` : ""}
-      ${a.pays.length ? `<div class="ga-h">Payments and Gaps</div><table class="ga-t"><thead><tr><th>Date Paid</th><th>Receipt No</th><th class="num">Amount (₱)</th><th class="num">Days Since the Payment Before</th></tr></thead><tbody>
+      ${a.pays.length ? `<div class="ga-h">Payments and Gaps</div><table class="ga-t"><thead><tr><th>Date Paid</th><th>Receipt No</th><th class="num">Amount</th><th class="num">Days Since the Payment Before</th></tr></thead><tbody>
         ${a.pays.slice(-12).map((p, j, last) => { const k = a.pays.length - last.length + j; return `<tr><td>${esc(mdy(p.paid_date))}</td><td>${esc(p.receipt_no || "")}</td><td class="num">${peso(p.amount)}</td><td class="num">${k ? a.gaps[k - 1].gap : "—"}</td></tr>`; }).reverse().join("")}</tbody></table>` : ""}`;
   }
 

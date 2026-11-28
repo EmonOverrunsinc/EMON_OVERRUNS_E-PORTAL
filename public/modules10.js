@@ -66,7 +66,7 @@
     const all = (sold.data || []).map((r) => { const b = info.get(r.serial_no) || {}; return { ...r, product: [b.product, b.brand && b.brand !== "-" ? b.brand : ""].filter(Boolean).join(" · "), code: b.style || "", batch: b.batch || "" }; });
     const cols = [{ label: "Date", get: (r) => mdy(r.sold_at) }, { label: "Serial No", html: (r) => `<b class="mono">${esc(r.serial_no)}</b>` }, { label: "Product", wrap: true, get: (r) => r.product },
       { label: "Code", phone: false, get: (r) => r.code }, { label: "Batch", phone: false, get: (r) => r.batch }, { label: "Pcs", num: true, get: (r) => qtyText(r.pcs) },
-      { label: "Price (₱)", num: true, get: (r) => peso(r.price) }, { label: "Total (₱)", num: true, get: (r) => peso(r.total) },
+      { label: "Price", num: true, get: (r) => peso(r.price) }, { label: "Total", num: true, get: (r) => peso(r.total) },
       { label: "Invoice", html: (r) => (r.invoice_id && E.canOpen("invoice") ? `<a href="#invoice/${esc(r.invoice_id)}">${esc(r.invoice_no || "")}</a>` : esc(r.invoice_no || "")) },
       { label: "Order", phone: false, html: (r) => `<a href="#custorder/${esc(r.order_id)}">${esc(r.order_no || "")}</a>` }, { label: "Customer", wrap: true, get: (r) => r.customer_name || "" }];
     $("#sbBody").innerHTML = `<div class="window"><div class="wtitle">Sold Boxes</div><div class="wbody">
@@ -131,13 +131,13 @@
       <div class="tiles co-tiles">
         <div class="tile ${count(["pending"]) ? "warn" : ""}"><span class="tile-ic">${ic("clock")}</span><div class="k">Waiting for Approval</div><div class="v">${count(["pending"])}</div></div>
         <div class="tile"><span class="tile-ic">${ic("box")}</span><div class="k">Confirmed · To Deliver</div><div class="v">${count(["approved"])}</div></div>
-        <div class="tile ok"><span class="tile-ic">${ic("check")}</span><div class="k">Completed This Month (₱)</div><div class="v">${peso(doneM.reduce((s, o) => s + num(o.total_amount), 0))}</div><small>${doneM.length} order(s)</small></div>
+        <div class="tile ok"><span class="tile-ic">${ic("check")}</span><div class="k">Completed This Month</div><div class="v">${peso(doneM.reduce((s, o) => s + num(o.total_amount), 0))}</div><small>${doneM.length} order(s)</small></div>
       </div>
       <div class="co-months" id="coMonths"><button type="button" data-m="" class="on">All Orders <small>${rows.length}</small></button>${months.map((k) => `<button type="button" data-m="${k}">${esc(mLabel(k))} <small>${rows.filter((o) => String(o.order_date).startsWith(k)).length}</small></button>`).join("")}</div>
       <div id="coGrid"></div>`;
     const hay = rows.map((o) => [o.order_no, custName(o), o.customers?.account_no, o.reference, STATUS[o.status]?.[1], TRACK[lastTrack(o)?.step] || ""].join(" ").toLowerCase());
     const cols = [{ label: "Order No", get: (o) => o.order_no }, { label: "Date", get: (o) => mdy(o.order_date) }, { label: "Customer", html: (o) => `<b>${esc(custName(o))}</b><br><small class="mono">${esc(o.customers?.account_no || "")}</small>` },
-      { label: "Batch No", get: (o) => o.reference || "" }, { label: "Boxes", num: true, get: (o) => qtyText(o.total_boxes) }, { label: "Pcs", num: true, get: (o) => qtyText(o.total_pcs) }, { label: "Amount (₱)", num: true, get: (o) => peso(o.total_amount) },
+      { label: "Batch No", get: (o) => o.reference || "" }, { label: "Boxes", num: true, get: (o) => qtyText(o.total_boxes) }, { label: "Pcs", num: true, get: (o) => qtyText(o.total_pcs) }, { label: "Amount", num: true, get: (o) => peso(o.total_amount) },
       { label: "Status", html: stPill }];
     const paint = () => {
       const w = $("#coFind").value.trim().toLowerCase();
@@ -323,7 +323,7 @@
       <td><button type="button" class="btn small cDel" aria-label="Remove line">×</button></td></tr>`;
     const draw = (ls) => {
       box.innerHTML = `<div class="grid-wrap co-wrap"><table class="grid co-lines edit"><thead><tr><th>#</th><th class="num">Total Pcs</th><th class="num">Boxes</th><th>Code</th><th class="num">Pcs / Box</th><th>Lot No.</th><th>Product *</th>
-          ${cols.map((c, i) => `<th>${esc(c)} <button type="button" class="co-xcol" data-xc="${i}" aria-label="Remove the column ${esc(c)}" title="Remove the column">×</button></th>`).join("")}<th class="num">Price (₱)</th><th class="num">Amount (₱)</th><th></th></tr></thead>
+          ${cols.map((c, i) => `<th>${esc(c)} <button type="button" class="co-xcol" data-xc="${i}" aria-label="Remove the column ${esc(c)}" title="Remove the column">×</button></th>`).join("")}<th class="num">Price</th><th class="num">Amount</th><th></th></tr></thead>
         <tbody>${(ls.length ? ls : [{}]).map(lineRow).join("")}</tbody>
         <tfoot><tr><td></td><td class="num co-tq">0</td><td class="num co-tb">0</td><td colspan="${4 + cols.length}"><b>TOTAL AMOUNT</b></td><td></td><td class="num co-ta">0.00</td><td></td></tr></tfoot></table></div>
         <div class="btnrow"><button type="button" class="btn small co-add">${ic("plus")} Add Line</button><button type="button" class="btn small co-addc">${ic("plus")} Add Column</button>
@@ -600,7 +600,7 @@
     const deliverBtn = (cls = "") => `<a class="btn ok ${cls}" href="#${deliveryHash(o.order_no, o.delivery_code)}">${ic("check")} Complete Delivery</a>`;
     const stepper = trackingHtml(o, inv, false, boxes); // 3.99.30: the history only (the buttons are in the guide)
     const guide = guideHtml(o, boxes, inv, w, deliverNow && !o.delivery_request_at ? deliverBtn("big og-go") : "");
-    const linesHtml = `<div class="grid-wrap co-wrap"><table class="grid co-lines"><thead><tr><th>#</th><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price (₱)</th><th class="num">Amount (₱)</th></tr></thead>
+    const linesHtml = `<div class="grid-wrap co-wrap"><table class="grid co-lines"><thead><tr><th>#</th><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price</th><th class="num">Amount</th></tr></thead>
         <tbody>${(o.lines || []).map((l, i) => `<tr><td>${i + 1}</td><td class="num">${l.boxes ? qtyText(l.boxes) : ""}</td><td class="num">${qtyText(l.qty)}</td><td>${esc(l.code || "")}</td><td>${esc(l.lot || "")}</td><td>${esc(l.product)}</td>
           ${cols.map((x) => `<td>${esc(l.extra?.[x] || "")}</td>`).join("")}<td class="num">${peso(l.price)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody>
         <tfoot><tr><td></td><td class="num">${qtyText(o.total_boxes)}</td><td class="num">${qtyText(o.total_pcs)}</td><td colspan="${3 + cols.length}"><b>TOTAL AMOUNT</b></td><td></td><td class="num"><b>${peso(o.total_amount)}</b></td></tr></tfoot></table></div>`;
@@ -611,7 +611,7 @@
       : deliveryHtml(o, urls, w);
     const invHtml = inv ? `<div class="pgrid2 qc-head">
           <div class="pcell"><div class="pl">Invoice No</div><div class="pv">${E.canOpen("invoice") ? `<a href="#invoice/${inv.id}"><b>${esc(inv.invoice_no)}</b></a>` : `<b>${esc(inv.invoice_no)}</b>`}</div></div>
-          ${E.cell("Invoice Date", mdy(inv.invoice_date))}${E.cell("Terms of Payment", inv.payment_terms || "")}${E.cell("Due Date", mdy(inv.due_date))}${E.cell("Amount (₱)", peso(inv.total_amount), "hl")}${E.cell("Balance (₱)", peso(inv.balance))}
+          ${E.cell("Invoice Date", mdy(inv.invoice_date))}${E.cell("Terms of Payment", inv.payment_terms || "")}${E.cell("Due Date", mdy(inv.due_date))}${E.cell("Amount", peso(inv.total_amount), "hl")}${E.cell("Balance", peso(inv.balance))}
           <div class="pcell co-invstat"><div class="pl">Status</div><div class="pv">${payPill(inv)}</div></div></div>
           <div id="coInvIns"></div>
           ${o._dl?.has_pcs && nBoxes(boxes) ? `<div class="banner ok co-verified">✅ VERIFIED WITH SERIAL NO — the invoice charges the delivery list: ${esc(boxesText(nBoxes(boxes)))} · ${qtyText(o._dl.pcs)} pcs</div>` : ""}` : `<div class="empty small">The invoice is on the customer's account.</div>`;
@@ -810,14 +810,14 @@
     const ls = (dl.lines || []).filter((l) => num(l.ordered) || num(l.delivered)), odd = dl.odd || [];
     const oddHtml = odd.length ? `<div class="co-odd"><div class="cc-h">NOT ORDERED — ${boxesText(odd.reduce((t, g) => t + num(g.boxes), 0))} · ${qtyText(odd.reduce((t, g) => t + num(g.pcs), 0))} pcs not on the order, not charged yet.
         ${isAdmin() ? "Add the price: the items are added to the order and the invoice is charged." : "EMON HASAN adds the price."}</div>
-      <div class="grid-scroll"><table class="bx-table cc-table"><thead><tr><th class="num">BOXES</th><th>BATCH NO</th><th>CODE</th><th>ITEMS</th><th class="num">PCS</th>${isAdmin() ? `<th>PRICE (₱)</th><th></th>` : ""}</tr></thead><tbody>
+      <div class="grid-scroll"><table class="bx-table cc-table"><thead><tr><th class="num">BOXES</th><th>BATCH NO</th><th>CODE</th><th>ITEMS</th><th class="num">PCS</th>${isAdmin() ? `<th>PRICE</th><th></th>` : ""}</tr></thead><tbody>
       ${odd.map((g, i) => `<tr data-odd="${i}"><td class="num">${qtyText(g.boxes || g.lines)}</td><td>${esc(g.lot || "—")}</td><td>${esc(g.code || "—")}</td><td>${esc(g.items || "—")}<br><small class="muted">${esc(g.serials || "")}</small></td><td class="num">${qtyText(g.pcs)}</td>
         ${isAdmin() ? `<td><input type="number" class="odd-price" min="0" step="0.01" placeholder="0.00" aria-label="Price"></td><td><button type="button" class="btn small primary odd-add">${ic("check")} Add Price</button></td>` : ""}</tr>`).join("")}</tbody></table></div></div>` : "";
     if (!ls.some((l) => num(l.ordered) !== num(l.delivered)) && !odd.length) return "";
     const done = o.status === "completed", diff = (l) => num(l.delivered) - num(l.ordered);
     const dt = (n) => (n ? `<b class="${n > 0 ? "cm-plus" : "cm-bad"}">${n > 0 ? "+" : ""}${qtyText(n)}</b>` : "✅");
     return `<div class="co-charge"><div class="cc-h">${done ? "CHARGED AS DELIVERED — the invoice" : "WILL BE CHARGED AS SCANNED"}: ₱ ${peso(o.total_amount)} ordered → <b>₱ ${peso(dl.amount)}</b> ${amtMark(o.total_amount, dl.amount)}</div>
-      <div class="grid-scroll"><table class="bx-table cc-table"><thead><tr><th>PRODUCT</th><th>BATCH NO</th><th>CODE</th><th class="num">PRICE (₱)</th><th class="num">ORDER PCS</th><th class="num">${done ? "DELIVERED" : "SCANNED"} PCS</th><th class="num">DIFFERENCE</th><th class="num">AMOUNT (₱)</th></tr></thead><tbody>
+      <div class="grid-scroll"><table class="bx-table cc-table"><thead><tr><th>PRODUCT</th><th>BATCH NO</th><th>CODE</th><th class="num">PRICE</th><th class="num">ORDER PCS</th><th class="num">${done ? "DELIVERED" : "SCANNED"} PCS</th><th class="num">DIFFERENCE</th><th class="num">AMOUNT</th></tr></thead><tbody>
       ${ls.map((l) => `<tr><td>${esc(l.product || "")}</td><td>${esc(l.lot || "—")}</td><td>${esc(l.code || "—")}</td><td class="num">${peso(l.price)}</td><td class="num">${qtyText(l.ordered)}</td><td class="num">${qtyText(l.delivered)}</td><td class="num">${dt(diff(l))}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}
       <tr class="cc-tot"><td colspan="4">TOTAL</td><td class="num">${qtyText(o.total_pcs)}</td><td class="num">${qtyText(dl.pcs)}</td><td class="num">${dt(num(dl.pcs) - num(o.total_pcs))}</td><td class="num">${peso(dl.amount)}</td></tr></tbody></table></div>${oddHtml}</div>`;
   };
@@ -860,7 +860,7 @@
     const fx = (l) => { const f = (o.lines || [])[l.i]?.fixed; return f ? `<small class="mv-fix">✎ Corrected from the box · was ${esc([f.product, f.lot, f.code ? "CODE " + f.code : ""].filter(Boolean).join(" · "))}</small>` : ""; };
     return `<section class="mv"><div class="mv-head"><b>ORDER CHECK</b><small>Order → ${got.toLowerCase()}</small>${st}</div>
       <div class="mv-tiles">${tile("BOXES", qtyText(o.total_boxes), qtyText(nBoxes(boxes)), dBox, `${sg(dBox)}${qtyText(Math.abs(dBox))}`)}${tile("PCS", qtyText(o.total_pcs), qtyText(dl.pcs), dPcs, `${sg(dPcs)}${qtyText(Math.abs(dPcs))} PCS`)}${tile("AMOUNT", `₱ ${peso(o.total_amount)}`, `₱ ${peso(dl.amount)}`, dAmt, `${sg(dAmt)}₱ ${peso(Math.abs(dAmt))}`)}</div>
-      <div class="grid-scroll"><table class="mv-t"><thead><tr><th>PRODUCT</th><th class="num">PRICE</th><th class="num">BOXES</th><th class="num">ORDER PCS</th><th class="num">${got} PCS</th><th>CHECK</th><th class="num">AMOUNT (₱)</th></tr></thead><tbody>
+      <div class="grid-scroll"><table class="mv-t"><thead><tr><th>PRODUCT</th><th class="num">PRICE</th><th class="num">BOXES</th><th class="num">ORDER PCS</th><th class="num">${got} PCS</th><th>CHECK</th><th class="num">AMOUNT</th></tr></thead><tbody>
       ${ls.map((l) => `<tr><td><b>${esc(l.product || "")}</b><small>${esc([l.lot, l.code ? "CODE " + l.code : ""].filter(Boolean).join(" · "))}</small>${fx(l)}</td><td class="num">${peso(l.price)}</td><td class="num">${qtyText(l.boxes)} / ${nb(l) ? qtyText(nb(l)) : "—"}</td><td class="num">${qtyText(l.ordered)}</td><td class="num"><b>${qtyText(l.delivered)}</b></td><td>${lineSt(l)}</td><td class="num"><b>${peso(l.amount)}</b></td></tr>`).join("")}</tbody>
       <tfoot><tr><td>TOTAL</td><td></td><td class="num">${qtyText(nBoxes(boxes))} / ${qtyText(o.total_boxes)}</td><td class="num">${qtyText(o.total_pcs)}</td><td class="num">${qtyText(dl.pcs)}</td><td>${dPcs ? `<span class="mv-chip ${dPcs < 0 ? "bad" : "plus"}">${sg(dPcs)}${qtyText(Math.abs(dPcs))} PCS</span>` : ""}</td><td class="num">₱ ${peso(dl.amount)}</td></tr></tfoot></table></div>
       ${odd.length ? `<div class="mv-odd"><div class="mv-odd-h">NOT ORDERED — not charged yet. ${isAdmin() ? "Add the price: it is added to the order and charged." : "EMON HASAN adds the price."}</div>
@@ -1130,7 +1130,7 @@
     const done = o.status === "completed";
     const bottom = `<p class="pdecl">${esc(E.words(o.total_amount))} · ${esc(boxesText(o.total_boxes))} · ${qtyText(o.total_pcs)} PCS</p>
       ${done && inv ? E.box("Invoice", `<div class="pgrid2">${E.cell("Invoice No", inv.invoice_no)}${E.cell("Invoice Date", mdy(inv.invoice_date))}${E.cell("Terms of Payment", inv.payment_terms || "")}${E.cell("Due Date", mdy(inv.due_date))}
-        ${E.cell("Amount (₱)", peso(inv.total_amount), "hl")}${E.cell("Status", inv.pay_status === "paid" ? "PAID" : inv.pay_status === "partial" ? "PARTIAL" : "UNPAID")}</div>`) : ""}
+        ${E.cell("Amount", peso(inv.total_amount), "hl")}${E.cell("Status", inv.pay_status === "paid" ? "PAID" : inv.pay_status === "partial" ? "PARTIAL" : "UNPAID")}</div>`) : ""}
       ${o.status === "cancelled" ? `<p class="po-warn"><b>CANCELLED</b>${o.cancel_note ? ` — ${esc(o.cancel_note)}` : ""}</p>` : ""}
       <div class="psig one">${qrFoot(o)}${E.sigCol("Authorized Signature", sign)}</div>`; // 3.39: only EMON HASAN's approval signature
     const extraBoxes = done && inv ? 1 : 0;
@@ -1139,7 +1139,7 @@
       // 3.39: no address on the order (the customer's account says where it goes)
       top: stLine(o) + E.box("Order", `<div class="pgrid2">${E.cell("Customer", fullName(c))}${E.cell("Account No", c.account_no || "")}${E.cell("Order No", o.order_no)}${E.cell("Batch No", o.reference || "")}
         ${E.cell("Date", mdy(o.order_date))}${E.cell("Due Date", mdy(dueOf(o)))}${E.cell("Terms of Payment", o.payment_terms || "")}${E.cell("Note", o.note || "")}${asgCell(o)}</div>`),
-      boxTitle: "Order Lines (₱)", thead: `<tr><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price</th><th class="num">Amount</th></tr>`,
+      boxTitle: "Order Lines", thead: `<tr><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price</th><th class="num">Amount</th></tr>`,
       rows: o.lines || [], rowHtml: (l) => `<tr><td class="num">${l.boxes ? qtyText(l.boxes) : ""}</td><td class="num">${qtyText(l.qty)}</td><td>${esc(l.code || "")}</td><td>${esc(l.lot || "")}</td><td>${esc(l.product)}</td>
         ${cols.map((x) => `<td>${esc(l.extra?.[x] || "")}</td>`).join("")}<td class="num">${peso(l.price)}</td><td class="num">${peso(l.amount)}</td></tr>`,
       totalRow: `<tr class="ptl-tot"><td class="num">${qtyText(o.total_boxes)}</td><td class="num">${qtyText(o.total_pcs)}</td><td colspan="${3 + cols.length}">TOTAL · ${esc(boxesText(o.total_boxes))} · ${qtyText(o.total_pcs)} PCS</td><td></td><td class="num">${peso(o.total_amount)}</td></tr>`,
@@ -1176,11 +1176,11 @@
     const lines = o.lines || [];
     const top = `${stLine(o)}${E.box("Order", `<div class="pgrid2">${E.cell("Customer", fullName(c))}${E.cell("Account No", c.account_no || "")}${E.cell("Order No", o.order_no)}${E.cell("Batch No", o.reference || "")}
         ${E.cell("Date", mdy(o.order_date))}${E.cell("Due Date", mdy(dueOf(o)))}${E.cell("Terms of Payment", o.payment_terms || "")}${E.cell("Note", o.note || "")}</div>`)}
-      ${E.box("Order Lines (₱)", `<table class="ptl ad-t"><thead><tr><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price</th><th class="num">Amount</th></tr></thead><tbody>
+      ${E.box("Order Lines", `<table class="ptl ad-t"><thead><tr><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price</th><th class="num">Amount</th></tr></thead><tbody>
         ${lines.map((l) => `<tr><td class="num">${l.boxes ? qtyText(l.boxes) : ""}</td><td class="num">${qtyText(l.qty)}</td><td>${esc(l.code || "")}</td><td>${esc(l.lot || "")}</td><td>${esc(l.product)}</td>${cols.map((x) => `<td>${esc(l.extra?.[x] || "")}</td>`).join("")}<td class="num">${peso(l.price)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}
         <tr class="ptl-tot"><td class="num">${qtyText(o.total_boxes)}</td><td class="num">${qtyText(o.total_pcs)}</td><td colspan="${4 + cols.length}">TOTAL · ${esc(E.words(o.total_amount))}</td><td class="num">${peso(o.total_amount)}</td></tr></tbody></table>`)}`;
     const bottom = `${done && inv ? E.box("Invoice", `<div class="prow3">${E.cell("Invoice No", inv.invoice_no)}${E.cell("Invoice Date", mdy(inv.invoice_date))}${E.cell("Due Date", mdy(inv.due_date))}</div>
-        <div class="prow3">${E.cell("Amount (₱)", peso(inv.total_amount))}${E.cell("Terms of Payment", inv.payment_terms || "")}${E.cell("Status", inv.pay_status === "paid" ? "PAID" : inv.pay_status === "partial" ? "PARTIAL" : "UNPAID")}</div>`) : ""}
+        <div class="prow3">${E.cell("Amount", peso(inv.total_amount))}${E.cell("Terms of Payment", inv.payment_terms || "")}${E.cell("Status", inv.pay_status === "paid" ? "PAID" : inv.pay_status === "partial" ? "PARTIAL" : "UNPAID")}</div>`) : ""}
       ${o.delivered_at ? E.box(done ? "Done Delivery" : "Delivery", `<div class="prow3">${E.cell("Date and Time", E.dateTime(o.delivered_at))}${E.cell(done ? "Completed By" : "Submitted By", o.completed_by_name || o.delivery_request_by || "")}${E.cell("License Plate Number", [o.plate_no, o.vehicle_type].filter(Boolean).join(" · "))}</div>${o.delivery_note ? E.cell("Note", o.delivery_note) : ""}`) : ""}
       ${pics.length ? E.box("Delivery Photos", `<div class="ad-pics">${pics.map((u) => `<img src="${esc(u)}" alt="Delivery photo">`).join("")}</div>`) : ""}
       ${o.status === "cancelled" ? `<p class="po-warn"><b>CANCELLED</b>${o.cancel_note ? ` — ${esc(o.cancel_note)}` : ""}</p>` : ""}
@@ -1384,7 +1384,7 @@
   function ordersHtml(rows, custId) {
     return `${canW() ? `<div class="btnrow"><a class="btn primary" href="#newcustorder/${custId}">${ic("plus")} New Customer Order</a></div>` : ""}
       ${E.grid({ cols: [{ label: "Order No", get: (o) => o.order_no }, { label: "Date", get: (o) => mdy(o.order_date) }, { label: "Boxes", num: true, get: (o) => qtyText(o.total_boxes) },
-        { label: "Amount (₱)", num: true, get: (o) => peso(o.total_amount) }, { label: "Status", html: stPill }], rows, onRow: true, empty: "No customer orders yet." })}`;
+        { label: "Amount", num: true, get: (o) => peso(o.total_amount) }, { label: "Status", html: stPill }], rows, onRow: true, empty: "No customer orders yet." })}`;
   }
 
   Object.assign(E, { customerOrdersOf: ordersOf, customerOrdersHtml: ordersHtml, deliveryHashOf, orderTimeline: timelineHtml });

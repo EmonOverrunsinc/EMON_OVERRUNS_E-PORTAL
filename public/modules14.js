@@ -127,7 +127,7 @@
       <h3 class="sec">Coverages <small class="muted">valid first</small></h3>
       <div id="insList">${E.grid({ cols: [
         { label: "Coverage No", get: (r) => r.ins_no || "" }, { label: "Order No", get: (r) => r.order_no || "" }, { label: "Invoice No", get: (r) => r._inv || "" }, { label: "Customer", get: (r) => r.customer_name || "" },
-        { label: "Boxes", num: true, get: (r) => E.qtyText(r.boxes) }, { label: "Premium (₱)", num: true, get: (r) => peso(r.amount) }, { label: "Payment", html: (r) => (r.status === "active" ? `<span class="ins-badge valid">PAID</span>` : r.status === "review" ? `<span class="ins-badge pending">TO CHECK</span>` : `<span class="ins-badge pending">NOT PAID</span>`) },
+        { label: "Boxes", num: true, get: (r) => E.qtyText(r.boxes) }, { label: "Premium", num: true, get: (r) => peso(r.amount) }, { label: "Payment", html: (r) => (r.status === "active" ? `<span class="ins-badge valid">PAID</span>` : r.status === "review" ? `<span class="ins-badge pending">TO CHECK</span>` : `<span class="ins-badge pending">NOT PAID</span>`) },
         { label: "Status", html: (r) => badge(r) }, { label: "Created", get: (r) => E.dateTime(r.created_at) }], rows, onRow: true, empty: "No coverage yet." })}</div>`;
     E.bindGrid($("#insList"), rows, (r) => (location.hash = "insurance/" + r.id));
     if (isAdmin()) bindSettings(s);
@@ -141,7 +141,7 @@
       const { data: open } = await sb.from("order_insurance").select("id, ins_no, status").eq("order_id", o.id).in("status", ["unpaid", "review", "active"]).limit(1);
       const c = calc(o.total_boxes, o.total_amount, s.ins_box_price, s.ins_rate_pct);
       $("#insOrder").innerHTML = `<div class="ins-ord">${E.cell("Order No", o.order_no)}${E.cell("Customer", fullName(o.customers || {}))}${E.cell("Account No", o.customers?.account_no || "")}
-          ${E.cell("Order Status", String(o.status).toUpperCase())}${E.cell("Boxes", E.qtyText(o.total_boxes))}${E.cell("Order Value (₱)", peso(o.total_amount))}</div>
+          ${E.cell("Order Status", String(o.status).toUpperCase())}${E.cell("Boxes", E.qtyText(o.total_boxes))}${E.cell("Order Value", peso(o.total_amount))}</div>
         ${calcHtml(o.total_boxes, o.total_amount, s.ins_box_price, s.ins_rate_pct)}
         ${open?.length ? `<div class="banner warn">Order ${esc(o.order_no)} already has coverage <a href="#insurance/${open[0].id}">${esc(open[0].ins_no)}</a>.</div>`
           : o.status === "pending" ? `<div class="banner warn">Order ${esc(o.order_no)} waits for EMON HASAN's approval: the coverage is added when it is CONFIRMED.</div>`
@@ -163,7 +163,7 @@
   function settingsHtml(s) {
     const q = qrUrl(s);
     return `<fieldset class="opt"><legend>Coverage Settings (EMON HASAN)</legend><div class="ins-set">
-      <div class="fields"><label for="isBp">Price per Box (₱)</label><input type="number" id="isBp" min="0" step="0.01" value="${esc(s.ins_box_price ?? 50)}">
+      <div class="fields"><label for="isBp">Price per Box</label><input type="number" id="isBp" min="0" step="0.01" value="${esc(s.ins_box_price ?? 50)}">
         <label for="isRate">Rate of the Order Value (%)</label><input type="number" id="isRate" min="0" max="100" step="0.001" value="${esc(s.ins_rate_pct ?? 0.5)}">
         ${s.ins_due_days != null ? `<label for="isDue">Payment Due Extension (days after the invoice due date)</label><input type="number" id="isDue" min="0" max="120" step="1" value="${esc(s.ins_due_days)}">` : ""}
         <label for="isNote">Payment Note (under the QR)</label><input type="text" id="isNote" maxlength="160" placeholder="e.g. GCASH 0917 000 0000 · EMON HASAN" value="${esc(s.pay_qr_note || "")}"></div>
@@ -224,7 +224,7 @@
               <label for="ipMethod">Paid By</label><select id="ipMethod">${Object.entries(METHODS).map(([k, l]) => `<option value="${k}" ${k === (i.pay_method || "gcash") ? "selected" : ""}>${l}</option>`).join("")}</select>
               <label for="ipRef">Reference No</label><input type="text" id="ipRef" maxlength="60" value="${esc(i.pay_ref || "")}" placeholder="e.g. GCash ref no"></div>
             <div class="btnrow"><button type="button" class="btn primary" id="ipSend">${ic("send")} Submit for Review</button></div></div></div></fieldset>` : "";
-    const proofBox = i.proof_path ? `<fieldset class="opt"><legend>Proof of Payment</legend><div class="pgrid2 qc-head">${E.cell("Paid By", METHODS[i.pay_method] || i.pay_method || "")}${E.cell("Reference No", i.pay_ref || "")}${E.cell("Submitted", i.proof_at ? `${E.dateTime(i.proof_at)} · ${i.proof_by_name || ""}` : "")}${E.cell("Amount (₱)", peso(i.amount), "hl")}</div>
+    const proofBox = i.proof_path ? `<fieldset class="opt"><legend>Proof of Payment</legend><div class="pgrid2 qc-head">${E.cell("Paid By", METHODS[i.pay_method] || i.pay_method || "")}${E.cell("Reference No", i.pay_ref || "")}${E.cell("Submitted", i.proof_at ? `${E.dateTime(i.proof_at)} · ${i.proof_by_name || ""}` : "")}${E.cell("Amount", peso(i.amount), "hl")}</div>
         ${i.eva_amount != null || i.issued_by_eva ? `<div class="banner ${i.issued_by_eva ? "ok" : "warn"}">${ic("ai")} <b>EVA AI</b> read <b>₱ ${peso(i.eva_amount)}</b> on the payment slip${i.issued_by_eva ? `${num(i.eva_amount) > num(i.amount) ? ` (₱ ${peso(i.amount)} + ₱ ${peso(num(i.eva_amount) - num(i.amount))} transfer fee, not counted)` : ""} — <b>STATUS: PAID</b>. The coverage was issued by itself.` : ` — STATUS: NOT PAID (premium ₱ ${peso(i.amount)}): EMON HASAN checks it.`}</div>` : i.status === "review" && i.proof_path ? `<div class="banner warn">${ic("ai")} EVA AI could not read the amount on this proof: EMON HASAN checks it.</div>` : ""}
         ${proof ? (isPdf ? `<button type="button" class="btn" id="ipOpen">${ic("eye")} Open the Proof (PDF)</button>` : `<button type="button" class="cv-receipt" id="ipOpen" aria-label="Open the proof"><img src="${esc(proof)}" alt="Proof of payment"></button>`) : ""}
         ${i.status === "review" && isAdmin() ? `<div class="fields wide" style="margin-top:10px"><label for="ipNote">EMON HASAN's note</label><input type="text" id="ipNote" maxlength="300" placeholder="needed to reject"></div>
@@ -238,7 +238,7 @@
         <div class="pcell"><div class="pl">Order No</div><div class="pv">${o ? `<a href="#custorder/${o.id}"><b>${esc(o.order_no)}</b></a>` : esc(i.order_no || "")}</div></div>
         ${E.cell("Customer", i.customer_name || "")}${E.cell("Account No", o?.customers?.account_no || "")}${E.cell("Order Status", o ? String(o.status).toUpperCase() : "")}
         ${E.cell("Delivered", o?.delivered_at ? E.dateTime(o.delivered_at) : "NOT YET")}${E.cell("Invoice No", invoice?.invoice_no || "")}${o?.status === "completed" ? E.cell("Covered Value (₱, as delivered)", peso(o.total_amount), "hl") : ""}
-        ${o ? E.cell("Boxes (order now)", E.qtyText(o.total_boxes)) + (o.status === "completed" ? "" : E.cell("Order Amount now (₱)", peso(o.total_amount))) : ""}</div></fieldset>
+        ${o ? E.cell("Boxes (order now)", E.qtyText(o.total_boxes)) + (o.status === "completed" ? "" : E.cell("Order Amount now", peso(o.total_amount))) : ""}</div></fieldset>
       <fieldset class="opt"><legend>Coverage Charge (fixed)</legend>${calcHtml(i.boxes, i.order_amount, i.box_price, i.rate_pct)}<p class="muted">${esc(E.words(i.amount, "PESOS"))}</p>
         <div class="ins-due"><small>PAYMENT DUE WITH THIS COVERAGE</small><b>${esc(dueSum(o?.payment_terms))}</b><span>counted from the invoice date · benefits expire 15 days after the delivery</span></div>
         ${o && (num(o.total_amount) !== num(i.order_amount) || num(o.total_boxes) !== num(i.boxes)) ? `<div class="banner info">Order changed: ${E.qtyText(o.total_boxes)} box(es) · ₱ ${peso(o.total_amount)} · charge fixed ₱ ${peso(i.amount)}</div>` : ""}</fieldset>
@@ -495,7 +495,7 @@
   const insNote = "Paid separately · fixed when issued · not added to this invoice (stays the same if the order changes)";
   const insBox = (i) => !i ? "" : `<a class="ins-strip valid ins-inv" href="#insurance/${i.id}"><span class="ins-seal">${ic("shield")}</span><span><small>COVERAGE ${esc(i.ins_no)} · STATUS: ${i.collection_vouchers?.status === "unpaid" ? `UNPAID · VOUCHER ${esc(i.collection_vouchers.cv_no)} · PAY BEFORE ${esc(mdy(i.collection_vouchers.pay_by))}` : "PAID"}</small>
       <b>Coverage ₱ ${peso(i.amount)}</b><span class="ins-note">${esc(insNote)}</span></span><span class="ins-exp"><small>BENEFITS EXPIRE</small><b>${esc(stateOf(i).short || "")}</b><small>PAYMENT DUE +${DUE} DAYS</small></span></a>`;
-  const insPrintBox = (i) => !i ? "" : E.box("Coverage", `<div class="prow3">${E.cell("Certificate No", i.ins_no)}${E.cell("Coverage Amount (₱)", peso(i.amount))}${E.cell("Benefits Expire", i.valid_until ? mdy(i.valid_until) : "15 DAYS AFTER DELIVERY")}</div><div class="prow3">${E.cell("Payment Due Extension", `+${DUE} DAYS AFTER THE DUE DATE`)}</div>
+  const insPrintBox = (i) => !i ? "" : E.box("Coverage", `<div class="prow3">${E.cell("Certificate No", i.ins_no)}${E.cell("Coverage Amount", peso(i.amount))}${E.cell("Benefits Expire", i.valid_until ? mdy(i.valid_until) : "15 DAYS AFTER DELIVERY")}</div><div class="prow3">${E.cell("Payment Due Extension", `+${DUE} DAYS AFTER THE DUE DATE`)}</div>
       <div class="pcell"><div class="pl">Note</div><div class="pv">STATUS: PAID · ${esc(insNote.toUpperCase())}</div></div>`);
 
   // 3.78.2: a small COVERED badge at the top of the order page and the invoice page: the extended DUE DATE and the

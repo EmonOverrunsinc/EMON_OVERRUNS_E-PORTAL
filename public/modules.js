@@ -469,8 +469,8 @@
       </div></fieldset>
       <fieldset class="opt"><legend>Account</legend><div class="fields wide">
         <label for="ecDate">Opening Date *</label><input type="date" id="ecDate" value="${day(c.application_date)}" max="${isoToday()}">
-        <label for="ecCredit">Credit Limit (₱)</label><input type="number" id="ecCredit" min="0" step="0.01" inputmode="decimal" value="${c.credit_limit ?? ""}" placeholder="None">
-        <label for="ecOpen">Opening Balance (₱)</label><input type="number" id="ecOpen" min="0" step="0.01" inputmode="decimal" value="${Number(c.opening_balance) ? c.opening_balance : ""}" placeholder="None">
+        <label for="ecCredit">Credit Limit</label><input type="number" id="ecCredit" min="0" step="0.01" inputmode="decimal" value="${c.credit_limit ?? ""}" placeholder="None">
+        <label for="ecOpen">Opening Balance</label><input type="number" id="ecOpen" min="0" step="0.01" inputmode="decimal" value="${Number(c.opening_balance) ? c.opening_balance : ""}" placeholder="None">
       </div></fieldset>
       <fieldset class="opt"><legend>Business</legend><div class="fields wide">
         <label for="ecStart">Business Start Date</label><input type="date" id="ecStart" value="${day(c.business_start_date)}">
@@ -704,7 +704,7 @@
       const rows = inv.data || [];
       $("#dInv").innerHTML = E.grid({ cols: [
         { label: "Invoice / Customer", html: (r) => `<b>${esc(r.invoice_no)}</b><br><small>${esc(fullName(r))}</small>` },
-        { label: "Balance (₱)", num: true, get: (r) => peso(r.balance) },
+        { label: "Balance", num: true, get: (r) => peso(r.balance) },
         { label: "Status", html: payPill }],
         rows, onRow: true, empty: inv.error ? "Invoices could not be loaded." : "No invoices yet." });
       E.bindGrid($("#dInv"), rows, (r) => (location.hash = "invoice/" + r.id));
@@ -714,7 +714,7 @@
       $("#dPay").innerHTML = E.grid({ cols: [
         // 3.99.82: the receipt with the customer under it (like Latest Invoices), so the 3 columns fit the box
         { label: "Receipt / Customer", html: (r) => `<b>${esc(r.receipt_no)}</b><br><small>${esc(fullName(r.customers || {}))}</small>` },
-        { label: "Amount (₱)", num: true, get: (r) => peso(r.amount) }, { label: "Date", get: (r) => mdy(r.paid_date) }],
+        { label: "Amount", num: true, get: (r) => peso(r.amount) }, { label: "Date", get: (r) => mdy(r.paid_date) }],
         rows: rp, onRow: true, empty: pay.error ? "Payments could not be loaded." : "No payments yet." });
       E.bindGrid($("#dPay"), rp, (r) => (location.hash = "payment/" + r.id));
     }
@@ -893,8 +893,8 @@
             <div class="fields wide"><label for="ncAddr">Address *</label><input type="text" id="ncAddr" required placeholder="House no, street, barangay, city, province">
             </div></fieldset>
           <fieldset class="opt"><legend>Account</legend><div class="fields wide">
-            <label for="ncCredit">Credit Limit (₱)</label><input type="number" id="ncCredit" min="0" step="0.01" inputmode="decimal" placeholder="Optional">
-            <label for="ncOpen">Opening Balance (₱)</label><input type="number" id="ncOpen" min="0" step="0.01" inputmode="decimal" placeholder="Optional — leave empty if none">
+            <label for="ncCredit">Credit Limit</label><input type="number" id="ncCredit" min="0" step="0.01" inputmode="decimal" placeholder="Optional">
+            <label for="ncOpen">Opening Balance</label><input type="number" id="ncOpen" min="0" step="0.01" inputmode="decimal" placeholder="Optional — leave empty if none">
           </div></fieldset>
           <fieldset class="opt"><legend>Business</legend><div class="fields wide">
             <label for="ncStart">Business Start Date</label><input type="date" id="ncStart">
@@ -1256,7 +1256,7 @@
       const total = k === "od" ? set[2].reduce((t, r) => t + num(r.balance), 0) : set[2].reduce((t, r) => t + num(r.request_amount), 0);
       E.openPreview(`${set[0]} ${c.account_no || ""}`, E.listingPages({ title: set[0], range: `${esc(fullName(c))} · Account No ${esc(c.account_no || "")} · as of ${mdy(isoToday())}`, logo: true,
         cols: set[1].filter((x) => !x.html).concat(set[1].filter((x) => x.html).map((x) => ({ label: x.label, get: x.text }))), rows: set[2],
-        summary: { title: "Summary", cols: ["", "Count", k === "od" ? "Balance Overdue (₱)" : "Total Amount (₱)"], rows: [], total: ["Total:", String(set[2].length), peso(total)] },
+        summary: { title: "Summary", cols: ["", "Count", k === "od" ? "Balance Overdue" : "Total Amount"], rows: [], total: ["Total:", String(set[2].length), peso(total)] },
         criteria: `Customer: ${fullName(c)} (${c.account_no || ""})` }), { customerId: c.id });
     }));
     if (!$("#pfSoa")) { /* 3.64: no statements for this login */ }
@@ -1606,8 +1606,8 @@
     box.innerHTML = `<div class="btnrow"><button type="button" class="btn" id="soaAll">${ic("print")} Print All Transactions</button></div>
       ${E.grid({ cols: [
         { label: "Period", get: (r) => (r.live ? `${monthText(r.start)} (to date)` : monthText(r.start)).toUpperCase() }, { label: "Statement No", get: (r) => r.no },
-        { label: "Opening (₱)", num: true, get: (r) => peso(r.opening) }, { label: "Debit (₱)", num: true, get: (r) => peso(r.debit) },
-        { label: "Credit (₱)", num: true, get: (r) => peso(r.credit) }, { label: "Closing (₱)", num: true, get: (r) => peso(r.closing) },
+        { label: "Opening", num: true, get: (r) => peso(r.opening) }, { label: "Debit", num: true, get: (r) => peso(r.debit) },
+        { label: "Credit", num: true, get: (r) => peso(r.credit) }, { label: "Closing", num: true, get: (r) => peso(r.closing) },
         { label: "", html: () => `<span class="btn">Print SOA</span>` }], rows, onRow: true })}
       `;
     E.bindGrid(box, rows, (r) => gatePrint("soa", c.id, `SOA ${r.no || monthText(r.start)} · ${fullName(c)}`, () => printSoa(c, r, txns, invs)));
@@ -1634,10 +1634,10 @@
     { label: "Terms", get: (r) => r.payment_terms || "" }, { label: "Due Date", get: (r) => mdy(r.due_date) },
     { label: "Account No", get: (r) => r.account_no }, { label: "Customer", get: (r) => E.shortName(r) },
     { label: "Boxes", num: true, get: (r) => qtyText(r.total_boxes) }, { label: "Pcs", num: true, get: (r) => qtyText(r.total_pcs) },
-    { label: "Amount (₱)", key: "total_amount", num: true, get: (r) => peso(r.total_amount) },
-    { label: "Returned (₱)", key: "amount_returned", num: true, get: (r) => (num(r.amount_returned) ? peso(r.amount_returned) : "") },
-    { label: "Paid (₱)", key: "amount_paid", num: true, get: (r) => peso(r.amount_paid) },
-    { label: "Balance (₱)", key: "balance", num: true, get: (r) => peso(r.balance) },
+    { label: "Amount", key: "total_amount", num: true, get: (r) => peso(r.total_amount) },
+    { label: "Returned", key: "amount_returned", num: true, get: (r) => (num(r.amount_returned) ? peso(r.amount_returned) : "") },
+    { label: "Paid", key: "amount_paid", num: true, get: (r) => peso(r.amount_paid) },
+    { label: "Balance", key: "balance", num: true, get: (r) => peso(r.balance) },
     { label: "Status", html: payPill }
   ];
   // 2.4.3: the tabs are All, Unpaid, Partial Payment and Paid. What is paid comes from the database (invoice_balances): everything paid to the customer's account pays the oldest
@@ -1683,7 +1683,7 @@
             <div class="fields wide">
               <label for="niBox">Total Boxes</label><input type="number" id="niBox" min="0" step="1" value="0">
               <label for="niPcs">Total Pcs</label><input type="number" id="niPcs" min="0" step="1" value="0">
-              <label for="niAmt">Total Amount (₱) *</label><input type="number" id="niAmt" min="0" step="0.01" required>
+              <label for="niAmt">Total Amount *</label><input type="number" id="niAmt" min="0" step="0.01" required>
             </div></div>
             <div class="summary-box" style="margin-top:6px"><span id="niWords">PESOS ZERO ONLY</span></div></fieldset>
           <fieldset class="opt"><legend>Terms of Payment</legend><div class="fields wide">
@@ -1824,14 +1824,14 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       const left = num(inv.total_amount) - rets.filter((r) => r.status !== "rejected").reduce((a, r) => a + num(r.request_amount), 0);
       const line = () => `<tr class="rt-line"><td data-l="Item / Serial No"><input type="text" class="rtI" maxlength="60" placeholder="e.g. G2026034G"></td><td data-l="Description"><input type="text" class="rtD" maxlength="80" placeholder="e.g. Ladies short pant"></td>
         <td data-l="Boxes"><input type="number" class="rtB" min="0" step="1" inputmode="numeric"></td><td data-l="Pcs"><input type="number" class="rtP" min="0" step="1" inputmode="numeric"></td>
-        <td data-l="Amount (₱)"><input type="number" class="rtA" min="0" step="0.01" inputmode="decimal"></td><td><button type="button" class="linkbtn del rtX" aria-label="Remove line">${ic("x")}</button></td></tr>`;
+        <td data-l="Amount"><input type="number" class="rtA" min="0" step="0.01" inputmode="decimal"></td><td><button type="button" class="linkbtn del rtX" aria-label="Remove line">${ic("x")}</button></td></tr>`;
       const m = E.modal(`Record Return — ${inv.invoice_no}`, `<form id="rtForm" novalidate>
           <div class="fields wide"><span>Kind</span><div class="subj-grid" id="rtKind">${Object.entries(RET_KIND).map(([k, v], i) => `<label class="subj"><input type="radio" name="rtK" value="${k}" ${i ? "" : "checked"}><span>${esc(v)}</span></label>`).join("")}</div>
             <label for="rtDate">Return Date</label><input type="date" id="rtDate" value="${isoToday()}"></div>
-          <div class="grid-wrap rt-wrap"><table class="grid rt-table"><thead><tr><th>Item / Serial No</th><th>Description</th><th class="num">Boxes</th><th class="num">Pcs</th><th class="num">Amount (₱)</th><th></th></tr></thead>
+          <div class="grid-wrap rt-wrap"><table class="grid rt-table"><thead><tr><th>Item / Serial No</th><th>Description</th><th class="num">Boxes</th><th class="num">Pcs</th><th class="num">Amount</th><th></th></tr></thead>
             <tbody id="rtLines">${line()}</tbody><tfoot><tr><td colspan="2"><button type="button" class="btn small" id="rtAdd">${ic("plus")} Add Item</button> <small class="muted">up to 20 items</small></td>
             <td class="num" id="rtTB">0</td><td class="num" id="rtTP">0</td><td class="num" id="rtTA">0.00</td><td></td></tr></tfoot></table></div>
-          <div class="fields wide"><label for="rtAmt">Return Amount (₱) *</label><input type="number" id="rtAmt" min="0.01" step="0.01" inputmode="decimal" placeholder="Up to ${peso(left)}">
+          <div class="fields wide"><label for="rtAmt">Return Amount *</label><input type="number" id="rtAmt" min="0.01" step="0.01" inputmode="decimal" placeholder="Up to ${peso(left)}">
             <label for="rtNote">Note</label><input type="text" id="rtNote" maxlength="300" placeholder="Optional, e.g. refund 14,000 given"></div>
         </form><p class="muted" style="margin:8px 0 0" id="rtHint"></p>`,
         `<button type="button" class="btn" id="rtCancel">Cancel</button><button type="button" class="btn primary" id="rtSave">${ic("check")} Save Return</button>`, { wide: true });
@@ -1889,7 +1889,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
           <div class="pay-free">All payments of this customer with money left (any date): ${opts.length} · <b>₱ ${peso(opts.reduce((t, r) => t + num(r.available), 0))}</b> ready for invoices.</div>
           <div class="lp-pick">${opts.map((p) => `<div class="lp-opt" data-pay="${p.id}"><b>${esc(p.receipt_no || "")}</b><span>${mdy(p.paid_date)}</span><b>₱ ${peso(p.amount)}</b>
             <small>Available to link: <b>₱ ${peso(p.available)}</b>${num(p.linked) > 0 ? ` (₱ ${peso(p.linked)} already linked to other invoices)` : ""}</small>
-            <div class="lp-amt"><label for="lpA${p.id}">Amount to link (₱)</label><input type="number" id="lpA${p.id}" min="0.01" step="0.01" inputmode="decimal" value="${Math.min(num(p.available), need).toFixed(2)}">
+            <div class="lp-amt"><label for="lpA${p.id}">Amount to link</label><input type="number" id="lpA${p.id}" min="0.01" step="0.01" inputmode="decimal" value="${Math.min(num(p.available), need).toFixed(2)}">
               <button type="button" class="btn small primary" data-go="${p.id}">${ic("check")} Link</button></div></div>`).join("")}</div>`
         : `<div class="empty">No payment to link</div>`);
       $$("[data-go]", m.el).forEach((b) => (b.onclick = async () => {
@@ -1917,7 +1917,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
   }
   function orderItems(o, print) {
     const cols = o.extra_columns || [];
-    return `${print ? "" : `<div class="grid-wrap co-wrap">`}<table class="${print ? "ptl" : "grid co-lines"}"><thead><tr><th>#</th><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price (₱)</th><th class="num">Amount (₱)</th></tr></thead>
+    return `${print ? "" : `<div class="grid-wrap co-wrap">`}<table class="${print ? "ptl" : "grid co-lines"}"><thead><tr><th>#</th><th class="num">Boxes</th><th class="num">Pcs</th><th>Code</th><th>Lot No.</th><th>Product</th>${cols.map((x) => `<th>${esc(x)}</th>`).join("")}<th class="num">Price</th><th class="num">Amount</th></tr></thead>
       <tbody>${(o.lines || []).map((l, i) => `<tr><td>${i + 1}</td><td class="num">${l.boxes ? qtyText(l.boxes) : ""}</td><td class="num">${qtyText(l.qty)}</td><td>${esc(l.code || "-")}</td><td>${esc(l.lot || "")}</td><td>${esc(l.product || "")}</td>
         ${cols.map((x) => `<td>${esc(l.extra?.[x] || "")}</td>`).join("")}<td class="num">${peso(l.price)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody>
       <tfoot><tr><td></td><td class="num"><b>${qtyText(o.total_boxes)}</b></td><td class="num"><b>${qtyText(o.total_pcs)}</b></td><td colspan="${4 + cols.length}"><b>TOTAL AMOUNT</b></td><td class="num"><b>${peso(o.total_amount)}</b></td></tr></tfoot></table>${print ? "" : "</div>"}`;
@@ -1934,7 +1934,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     const bal = num(inv.balance);
     const off = deds.reduce((t, m) => t + num(m.request_amount), 0), corrected = Math.max(0, num(inv.total_amount) - off);
     // 3.14: a return or credit memo taken off this invoice: the invoice shows what was taken off and the corrected amount
-    const fix = deds.length ? box("Corrected Invoice", `<table class="ptl"><thead><tr><th>Taken Off By</th><th>Date</th><th>Type</th><th class="num">Amount (₱)</th></tr></thead><tbody>
+    const fix = deds.length ? box("Corrected Invoice", `<table class="ptl"><thead><tr><th>Taken Off By</th><th>Date</th><th>Type</th><th class="num">Amount</th></tr></thead><tbody>
         <tr><td colspan="3"><b>Original Invoice Amount</b></td><td class="num"><b>${peso(inv.total_amount)}</b></td></tr>
         ${deds.map((m) => `<tr><td>${esc(m.memo_no || "")}</td><td>${esc(mdy(m.approved_at || m.memo_date))}</td><td>${m.is_return ? "RETURN" : m.requested_action === "discount" ? "DISCOUNT" : "CREDIT MEMO"}</td><td class="num">− ${peso(m.request_amount)}</td></tr>`).join("")}
         <tr><td colspan="3"><b>Corrected Invoice Amount</b></td><td class="num"><b>${peso(corrected)}</b></td></tr></tbody></table>
@@ -1948,8 +1948,8 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       ${ord ? box(`Order Items · ${esc(ord.order_no)}`, orderItems(ord, true)) : ""}
       ${fix}
       ${ins && E.insPrintBox ? E.insPrintBox(ins) : ""}
-      ${box("Payment", `<div class="pgrid2">${cell("Payment Status", ({ paid: "PAID", partial: "PARTIAL", unpaid: "UNPAID" }[inv.pay_status] || String(inv.pay_status || "").toUpperCase()) + (isOverdue(inv) ? ` · OVERDUE ${daysOver(inv)} DAY(S)` : "") + (bal < 0 ? " (OVERPAID)" : ""))}${cell("Total Amount (₱)", peso(inv.total_amount))}${num(inv.amount_returned) > 0 ? cell("Returned (₱)", peso(inv.amount_returned)) : ""}${cell("Paid (₱)", peso(inv.amount_paid))}${cell("Balance (₱)", peso(bal))}</div>
-        ${links.length ? `<table class="ptl"><thead><tr><th>Linked Payment (Receipt No)</th><th>Date Paid</th><th class="num">Amount Linked (₱)</th></tr></thead><tbody>
+      ${box("Payment", `<div class="pgrid2">${cell("Payment Status", ({ paid: "PAID", partial: "PARTIAL", unpaid: "UNPAID" }[inv.pay_status] || String(inv.pay_status || "").toUpperCase()) + (isOverdue(inv) ? ` · OVERDUE ${daysOver(inv)} DAY(S)` : "") + (bal < 0 ? " (OVERPAID)" : ""))}${cell("Total Amount", peso(inv.total_amount))}${num(inv.amount_returned) > 0 ? cell("Returned", peso(inv.amount_returned)) : ""}${cell("Paid", peso(inv.amount_paid))}${cell("Balance", peso(bal))}</div>
+        ${links.length ? `<table class="ptl"><thead><tr><th>Linked Payment (Receipt No)</th><th>Date Paid</th><th class="num">Amount Linked</th></tr></thead><tbody>
           ${links.map((l) => `<tr><td>${esc(l.payments_received?.receipt_no || "")}</td><td>${mdy(l.payments_received?.paid_date)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody></table>` : ""}`)}
       <div class="inv-sealsig">${E.secSeal(inv.invoice_no, { trx: inv.id, by: eoidOf(directorId("EMON HASAN")), code: E.sealCached("invoice", inv.invoice_no), lines: [inv.invoice_no, fullName(inv), inv.account_no].filter(Boolean) })}${invDirector()}</div>`; // 3.99.142: the seal in place of the customer signature
   }
@@ -1962,7 +1962,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     // 3.99.5: every column shows on an iPad (a long name goes on 2 lines); a phone shows the main columns only
     { label: "Account No", phone: false, get: (r) => r.customers?.account_no || "" }, { label: "Customer", get: (r) => E.shortName(r.customers || {}) },
     { label: "Method", phone: false, get: (r) => METHOD[r.method] || r.method }, { label: "Reference", phone: false, get: (r) => r.reference_no || "" },
-    { label: "Amount (₱)", key: "amount", num: true, get: (r) => peso(r.amount) }, { label: "Verified By", phone: false, wrap: true, get: (r) => r.created_by_name || "" }
+    { label: "Amount", key: "amount", num: true, get: (r) => peso(r.amount) }, { label: "Verified By", phone: false, wrap: true, get: (r) => r.created_by_name || "" }
   ];
   V.payments = async () => {
     E.shell("payments", "Payments Received", `
@@ -1989,7 +1989,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
           <fieldset class="opt"><legend>Customer</legend><div id="npCust"></div><div class="np-due" id="npDue" hidden></div></fieldset>
           <fieldset class="opt"><legend>Payment</legend><div class="formgrid">
             <div class="fields wide">
-              <label for="npAmt">Amount (₱) *</label><input type="number" id="npAmt" min="0.01" step="0.01" required>
+              <label for="npAmt">Amount *</label><input type="number" id="npAmt" min="0.01" step="0.01" required>
               <label for="npMethod">Payment Method</label><select id="npMethod">${Object.entries(METHOD).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
               <label for="npDate">Date Paid</label><input type="date" id="npDate" value="${isoToday()}">
               <span>For</span><span>The customer's account (pays the oldest invoices first)</span>
@@ -2092,7 +2092,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     const c = p.customers;
     return `${printHead("ACKNOWLEDGMENT RECEIPT", `<img src="${E.pdf417DataUrl("EMONPAY|" + p.receipt_no)}" alt="" class="ph-bar"><div class="mono">${esc(p.receipt_no)}</div>`)}
       ${box("Received From", `<div class="pgrid2">${cell("Customer Name", fullName(c))}${cell("Account No", c.account_no)}${cell("Date Paid", mdy(p.paid_date))}${cell("Received & Verified By", p.created_by_name)}</div>`)}
-      ${box("Payment Details", `<div class="prow3">${cell("Amount (₱)", peso(p.amount))}${cell("Method", METHOD[p.method])}${cell("Reference No", p.reference_no)}</div>
+      ${box("Payment Details", `<div class="prow3">${cell("Amount", peso(p.amount))}${cell("Method", METHOD[p.method])}${cell("Reference No", p.reference_no)}</div>
         <div class="prow3">${cell("Bank", p.bank_name)}${cell("Deposit Account", p.bank_account)}${cell("Description", "PAYMENT RECEIVED")}</div>
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(p.amount))}</div></div>`)}
       <p class="pdecl">This acknowledges that ${esc(C.company.name)} has received the payment above. Receipt No ${esc(p.receipt_no)}.</p>
@@ -2110,18 +2110,18 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     { label: "Report No", get: (r) => r.memo_no }, { label: "Date", get: (r) => mdy(r.memo_date) },
     { label: "Customer", get: (r) => E.shortName(r.customers || {}) }, { label: "Article", get: (r) => r.article || "" },
     { label: "Defect", get: (r) => (r.is_return ? "Return" : DEFECT[r.defect_category] || "") }, { label: "Request", get: (r) => (r.is_return ? `Return · ${r.po_number || ""}` : ACTION[r.requested_action] || "") },
-    { label: "Amount (₱)", key: "request_amount", num: true, get: (r) => peso(r.request_amount) }, { label: "Status", html: (r) => pill(r.status) }
+    { label: "Amount", key: "request_amount", num: true, get: (r) => peso(r.request_amount) }, { label: "Status", html: (r) => pill(r.status) }
   ];
   // 3.13: the customer's Overdue, Returns and Credit Memo histories (screen and print); text: the status in words for the print
   const memoState = (m) => (m.status === "pending" ? "WAITING FOR APPROVAL" : m.status === "rejected" ? "REJECTED" : m.status === "paid" ? "PAID" : "APPROVED");
   const MEMO_STATUS_COL = { label: "Status", html: (r) => pill(r.status === "pending" ? "pending" : r.status === "rejected" ? "rejected" : "approved", memoState(r)), text: memoState };
   const OD_HIST = [{ label: "Invoice No", get: (r) => r.invoice_no }, { label: "Invoice Date", get: (r) => mdy(r.invoice_date) }, { label: "Due Date", get: (r) => mdy(r.due_date) },
-    { label: "Days Overdue", num: true, get: (r) => String(daysOver(r)) }, { label: "Amount (₱)", num: true, get: (r) => peso(r.total_amount) }, { label: "Balance (₱)", num: true, get: (r) => peso(r.balance) }];
+    { label: "Days Overdue", num: true, get: (r) => String(daysOver(r)) }, { label: "Amount", num: true, get: (r) => peso(r.total_amount) }, { label: "Balance", num: true, get: (r) => peso(r.balance) }];
   const RET_HIST = [{ label: "Date", get: (r) => mdy(r.memo_date) }, { label: "Return No", get: (r) => r.memo_no }, { label: "Invoice No", get: (r) => r.po_number || "" },
-    { label: "Qty Box", num: true, get: (r) => String(retLines(r).reduce((t, l) => t + num(l.boxes), 0)) }, { label: "Total Amount (₱)", num: true, get: (r) => peso(r.request_amount) },
+    { label: "Qty Box", num: true, get: (r) => String(retLines(r).reduce((t, l) => t + num(l.boxes), 0)) }, { label: "Total Amount", num: true, get: (r) => peso(r.request_amount) },
     MEMO_STATUS_COL];
   const CM_HIST = [{ label: "Date", get: (r) => mdy(r.memo_date) }, { label: "Report No", get: (r) => r.memo_no }, { label: "Request", get: (r) => ACTION[r.requested_action] || "" },
-    { label: "Invoice No", get: (r) => r.po_number || "" }, { label: "Amount (₱)", num: true, get: (r) => peso(r.request_amount) },
+    { label: "Invoice No", get: (r) => r.po_number || "" }, { label: "Amount", num: true, get: (r) => peso(r.request_amount) },
     MEMO_STATUS_COL];
   V.creditmemos = async () => {
     E.shell("creditmemos", "Credit Memos", `${E.eoTabs("creditmemos")}
@@ -2165,8 +2165,8 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
             <div><b>Defect Category</b>${Object.entries(DEFECT).map(([k, v], i) => `<label class="rline"><input type="radio" name="cmDef" value="${k}" ${i ? "" : "checked"}> ${v}</label>`).join("")}
               <div class="fields wide"><label for="cmDefD">Details</label><input type="text" id="cmDefD" placeholder="e.g. DOMINANT 60% GREEN"></div></div>
             <div><b>Requested Action</b>${Object.entries(ACTION).map(([k, v]) => `<label class="rline"><input type="radio" name="cmAct" value="${k}" ${k === "discount" ? "checked" : ""}> ${v}</label>`).join("")}
-              <div class="fields wide"><label for="cmRate">Rate (₱)</label><input type="number" id="cmRate" min="0" step="0.01" value="0">
-              <label for="cmAmt">Requested Amount (₱)</label><input type="number" id="cmAmt" min="0" step="0.01" value="0"></div>
+              <div class="fields wide"><label for="cmRate">Rate</label><input type="number" id="cmRate" min="0" step="0.01" value="0">
+              <label for="cmAmt">Requested Amount</label><input type="number" id="cmAmt" min="0" step="0.01" value="0"></div>
               <small id="cmCalc"></small>
               <div id="cmSettle"><b>Settle By</b> <small>(how the money goes back to the customer)</small>${Object.entries(SETTLE).map(([k, v]) => `<label class="rline"><input type="radio" name="cmSet" value="${k}" ${k === "account_credit" ? "checked" : ""}> ${v}</label>`).join("")}
                 <small id="cmSetNote"></small></div></div></div></fieldset>
@@ -2281,7 +2281,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     const ls = retLines(m), can = (E.canWrite("invoices") || E.canWrite("creditmemos")) && m.warehouse_status === "not_received" && m.status !== "rejected";
     return `<div class="linked-pays"><div class="lp-head"><b>Returned Items · ${esc(RET_KIND[m.return_kind] || "Return of Items")}</b>
         ${m.warehouse_status ? `<span class="pill ${m.warehouse_status === "received" ? "active" : "pending"}">${WAREHOUSE[m.warehouse_status]}</span>` : `<span class="pill">NO GOODS RETURNED</span>`}</div>
-      <div class="grid-wrap"><table class="grid"><thead><tr><th>#</th><th>Item / Serial No</th><th>Description</th><th class="num">Boxes</th><th class="num">Pcs</th><th class="num">Amount (₱)</th></tr></thead><tbody>
+      <div class="grid-wrap"><table class="grid"><thead><tr><th>#</th><th>Item / Serial No</th><th>Description</th><th class="num">Boxes</th><th class="num">Pcs</th><th class="num">Amount</th></tr></thead><tbody>
         ${ls.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.item || "")}</td><td>${esc(l.desc || "")}</td><td class="num">${num(l.boxes)}</td><td class="num">${num(l.pcs)}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}</tbody>
         <tfoot><tr><td colspan="3">TOTAL</td><td class="num">${ls.reduce((s, l) => s + num(l.boxes), 0)}</td><td class="num">${ls.reduce((s, l) => s + num(l.pcs), 0)}</td><td class="num">${peso(m.request_amount)}</td></tr></tfoot></table></div>
       ${m.warehouse_status === "received" ? `<small class="muted">Received at the warehouse ${esc(E.dateTime(m.warehouse_at))}${m.warehouse_by_name ? ` by ${esc(m.warehouse_by_name)}` : ""}.</small>` : ""}
@@ -2395,7 +2395,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     const sum = (list, f) => list.reduce((s, r) => s + num(f(r)), 0);
     const of = (k) => rows.filter((r) => r.st === k);
     const pcs = sum(rows, (r) => r.qty), soldRows = of("sold"), soldAmt = sum(soldRows, (r) => r.amount);
-    const totalCost = boxCost * rows.length, costLbl = "Total Cost (₱)"; // 3.99.52: cost per box × boxes
+    const totalCost = boxCost * rows.length, costLbl = "Total Cost"; // 3.99.52: cost per box × boxes
     // 3.99.42: the average price per pc of the boxes that have a price (each box counted by its pcs)
     const priced = rows.filter((r) => r.price > 0), pricedPcs = sum(priced, (r) => r.qty);
     const avgPrice = pricedPcs ? sum(priced, (r) => r.price * num(r.qty)) / pricedPcs : 0;
@@ -2414,11 +2414,11 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       ["Shipping Date", span((r) => r.ship_date)], ["Released Date", span((r) => r.release_date)], ["Arrival Date", span((r) => r.arrival_date)], ["Date Sold", span((r) => (r.st === "sold" ? r.soldOn : ""))]]
       .filter(([, v], i) => i === 0 || v);
     const counts = [["Boxes", qtyText(rows.length)], ["Pcs", qtyText(pcs)], ["Sold Boxes", qtyText(soldRows.length), "ok"],
-      ["In Stock", qtyText(of("stock").length), "bad"], ...(avgPrice ? [["Avg Price (₱)", peso(avgPrice)]] : []), ["Total Cost", `₱ ${peso(totalCost)}`, "cost"], ["On Order", qtyText(of("order").length)], ...(arr ? [["Shipped", qtyText(of("shipped").length)]] : [])];
+      ["In Stock", qtyText(of("stock").length), "bad"], ...(avgPrice ? [["Avg Price", peso(avgPrice)]] : []), ["Total Cost", `₱ ${peso(totalCost)}`, "cost"], ["On Order", qtyText(of("order").length)], ...(arr ? [["Shipped", qtyText(of("shipped").length)]] : [])];
     const cols = [{ label: "#", num: true, get: (r) => String(rows.indexOf(r) + 1) }, { label: "Serial No", key: "serial", html: (r) => `<b class="mono nw">${esc(r.serial_no)}</b>` },
       { label: "Product", wrap: true, get: (r) => [r.product, r.brand && r.brand !== "-" ? r.brand : ""].filter(Boolean).join(" · ") }, { label: "CTN", phone: false, get: (r) => r.ctn || "" },
-      { label: "Pcs", key: "pcs", num: true, get: (r) => qtyText(r.qty) }, { label: "Price (₱)", key: "price", num: true, get: (r) => (r.price ? peso(r.price) : "") },
-      { label: "Amount (₱)", key: "amount", num: true, get: (r) => (r.amount ? peso(r.amount) : "") },
+      { label: "Pcs", key: "pcs", num: true, get: (r) => qtyText(r.qty) }, { label: "Price", key: "price", num: true, get: (r) => (r.price ? peso(r.price) : "") },
+      { label: "Amount", key: "amount", num: true, get: (r) => (r.amount ? peso(r.amount) : "") },
       { label: "Status", html: (r) => stPill(r.st) },
       { label: "Invoice No", html: (r) => (r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(r.invoice)}</a>` : r.order && r.st !== "sold" ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(r.order.order_no)}</a>` : `<span class="nw">${esc(r.invoice)}</span>`) },
       { label: "Date Sold", get: (r) => (r.st === "sold" ? day(r.soldOn) : "") }, { label: "Arrival", phone: false, get: (r) => day(r.arrival_date) },
@@ -2448,10 +2448,10 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       if (lastDone < 0 && r.st === "stock") lastDone = 2; // in stock: it has arrived
       const track = `<div class="bxtrack">${steps.map(([k, v], i) => `<div class="bt${i <= lastDone ? " done" : ""}${i === lastDone ? " now bt-" + k.split(" ")[0].toLowerCase() : ""}"><i></i><b>${esc(k.toUpperCase())}</b><small>${v.length ? v.map((x) => `<span class="${/^[A-Z]{3} \d{2} \d{4}$/.test(x) ? "dt" : "nw"}">${esc(x)}</span>`).join("<br>") : i <= lastDone ? "—" : ""}</small></div>`).join("")}</div>`;
       const det = [["Product", pr], ["Brand", br], ["Batch No", r.batch], ["CTN", r.ctn], ["Style", r.style && r.style !== "-" ? r.style : ""], ["Pcs", qtyText(r.qty)],
-        ["Company", coName(r)], ["Cost per Box (₱)", peso(boxCost)],
+        ["Company", coName(r)], ["Cost per Box", peso(boxCost)],
         // 3.99.118: a sold box: what is left after the cost of the box; a box not sold: when it arrived
-        ["Net Sales (₱)", sold1 && r.amount ? peso(r.amount - boxCost) : ""], ["Arrived Date", sold1 ? "" : day(r.arrival_date) || "—"],
-        ["Price (₱)", r.price ? peso(r.price) : ""], ["Amount (₱)", r.amount ? peso(r.amount) : ""],
+        ["Net Sales", sold1 && r.amount ? peso(r.amount - boxCost) : ""], ["Arrived Date", sold1 ? "" : day(r.arrival_date) || "—"],
+        ["Price", r.price ? peso(r.price) : ""], ["Amount", r.amount ? peso(r.amount) : ""],
         ["Suggested Price", !r.price && suggest ? peso(suggest) : ""], ["Invoice No", sold1 ? r.invoice : ""], ["Order No", r.order?.order_no || ""], ["Return", ret ? `${ret.memo_no || ""} · ${String(ret.status || "").toUpperCase()}` : ""],
         ].filter(([, v]) => v); // 3.99.72: no other sheet columns
       const link = (k, v) => (k === "Invoice No" && r.sale?.invoice_id ? `<a class="nw" href="#invoice/${esc(r.sale.invoice_id)}">${esc(v)}</a>` : k === "Order No" && r.order ? `<a class="nw" href="#custorder/${esc(r.order.id)}">${esc(v)}</a>`
@@ -2470,9 +2470,9 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       // microtext lines with the serial no, the PDF417)
       $("#fbPrint").onclick = async () => {
         const code = await E.sealCode("box", r.serial_no); // 3.99.93: the box's unique seal no
-        const money = r.price ? [["Price (₱)", peso(r.price)], [sold1 ? "Amount Sold (₱)" : "Amount (₱)", peso(r.amount || r.price * num(r.qty))]]
+        const money = r.price ? [["Price", peso(r.price)], [sold1 ? "Amount Sold" : "Amount", peso(r.amount || r.price * num(r.qty))]]
           : []; // 3.99.62: the suggested price is only a card (a guide, no amount counted)
-        const cards = det.filter(([k]) => !["Pcs", "Price (₱)", "Amount (₱)", "Batch No", "Suggested Price"].includes(k)); // 3.99.103
+        const cards = det.filter(([k]) => !["Pcs", "Price", "Amount", "Batch No", "Suggested Price"].includes(k)); // 3.99.103
         const micro = `EMON OVERRUNS · ${r.serial_no} · `.repeat(24); // 3.99.70: no BX- number, no ORIGINAL
         E.openPreview(title, [`${printHead("SEARCH RESULT", `<img src="${E.pdf417DataUrl("EMONBOX|" + r.serial_no)}" alt="" class="ph-bar"><div class="mono">${esc(r.serial_no)}</div>`)}
           <div class="bxsec">
@@ -2505,9 +2505,9 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
       // 3.99.48: one SUMMARY box in the style of the Details box: the counts in row 1, the money in row 2
       const sc = (k, v, c = "", span = 1) => `<div class="pcell bxs ${c}"${span > 1 ? ` style="grid-column: span ${span}"` : ""}><div class="pl">${esc(k)}</div><div class="pv">${esc(v)}</div></div>`;
       // 3.99.51: On Order and Shipped only when some boxes are
-      const row2 = [...(of("order").length ? [["On Order", qtyText(of("order").length)]] : []), ...(arr && of("shipped").length ? [["Shipped", qtyText(of("shipped").length)]] : []), ...(avgPrice ? [["Average Price (₱)", peso(avgPrice)]] : [])];
+      const row2 = [...(of("order").length ? [["On Order", qtyText(of("order").length)]] : []), ...(arr && of("shipped").length ? [["Shipped", qtyText(of("shipped").length)]] : []), ...(avgPrice ? [["Average Price", peso(avgPrice)]] : [])];
       const sumHtml = E.box("Summary", `<div class="pgrid4 bxsum">${sc("Boxes", qtyText(rows.length))}${sc("Pcs", qtyText(pcs))}${sc("Sold Boxes", qtyText(soldRows.length), "ok")}${sc("In Stock", qtyText(of("stock").length), "bad")}
-        ${row2.map(([k, v]) => sc(k, v)).join("")}${sc(costLbl, peso(totalCost), "cost")}${sc("Total Amount Sold (₱)", peso(soldAmt), "amt", 4 - ((row2.length + 1) % 4))}</div>`);
+        ${row2.map(([k, v]) => sc(k, v)).join("")}${sc(costLbl, peso(totalCost), "cost")}${sc("Total Amount Sold", peso(soldAmt), "amt", 4 - ((row2.length + 1) % 4))}</div>`);
       const det = facts.filter(([k]) => !["Product", "Brand", "Date Sold"].includes(k));
       const head = printHead("SEARCH RESULT", `<div class="mono">${esc(key)}</div>`), cont = head; // 3.99.47: every page has the same short header
       const soldHead = `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th class="num">Pcs</th><th class="num">Price</th><th class="num">Amount</th><th>Invoice No</th><th>Date Sold</th></tr>`;
@@ -2515,7 +2515,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         <td class="num">${r.amount ? peso(r.amount) : ""}</td><td class="nw">${esc(r.invoice)}</td><td class="nw">${esc(day(r.soldOn))}</td></tr>`;
       const soldTot = `<tr class="ptl-tot"><td colspan="3">TOTAL · ${qtyText(soldRows.length)} SOLD</td><td class="num">${qtyText(sum(soldRows, (r) => r.qty))}</td><td class="num nw">${avgPrice ? `AVG ${peso(avgPrice)}` : ""}</td><td class="num">${peso(soldAmt)}</td><td colspan="2"></td></tr>`;
       const few = soldRows.length && soldRows.length <= 8; // a short sold list goes under the boxes
-      const soldBox = few ? E.box("Sold Boxes (₱)", `<table class="ptl"><thead>${soldHead}</thead><tbody>${soldRows.map(soldRow).join("")}${soldTot}</tbody></table>`) : "";
+      const soldBox = few ? E.box("Sold Boxes", `<table class="ptl"><thead>${soldHead}</thead><tbody>${soldRows.map(soldRow).join("")}${soldTot}</tbody></table>`) : "";
       const room = few ? soldRows.length + 4 : 0;
       let pages = E.pagedDoc({ head, contHead: cont, top: sumHtml + E.box("Details", `<div class="pgrid2">${det.map(([k, v, c]) => E.cell(k, v, c || "")).join("")}</div>`),
         boxTitle: "Boxes", thead: `<tr><th class="num">#</th><th>Serial No</th><th>Product</th><th>CTN</th><th class="num">Pcs</th><th>Status</th></tr>`,
@@ -2524,7 +2524,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
         totalRow: `<tr class="ptl-tot"><td colspan="4">TOTAL · ${qtyText(rows.length)} BOX${rows.length === 1 ? "" : "ES"}</td><td class="num">${qtyText(pcs)}</td><td></td></tr>`,
         bottom: soldBox, caps: { single: 22 - room, first: 26, next: 34, last: 32 - room } });
       if (soldRows.length > 8) pages = pages.concat(E.pagedDoc({ head, contHead: head,
-        top: "", boxTitle: "Sold Boxes (₱)", thead: soldHead, rows: soldRows, rowHtml: soldRow, totalRow: soldTot, bottom: "", caps: { single: 34, first: 34, next: 36, last: 36 } }));
+        top: "", boxTitle: "Sold Boxes", thead: soldHead, rows: soldRows, rowHtml: soldRow, totalRow: soldTot, bottom: "", caps: { single: 34, first: 34, next: 36, last: 36 } }));
       E.openPreview(title, pages);
     };
     E.setRecords(`Boxes: ${rows.length}`);
@@ -2590,7 +2590,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
     if ((qc.data || []).length) sections.push(["QC Forms", qc.data, [{ label: "QC No", get: (r) => r.qc_no }, { label: "Serial No", get: (r) => r.serial_no || "" }, { label: "Item", get: (r) => r.item || "" }, { label: "Brand", get: (r) => r.brand || "" },
       { label: "Batch", get: (r) => r.batch || "" }, { label: "Score", num: true, get: (r) => (r.score == null ? "—" : `${r.score} / 100`) }, { label: "Result", get: (r) => E.qcVerdict?.(r.score) || "" }], (r) => "qc/" + r.id]);
     if ((cv.data || []).length) sections.push(["Collection Vouchers", cv.data, [{ label: "Voucher No", get: (r) => r.cv_no }, { label: "Date", get: (r) => mdy(r.cv_date) }, { label: "Received From", get: (r) => r.received_from },
-      { label: "Amount (₱)", num: true, get: (r) => peso(r.amount) }], (r) => "collection/" + r.id]);
+      { label: "Amount", num: true, get: (r) => peso(r.amount) }], (r) => "collection/" + r.id]);
     const total = sections.reduce((s, x) => s + x[1].length, 0);
     $("#main").innerHTML = `<div class="find-sum">${total ? `${ic("search")} ${total} record(s) found for “${esc(t)}”` : `${ic("search")} Nothing found for “${esc(t)}”. Try a different spelling, or <a href="#verify/${encodeURIComponent(t)}">verify it as a record number</a>.`}</div>`
       + sections.map(([title, rows], i) => `<h3>${esc(title)} (${rows.length})</h3><div id="fd${i}"></div>`).join("");
@@ -2715,7 +2715,7 @@ ${bal < 0 ? `<small class="muted">Overpaid</small>` : ""}
           <label class="btn small" for="mpFile">${ic("camera")} Change Photo</label><input type="file" id="mpFile" accept="image/*" hidden></div>
         <div class="me-main"><h2>${esc(myName())}</h2>
           <div class="me-sub">${esc(S.session.user.email)} · ${E.titleHtml(S.profile.role, emp?.position)}</div>
-          ${emp ? `<div class="ch-ids">${idBox("Employee No", emp.employee_no)}${idBox("Position", emp.position)}${idBox("Date Hired", mdy(emp.date_hired))}${idBox("Monthly Salary (₱)", peso(emp.monthly_salary))}</div>` : ""}
+          ${emp ? `<div class="ch-ids">${idBox("Employee No", emp.employee_no)}${idBox("Position", emp.position)}${idBox("Date Hired", mdy(emp.date_hired))}${idBox("Monthly Salary", peso(emp.monthly_salary))}</div>` : ""}
         </div>
       </section>
       <div class="cols">

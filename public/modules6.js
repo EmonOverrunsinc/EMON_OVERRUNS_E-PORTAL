@@ -93,7 +93,7 @@
       const rows = all.filter((r) => (!t || r.kind === t) && (!q || [r.no, r.who, r.by, r.id, r.kind].join(" ").toLowerCase().includes(q)));
       $("#rgList").innerHTML = `<p class="muted reg-n">${rows.length} document${rows.length === 1 ? "" : "s"}</p>` + E.grid({ cols: [
         { label: "Date", get: (r) => mdy(String(r.date).slice(0, 10)) }, { label: "Paper", get: (r) => r.kind }, { label: "No", html: (r) => `<b class="mono">${esc(r.no)}</b>` },
-        { label: "Name", get: (r) => String(r.who || "").toUpperCase() }, { label: "Amount (₱)", get: (r) => (r.amt != null ? peso(r.amt) : "") }, { label: "By", get: (r) => String(r.by || "").toUpperCase() },
+        { label: "Name", get: (r) => String(r.who || "").toUpperCase() }, { label: "Amount", get: (r) => (r.amt != null ? peso(r.amt) : "") }, { label: "By", get: (r) => String(r.by || "").toUpperCase() },
         { label: "TRX ID", html: (r) => `<small class="mono reg-trx">${esc(String(r.id).toUpperCase())}</small>` }],
         rows, limit: 50, onRow: (r) => { if (r.route) location.hash = `${r.route}/${r.rid || r.id}`; } });
     };
@@ -157,9 +157,9 @@
       <div class="eo-mini">
         <div class="tiles">
           <div class="tile"><span class="tile-ic">${ic("shield")}</span><div class="k">QC Tests This Month</div><div class="v">${qNow.length}</div><small>${avgScore == null ? "No result yet" : `${passNow} pass · ${scored.length - passNow} fail · average ${avgScore} / 100`}</small></div>
-          <div class="tile"><span class="tile-ic">${ic("wallet")}</span><div class="k">Collection This Month (₱)</div><div class="v">${peso(sum(byMonth.get(now) || []))}</div><small>${(byMonth.get(now) || []).length} voucher(s)</small></div>
-          <div class="tile"><span class="tile-ic">${ic("wallet")}</span><div class="k">Collection Last Month (₱)</div><div class="v">${peso(sum(byMonth.get(last) || []))}</div><small>${monthText(last)}</small></div>
-          ${toCollect.length ? `<div class="tile warn"><span class="tile-ic">${ic("clock")}</span><div class="k">Unpaid Vouchers · To Collect (₱)</div><div class="v">${peso(sum(toCollect))}</div><small>${toCollect.length} voucher(s)${toCollect.filter(overdue).length ? ` · ${toCollect.filter(overdue).length} expired` : ""} · not counted until paid</small></div>` : ""}
+          <div class="tile"><span class="tile-ic">${ic("wallet")}</span><div class="k">Collection This Month</div><div class="v">${peso(sum(byMonth.get(now) || []))}</div><small>${(byMonth.get(now) || []).length} voucher(s)</small></div>
+          <div class="tile"><span class="tile-ic">${ic("wallet")}</span><div class="k">Collection Last Month</div><div class="v">${peso(sum(byMonth.get(last) || []))}</div><small>${monthText(last)}</small></div>
+          ${toCollect.length ? `<div class="tile warn"><span class="tile-ic">${ic("clock")}</span><div class="k">Unpaid Vouchers · To Collect</div><div class="v">${peso(sum(toCollect))}</div><small>${toCollect.length} voucher(s)${toCollect.filter(overdue).length ? ` · ${toCollect.filter(overdue).length} expired` : ""} · not counted until paid</small></div>` : ""}
         </div>
         <div class="eo-bars" aria-label="Collection by month">${six.map((x) => `<button type="button" class="eo-bar${x.m === now ? " now" : ""}" data-m="${x.m}" title="${esc(monthText(x.m))}: ₱ ${peso(x.total)}">
           <span class="eo-fill" style="height:${Math.max(3, Math.round((x.total / top) * 100))}%"></span><small>₱ ${short(x.total)}</small><b>${monthShort(x.m)}</b></button>`).join("")}</div>
@@ -172,7 +172,7 @@
       { label: "Score", num: true, get: (r) => (r.score == null ? "—" : `${r.score} / 100`) },
       { label: "Result", html: (r) => { const v = verdict(r.score); return v ? pill(v === "PASS" ? "approved" : "rejected", v) : ""; } }, { label: "Status", html: (r) => pill(r.status === "done" ? "approved" : "pending", r.status === "done" ? "TESTED" : "NOT TESTED YET") }];
     const cvCols = [{ label: "Voucher No", get: (r) => r.cv_no }, { label: "Date", get: (r) => mdy(r.cv_date) }, { label: "Received From", get: (r) => r.received_from },
-      { label: "Method", get: methodText }, { label: "Amount (₱)", num: true, get: (r) => peso(r.amount) }, { label: "Status", html: cvState },
+      { label: "Method", get: methodText }, { label: "Amount", num: true, get: (r) => peso(r.amount) }, { label: "Status", html: cvState },
       { label: "Receipt", html: (r) => (r.receipt_path ? pill("approved", "ON FILE") : pill("pending", "NO RECEIPT")) }, { label: "Made By", get: (r) => r.created_by_name || "" }];
     const show = (k, m) => {
       $$("#eoTabs button").forEach((b) => b.classList.toggle("on", b.dataset.t === k));
@@ -222,7 +222,7 @@
       }
       box.innerHTML = `${canW() ? `<div class="btnrow"><a class="btn primary" href="#newcollection">${ic("plus")} New Collection Voucher</a></div>` : ""}
         ${toCollect.length ? `<h3 class="sec">${ic("clock")} Unpaid — To Collect (${toCollect.length}) · ₱ ${peso(sum(toCollect))}</h3><div id="cvUnpaid">${E.grid({ cols: cvCols, rows: toCollect, onRow: true })}</div><h3 class="sec">Collected — by month</h3>` : ""}
-        <div id="cvMonths">${E.grid({ cols: [{ label: "Month", get: (r) => monthText(r.m) }, { label: "Vouchers", num: true, get: (r) => r.n }, { label: "Total Collected (₱)", num: true, get: (r) => peso(r.total) }],
+        <div id="cvMonths">${E.grid({ cols: [{ label: "Month", get: (r) => monthText(r.m) }, { label: "Vouchers", num: true, get: (r) => r.n }, { label: "Total Collected", num: true, get: (r) => peso(r.total) }],
           rows: monthRows, onRow: true, empty: "No collection recorded yet." })}</div>`;
       if ($("#cvUnpaid")) E.bindGrid($("#cvUnpaid"), toCollect, (r) => (location.hash = "collection/" + r.id));
       E.bindGrid($("#cvMonths"), monthRows, (r) => show("cv", r.m));
@@ -624,7 +624,7 @@
           <span class="cv-row cv-cust"${v?.customer_id ? "" : " hidden"}>Customer *</span><div class="cv-row cv-cust" id="cvCust"${v?.customer_id ? "" : " hidden"}></div>
           <label for="cvEmp" class="cv-row cv-emp"${v?.employee_id ? "" : " hidden"}>Employee *</label><select id="cvEmp" class="cv-row cv-emp"${v?.employee_id ? "" : " hidden"}><option value="">— Choose the employee —</option></select>
           <label for="cvFrom">Received From *</label><input type="text" id="cvFrom" maxlength="120" value="${esc(v?.received_from || "")}" placeholder="Name of the customer or person">
-          <label for="cvAmt">Amount Collected (₱) *</label><input type="number" id="cvAmt" min="0" step="0.01" inputmode="decimal" value="${v ? num(v.amount) : ""}">
+          <label for="cvAmt">Amount Collected *</label><input type="number" id="cvAmt" min="0" step="0.01" inputmode="decimal" value="${v ? num(v.amount) : ""}">
           <label for="cvMethod">Method</label><select id="cvMethod">${Object.entries(METHODS).map(([k, l]) => `<option value="${k}" ${v?.method === k ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>
           <label for="cvRef">Reference No</label><input type="text" id="cvRef" maxlength="60" value="${esc(v?.reference_no || "")}">
           <label for="cvNote">Note</label><input type="text" id="cvNote" maxlength="300" value="${esc(v?.note || "")}"></div></fieldset>
@@ -734,7 +734,7 @@
     $("#main").innerHTML = `<div class="window"><div class="wtitle">${esc(v.cv_no)} · ₱ ${peso(v.amount)} ${cvState(v)}</div><div class="wbody">
       ${unpaid(v) ? `<div class="banner ${overdue(v) ? "closed" : "warn"}">${ic("clock")} <b>UNPAID${overdue(v) ? " — EXPIRED" : ""}</b> · issued ${esc(mdy(v.issued_on || v.cv_date))} · <b>pay before ${esc(mdy(v.pay_by))}</b>. Not counted in the collection until the payment is received: press <b>Receive Payment</b> and scan the QR code of the printed voucher (no scan for the Customer Account).</div>`
         : v.paid_at ? `<div class="banner ok">${ic("check")} <b>PAID</b> on ${esc(mdy(v.cv_date))}${v.received_by ? ` · received by ${esc(v.received_by)}` : ""} · recorded by ${esc(v.paid_by_name || "")} · issued ${esc(mdy(v.issued_on))}</div>` : ""}
-      <div class="pgrid2 qc-head">${E.cell("Voucher No", v.cv_no)}${E.cell(unpaid(v) ? "Issued" : "Date", mdy(unpaid(v) ? v.issued_on || v.cv_date : v.cv_date))}${E.cell("Received From", v.received_from)}${E.cell(unpaid(v) ? "Amount to Collect (₱)" : "Amount (₱)", peso(v.amount), "hl")}
+      <div class="pgrid2 qc-head">${E.cell("Voucher No", v.cv_no)}${E.cell(unpaid(v) ? "Issued" : "Date", mdy(unpaid(v) ? v.issued_on || v.cv_date : v.cv_date))}${E.cell("Received From", v.received_from)}${E.cell(unpaid(v) ? "Amount to Collect" : "Amount", peso(v.amount), "hl")}
         ${E.cell("Method", methodText(v))}${E.cell("Reference No", v.reference_no || "")}${E.cell("Note", v.note || "")}${E.cell("Recorded By", v.created_by_name || "")}${payerOf(v) ? E.cell(...payerOf(v)) : ""}</div>
       <p class="muted">${esc(E.words(v.amount, "PESOS"))}</p>
       <fieldset class="opt"><legend>Receipt</legend>${url ? (isPdf ? `<button type="button" class="btn" id="cvOpen">${ic("eye")} Open the Receipt (PDF)</button>`
@@ -766,7 +766,7 @@
     const opts = { ...METHODS, ...(v.customer_id ? { account: "Customer Account" } : {}) };
     let key = "";
     const m = E.modal(`Receive Payment — ${v.cv_no}`, `<p class="muted" style="margin-top:0">${esc(v.received_from)} · ${esc(v.note || "")}</p><div class="fields wide">
-        <label for="rpAmt">Amount Received (₱) *</label><input type="number" id="rpAmt" min="0" step="0.01" inputmode="decimal" value="${num(v.amount)}">
+        <label for="rpAmt">Amount Received *</label><input type="number" id="rpAmt" min="0" step="0.01" inputmode="decimal" value="${num(v.amount)}">
         <label for="rpMethod">Paid By *</label><select id="rpMethod">${Object.entries(opts).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("")}</select>
         <span>QR Code *</span><div class="rp-qr" id="rpQr"></div>
         <label for="rpRef">Reference No</label><input type="text" id="rpRef" maxlength="60" placeholder="e.g. bank or GCash ref no (optional)">
@@ -874,7 +874,7 @@
     return E.pagedDoc({
       head: E.printHead("MONTHLY COLLECTION", `<div class="sb-no"><small>Month</small><b>${esc(monthText(m))}</b></div>`), contHead: E.printHead("MONTHLY COLLECTION", ""),
       top: "", boxTitle: `Collection Vouchers — ${monthText(m)}`,
-      thead: `<tr><th>#</th><th>Voucher No</th><th>Date</th><th>Received From</th><th>Method</th><th class="num">Amount (₱)</th></tr>`,
+      thead: `<tr><th>#</th><th>Voucher No</th><th>Date</th><th>Received From</th><th>Method</th><th class="num">Amount</th></tr>`,
       rows: sorted, rowHtml: (v, i) => `<tr><td>${i + 1}</td><td>${esc(v.cv_no)}</td><td>${esc(mdy(v.cv_date))}</td><td>${esc(v.received_from)}</td><td>${esc(methodLabel(v.method))}</td><td class="num">${peso(v.amount)}</td></tr>`,
       totalRow: `<tr class="ptl-tot"><td colspan="5">TOTAL COLLECTED · ${sorted.length} VOUCHER(S)</td><td class="num">${peso(total)}</td></tr>`,
       bottom: `<p class="pdecl">${esc(E.words(total, "PESOS"))}</p>${E.sigs("Prepared by", "Checked by")}`,

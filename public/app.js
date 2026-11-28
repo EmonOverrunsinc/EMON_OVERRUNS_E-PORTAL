@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.380"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.382"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.380"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.382"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -57,7 +57,7 @@
 
   // ---------- helpers ----------
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  // 3.63: amounts are hidden (•••••) on the screens and prints of a staff login without "13 See Balances & History (₱)"
+  // 3.63: amounts are hidden (•••••) on the screens and prints of a staff login without "13 See Balances & History"
   const peso = (n) => (S.hideMoney ? "•••••" : Number(n || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   const pad = (n) => String(n).padStart(2, "0");
   // 2.9: small helpers shared by every section (they were written again in each file)
@@ -819,7 +819,7 @@
     ]);
     S.mainDirector = md === true; S.position = pos;
     try { if (data && sessionStorage.getItem("eoAskPasskey") === "1") { sessionStorage.removeItem("eoAskPasskey"); setTimeout(askPasskey, 2500); } } catch (_) {}
-    // 3.63: a staff login sees amounts only with "13 See Balances & History (₱)"; the screen carries the login's name (against screenshots)
+    // 3.63: a staff login sees amounts only with "13 See Balances & History"; the screen carries the login's name (against screenshots)
     S.hideMoney = !!data && data.role !== "admin" && Array.isArray(data.modules) && !data.modules.includes("money");
     S.hideMoneyBase = S.hideMoney;
     staffMark(data);
@@ -1685,7 +1685,7 @@
     const other = OTHER.filter((o) => o[2]()).map(([k, label, , icon], j) => `<a href="#${k}" style="--i:${items.length + j + 1}" class="sub ${k === cur ? "active" : ""}"><span class="num">${ic(icon)}</span><span class="lbl">${esc(label)}</span></a>`).join("");
     const av = avatarUrl();
     const who = S.profile.full_name || S.session.user.email;
-    const currency = ["inventory", "newstockbill", "stockbill", "ebill"].includes(key) ? "BDT" : "PHP (₱)";
+    const currency = ["inventory", "newstockbill", "stockbill", "ebill"].includes(key) ? "BDT" : "PHP";
     // 3.36: no "?" on any page; the dashboard has no title (its greeting stands in its place)
     const over = (MENU.find((m) => m.k === cur) || {}).label || `${C.company.name} E-Portal`; // 3.99.191 · 3.99.209: same section as the menu (a payment shows PAYMENTS)
     const bandHtml = key === "dashboard" ? "" : `<div class="band">${backBtn()}<h1${over.toLowerCase() === title.toLowerCase() ? "" : ` data-over="${esc(over.toUpperCase())}"`}>${esc(title)}</h1></div>`;
@@ -2855,6 +2855,11 @@
     if (btn.disabled) return;
     const label = btn.innerHTML;
     btn.disabled = true; btn.innerHTML = `<span class="spin sm"></span> Preparing ZIP…`;
+    // 3.99.382: a loading pop-up while the PDF is made; "Downloaded" when it is done
+    const pop = document.createElement("div"); pop.className = "dl-pop"; pop.setAttribute("role", "status");
+    pop.innerHTML = `<div class="dl-card"><span class="dl-ring"><i></i></span><b>Preparing your document</b><small>${esc(title)}</small><span class="dl-bar"><i></i></span></div>`;
+    document.body.appendChild(pop); requestAnimationFrame(() => pop.classList.add("in"));
+    let ok = false;
     const capture = desk.cloneNode(true);
     capture.removeAttribute("id");
     capture.classList.add("pdf-capture");
@@ -2866,13 +2871,14 @@
       copies.forEach((canvas, i) => { canvas.width = originals[i].width; canvas.height = originals[i].height; canvas.getContext("2d").drawImage(originals[i], 0, 0); });
       const blob = await renderPdf(capture);
       const name = (String(title).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "Document") + ".pdf";
-      await downloadZip(name, blob);
+      await downloadZip(name, blob); ok = true;
     } catch (e) {
       console.error(e);
       toast(`Could not make the PDF: ${e.message || e}. Use Print instead.`, true);
     } finally {
       capture.remove();
       btn.disabled = false; btn.innerHTML = label;
+      if (ok) { pop.classList.add("done"); pop.querySelector("b").textContent = "Downloaded"; setTimeout(() => pop.remove(), 1400); } else pop.remove();
     }
   }
   // 3.99.192: the security band of every printed page: fine waves and two lines of EMON OVERRUNS with the document's own number

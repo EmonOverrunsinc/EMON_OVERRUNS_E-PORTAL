@@ -9,7 +9,7 @@
   const bindTools = (root) => E.bindRecordTools && E.bindRecordTools(root);
   // Menu access an employee can be given (Community, Verification and Download Forms are open to everyone).
   // 3.31: Purchase Order has its own menu access (5); no Employee (HR): 11 EO-Office gives Employees, Payroll and Job Applications
-  const MODULES = [["customers", "1 Customer"], ["invoices", "2 Invoice"], ["payments", "3 Payment"], ["creditmemos", "4 Credit Memo"], ["purchase", "5 Purchase Order"], ["projects", "7 Project"], ["billing", "8 Billing"], ["inventory", "10 E-Bill"], ["eooffice", "11 Regional Office Manila"], ["ai", "12 EVA AI"], ["money", "13 See Balances & History (₱)"], ["outlets", "14 Outlets"], ["mbilling", "15 Manila Billing"]];
+  const MODULES = [["customers", "1 Customer"], ["invoices", "2 Invoice"], ["payments", "3 Payment"], ["creditmemos", "4 Credit Memo"], ["purchase", "5 Purchase Order"], ["projects", "7 Project"], ["billing", "8 Billing"], ["inventory", "10 E-Bill"], ["eooffice", "11 Regional Office Manila"], ["ai", "12 EVA AI"], ["money", "13 See Balances & History"], ["outlets", "14 Outlets"], ["mbilling", "15 Manila Billing"]];
   const accessText = (role, mods) => {
     if (role === "admin") return "Everything (EMON HASAN)";
     const list = (mods || []).map((m) => MODULES.find((x) => x[0] === m)?.[1]).filter(Boolean).join(", ") || "Dashboard and Community";
@@ -57,7 +57,7 @@
       $("#emRes").innerHTML = E.grid({ cols: [
         { label: "Employee No", get: (r) => r.employee_no }, { label: "Name", html: (r) => `${esc(fullName(r))} ${verifiedBadge(r.verified)}` }, { label: "Position", get: (r) => r.position || "" },
         { label: "Email", get: (r) => r.email }, { label: "Access", get: (r) => accessText(r.role, r.modules) },
-        { label: "Salary (₱)", num: true, get: (r) => peso(r.monthly_salary) },
+        { label: "Salary", num: true, get: (r) => peso(r.monthly_salary) },
         { label: "Status", html: (r) => r.approval_status === "pending" ? `<span class="pill pending">WAITING FOR APPROVAL</span>` : r.status === "waiting" ? `<span class="pill pending">WAITING SIGN-UP</span>` : pill(r.status) }],
         rows, onRow: true, empty: f === "terminated" ? "No terminated employees." : "No employees yet." });
       E.bindGrid($("#emRes"), rows, (r) => (location.hash = "employee/" + r.id));
@@ -95,7 +95,7 @@
             <label for="neLast">Last Name *</label><input type="text" id="neLast" required value="${val("last_name")}">
             <label for="nePos">Position</label><input type="text" id="nePos" placeholder="e.g. Warehouse Staff" value="${val("position")}">
             <label for="neHired">Date Hired</label><input type="date" id="neHired" value="${ed ? val("date_hired") : isoToday()}">
-            <label for="neSalary">Monthly Salary (₱)</label><input type="number" id="neSalary" min="0" step="0.01" value="${val("monthly_salary", "0")}">
+            <label for="neSalary">Monthly Salary</label><input type="number" id="neSalary" min="0" step="0.01" value="${val("monthly_salary", "0")}">
           </div>
           <div class="fields wide">
             <label for="neEmail">Email (login) *</label><input type="email" id="neEmail" required value="${val("email")}" ${linked ? "disabled" : ""}>
@@ -103,7 +103,7 @@
             <label for="neAddr">Present Address</label><input type="text" id="neAddr" value="${val("address")}">
             <label for="nePerm">Permanent Address</label><input type="text" id="nePerm" value="${val("permanent_address")}">
             <label for="neSss">SSS No</label><input type="text" id="neSss" maxlength="20" placeholder="e.g. 34-1234567-8 (leave empty if none)" value="${val("sss_no")}">
-            <label for="neSssAmt">SSS Contribution / Month (₱)</label><input type="number" id="neSssAmt" min="0" step="0.01" inputmode="decimal" placeholder="taken off each salary payslip" value="${ed && num(x.sss_amount) ? num(x.sss_amount) : ""}">
+            <label for="neSssAmt">SSS Contribution / Month</label><input type="number" id="neSssAmt" min="0" step="0.01" inputmode="decimal" placeholder="taken off each salary payslip" value="${ed && num(x.sss_amount) ? num(x.sss_amount) : ""}">
             <label for="neWork">Assigned Location</label><input type="text" id="neWork" maxlength="200" placeholder="Where the employee works, e.g. Warehouse · Pasay City" value="${val("work_location")}">
             <label for="neHrs">Duty Hours</label><input type="text" id="neHrs" placeholder="e.g. 9:00 AM - 6:00 PM" value="${val("duty_hours")}">
             ${ed ? "" : `<label for="nePhoto">Photo</label><input type="file" id="nePhoto" accept="image/*">`}
@@ -244,7 +244,7 @@
         <div class="ch-main"><div class="ch-name"><h2>${esc(fullName(em))}</h2>${verifiedBadge(verified)}${em.status === "waiting" ? `<span class="pill pending">WAITING SIGN-UP</span>` : pill(em.status)}</div>
           <div class="ch-sub">${E.titleHtml(em.role, em.position)} · ${esc(em.email)}${em.phone ? " · " + esc(em.phone) : ""}</div>
           <div class="ch-place" id="emPlace"></div>
-          <div class="ch-ids">${E.idBox("Employee No", em.employee_no)}${E.idBox("Date Hired", mdy(em.date_hired))}${E.idBox("Monthly Salary (₱)", peso(em.monthly_salary))}${E.idBox("Access Level", E.roleName(em.role).toUpperCase())}</div></div></section>
+          <div class="ch-ids">${E.idBox("Employee No", em.employee_no)}${E.idBox("Date Hired", mdy(em.date_hired))}${E.idBox("Monthly Salary", peso(em.monthly_salary))}${E.idBox("Access Level", E.roleName(em.role).toUpperCase())}</div></div></section>
       <section class="wp-card" id="emWork"><div class="wp-head"><h3>${ic("building")} Currently Working At</h3>${isAdmin() && em.status !== "terminated" ? `<button type="button" class="btn small primary" id="emTransfer">${ic("pin")} Transfer / Assign New Location</button>` : ""}</div>
         <div class="wp-now" id="emWorkNow">${busy()}</div><div class="wp-hist" id="emWorkHist"></div></section>
       ${salaryTiles(em, st)}
@@ -474,30 +474,30 @@
     return rows;
   }
   const ACCT_COLS = [{ label: "Date", get: (r) => mdy(r.date) }, { label: "Ref No", get: (r) => r.ref }, { label: "Description", get: (r) => r.desc },
-    { label: "Payslip (₱)", key: "plus", num: true, get: (r) => (r.plus ? peso(r.plus) : "") }, { label: "Paid (₱)", key: "minus", num: true, get: (r) => (r.minus ? peso(r.minus) : "") },
-    { label: "Unpaid Salary (₱)", num: true, get: (r) => peso(r.balance) }];
+    { label: "Payslip", key: "plus", num: true, get: (r) => (r.plus ? peso(r.plus) : "") }, { label: "Paid", key: "minus", num: true, get: (r) => (r.minus ? peso(r.minus) : "") },
+    { label: "Unpaid Salary", num: true, get: (r) => peso(r.balance) }];
   // 3.58: only what is still to pay: the unpaid payslips with their unpaid amount
   const unpaidGrid = (slips) => {
     const rows = slips.filter((p) => num(p.balance) > 0);
     if (!rows.length) return `<div class="banner ok">✔ No unpaid salary. Every payslip is paid.</div>`;
     return `<div class="banner warn">UNPAID SALARY: <b>₱ ${peso(rows.reduce((t, p) => t + num(p.balance), 0))}</b> on ${rows.length} payslip${rows.length === 1 ? "" : "s"}</div>`
-      + E.grid({ cols: [SLIP_COLS[0], SLIP_COLS[2], { label: "Net Salary (₱)", key: "net_pay", num: true, get: (r) => peso(r.net_pay) }, { label: "Paid (₱)", key: "paid", num: true, get: (r) => peso(r.paid) },
-        { label: "Unpaid (₱)", key: "balance", num: true, get: (r) => peso(r.balance) }, { label: "Status", html: slipPill }],
+      + E.grid({ cols: [SLIP_COLS[0], SLIP_COLS[2], { label: "Net Salary", key: "net_pay", num: true, get: (r) => peso(r.net_pay) }, { label: "Paid", key: "paid", num: true, get: (r) => peso(r.paid) },
+        { label: "Unpaid", key: "balance", num: true, get: (r) => peso(r.balance) }, { label: "Status", html: slipPill }],
         rows, onRow: true, foot: { net_pay: sum(rows, "net_pay"), paid: sum(rows, "paid"), balance: sum(rows, "balance") } });
   };
   const accountGrid = (acct) => E.grid({ cols: ACCT_COLS, rows: acct.slice().reverse(), foot: { plus: peso(acct.reduce((t, r) => t + r.plus, 0)), minus: peso(acct.reduce((t, r) => t + r.minus, 0)) }, empty: "No payslips yet. Press Issue Payslip." });
   const SLIP_COLS = [
     { label: "Payslip No", get: (r) => r.payslip_no }, { label: "Type", get: (r) => PAY_TYPE[r.pay_type] || r.pay_type }, { label: "For Month", get: (r) => monthText(r.period_month) },
-    { label: "Issued", get: (r) => mdy(r.pay_date) }, { label: "Deductions (₱)", key: "deductions", num: true, get: (r) => peso(r.deductions) },
-    { label: "Net Salary (₱)", key: "net_pay", num: true, get: (r) => peso(r.net_pay) }, { label: "Paid (₱)", key: "paid", num: true, get: (r) => peso(r.paid) },
-    { label: "Unpaid (₱)", key: "balance", num: true, get: (r) => peso(r.balance) }, { label: "Status", html: slipPill }
+    { label: "Issued", get: (r) => mdy(r.pay_date) }, { label: "Deductions", key: "deductions", num: true, get: (r) => peso(r.deductions) },
+    { label: "Net Salary", key: "net_pay", num: true, get: (r) => peso(r.net_pay) }, { label: "Paid", key: "paid", num: true, get: (r) => peso(r.paid) },
+    { label: "Unpaid", key: "balance", num: true, get: (r) => peso(r.balance) }, { label: "Status", html: slipPill }
   ];
   const sum = (rows, k) => peso(rows.reduce((t, r) => t + num(r[k]), 0));
   const slipGrid = (rows, empty, cols = SLIP_COLS) => E.grid({ cols, rows, onRow: true, foot: { deductions: sum(rows, "deductions"), net_pay: sum(rows, "net_pay"), paid: sum(rows, "paid"), balance: sum(rows, "balance") }, empty });
   const payCols = (slips) => {
     const no = new Map(slips.map((p) => [p.id, p.payslip_no]));
     return [{ label: "Payment No", get: (r) => r.payment_no }, { label: "Pay Date", get: (r) => mdy(r.pay_date) }, { label: "Payslip No", get: (r) => no.get(r.payslip_id) || r.payslips?.payslip_no || "" },
-      { label: "Amount (₱)", key: "amount", num: true, get: (r) => peso(r.amount) }, { label: "Method", get: (r) => r.method || "" },
+      { label: "Amount", key: "amount", num: true, get: (r) => peso(r.amount) }, { label: "Method", get: (r) => r.method || "" },
       { label: "ID Card Verified", get: (r) => (r.card_no ? `✔ ${r.card_no}` : "") }, { label: "Paid By", get: (r) => r.created_by_name || "" }];
   };
   const payGrid = (rows, slips, empty, extra = []) => E.grid({ cols: [...extra, ...payCols(slips)], rows, onRow: true, foot: { amount: sum(rows, "amount") }, empty });
@@ -511,7 +511,7 @@
     E.openPreview(`Salary Statement ${em.employee_no}`, E.listingPages({
       title: "Salary Statement", range: `${fullName(em)} · ${em.employee_no}${em.position ? " · " + em.position : ""}`,
       cols: ACCT_COLS, rows: acct,
-      summary: { title: "Summary (PHP)", cols: ["", "Amount (₱)"], rows: [["Payslips Issued", peso(st.issued)], ["Salary Paid", peso(st.paid)]], total: ["Unpaid Salary:", peso(st.unpaid)] },
+      summary: { title: "Summary (PHP)", cols: ["", "Amount"], rows: [["Payslips Issued", peso(st.issued)], ["Salary Paid", peso(st.paid)]], total: ["Unpaid Salary:", peso(st.unpaid)] },
       criteria: `Employee: ${em.employee_no} · Monthly Salary: ₱ ${peso(em.monthly_salary)}`
     }));
   }
@@ -539,15 +539,15 @@
         </div>
         <div class="fields wide">
           <span class="sec-k">EARNINGS</span><span></span>
-          ${money("psBasic", "Basic Pay (₱)", "salary other", num(em?.monthly_salary))}
-          ${money("psAllow", "Allowances (₱)", "salary")}
-          ${money("psOt", "Overtime Pay (₱)", "salary")}
-          ${money("psBonus", "Bonus (₱)", "salary bonus")}
-          ${money("psAdv", "Advance Amount (₱)", "advance")}
+          ${money("psBasic", "Basic Pay", "salary other", num(em?.monthly_salary))}
+          ${money("psAllow", "Allowances", "salary")}
+          ${money("psOt", "Overtime Pay", "salary")}
+          ${money("psBonus", "Bonus", "salary bonus")}
+          ${money("psAdv", "Advance Amount", "advance")}
           <span class="sec-k" data-for-k="salary other">DEDUCTIONS</span><span data-for-k="salary other"></span>
-          ${money("psAdvDed", "Less: Advance Deduction (₱)", "salary")}
-          ${money("psSss", "Less: SSS Contribution (₱)", "salary", num(em?.sss_amount))}
-          ${money("psOther", "Less: Other Deductions (₱)", "salary other")}
+          ${money("psAdvDed", "Less: Advance Deduction", "salary")}
+          ${money("psSss", "Less: SSS Contribution", "salary", num(em?.sss_amount))}
+          ${money("psOther", "Less: Other Deductions", "salary other")}
           <div class="fpair" data-for="salary other"><label for="psDedNote">Deduction Reason</label><input type="text" id="psDedNote" maxlength="200" placeholder="e.g. 2 days absent, late, damage"></div>
         </div>
       </div>
@@ -570,7 +570,7 @@
       $$("#psType button", d).forEach((b) => b.classList.toggle("on", b.dataset.t === t));
       $$(".fpair", d).forEach((p) => (p.hidden = !p.dataset.for.split(" ").includes(t)));
       $$("[data-for-k]", d).forEach((p) => (p.hidden = !p.dataset.forK.split(" ").includes(t)));
-      $("label[for=psBasic]", d).textContent = t === "other" ? "Amount (₱)" : "Basic Pay (₱)";
+      $("label[for=psBasic]", d).textContent = t === "other" ? "Amount" : "Basic Pay";
       if (t === "salary" && !num($("#psBasic", d).value)) $("#psBasic", d).value = num(emp()?.monthly_salary);
       if (t === "other") $("#psBasic", d).value = 0;
       calc();
@@ -616,7 +616,7 @@
       </div></div>
       <fieldset class="opt"><legend>Payslip to pay</legend><div id="paSlips" class="pa-slips"><p class="muted">Choose the employee.</p></div></fieldset>
       <div class="formgrid"><div class="fields wide">
-        <label for="paAmt">Amount to Pay (₱) *</label><input type="number" id="paAmt" min="0" step="0.01">
+        <label for="paAmt">Amount to Pay *</label><input type="number" id="paAmt" min="0" step="0.01">
         <label for="paMethod">Method</label><select id="paMethod"><option>Cash</option><option>Bank Transfer</option><option>GCash</option><option>Online Transfer</option></select>
         <label for="paRef">Reference No</label><input type="text" id="paRef" maxlength="60">
         <label for="paNotes">Notes</label><input type="text" id="paNotes" maxlength="300">
@@ -808,9 +808,9 @@
         : notIn ? `<div class="banner warn">${notIn} employee${notIn === 1 ? "" : "s"}: no salary payslip for ${esc(monthText(m))} yet. Press <b>Issue Payslip</b>.</div>`
         : staff.length ? `<div class="banner ok">✔ Every employee has the salary payslip of ${esc(monthText(m))}.</div>` : "";
       $("#prActive").innerHTML = E.grid({ cols: [{ label: "Employee No", get: (r) => r.employee_no }, { label: "Name", get: (r) => fullName(r) }, { label: "Position", get: (r) => r.position || "" },
-        { label: "Estimated Salary (₱)", key: "monthly_salary", num: true, get: (r) => peso(r.monthly_salary) }, { label: "Payslip", get: (r) => r.slip_no || "—" },
-        { label: "Net Salary (₱)", key: "net", num: true, get: (r) => (r.slip ? peso(r.net) : "—") }, { label: "Paid This Month (₱)", key: "paidM", num: true, get: (r) => peso(r.paidM) },
-        { label: "Unpaid Salary (₱)", key: "unpaid", num: true, get: (r) => peso(r.unpaid) }, { label: "Status", html: (r) => (r.slip ? slipPill(r.slip) : pill("pending", "NO PAYSLIP")) }],
+        { label: "Estimated Salary", key: "monthly_salary", num: true, get: (r) => peso(r.monthly_salary) }, { label: "Payslip", get: (r) => r.slip_no || "—" },
+        { label: "Net Salary", key: "net", num: true, get: (r) => (r.slip ? peso(r.net) : "—") }, { label: "Paid This Month", key: "paidM", num: true, get: (r) => peso(r.paidM) },
+        { label: "Unpaid Salary", key: "unpaid", num: true, get: (r) => peso(r.unpaid) }, { label: "Status", html: (r) => (r.slip ? slipPill(r.slip) : pill("pending", "NO PAYSLIP")) }],
         rows: staff, onRow: true, foot: { monthly_salary: sum(staff, "monthly_salary"), net: sum(staff, "net"), paidM: sum(staff, "paidM"), unpaid: sum(staff, "unpaid") }, empty: "No employees." });
       E.bindGrid($("#prActive"), staff, (r) => (location.hash = "employee/" + r.id));
       $("#prPays").innerHTML = payGrid(payRows, [], `No salary paid in ${monthText(m)}.`, [{ label: "Employee", get: (r) => fullName(r.employees || {}) }]);
@@ -830,7 +830,7 @@
         cols: [{ label: "Payslip No", get: (r) => r.payslip_no }, { label: "Employee", get: (r) => fullName(r.employees || {}) }, { label: "Type", get: (r) => PAY_TYPE[r.pay_type] },
           { label: "Deductions", num: true, get: (r) => peso(r.deductions) }, { label: "Net Salary", num: true, get: (r) => peso(r.net_pay) }, { label: "Paid", num: true, get: (r) => peso(r.paid) },
           { label: "Unpaid", num: true, get: (r) => peso(r.balance) }, { label: "Status", get: (r) => (SLIP_ST[r.status] || SLIP_ST.paid)[1] }],
-        rows, summary: { title: "Summary (PHP)", cols: ["", "Amount (₱)"], rows: [["Net Salary", sum(rows, "net_pay")], ["Deductions", sum(rows, "deductions")], ["Paid", sum(rows, "paid")]], total: ["Unpaid:", sum(rows, "balance")] },
+        rows, summary: { title: "Summary (PHP)", cols: ["", "Amount"], rows: [["Net Salary", sum(rows, "net_pay")], ["Deductions", sum(rows, "deductions")], ["Paid", sum(rows, "paid")]], total: ["Unpaid:", sum(rows, "balance")] },
         criteria: `Month: ${$("#prMonth").value}`
       }));
     };
@@ -844,7 +844,7 @@
         <div class="fields wide"><label for="poTitle">Position Title *</label><input type="text" id="poTitle" placeholder="e.g. Warehouse Supervisor">
           <label for="poCo">Company Name</label><input type="text" id="poCo" value="${esc(C.company.name)}">
           <label for="poCode">Company Code</label><input type="text" id="poCode" value="EO" maxlength="4" placeholder="2–4 letters, first part of the Application No"></div>
-        <div class="fields wide"><label for="poSal">Monthly Salary (₱)</label><input type="number" id="poSal" min="0" step="0.01" value="0">
+        <div class="fields wide"><label for="poSal">Monthly Salary</label><input type="number" id="poSal" min="0" step="0.01" value="0">
           <label for="poHrs">Duty Hours</label><input type="text" id="poHrs" placeholder="e.g. 12 HOURS DAILY">
           <label for="poDesc">Description</label><input type="text" id="poDesc"></div></div></div>
         <div class="wfoot"><button type="submit" class="btn primary">Add Position</button></div></form>` : ""}
@@ -859,7 +859,7 @@
       const rows = data || [];
       $("#poRes").innerHTML = E.grid({ cols: [
         { label: "Position", get: (r) => r.title }, { label: "Company", get: (r) => r.company_name }, { label: "Code", get: (r) => r.company_code },
-        { label: "Monthly Salary (₱)", num: true, get: (r) => peso(r.monthly_salary) }, { label: "Duty Hours", get: (r) => r.duty_hours || "" },
+        { label: "Monthly Salary", num: true, get: (r) => peso(r.monthly_salary) }, { label: "Duty Hours", get: (r) => r.duty_hours || "" },
         { label: "Applications", num: true, get: (r) => count.get(r.id) || 0 }, { label: "Status", html: (r) => r.is_open ? `<span class="pill active">OPEN</span>` : `<span class="pill closed">CLOSED</span>` },
         { label: "", html: (r) => isAdmin() ? `<button type="button" class="btn" data-open="${r.id}" data-v="${r.is_open ? 0 : 1}">${r.is_open ? "Close" : "Re-open"}</button> ${tools("job_positions", r, `Job position ${r.title}`, { reload: load })}` : "" }],
         rows, empty: "No job positions yet." });
@@ -979,7 +979,7 @@
       <div class="cols">
         <div><h3>Address &amp; Personal Information</h3>${E.kvTable([["Present Address", a.present_address], ["Permanent Address", a.permanent_address], ["Father's Name", a.father_name], ["Mother's Name", a.mother_name], ["Wife's / Husband's Name", a.spouse_name], ["Date of Birth", E.mdy(a.date_of_birth)], ["Birth Place", a.birth_place], ["BRC / NID / Passport No", a.id_number], ["Gender", (a.gender || "").toUpperCase()], ["Religion", a.religion], ["Blood Group", a.blood_group],
           ["Emergency Contact", a.emergency_name], ["Relationship", a.emergency_relation], ["Emergency Contact No", a.emergency_phone], ["Emergency Address", a.emergency_address]])}</div>
-        <div><h3>Position Applied For</h3>${E.kvTable([["Position", a.position_title], ["Company", a.company_name], ["Monthly Salary (₱)", a.apply_salary != null ? peso(a.apply_salary) : ""], ["Duty Hours", a.apply_duty_hours], ["Joining Date", E.mdy(a.apply_joining_date)]])}</div>
+        <div><h3>Position Applied For</h3>${E.kvTable([["Position", a.position_title], ["Company", a.company_name], ["Monthly Salary", a.apply_salary != null ? peso(a.apply_salary) : ""], ["Duty Hours", a.apply_duty_hours], ["Joining Date", E.mdy(a.apply_joining_date)]])}</div>
       </div>
       <h3>Work Experience</h3>${E.grid({ cols: [{ label: "Company", get: (r) => r.company || "" }, { label: "Position", get: (r) => r.position || "" }, { label: "From", get: (r) => r.from || "" }, { label: "To", get: (r) => r.to || "" }], rows: exp, empty: "No previous experience." })}
       <h3>Requirements &amp; Files</h3>${E.filesHtml(att.filter((x) => x.kind !== "signed_form"), "No requirements uploaded.")}
@@ -1010,8 +1010,8 @@
   // ======================================================================
   const PRJ_COLS = [
     { label: "Project No", get: (r) => r.project_no }, { label: "Title", get: (r) => r.title }, { label: "Location", get: (r) => r.location || "" },
-    { label: "Start", get: (r) => mdy(r.start_date) }, { label: "Total Cost (₱)", key: "total_cost", num: true, get: (r) => peso(r.total_cost) },
-    { label: "Paid (₱)", key: "total_paid", num: true, get: (r) => peso(r.total_paid) }, { label: "Remaining (₱)", key: "remaining", num: true, get: (r) => peso(r.remaining) },
+    { label: "Start", get: (r) => mdy(r.start_date) }, { label: "Total Cost", key: "total_cost", num: true, get: (r) => peso(r.total_cost) },
+    { label: "Paid", key: "total_paid", num: true, get: (r) => peso(r.total_paid) }, { label: "Remaining", key: "remaining", num: true, get: (r) => peso(r.remaining) },
     { label: "Status", html: (r) => pill(r.status) }
   ];
   // A budget line's qty is optional: empty when it was left out.
@@ -1051,7 +1051,7 @@
             <label for="pjEnd">Target End Date</label><input type="date" id="pjEnd"></div></div></fieldset>
         <fieldset class="opt"><legend>Project Budget</legend>
           <div class="hint small">Write each budget line with its amount. The qty is optional.</div>
-          <div class="grid-scroll"><table class="grid budget"><thead><tr><th>Description *</th><th class="num">Qty (optional)</th><th class="num">Amount (₱) *</th><th></th></tr></thead><tbody id="pjLines"></tbody>
+          <div class="grid-scroll"><table class="grid budget"><thead><tr><th>Description *</th><th class="num">Qty (optional)</th><th class="num">Amount *</th><th></th></tr></thead><tbody id="pjLines"></tbody>
           <tfoot><tr><td colspan="2" class="num">Total Project Cost</td><td class="num" id="pjTotal">0.00</td><td></td></tr></tfoot></table></div>
           <div class="btnrow"><button type="button" class="btn" id="pjAdd">+ Add Budget Line</button></div>
           <small id="pjWords"></small></fieldset>
@@ -1114,7 +1114,7 @@
       ${E.box("Project", `<div class="pgrid2">${E.cell("Project Title", pr.title, "span2")}${E.cell("Location", pr.location)}${E.cell("Start / End", `${mdy(pr.start_date) || "—"} → ${mdy(pr.end_date) || "—"}`)}${E.cell("Description", pr.description, "span2")}</div>`)}
       ${E.box("Project Budget", `<table class="rp"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead><tbody>
         ${lines.map((l) => `<tr><td>${esc(l.description)}</td><td class="num">${esc(qtyOf(l))}</td><td class="num">${peso(l.amount)}</td></tr>`).join("")}
-        <tr class="grand"><td colspan="2" class="num">TOTAL PROJECT COST (₱)</td><td class="num">${peso(pr.total_cost)}</td></tr></tbody></table>
+        <tr class="grand"><td colspan="2" class="num">TOTAL PROJECT COST</td><td class="num">${peso(pr.total_cost)}</td></tr></tbody></table>
         <div class="pcell"><div class="pl">Amount in Words</div><div class="pv words">${esc(words(pr.total_cost))}</div></div>`)}
       ${E.sigs(`Prepared by: ${esc(pr.created_by_name || "")}${E.eoidOf?.(pr.created_by) ? ` · ${esc(E.eoidOf(pr.created_by))}` : ""}`, signed ? "Approved by" : "Approved by / Date", signed ? E.approvedBy(null, pr.approved_by_name, pr.approved_at) : null, E.signerBy(pr.created_by))}`]);
     $(".band h1").textContent = `Project › ${pr.project_no}`;
@@ -1129,20 +1129,20 @@
           <div class="tile ${num(pr.remaining) > 0 ? "warn" : "ok"}"><div class="k">Remaining</div><div class="v">₱ ${peso(pr.remaining)}</div></div></div>
         <div class="docgrid">${E.docCard({ key: "prj", title: `Project Application ${pr.project_no}`, sub: "Check it, then EMON HASAN approves it in the portal", ownerType: "project", ownerId: pr.id, att, print: printApp, canUpload: false, kind: "approval", copyName: "Approved Document",
           approved: signed ? { name: pr.approved_by_name, at: pr.approved_at } : null })}</div>
-        <div><b>Project Budget</b>${E.grid({ cols: [{ label: "Description", get: (r) => r.description }, { label: "Qty", num: true, get: qtyOf }, { label: "Amount (₱)", key: "amount", num: true, get: (r) => peso(r.amount) }], rows: lines, foot: { amount: peso(pr.total_cost) } })}</div>
+        <div><b>Project Budget</b>${E.grid({ cols: [{ label: "Description", get: (r) => r.description }, { label: "Qty", num: true, get: qtyOf }, { label: "Amount", key: "amount", num: true, get: (r) => peso(r.amount) }], rows: lines, foot: { amount: peso(pr.total_cost) } })}</div>
         ${pr.status === "pending" ? `<fieldset class="opt review"><legend>Approval</legend>
           <ol class="steps"><li><b>Check</b> the project application above (Print / Download).</li>
           ${isAdmin() ? `<li><b>Decide:</b> no signed copy is needed — your signature is printed on the project application when you approve.<div class="fields wide"><label for="pjNote">Note</label><input type="text" id="pjNote"></div>
             <div class="btnrow"><button type="button" class="btn ok" data-pa="approve">Approve Project</button><button type="button" class="btn danger" data-pa="reject">Reject</button></div></li>` : "<li>Waiting for EMON HASAN to approve.</li>"}</ol></fieldset>` : ""}
         ${pr.status === "approved" && w ? `<form class="opt" id="ppForm" novalidate style="border:1px solid var(--panel-line);background:var(--panel);padding:8px 10px"><b>Record Payment</b>
           <div class="formgrid"><div class="fields wide"><label for="ppDate">Date</label><input type="date" id="ppDate" value="${isoToday()}">
-            <label for="ppAmt">Amount (₱) *</label><input type="number" id="ppAmt" min="0.01" step="0.01">
+            <label for="ppAmt">Amount *</label><input type="number" id="ppAmt" min="0.01" step="0.01">
             <label for="ppBy">Received By *</label><input type="text" id="ppBy"></div>
           <div class="fields wide"><label for="ppMethod">Method</label><select id="ppMethod"><option>Cash</option><option>Bank Transfer</option><option>Online Transfer</option><option>Cheque</option></select>
             <label for="ppRef">Reference No</label><input type="text" id="ppRef">
             ${E.fileField("ppRcpt", "Receipt", 'accept="image/*,application/pdf"')}</div></div>
           <div class="btnrow"><button class="btn primary" type="submit">Save Payment</button>${isAdmin() ? `<button class="btn" type="button" data-pa="complete">Mark Project Completed</button>` : ""}</div></form>` : ""}
-        <div><b>Payments</b>${E.grid({ cols: [{ label: "Payment No", get: (r) => r.payment_no }, { label: "Date", get: (r) => mdy(r.pay_date) }, { label: "Received By", get: (r) => r.received_by }, { label: "Method", get: (r) => r.method || "" }, { label: "Reference No", get: (r) => r.reference_no || "" }, { label: "Amount (₱)", key: "amount", num: true, get: (r) => peso(r.amount) }, { label: "Recorded By", get: (r) => r.created_by_name || "" },
+        <div><b>Payments</b>${E.grid({ cols: [{ label: "Payment No", get: (r) => r.payment_no }, { label: "Date", get: (r) => mdy(r.pay_date) }, { label: "Received By", get: (r) => r.received_by }, { label: "Method", get: (r) => r.method || "" }, { label: "Reference No", get: (r) => r.reference_no || "" }, { label: "Amount", key: "amount", num: true, get: (r) => peso(r.amount) }, { label: "Recorded By", get: (r) => r.created_by_name || "" },
           { label: "Receipt", html: (r) => rcptOf[r.id] ? `<button type="button" class="btn small" data-open="${esc(rcptOf[r.id].storage_path)}" data-mime="${esc(rcptOf[r.id].mime || "")}" data-name="${esc(rcptOf[r.id].file_name)}">${ic("eye")} View</button>` : "—" },
           { label: "", html: (r) => tools("project_payments", r, `Project payment ${r.payment_no}`, { reload: () => V.project(id) }) }], rows: payments, foot: { amount: peso(pr.total_paid) }, empty: pr.status === "approved" ? "No payments yet." : "Payments can be recorded after the project is approved." })}</div>
         <div><b>Other Files</b>${E.filesHtml(att.filter((a) => a.kind !== "approval"), "No other files.")}</div>
@@ -1172,7 +1172,7 @@
       title: "Project Payment Record", range: `${esc(pr.project_no)} — ${esc(pr.title)}`,
       cols: [{ label: "Payment No", get: (r) => r.payment_no }, { label: "Date", get: (r) => mdy(r.pay_date) }, { label: "Received By", get: (r) => r.received_by }, { label: "Method", get: (r) => r.method || "" }, { label: "Reference No", get: (r) => r.reference_no || "" }, { label: "Amount", num: true, get: (r) => peso(r.amount) }],
       rows: payments,
-      summary: { title: "Project Summary (PHP)", cols: ["Item", "", "Amount (₱)"], rows: [["Total Project Cost", "", peso(pr.total_cost)], ["Total Paid", String(payments.length) + " payment(s)", peso(pr.total_paid)]], total: ["Remaining:", "", peso(pr.remaining)] },
+      summary: { title: "Project Summary (PHP)", cols: ["Item", "", "Amount"], rows: [["Total Project Cost", "", peso(pr.total_cost)], ["Total Paid", String(payments.length) + " payment(s)", peso(pr.total_paid)]], total: ["Remaining:", "", peso(pr.remaining)] },
       criteria: `Project: ${pr.project_no}\nStatus: ${pr.status.toUpperCase()}\nApproved By: ${pr.approved_by_name || "-"}`
     }));
     E.setRecords(`Project: ${pr.project_no}`);

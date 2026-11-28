@@ -268,7 +268,7 @@
         <div class="span2"><label for="olMap">Google Maps Location <button type="button" class="linkbtn" id="olMapTry">Check on Google Maps</button></label><input id="olMap" maxlength="1000" data-case="keep" placeholder="Paste the Google Maps link of the shop" value="${v("map_url")}"></div>
         <div><label for="olOpen">Opens at</label><input id="olOpen" type="time" step="300" value="${esc(to24(o?.opens) || (o ? "" : "09:00"))}"></div>
         <div><label for="olClose">Closes at</label><input id="olClose" type="time" step="300" value="${esc(to24(o?.closes) || (o ? "" : "21:00"))}"></div>
-        <div><label for="olRent">Monthly Rental (₱)</label><input id="olRent" type="number" min="0" step="0.01" value="${v("monthly_rent", "0")}"></div>
+        <div><label for="olRent">Monthly Rental</label><input id="olRent" type="number" min="0" step="0.01" value="${v("monthly_rent", "0")}"></div>
         <div><label for="olDay">Rent due day (1–31)</label><input id="olDay" type="number" min="1" max="31" value="${v("rent_day")}"></div>
         <div class="span2"><label>Customer Account (the shop's stock: orders, invoices, payments)</label><div id="olCust"></div></div>
         <div class="span2"><label for="olNote">Notes</label><textarea id="olNote" rows="2" maxlength="1000">${v("notes")}</textarea></div>
@@ -607,11 +607,11 @@
     const kinds = Object.entries(KIND).filter(([k]) => k !== "cashout");
     const m = E.modal(`${o.code} · ${isCash ? (row ? "Edit Cash Out" : "Cash Out") : row ? "Edit Expense" : "Expense / Bill"}`, `<div class="formgrid ol-form">
         <div><label for="oxDate">Date *</label><input id="oxDate" type="date" value="${row ? v("exp_date") : esc(pre?.date || today())}"></div>
-        ${isCash ? `<input type="hidden" id="oxKind" value="cashout">${!row && pre?.cashNow != null ? `<div class="span2 ol-prev">${ic("wallet")} Cash in the Shop <b>₱ ${peso(pre.cashNow)}</b><small>less than all: the rest goes on to the next day</small></div>` : ""}<div><label for="oxAmt">Amount (₱) *</label>${row && pre?.suggested > 0 ? `<button type="button" class="linkbtn" id="oxSuggest">Use that day’s remaining sales cash (₱ ${peso(pre.suggested)})</button>` : ""}<input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>
+        ${isCash ? `<input type="hidden" id="oxKind" value="cashout">${!row && pre?.cashNow != null ? `<div class="span2 ol-prev">${ic("wallet")} Cash in the Shop <b>₱ ${peso(pre.cashNow)}</b><small>less than all: the rest goes on to the next day</small></div>` : ""}<div><label for="oxAmt">Amount *</label>${row && pre?.suggested > 0 ? `<button type="button" class="linkbtn" id="oxSuggest">Use that day’s remaining sales cash (₱ ${peso(pre.suggested)})</button>` : ""}<input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>
         <div class="span2"><label for="oxPayee">Cash Out To *</label><input id="oxPayee" maxlength="120" placeholder="e.g. EMON HASAN / bank deposit" value="${v("payee")}"></div>`
         : `<div><label for="oxKind">Type *</label><select id="oxKind">${kinds.map(([k, l]) => `<option value="${k}"${row?.kind === k ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></div>
         <div><label for="oxPayee">Paid To</label><input id="oxPayee" maxlength="120" placeholder="Supplier / landlord / company" value="${v("payee")}"></div>
-        <div><label for="oxAmt">Amount (₱) *</label><input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>`}
+        <div><label for="oxAmt">Amount *</label><input id="oxAmt" type="number" min="0.01" step="0.01" inputmode="decimal" value="${v("amount")}"></div>`}
         <div class="span2"><label for="oxNote">Note</label><input id="oxNote" maxlength="500" value="${v("note")}"></div>
         <div class="span2"><label for="oxPic">${row ? "Add Receipt Photo" : "Receipt Photo"}</label><input id="oxPic" type="file" accept="image/*,application/pdf" multiple></div>
       </div>`, `<button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary" id="oxSave">${ic("check")} Save</button>`, { wide: true });
@@ -975,8 +975,8 @@
         ${r.note ? `<div class="w3"><small>Note</small><b>${esc(r.note)}</b></div>` : ""}</div>
       <div class="soa-tiles t5">${[["Net Sales", tot, "in"], ["GCash", gc, "pay"], ["Cash", num(r.cash), "in"], ["From Yesterday", prev, "pay"], ["Expenses", ex, "out"], ["Cash After Cost", cashAfterCost, "pay"], ["Cash Out", paidOut, "co"], ["Cash Left", left, `bal${left < 0 ? " neg" : ""}`]].map(([k, v, c]) => `<div class="soa-tile ${c}"><small>${k}</small><b>₱ ${P(v)}</b></div>`).join("")}</div>
       <div class="soa-sec"><h4>Sales</h4><table class="soa-t"><tbody>${PAY.map(([k, l]) => row(l, P(r[k]))).join("")}${row("<b>TOTAL NET SALES</b>", `<b>${P(tot)}</b>`, "tot")}</tbody></table></div>
-      ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount (₱)", 1]])}
-      ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount (₱)", 1]])}
+      ${list("Expenses", xp.map((x) => `<tr><td>DAILY OPERATION COST</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Description"], ["Amount", 1]])}
+      ${list("Cash Out", co.map((x) => `<tr><td>${esc(x.payee || "—")}</td><td class="num"><b>${P(x.amount)}</b></td></tr>`), [["Cash Out To"], ["Amount", 1]])}
       <div class="soa-sec"><h4>I Received</h4><table class="soa-t"><tbody>
         ${row("GCash received", P(gc))}${row("Cash received", P(paidOut))}${row("<b>Total received</b>", `<b>${P(gc + paidOut)}</b>`, "tot")}
         ${row("Cash Left", P(left))}
@@ -1047,13 +1047,13 @@
     table("Daily Sales", [["Date"], ...PAY.map(([, l]) => [l, 1]), ["Total Sales", 1], ["Expenses", 1], ["Cash Out", 1], ["Cash Left", 1]],
       days.map((x) => `<tr><td>${esc(sdate(x.dt))}</td>${PAY.map(([k]) => `<td class="num">${Z(x.r?.[k])}</td>`).join("")}<td class="num"><b>${Z(x.t)}</b></td><td class="num">${Z(x.ex)}</td><td class="num">${Z(x.co)}</td><td class="num"><b>${P(x.left)}</b></td></tr>`),
       `<tr><td>TOTAL</td>${PAY.map(([k]) => `<td class="num">${P(sum(d.sales, k))}</td>`).join("")}<td class="num">${P(d.net)}</td><td class="num">${P(sum(days, "ex"))}</td><td class="num">${P(sum(days, "co"))}</td><td class="num">${P(d.drawer)}</td></tr>`);
-    table("Expenses &amp; Bills", [["Date"], ["Type"], ["Paid To / Note"], ["Amount (₱)", 1]],
+    table("Expenses &amp; Bills", [["Date"], ["Type"], ["Paid To / Note"], ["Amount", 1]],
       xps.map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(String(KIND[r.kind] || r.kind || "").toUpperCase())}</td><td>${esc(payNote(r))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL EXPENSES</td><td class="num">${P(d.out)}</td></tr>`);
-    table("Cash Out", [["Date"], ["Cash Out To"], ["Note"], ["Amount (₱)", 1]],
+    table("Cash Out", [["Date"], ["Cash Out To"], ["Note"], ["Amount", 1]],
       [...d.sales.filter((r) => nonCash(r) > 0).map((r) => ({ exp_date: r.sale_date, payee: "GCash", amount: nonCash(r) })), ...cos].sort((a, b) => (a.exp_date < b.exp_date ? -1 : 1)).map((r) => `<tr><td>${esc(sdate(r.exp_date))}</td><td>${esc(String(r.payee || "—").toUpperCase())}</td><td>${esc(r.note && !/PAPER (SALES )?REPORT|RESTORED FROM/i.test(r.note) ? String(r.note).toUpperCase() : "—")}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="3">TOTAL CASH OUT</td><td class="num">${P(d.cash || 0)}</td></tr>`);
-    table("Stock Payments", [["Receipt No"], ["Date"], ["Amount (₱)", 1]],
+    table("Stock Payments", [["Receipt No"], ["Date"], ["Amount", 1]],
       pays.map((r) => `<tr><td class="mono">${esc(r.receipt_no || "")}</td><td>${esc(sdate(r.paid_date))}</td><td class="num"><b>${P(r.amount)}</b></td></tr>`),
       `<tr><td colspan="2">TOTAL STOCK PAYMENTS</td><td class="num">${P(d.paid)}</td></tr>`);
     // the signatures

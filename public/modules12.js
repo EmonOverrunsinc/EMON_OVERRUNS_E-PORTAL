@@ -1394,7 +1394,7 @@
       <div class="fields wide eva-sheet"><label for="bsUrl">Google Sheet Links (one per line: every sheet, or every tab, is read)</label>
         <textarea id="bsUrl" rows="3" data-case="keep" placeholder="https://docs.google.com/spreadsheets/d/…&#10;https://docs.google.com/spreadsheets/d/…">${esc((cfg.urls || (cfg.url ? [cfg.url] : [])).join("\n"))}</textarea>
         <label for="bsTab">Sheet (tab) Name</label><input type="text" id="bsTab" maxlength="60" data-case="keep" value="${esc(cfg.tab || "DATABASE")}">
-        <label for="bsCost">Cost per Box (₱)</label><input type="number" id="bsCost" min="0" step="0.01" inputmode="decimal" value="${esc(String(cost))}"></div>
+        <label for="bsCost">Cost per Box</label><input type="number" id="bsCost" min="0" step="0.01" inputmode="decimal" value="${esc(String(cost))}"></div>
       <div class="btnrow"><button type="button" class="btn primary" id="bsRead">${ic("download")} Read Sheet</button>
         <label class="btn" for="bsCsv">${ic("upload")} Read a CSV File</label><button type="button" class="btn" id="bsOut">${ic("download")} Download with Status</button><input type="file" id="bsCsv" accept=".csv,text/csv" hidden><span class="muted" id="bsStep"></span></div>
       <div class="tiles ai-tiles"><div class="tile"><span class="tile-ic">${ic("box")}</span><div class="k">Boxes in the Database</div><div class="v">${qtyText(cnt.count || 0)}</div><small>${last ? `read ${esc(E.dateTime(last.read_at))}` : "not read yet"}</small></div></div>
