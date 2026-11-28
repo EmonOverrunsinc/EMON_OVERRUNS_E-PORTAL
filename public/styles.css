@@ -6128,3 +6128,16 @@ th { hyphens: none; } .grid th, table th { word-break: keep-all; overflow-wrap: 
 .page .idcol-t th, .page .idcol-t td { display: table-cell; border: .25mm solid #b9c7e2 !important; padding: 1.3mm 1.8mm !important; vertical-align: middle; }
 .page .idcol-t th { width: 25%; background: #eef3fb; color: #3d4f75; font-size: 6.6pt !important; font-weight: 800; letter-spacing: .04em; line-height: 1.25; }
 .page .idcol-t td { width: 25%; font-size: 7.8pt !important; font-weight: 800; color: #0f2a66; overflow-wrap: anywhere; }
+/* 3.99.401: the RELEASED rubber stamp with the date (blue ink, double frame), above the Released By signature */
+.page .idcol-stampbox { display: flex; justify-content: flex-end; margin: 2mm 6mm -4mm 0; }
+.page .idcol-rstamp { --ink: #1d4fb0; display: grid; justify-items: center; gap: .8mm; padding: 1.8mm 5mm 2mm; color: var(--ink); border: .6mm solid var(--ink); border-radius: 2mm;
+  box-shadow: inset 0 0 0 .45mm #fff, inset 0 0 0 .8mm var(--ink); transform: rotate(-5deg); opacity: .9; text-align: center; }
+.page .idcol-rstamp b { display: flex; align-items: center; gap: 1.4mm; font: 900 13pt/1 Arial, Helvetica, sans-serif; letter-spacing: .26em; padding-bottom: 1mm; border-bottom: .35mm solid var(--ink); }
+.page .idcol-rstamp b svg { width: 5mm; height: 5mm; }
+.page .idcol-rstamp small { font: 900 9pt/1 Arial, Helvetica, sans-serif; letter-spacing: .14em; color: var(--ink) !important; }
+.page .idcol-rstamp i { font: 800 6pt/1 Arial, Helvetica, sans-serif; font-style: normal; letter-spacing: .12em; }
+/* 3.99.401: the one-time PIN inside the details table (next to STATUS), red */
+.page .idcol-t th.pin-k { color: #c0262d !important; background: #fdeeee !important; }
+.page .idcol-t td.pin-v { color: #c0262d !important; background: #fff7f7; }
+.page .idcol-t td.pin-v b { display: block; font-size: 13pt; letter-spacing: .3em; line-height: 1.1; color: #c0262d; }
+.page .idcol-t td.pin-v small { display: block; font-size: 5.6pt; font-weight: 800; letter-spacing: .04em; color: #c0262d; }

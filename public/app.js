@@ -6,10 +6,10 @@
 
   const C = window.EMON_CONFIG;
   const APP = "EMON OVERRUNS E-PORTAL";
-  const VERSION = "3.99.400"; // shown in the menu (3.79: kept with BUILD)
+  const VERSION = "3.99.401"; // shown in the menu (3.79: kept with BUILD)
   // 2.9: in the Windows app 1.8 the window buttons sit in the top bar (no Windows title bar): leave room and let the bar move the window
   if (window.EOApp && window.EOApp.overlay) document.documentElement.classList.add("eo-overlay");
-  const BUILD = "3.99.400"; // the same in index.html (?v=) and in version.json
+  const BUILD = "3.99.401"; // the same in index.html (?v=) and in version.json
   window.EO = window.EO || {};
   // 3.36: a save sent twice in a moment (a button pressed twice, Enter and a click together) reaches the server once:
   // the same request (address and content) sent again while the first is on its way gets the answer of the first; a
@@ -3066,7 +3066,7 @@
       </div>
       <div class="pv-desk" id="pvDesk">${pages.map((p, i) => (bare ? `<div class="page${cls} bare">${p}</div>` : `<div class="page${cls}">${dated(p)}${p}${trx ? `<div class="pg-trx">TRX ID ${esc(trx.toUpperCase())}</div>` : ""}${pages.length > 1 ? `<div class="pg-num">PAGE ${i + 1} OF ${pages.length}</div>` : ""}<div class="pg-sec" aria-hidden="true" style="background-image:${band} !important"></div></div>`)).join("")}</div>
       <div class="statusbar"><span id="pvCur">Current Page No: 1</span><span id="pvTotal">Total pages: ${pages.length}</span><span id="pvZf">Zoom Factor: 100%</span></div>`;
-    // 3.99.400: every document page gets the company band: blue with gold lines, at the top and the bottom (not the bare ID card sheet)
+    // 3.99.401: every document page gets the company band: blue with gold lines, at the top and the bottom (not the bare ID card sheet)
     $$(".page", pv).forEach((page) => { if (page.classList.contains("bare") || page.querySelector(":scope > .pg-band")) return;
       page.insertAdjacentHTML("afterbegin", `<div class="pg-band top" aria-hidden="true"><i></i></div>`);
       page.insertAdjacentHTML("beforeend", `<div class="pg-band bottom" aria-hidden="true"><i></i></div>`); });
