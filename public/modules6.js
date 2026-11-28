@@ -84,7 +84,7 @@
     // the shops' Daily Sales Reports (DSR-SHOP1-20261119)
     const dsr = await Promise.all([sb.from("outlet_sales").select("id, outlet_id, sale_date, total, created_at, created_by_name").order("created_at", { ascending: false }).limit(400),
       sb.from("outlets").select("id, code, name")]).then(([a, b]) => { const oc = new Map((b.data || []).map((o) => [o.id, o]));
-      return (a.data || []).map((r) => { const o = oc.get(r.outlet_id) || {}; return { kind: "DAILY SALES REPORT", no: `DSR-${String(o.code || "").replace(/[^A-Z0-9]/gi, "").toUpperCase()}-${String(r.sale_date).replace(/-/g, "")}`,
+      return (a.data || []).map((r) => { const o = oc.get(r.outlet_id) || {}; return { kind: "DAILY SALES REPORT", no: `${String(o.code || "").toUpperCase()}-${String(r.sale_date).replace(/-/g, "")}`,
         date: r.sale_date, at: r.created_at, by: r.created_by_name || "", who: o.code ? `${o.code}${o.name && o.name !== o.code ? " · " + o.name : ""}` : "", amt: r.total, id: r.id, route: "outlet", rid: r.outlet_id }; }); }, () => []);
     if (!here()) return;
     const all = [...got.flat(), ...dsr].sort((a, b) => String(b.at || b.date).localeCompare(String(a.at || a.date)));

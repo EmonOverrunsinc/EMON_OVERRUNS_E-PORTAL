@@ -822,7 +822,7 @@
         <form id="cuForm" class="fields wide">
           <label for="cuQ">Name / Account</label><input type="search" id="cuQ" placeholder="Name, account no, business or phone">
         </form></fieldset></div>
-      <div class="btnrow"><button type="button" class="btn primary" id="cuGo">${ic("search")} Search</button><button type="button" class="btn" id="cuScan">${ic("scan")} Scan QR</button>${isStaff() ? `<button type="button" class="btn" id="cuTop">${ic("crown")} Rank</button>` : ""}
+      <div class="btnrow"><button type="button" class="btn primary" id="cuGo">${ic("search")} Search</button>${isStaff() ? `<button type="button" class="btn" id="cuTop">${ic("crown")} Rank</button>` : ""}
 </div>
       <div id="cuRes">${busy("Searching")}</div>`);
     const fresh = E.loadGuard();
@@ -860,7 +860,6 @@
     };
     $("#cuForm").onsubmit = (e) => { e.preventDefault(); run(); };
     $("#cuGo").onclick = run;
-    $("#cuScan").onclick = () => E.scanDialog(E.openScanned);
     if ($("#cuTop")) $("#cuTop").onclick = topCustomers;
     run();
   };
@@ -1301,19 +1300,37 @@
 
   // 2.7: the account amounts are listed here; the profile shows only the Balance Due
   // 3.99.367: original customer ranking: every active customer with positive lifetime net sales, fixed each Monday.
+  // 3.99.375: the ranking in three kinds: ALL TIME (lifetime, fixed at Monday), THIS WEEK and THIS MONTH (SQL 166)
   async function topCustomers() {
-    const m = E.modal("Customer Ranking", `<div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
+    const m = E.modal("Customer Ranking", `<div class="rk-tabs" role="tablist"><button type="button" class="on" data-rk="all">All Time</button><button type="button" data-rk="week">This Week</button><button type="button" data-rk="month">This Month</button></div><div id="rkBoard">${busy()}</div>`, `<button type="button" class="btn" data-x>Close</button>`);
     m.el.querySelector("[data-x]").onclick = m.close;
-    const rk = await E.customerRanks(), list = [...rk.values()].sort((a, b) => a.rank - b.rank);
-    const { data } = list.length ? await sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").in("id", list.map((r) => r.customer_id)) : { data: [] };
-    const box = m.el.querySelector("#rkBoard"), cm = new Map((data || []).map((c) => [c.id, c]));
-    if (!box) return;
-    box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} Lifetime net purchases up to Monday ${esc(mdy(list[0].as_of))} · every active customer is ranked. The latest completed week's #1 receives a separate profile watermark.</p>
-      <div class="rank-board">${list.map((r) => { const c = cm.get(r.customer_id) || {};
-        return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankNo(r.rank, `lg${r.rank <= 10 ? " customer-rank-live" : ""}`, r.tier || null)}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
-      : `<div class="empty">No active customer has positive net purchases yet.</div>`;
-    box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => m.close()));
+    const names = new Map();
+    const show = async (kind) => {
+      const box = m.el.querySelector("#rkBoard"); if (!box) return;
+      box.innerHTML = busy();
+      let list = [], note = "";
+      if (kind === "all") {
+        const rk = await E.customerRanks(); list = [...rk.values()].sort((a, b) => a.rank - b.rank);
+        note = list.length ? `Lifetime net purchases up to Monday ${mdy(list[0].as_of)}` : "";
+      } else {
+        const { data, error } = await sb.rpc("customer_period_ranks", { p_kind: kind });
+        if (error) { box.innerHTML = `<div class="empty">Run the database update 166 first.</div>`; return; }
+        list = data || [];
+        note = list.length ? `${kind === "week" ? "This week" : "This month"}: ${mdy(list[0].period_start)} to ${mdy(list[0].period_end)}` : "";
+      }
+      const need = list.map((r) => r.customer_id).filter((id) => !names.has(id));
+      if (need.length) { const { data } = await sb.from("customers").select("id, first_name, middle_name, last_name, account_no, business_name").in("id", need); (data || []).forEach((c) => names.set(c.id, c)); }
+      if (!m.el.isConnected) return;
+      box.innerHTML = list.length ? `<p class="rank-note">${ic("clock")} ${esc(note)}</p>
+        <div class="rank-board">${list.map((r) => { const c = names.get(r.customer_id) || {};
+          return `<a class="rank-row rr${Math.min(r.rank, 6)}" href="#customer/${esc(r.customer_id)}">${E.rankNo(r.rank, `lg${r.rank <= 10 ? " customer-rank-live" : ""}`, r.tier || null)}<div><b>${esc(fullName(c) || "—")}</b><small>${esc([c.account_no, c.business_name].filter(Boolean).join(" · "))}</small></div>${r.net != null ? `<em>₱ ${peso(r.net)}</em>` : ""}</a>`; }).join("")}</div>`
+        : `<div class="empty">No customer has net purchases ${kind === "week" ? "this week" : kind === "month" ? "this month" : "yet"}.</div>`;
+      box.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => m.close()));
+    };
+    m.el.querySelectorAll("[data-rk]").forEach((b) => (b.onclick = () => { m.el.querySelectorAll("[data-rk]").forEach((x) => x.classList.toggle("on", x === b)); show(b.dataset.rk); }));
+    show("all");
   }
+
 
   // The details of a customer application as [label, text, html] rows, for the Details tab and the Director's Review (3.35)
   const appRows = (c) => ({

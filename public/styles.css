@@ -5951,3 +5951,17 @@ body:has(.chat-panel.open) .band-back { display: none !important; }
 .page.dsr-page .dsr-close .dc-verify small { font: 700 5.5px/1 Arial, sans-serif; letter-spacing: .12em; color: #6b7a99; }
 .page.dsr-page .dsr-close .dc-verify b { font: 700 6.5px/1.25 ui-monospace, Menlo, Consolas, monospace; color: #0f2a66; overflow-wrap: anywhere; }
 .pv-title { overflow-wrap: normal; word-break: normal; }
+/* 3.99.375: system wording on the close and the activities; stamp lines in colour */
+.page.dsr-page .dsr-close .eo-stamp.vst em.st-out { color: #17794a; }
+.page.dsr-page .dsr-close .eo-stamp.vst em.st-left { color: #b42318; }
+.page.dsr-page .dsr-acts .soa-t th, .page.dsr-page .dsr-acts .soa-t td,
+.page.dsr-page .dsr-ack, .page.dsr-page .dsr-ack p, .page.dsr-page .dsr-ack b, .page.dsr-page .dsr-ack strong {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace !important; text-transform: uppercase; letter-spacing: .02em; }
+.page.dsr-page .dsr-acts .soa-t td { font-size: 7.4px; font-weight: 600; color: #22304d; }
+.page.dsr-page .dsr-ack { padding: 1.6mm 2.2mm !important; }
+.page.dsr-page .dsr-ack p { font-size: 6.8px !important; line-height: 1.45 !important; color: #22304d; }
+.page.dsr-page .dsr-ack > b { font-size: 7px !important; }
+/* 3.99.375: ranking tabs */
+.rk-tabs { display: flex; gap: 6px; margin: 0 0 10px; padding: 4px; background: #eef2f7; border-radius: 12px; }
+.rk-tabs button { flex: 1; border: 0; background: none; padding: 8px 6px; border-radius: 9px; font-weight: 700; color: #42506b; cursor: pointer; }
+.rk-tabs button.on { background: #fff; color: #0f2a66; box-shadow: 0 1px 3px rgba(15, 35, 80, .12); }
